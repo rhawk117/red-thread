@@ -1,0 +1,134 @@
+exclude: |
+  (?x)^(
+    \.idea|\.vscode|
+    \.bashrc|\.bash_profile|\.profile|\.zshrc|\.zprofile|
+    \.gitconfig|\.gitmodules|\.ripgreprc|
+    \.claude/(settings\.local\.json|scheduled_tasks\.json|launch\.json|loop\.md|routines|commands|agents|output-styles|workflows|skills)
+  )(/|$)
+default_stages: [pre-commit]
+default_install_hook_types:
+  - pre-commit
+  - post-checkout
+  - post-merge
+  - post-rewrite
+
+
+
+priorities:
+  lint: 100
+
+repos:
+  - repo: builtin
+    hooks:
+      - id: end-of-file-fixer
+        groups: [hygiene, format]
+        priority: 0
+
+      - id: mixed-line-ending
+        args: [--fix=lf]
+        groups: [hygiene, format]
+        priority: 1
+
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+        groups: [hygiene, format]
+        priority: 2
+
+      - id: check-added-large-files
+        args: [--maxkb=1000]
+        groups: [hygiene, lint]
+        priority: lint
+
+      - id: check-case-conflict
+        groups: [hygiene, lint]
+        priority: lint
+
+      - id: check-json
+        groups: [hygiene, lint]
+        priority: lint
+
+      - id: check-toml
+        groups: [hygiene, lint]
+        priority: lint
+
+      - id: check-shebang-scripts-are-executable
+        types: [python]
+        groups: [hygiene, lint]
+        priority: lint
+
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    rev: 0.13.1
+    hooks:
+      - id: uv-lock
+        files: ^(uv\.lock|pyproject\.toml|uv\.toml|packages/[^/]+/pyproject\.toml)$
+        groups: [python, format]
+        priority: 10
+
+      - id: uv-sync
+        args: [--locked, --all-packages]
+        groups: [python]
+        priority: 11
+
+  - repo: local
+    hooks:
+      - id: ruff-fix
+        name: ruff fix
+        language: system
+        entry: uv run ruff check --fix --unsafe-fixes --fix-only --force-exclude
+        types_or: [python, pyi, jupyter]
+        groups: [python, format]
+        priority: 12
+
+      - id: ruff-format
+        name: ruff format
+        language: system
+        entry: uv run ruff format --force-exclude
+        types_or: [python, pyi, jupyter]
+        groups: [python, format]
+        priority: 13
+
+      - id: ruff-check
+        name: ruff check
+        language: system
+        entry: uv run ruff check --no-fix --show-fixes -q --force-exclude
+        types_or: [python, pyi, jupyter]
+        groups: [python, lint]
+        priority: lint
+
+      - id: ty
+        name: ty
+        language: system
+        entry: uv run ty check --config-file ty.toml --output-format concise .
+        files: (\.pyi?|(^|/)pyproject\.toml|^uv\.lock|^ty\.toml)$
+        include_deleted: true
+        pass_filenames: false
+        groups: [python, lint]
+        priority: lint
+
+  - repo: local
+    hooks:
+      - id: shfmt
+        name: shfmt
+        language: system
+        entry: uv run shfmt -w -i 2 -ci
+        files: \.sh$
+        groups: [shell, format]
+        priority: 20
+
+      - id: shellcheck
+        name: shellcheck
+        language: system
+        entry: uv run shellcheck
+        files: \.sh$
+        groups: [shell, lint]
+        priority: lint
+
+  - repo: local
+    hooks:
+      - id: mdformat
+        name: mdformat
+        language: system
+        entry: uv run mdformat
+        files: \.md$
+        groups: [markdown, format]
+        priority: 30
