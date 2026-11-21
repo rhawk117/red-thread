@@ -98,7 +98,7 @@ The code is the workspace package `packages/casefile`. The stored records (`Entr
 | `export` | assembles a lens output from the ledger and fails when it is over its line budget | Built |
 | `page` | records the link of the published board in `case.json` | Built |
 
-**Decided:** the script is the workspace package `packages/casefile`, run through `scripts/casefile.sh`, which starts it with `uv run --no-project --python 3.14` so it needs no install. The primary passes the launcher's absolute path in each brief as `SCRIPT`, since a brief already carries everything a worker needs.
+**Decided:** the script is the workspace package `packages/casefile`, run through `scripts/casefile.sh`, which starts it with `uv run --no-project --python 3.14 --with-editable` on the package. uv takes the dependencies from the package's own `pyproject.toml` and keeps the environment in its cache, so nothing is installed into the project under investigation and the launcher repeats no requirement. The primary passes the launcher's absolute path in each brief as `SCRIPT`, since a brief already carries everything a worker needs.
 
 ### Entries
 
