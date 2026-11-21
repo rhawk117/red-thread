@@ -189,6 +189,9 @@ class Board:
             lines.append(f'Threads: {listed}')
         if self.case.page_url is not None:
             lines.append(f'Page: {self.case.page_url}')
+
+        if self.case.capabilities.navigation_tool:
+            lines.append('Navigation tool: installed')
         return lines
 
     def render(self) -> str:

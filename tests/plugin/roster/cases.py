@@ -10,8 +10,13 @@ if TYPE_CHECKING:
 
 LEAD = 'red-thread:research-lead'
 SKEPTIC = 'red-thread:peer-review'
-SCOUTS = ('red-thread:code-sense', 'red-thread:web-head', 'red-thread:research-cell')
-SILENT = ('red-thread:code-sense', 'red-thread:web-head', 'red-thread:research-cell', SKEPTIC)
+SCOUTS = (
+    'red-thread:code-sense',
+    'red-thread:code-lens',
+    'red-thread:web-head',
+    'red-thread:research-cell',
+)
+SILENT = (*SCOUTS, SKEPTIC)
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)

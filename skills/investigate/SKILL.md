@@ -37,12 +37,15 @@ If that line is empty, take the target from the conversation.
 | Agent | Brief fields | Returns |
 | --- | --- | --- |
 | `code-sense` | QUESTION, SCOPE (a directory, file or package); optional known facts and paths to skip | `path:line` citations from this repository, its git history and its GitHub issues |
+| `code-lens` | the same fields as `code-sense` | experimental: `path:line` citations for the structure of Python code (where a symbol is defined, what calls it, what a file holds), found with the agentlens tool |
 | `web-head` | QUESTION, SUBJECT (package name), LEAD (a URL or a search phrase), TODAY; optional VERSION | cited URLs from official docs, changelogs and upstream source |
 | `research-cell` | HYPOTHESIS, REFUTE (the observation that would prove it wrong), SCOPE; optional EXPERIMENT | one experiment run in its own worktree: the command, the deciding output, and whether the hypothesis survived |
-| `research-lead` | QUESTION, DECISION, CASE, THREAD, ROUND, SCRIPT, TODAY; optional KNOWN, SCOPE, SKIP | a short report that points at the entries it stored in its thread |
+| `research-lead` | QUESTION, DECISION, CASE, THREAD, ROUND, SCRIPT, TODAY; optional KNOWN, SCOPE, SKIP, NAVIGATION | a short report that points at the entries it stored in its thread |
 | `peer-review` | CASE, SCRIPT, CONCLUSION, TODAY; optional REFS | a verdict per claim, and whether the conclusion follows |
 
 The Agent tool lists them with the plugin prefix, as in `red-thread:code-sense`. Each one starts with no memory of this conversation, so a brief stands alone: use the field names above exactly, put one question in each brief, and say what to skip. TODAY is today's date; if you do not know it, run `date -u +%F`.
+
+`code-lens` is experimental and optional. Use it in place of `code-sense` only when `init` printed `navigation tool: installed`, which the board header repeats as `Navigation tool: installed`, and only for a question about the structure of Python code. In that case give a lead `NAVIGATION: installed`, so it can choose the same way. Every other code question goes to `code-sense`, and so does every code question when the tool is missing.
 
 Depth follows the target:
 

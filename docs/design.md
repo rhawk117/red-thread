@@ -42,6 +42,7 @@ you         intent, priors, "is this sufficient"   sees the board at each gate
 primary     target, thread list, your decisions    holds the rendered board, never raw reports
 ├ lead ×N   judgment for one thread                holds its scouts' reports
 │ ├ code scout   reads the repository    path:line @ commit
+│ ├ lens scout   reads Python structure  path:line @ commit, experimental
 │ ├ web scout    reads documentation     URL#heading @ version
 │ └ lab scout    runs one experiment     command + output
 └ skeptic   gets claims and citations only; tries to break them before an export
@@ -52,6 +53,7 @@ primary     target, thread list, your decisions    holds the rendered board, nev
 | primary | none, it is the session | the session's model | never reads raw scout output when leads are in use |
 | lead | `agents/research-lead.md` | `claude-sonnet-5-5` | six jobs a round, two rounds |
 | code scout | `agents/code-sense.md` | `claude-haiku-5-5` | five tool calls, read-only |
+| lens scout (experimental) | `agents/code-lens.md` | `claude-haiku-5-5` | 6,000 tokens of agentlens output, read-only; dispatched only when `init` found the tool |
 | web scout | `agents/web-head.md` | `claude-haiku-5-5` | five tool calls, read-only |
 | lab scout | `agents/research-cell.md` | `claude-sonnet-5-5` | one experiment per dispatch, in a git worktree |
 | skeptic | `agents/peer-review.md` | `claude-sonnet-5-5` | receives claims and citations, never the reasoning; read-only |
@@ -66,7 +68,7 @@ Platform facts checked on 2026-11-21 against the Claude Code docs and one live p
 
 - A subagent can dispatch subagents. The docs give a default depth of three layers below the main conversation. The probe confirmed dispatch and a follow-up to the child through SendMessage.
 - A type list in a subagent's `tools:` line, such as `Agent(a, b)`, is ignored. It applies only to an agent run as the main thread. "Dispatch only these agents" is therefore enforced by the prompt alone, unless a plugin-level PreToolUse hook on the Agent tool is added. That hook can see the target type and the prompt.
-- **Decided 2026-11-21: the roster is enforced by that hook.** `hooks/hooks.json` runs `hooks/roster.py` before every Agent call. The session may dispatch every agent, a lead may dispatch the three scouts, and a scout and the skeptic dispatch nobody. A dispatch outside the caller's roster is denied, and the reason names whom the caller may dispatch. A dispatch whose caller or target is not a red-thread agent is left alone, and so is any input the hook cannot read. The hook takes the caller from the `agent_type` field of its input, with or without the plugin prefix.
+- **Decided 2026-11-21: the roster is enforced by that hook.** `hooks/hooks.json` runs `hooks/roster.py` before every Agent call. The session may dispatch every agent, a lead may dispatch the four scouts, and a scout and the skeptic dispatch nobody. A dispatch outside the caller's roster is denied, and the reason names whom the caller may dispatch. A dispatch whose caller or target is not a red-thread agent is left alone, and so is any input the hook cannot read. The hook takes the caller from the `agent_type` field of its input, with or without the plugin prefix.
 - Plugin-shipped agents ignore the `hooks`, `mcpServers` and `permissionMode` frontmatter fields.
 - A SubagentStop hook can block a subagent from stopping and send it feedback, which could enforce the report format later.
 - A workflow cannot pause for input, so a workflow fits inside one round and never across a gate.
@@ -243,6 +245,7 @@ All scouts share one report contract, already used by `code-sense` and `web-head
 | --- | --- |
 | `research-lead` | writes its thread file through the script instead of a ledger in a temporary directory; gains the lab scout on its team |
 | `code-sense` (was `eyes`) | renamed; LSP dropped; navigates with `rg` and ranged reads until the navigation tool passes its gate; cites paths from the repository root, because the ledger opens them |
+| `code-lens` (lens scout) | new and experimental: the `code-sense` contract over the agentlens 0.2.0 commands `map`, `find` and `slice`, with a budget of tool output in place of five calls (section 8) |
 | `web-head` | the brief gains today's date |
 | `research-cell` (lab scout) | new: one experiment per dispatch in a worktree, returns the command and its output |
 | `peer-review` (skeptic) | new: tries to break each claim from its citation alone, against a four-question rubric. It is read-only, so the primary records its verdicts |
@@ -259,6 +262,7 @@ Decisions:
 - **Decided:** it is distributed as wheels through uv from its own repository. Nothing binary lives in the plugin, and the source is not ported here.
 - **Decided:** it is gutted to three verbs that work in any language.
 - **Decided:** red-thread is built first. The tool plugs in only if it passes the gate below.
+- **Decided 2026-11-21:** an experimental scout for the installed 0.2.0 ships before the gate (see "In red-thread"). It is used only where `init` found the tool, and `code-sense` stays the default until the gate is passed.
 
 ### What it becomes
 
@@ -281,8 +285,10 @@ The strongest competitor is no tool. In the agentlens 0.2.0 evaluation, `rg` wit
 
 ### In red-thread
 
-- `init` detects the tool once per case and the brief carries that down, so no scout spends a call probing. If it is missing the owner gets one hint; nothing installs from a tool call.
-- A dedicated scout uses it, with the same report contract, a short command card instead of the 982-line agent kit, and a token budget in place of five calls.
+- `init` detects the tool once per case and the brief carries that down, so no scout spends a call probing. Built: `init` prints `navigation tool: installed`, the board header repeats it as `Navigation tool: installed`, and a lead gets `NAVIGATION: installed` in its brief. Nothing installs from a tool call.
+- Not built: the one hint for an owner who lacks the tool. The evaluated build cannot be downloaded yet (see below), so there is nothing to point them at.
+- A dedicated scout uses it, with the same report contract, a short command card instead of the 982-line agent kit, and a token budget in place of five calls. Built as experimental in `agents/code-lens.md`, for the 0.2.0 that is installed today: a card for `map`, `find` and `slice`, 6,000 tokens of agentlens output a question, every call with `--no-cache` so no cache folder lands in the repository, and Python only. `map` and `find` print a line number without the line's text, so the scout cites only lines it saw in `slice` or `rg -n` output. The primary or a lead sends it a question about the structure of Python code; every other code question still goes to `code-sense`.
+- Nothing about this scout has been measured. The gate above is still open, and the file is rewritten or removed when the tool is gutted to three verbs.
 
 ### To fix in the agentlens repository first
 
@@ -479,5 +485,6 @@ All made by the owner on 2026-11-21.
 | Entry diagrams | an optional `diagram` field on an entry, drawn on the HTML pages only |
 | Test markers | tier marks come from the directory; a regression is an `@example` on a property marked `regression` |
 | Owner comments | read at each gate from the published page and recorded as `user` entries, then answered with the ref and resolved |
+| Navigation scout | `code-lens`, experimental, for the installed agentlens 0.2.0 and only where `init` found the tool; the evaluation gate stays open |
 | Roster | a PreToolUse hook on the Agent tool denies a dispatch outside the caller's roster and says whom the caller may dispatch; a dispatch outside the plugin is left alone |
 | Remnants | `.claude/CLAUDE.md` and `conftest.py` cleaned, the three renamed rules in `ty.toml` updated; `ruff.toml` and the root `pyproject.toml` left alone |

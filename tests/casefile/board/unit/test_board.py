@@ -3,7 +3,8 @@
 from typing import TYPE_CHECKING
 
 import pytest
-from red_thread_casefile.domain import Ledger
+from msgspec import structs
+from red_thread_casefile.domain import Capabilities, Ledger
 from red_thread_casefile.views import Board, BoardOptions
 
 from tests.casefile.board.cases import lead_marker_params, section_cap_params
@@ -28,6 +29,11 @@ def create_board(
         head=head,
         options=options or BoardOptions(),
     )
+
+
+def create_equipped_board() -> Board:
+    case = structs.replace(create_case(), capabilities=Capabilities(navigation_tool=True))
+    return Board(case=case, ledger=Ledger(entries=()), head=HEAD, options=BoardOptions())
 
 
 def list_headings(text: str) -> list[str]:
@@ -90,6 +96,16 @@ class TestSections:
         assert 'Target: why the retry queue stalls' in text
         assert 'Kind: root-cause | Round: 3 | HEAD: 1111111' in text
         assert 'Threads: T1 (2)' in text
+
+    def test_header_says_when_the_navigation_tool_is_installed(self) -> None:
+        text = create_equipped_board().render()
+
+        assert 'Navigation tool: installed' in text.splitlines()
+
+    def test_header_leaves_the_navigation_tool_out_when_it_is_missing(self) -> None:
+        text = create_board(()).render()
+
+        assert 'Navigation tool' not in text
 
     def test_thread_entries_are_listed_under_their_thread_ref(self) -> None:
         entries = (create_entry(seq=1), create_entry(seq=1, thread='T1'))
