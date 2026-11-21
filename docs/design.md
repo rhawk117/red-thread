@@ -423,7 +423,7 @@ Open:
 - The budgets for `issue`, `handoff` and `report`, and the rules listed as added while building in section 4.
 - Owner comments are read at the gate (section 4). No published page has carried a comment through that step yet, so the shape of what the Artifact tool returns for a thread is untested.
 - The restyled page has not been looked at in a browser from this machine, which has none, and its Tailwind block has not been compiled outside a browser. The owner checks a sample board. Since 2026-11-21 the tests run the page's script under Node (`tests/casefile/pages/integration`), against a small fake DOM and a stand-in for mermaid in `tests/casefile/pages/dom_harness.js`: the filters, the fold button, copying, and drawing and redrawing diagrams. That checks the script's logic and not what a browser or the real mermaid does with it.
-- `ruff.toml`, `pytest.toml`, `SECURITY.md` and the root `pyproject.toml` still carry mightymodels remnants. `.claude/CLAUDE.md`, `conftest.py` and the renamed rules in `ty.toml` are done.
+- `ruff.toml`, `pytest.toml` and `SECURITY.md` lost their mightymodels remnants on 2026-11-21. Three are left, in files the owner has not cleared for editing: the release workflow and its script name the package `mightymodels-plugin` (`.github/workflows/cd.yml`, `.github/scripts/release.sh`); the pull request template mentions a `.mightymodels` slug; and the root `pyproject.toml` keeps three test dependencies that nothing uses (`anyio`, `pytest-anyio`, `pytest-mock`), with the `anyio_mode` setting in `pytest.toml` and the `anyio_backend` fixture in `conftest.py`.
 
 Build order:
 
@@ -487,4 +487,4 @@ All made by the owner on 2026-11-21.
 | Owner comments | read at each gate from the published page and recorded as `user` entries, then answered with the ref and resolved |
 | Navigation scout | `code-lens`, experimental, for the installed agentlens 0.2.0 and only where `init` found the tool; the evaluation gate stays open |
 | Roster | a PreToolUse hook on the Agent tool denies a dispatch outside the caller's roster and says whom the caller may dispatch; a dispatch outside the plugin is left alone |
-| Remnants | `.claude/CLAUDE.md` and `conftest.py` cleaned, the three renamed rules in `ty.toml` updated; `ruff.toml` and the root `pyproject.toml` left alone |
+| Remnants | `.claude/CLAUDE.md` and `conftest.py` cleaned, the three renamed rules in `ty.toml` updated; then `ruff.toml`, `pytest.toml` and `SECURITY.md`; the root `pyproject.toml` holds no mightymodels text |
