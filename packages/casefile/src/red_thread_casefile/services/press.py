@@ -1,0 +1,92 @@
+"""The press: writes the board page and the lens outputs of a case file."""
+
+from dataclasses import dataclass, field, replace
+from typing import TYPE_CHECKING
+
+import msgspec
+
+from red_thread_casefile.lenses import Composer, Edition, Plan, count_lines, get_lens
+from red_thread_casefile.pages import HtmlWriter
+from red_thread_casefile.policy import get_page_problem
+from red_thread_casefile.views import Board, MarkdownWriter
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from red_thread_casefile.domain import Case
+    from red_thread_casefile.lenses import LensName
+    from red_thread_casefile.services.casefile import CaseFile
+    from red_thread_casefile.store import PageStore
+
+BOARD_PAGE = 'board.html'
+
+
+@dataclass(slots=True, kw_only=True, frozen=True)
+class ExportRequest:
+    lens: LensName
+    plan: Plan = field(default_factory=Plan)
+    html: bool = False
+
+
+@dataclass(slots=True, kw_only=True, frozen=True)
+class Exported:
+    paths: tuple[Path, ...]
+    lines: int
+    budget: int
+
+
+@dataclass(slots=True, kw_only=True, frozen=True)
+class Press:
+    record: CaseFile
+    pages: PageStore
+
+    def gather(self) -> Edition:
+        return Edition(
+            case=self.record.repository.read_case(),
+            ledger=self.record.repository.read_ledger(),
+            head=self.record.tree.get_head(),
+            findings=self.record.check(),
+        )
+
+    def scrub(self, text: str | None) -> str | None:
+        if text is None:
+            return None
+        return self.record.patterns.scrub(text).text
+
+    def draw(self) -> Path:
+        edition = self.gather()
+        board = Board(
+            case=edition.case,
+            ledger=edition.ledger,
+            head=edition.head,
+            findings=edition.findings,
+        )
+        return self.pages.write(BOARD_PAGE, HtmlWriter(document=board.compose()).render())
+
+    def export(self, request: ExportRequest) -> Exported:
+        lens = get_lens(request.lens)
+        title = self.scrub(request.plan.title)
+        plan = replace(request.plan, title=title, goal=self.scrub(request.plan.goal))
+        composer = Composer(lens=lens, plan=plan, edition=self.gather())
+        if problem := composer.get_plan_problem():
+            raise problem
+
+        document = composer.compose()
+        text = MarkdownWriter(document=document).render()
+        if problem := composer.get_budget_problem(text):
+            raise problem
+
+        paths = [self.pages.write(f'out/{lens.name}.md', text)]
+        if request.html:
+            page = HtmlWriter(document=document).render()
+            paths.append(self.pages.write(f'out/{lens.name}.html', page))
+
+        return Exported(paths=tuple(paths), lines=count_lines(text), budget=lens.budget)
+
+    def record_page(self, url: str) -> Case:
+        if problem := get_page_problem(url):
+            raise problem
+
+        case = msgspec.structs.replace(self.record.repository.read_case(), page_url=url)
+        self.record.repository.write_case(case)
+        return case

@@ -1,0 +1,63 @@
+/* Tailwind compiles this block in the browser. The first rule maps the tokens in page.css to
+   utilities, and the rest styles the elements that pages.py writes. The script adds
+   Tailwind's own stylesheet when this block names none. */
+@theme inline {
+  --color-ground: var(--ground);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-quiet: var(--quiet);
+  --color-line: var(--line);
+  --color-thread: var(--thread);
+  --color-flag: var(--flag);
+  --color-flag-ground: var(--flag-ground);
+  --color-kind: var(--kind, var(--quiet));
+  --font-sans: var(--text);
+  --font-mono: var(--data);
+}
+
+@layer components {
+  .meta { @apply flex flex-col gap-0.5 text-sm text-quiet; }
+  .toolbar { @apply flex flex-wrap items-center gap-x-5 gap-y-2; }
+  .chips { @apply flex flex-wrap gap-1.5; }
+  .chip, .tool {
+    @apply inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-line
+      bg-surface px-2.5 py-0.5 text-xs text-ink;
+  }
+  .chip[data-filter="kind"]::before { @apply size-2 rounded-full bg-kind content-['']; }
+  .chip[aria-pressed="false"] { @apply bg-transparent text-quiet line-through; }
+  .count { @apply text-quiet tabular-nums; }
+  .tool { @apply ml-auto rounded-md; }
+  .section > summary { @apply cursor-pointer py-1 marker:text-quiet; }
+  .section h2 { @apply inline text-xs font-semibold tracking-widest text-quiet uppercase; }
+  .section > p { @apply mt-2 max-w-[65ch]; }
+  .thread { @apply mt-2 border-l-2 border-thread; }
+  .plain { @apply mt-2; }
+  .entry { @apply border-b border-line py-2; }
+  .thread > .entry {
+    @apply relative grid grid-cols-[4.5rem_minmax(0,1fr)] gap-3 py-2.5 pl-4
+      max-[420px]:grid-cols-1 max-[420px]:gap-0.5;
+  }
+  .thread > .entry::before {
+    @apply absolute top-4 -left-[6px] size-2.5 rounded-full border-2 border-kind bg-ground
+      content-[''];
+  }
+  .ref {
+    @apply cursor-pointer self-start text-left font-mono text-xs leading-6 text-thread
+      tabular-nums hover:underline;
+  }
+  .claim { @apply max-w-[65ch] wrap-anywhere; }
+  .cite {
+    @apply mt-1 flex flex-wrap items-baseline gap-2 font-mono text-xs text-quiet wrap-anywhere;
+  }
+  .cite a { @apply underline; }
+  .copy {
+    @apply cursor-pointer rounded border border-line px-1.5 font-sans text-[0.7rem] text-quiet
+      hover:text-ink;
+  }
+  .notes { @apply mt-1.5 flex flex-wrap gap-1.5 text-xs; }
+  .notes > li { @apply rounded border border-line px-1.5 text-quiet; }
+  .notes > .flag { @apply border-transparent bg-flag-ground text-flag; }
+  .mermaid { @apply mt-2 overflow-x-auto rounded-md border border-line bg-surface p-3 text-xs; }
+  code, .mermaid { @apply font-mono; }
+  code { @apply text-[0.9em]; }
+}

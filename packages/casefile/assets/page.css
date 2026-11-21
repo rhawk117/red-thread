@@ -1,0 +1,81 @@
+/* The tokens for both themes, and the few rules that must hold before Tailwind has run.
+   tailwind.css maps these tokens to utilities and styles everything else. Colors are hex
+   because page.js hands them to mermaid, which reads no other form. */
+:root {
+  color-scheme: light;
+  --ground: #fafafa;
+  --surface: #ffffff;
+  --ink: #18181b;
+  --quiet: #52525b;
+  --line: #e4e4e7;
+  --thread: #e11d48;
+  --flag: #92400e;
+  --flag-ground: #fef3c7;
+  --decision: #e11d48;
+  --known: #059669;
+  --hypothesis: #d97706;
+  --open: #0284c7;
+  --ruled-out: #a1a1aa;
+  --next: #7c3aed;
+  --resource: #0d9488;
+  --text: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --data: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --ground: #09090b;
+    --surface: #18181b;
+    --ink: #f4f4f5;
+    --quiet: #a1a1aa;
+    --line: #27272a;
+    --thread: #fb7185;
+    --flag: #fde68a;
+    --flag-ground: #451a03;
+    --decision: #fb7185;
+    --known: #34d399;
+    --hypothesis: #fbbf24;
+    --open: #38bdf8;
+    --ruled-out: #71717a;
+    --next: #a78bfa;
+    --resource: #2dd4bf;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ground: #09090b;
+  --surface: #18181b;
+  --ink: #f4f4f5;
+  --quiet: #a1a1aa;
+  --line: #27272a;
+  --thread: #fb7185;
+  --flag: #fde68a;
+  --flag-ground: #451a03;
+  --decision: #fb7185;
+  --known: #34d399;
+  --hypothesis: #fbbf24;
+  --open: #38bdf8;
+  --ruled-out: #71717a;
+  --next: #a78bfa;
+  --resource: #2dd4bf;
+}
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font: 16px/1.55 var(--text);
+  padding-block: 32px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+[hidden] { display: none !important; }
+html:not(.js) .toolbar, html:not(.js) .copy { display: none; }
+:focus-visible { outline: 2px solid var(--thread); outline-offset: 2px; }
+[data-copied]::after { content: " ✓"; }
+[data-kind="decision"], [data-value="decision"] { --kind: var(--decision); }
+[data-kind="known"], [data-value="known"] { --kind: var(--known); }
+[data-kind="hypothesis"], [data-value="hypothesis"] { --kind: var(--hypothesis); }
+[data-kind="open"], [data-value="open"] { --kind: var(--open); }
+[data-kind="ruled_out"], [data-value="ruled_out"] { --kind: var(--ruled-out); }
+[data-kind="next"], [data-value="next"] { --kind: var(--next); }
+[data-kind="resource"], [data-value="resource"] { --kind: var(--resource); }
