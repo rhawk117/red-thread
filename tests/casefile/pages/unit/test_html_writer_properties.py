@@ -22,6 +22,7 @@ from tests.casefile.pages.html_reading import (
     list_styles,
 )
 from tests.casefile.pages.promises import assert_page_holds_only_its_own_markup
+from tests.casefile.pages.strategies import many, texts
 
 ANY_TAG = re.compile(r'<[^>]*>')
 TITLE = re.compile(r'<title>(.*?)</title>', re.DOTALL)
@@ -63,17 +64,6 @@ def render_claim(text: str) -> str:
 
 def list_items(document: Document) -> list[Item]:
     return [item for section in document.sections for item in section.items]
-
-
-texts = st.text(
-    alphabet=st.characters(blacklist_categories=('Cs',), blacklist_characters='`'), max_size=30
-)
-
-
-def many[Value](
-    strategy: st.SearchStrategy[Value], size: int
-) -> st.SearchStrategy[tuple[Value, ...]]:
-    return st.builds(tuple, st.lists(strategy, max_size=size))
 
 
 class TestHtmlWriterProperties:

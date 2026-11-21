@@ -2,6 +2,7 @@
 
 from typing import TYPE_CHECKING
 
+from red_thread_casefile.boards import BoardPage
 from red_thread_casefile.domain import Ledger
 from red_thread_casefile.lenses import Composer, Edition, Plan, get_lens
 from red_thread_casefile.views import Board
@@ -33,7 +34,7 @@ class TestBoardMap:
             create_entry(seq=1, thread='T1', kind='known', text='deep'),
         )
 
-        drawn = read_map(board.compose().map_lines)
+        drawn = read_map(BoardPage(board=board).compose().map_lines)
 
         assert [node.label.split(':')[0] for node in drawn.nodes] == [
             'e1 open',
@@ -44,7 +45,7 @@ class TestBoardMap:
         assert len(drawn.retirements) == 1
 
     def test_an_empty_ledger_has_no_map_lines(self) -> None:
-        assert create_board().compose().map_lines == ()
+        assert BoardPage(board=create_board()).compose().map_lines == ()
 
 
 class TestDiagramOnItems:
@@ -54,7 +55,7 @@ class TestDiagramOnItems:
             create_entry(seq=2, kind='known', text='b'),
         )
 
-        assert list_item_diagrams(board.compose()) == [DIAGRAM, None]
+        assert list_item_diagrams(BoardPage(board=board).compose()) == [DIAGRAM, None]
 
     def test_the_text_board_does_not_show_a_diagram(self) -> None:
         board = create_board(create_entry(seq=1, kind='known', text='a', diagram=DIAGRAM))

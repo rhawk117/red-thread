@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 import msgspec
 
+from red_thread_casefile.boards import BoardPage
 from red_thread_casefile.lenses import Composer, Edition, Plan, count_lines, get_lens
 from red_thread_casefile.pages import HtmlWriter
 from red_thread_casefile.policy import get_page_problem
@@ -61,7 +62,8 @@ class Press:
             head=edition.head,
             findings=edition.findings,
         )
-        return self.pages.write(BOARD_PAGE, HtmlWriter(document=board.compose()).render())
+        document = BoardPage(board=board).compose()
+        return self.pages.write(BOARD_PAGE, HtmlWriter(document=document).render())
 
     def export(self, request: ExportRequest) -> Exported:
         lens = get_lens(request.lens)

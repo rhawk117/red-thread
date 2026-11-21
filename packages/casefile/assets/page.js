@@ -60,7 +60,14 @@
 
   const readToken = (name) => getComputedStyle(root).getPropertyValue(name).trim();
 
-  const drawDiagrams = () => {
+  const drawOpenDiagrams = () => {
+    if (!window.mermaid) return;
+    const waiting = [...document.querySelectorAll('pre.mermaid:not([data-processed])')];
+    const nodes = waiting.filter((node) => !node.closest('details:not([open])'));
+    if (nodes.length) window.mermaid.run({ nodes, suppressErrors: true });
+  };
+
+  const startDiagrams = () => {
     if (!window.mermaid || !document.querySelector('pre.mermaid')) return;
     const chosen = root.dataset.theme;
     const dark = chosen ? chosen === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
@@ -84,7 +91,12 @@
         fontFamily: readToken('--text'),
       },
     });
-    window.mermaid.run({ querySelector: 'pre.mermaid', suppressErrors: true });
+    drawOpenDiagrams();
+  };
+
+  const onToggle = () => {
+    syncFold();
+    drawOpenDiagrams();
   };
 
   document.addEventListener('click', (event) => {
@@ -94,7 +106,7 @@
     if ('filter' in control.dataset) toggleChip(control);
     if ('fold' in control.dataset) foldAll();
   });
-  document.addEventListener('toggle', syncFold, true);
-  document.addEventListener('DOMContentLoaded', drawDiagrams);
+  document.addEventListener('toggle', onToggle, true);
+  document.addEventListener('DOMContentLoaded', startDiagrams);
   root.classList.add('js');
 })();

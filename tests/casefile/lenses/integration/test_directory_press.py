@@ -10,12 +10,15 @@ from red_thread_casefile.lenses import Plan
 from tests.casefile.ledger.builders import QUEUE_LINES, QUEUE_PATH, create_draft, create_valid_draft
 from tests.casefile.lenses.reading import find_item, list_headings, list_refs, list_remarks
 from tests.casefile.pages.html_reading import (
-    list_flags,
     list_item_refs,
     list_mermaid,
     list_section_titles,
 )
-from tests.casefile.pages.promises import assert_page_holds_only_its_own_markup
+from tests.casefile.pages.promises import (
+    assert_page_holds_only_its_own_markup,
+    assert_page_shows_flag_kinds,
+    assert_page_shows_flags,
+)
 
 if TYPE_CHECKING:
     from _pytest.mark import ParameterSet
@@ -147,7 +150,7 @@ class TestExportOnDisk:
         text = harness.out_file('out/brief.md').read_text(encoding='utf-8')
         page = harness.out_file('out/brief.html').read_text(encoding='utf-8')
         assert list_remarks(find_item(text, 'e2')) == expected
-        assert set(expected) <= set(list_flags(page))
+        assert_page_shows_flag_kinds(page, tuple(expected))
 
     def test_the_board_page_is_written_in_the_case_directory_with_every_live_entry(
         self, harness: DirectoryPressHarness
@@ -184,7 +187,7 @@ class TestExportOnDisk:
         harness.press.draw()
 
         page = harness.out_file('board.html').read_text(encoding='utf-8')
-        assert list_flags(page) == ['citation changed']
+        assert_page_shows_flags(page, change.flags)
 
 
 class TestRefusalsOnDisk:

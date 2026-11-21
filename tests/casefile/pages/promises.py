@@ -2,11 +2,14 @@
 
 from red_thread_casefile.assets import read_asset
 
+from tests.casefile.pages.flags import list_lead_flags, list_state_labels
 from tests.casefile.pages.html_reading import (
     MERMAID_URL,
     PAGE_TAGS,
     TAILWIND_URL,
+    list_flags,
     list_scripts,
+    list_spans,
     list_styles,
     list_tags,
 )
@@ -33,3 +36,13 @@ def assert_page_holds_only_its_own_markup(page: str) -> None:
         '': read_asset('page.css').strip(),
         TAILWIND_STYLE: read_asset('tailwind.css').strip(),
     }
+
+
+def assert_page_shows_flag_kinds(page: str, flags: tuple[str, ...]) -> None:
+    assert set(list_flags(page)) == set(list_lead_flags(flags))
+    assert set(list_state_labels(flags)) <= {span.body for span in list_spans(page, 'state')}
+
+
+def assert_page_shows_flags(page: str, flags: tuple[str, ...]) -> None:
+    assert list_flags(page) == list_lead_flags(flags)
+    assert [span.body for span in list_spans(page, 'state')] == list_state_labels(flags)

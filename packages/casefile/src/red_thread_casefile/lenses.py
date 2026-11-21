@@ -12,6 +12,8 @@ from red_thread_casefile.views import (
     Document,
     Item,
     Section,
+    describe_kind,
+    get_shown_verdict,
     list_caveats,
 )
 
@@ -194,10 +196,15 @@ class Composer:
             ref=entry.ref,
             cite=entry.cite,
             notes=tuple(self.list_notes(entry)),
-            flags=tuple(self.edition.annotator.list_flags(entry)),
+            flags=tuple(self.edition.annotator.list_lead_flags(entry)),
             kind=entry.kind,
             thread=entry.thread,
             diagram=entry.diagram,
+            verdict=get_shown_verdict(entry),
+            round=entry.round,
+            at=entry.at,
+            quote=entry.quote,
+            finding=self.edition.annotator.find(entry),
         )
 
     def list_pointers(self) -> tuple[Item, ...]:
@@ -222,7 +229,9 @@ class Composer:
     def compose_part(self, part: Part) -> Section:
         if part.kind is not None:
             items = tuple(map(self.create_item, self.select(part.kind)))
-            return Section(title=part.title, items=items)
+            return Section(
+                title=part.title, items=items, kind=part.kind, note=describe_kind(part.kind)
+            )
 
         if part.fixed == 'goal':
             return Section(title=part.title, prose=self.write_goal())

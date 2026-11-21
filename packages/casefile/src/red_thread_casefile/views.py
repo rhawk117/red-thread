@@ -6,13 +6,12 @@ from dataclasses import dataclass, field
 from itertools import chain
 from typing import TYPE_CHECKING, Self
 
-from red_thread_casefile.charts import create_case_map
 from red_thread_casefile.domain import Cite
 from red_thread_casefile.policy import CITE_STATES
 from red_thread_casefile.util import squeeze
 
 if TYPE_CHECKING:
-    from red_thread_casefile.domain import Case, Entry, EntryKind, Ledger
+    from red_thread_casefile.domain import Case, Entry, EntryKind, Ledger, Verdict
     from red_thread_casefile.policy import Finding
 
 SHORT_HEAD = 7
@@ -27,6 +26,19 @@ SECTIONS: tuple[tuple[EntryKind, str], ...] = (
     ('next', 'Next'),
     ('resource', 'Resources'),
 )
+SECTION_NOTES: tuple[tuple[EntryKind, str], ...] = (
+    ('decision', 'What the owner decided or wants taken as given.'),
+    ('known', 'Claims with a citation that was opened and checked.'),
+    ('hypothesis', 'Explanations still to test, each with what would refute it.'),
+    ('open', 'Questions and claims that are not established yet.'),
+    ('ruled_out', 'Dead ends, each closed by a citation or by the owner.'),
+    ('next', 'Steps left for whoever picks the case up.'),
+    ('resource', 'Sources and references the case points to.'),
+)
+
+
+def describe_kind(kind: EntryKind) -> str:
+    return dict(SECTION_NOTES)[kind]
 
 
 def list_caveats(entry: Entry) -> list[str]:
@@ -34,10 +46,22 @@ def list_caveats(entry: Entry) -> list[str]:
     return [f'{label}: {value}' for label, value in labelled if value is not None]
 
 
+def get_shown_verdict(entry: Entry) -> Verdict | None:
+    return entry.verdict if entry.kind != 'known' else None
+
+
 def label_entry(entry: Entry) -> str:
-    shown = entry.verdict is not None and entry.kind != 'known'
-    verdict = f'{entry.verdict}: ' if shown else ''
+    shown = get_shown_verdict(entry)
+    verdict = f'{shown}: ' if shown is not None else ''
     return f'{verdict}{squeeze(entry.text)}'
+
+
+def list_cite_flags(finding: Finding | None) -> list[str]:
+    if finding is None:
+        return []
+    failing = [f'citation {finding.state}'] if finding.state in FAILING_STATES else []
+    moved = [f'citation moved to line {finding.moved_to}'] if finding.moved_to is not None else []
+    return [*failing, *moved]
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -50,6 +74,11 @@ class Item:
     kind: EntryKind | None = None
     thread: str | None = None
     diagram: str | None = None
+    verdict: Verdict | None = None
+    round: int | None = None
+    at: str | None = None
+    quote: str | None = None
+    finding: Finding | None = None
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -57,6 +86,16 @@ class Section:
     title: str
     items: tuple[Item, ...] = ()
     prose: tuple[str, ...] = ()
+    kind: EntryKind | None = None
+    note: str = ''
+    folded: bool = False
+
+
+@dataclass(slots=True, kw_only=True, frozen=True)
+class Fact:
+    label: str
+    value: str
+    wide: bool = False
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -65,6 +104,8 @@ class Document:
     summary: tuple[str, ...] = ()
     sections: tuple[Section, ...] = ()
     map_lines: tuple[str, ...] = ()
+    facts: tuple[Fact, ...] = ()
+    retired: tuple[Item, ...] = ()
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -75,20 +116,14 @@ class Annotator:
     def find(self, entry: Entry) -> Finding | None:
         return next((finding for finding in self.findings if finding.ref == entry.ref), None)
 
+    def list_lead_flags(self, entry: Entry) -> list[str]:
+        if entry.head == self.head:
+            return []
+        recorded = entry.head[:SHORT_HEAD] if entry.head is not None else 'no commit'
+        return [f'lead, recorded at {recorded}']
+
     def list_flags(self, entry: Entry) -> list[str]:
-        flags: list[str] = []
-        if entry.head != self.head:
-            recorded = entry.head[:SHORT_HEAD] if entry.head is not None else 'no commit'
-            flags.append(f'lead, recorded at {recorded}')
-
-        finding = self.find(entry)
-        if finding is not None and finding.state in FAILING_STATES:
-            flags.append(f'citation {finding.state}')
-
-        if finding is not None and finding.moved_to is not None:
-            flags.append(f'citation moved to line {finding.moved_to}')
-
-        return flags
+        return [*self.list_lead_flags(entry), *list_cite_flags(self.find(entry))]
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -126,18 +161,6 @@ class Board:
         notes = '; '.join(self.list_notes(entry))
         return f'- [{entry.ref}] {label_entry(entry)} ({notes})'
 
-    def create_item(self, entry: Entry) -> Item:
-        return Item(
-            text=label_entry(entry),
-            ref=entry.ref,
-            cite=entry.cite,
-            notes=(*self.list_remarks(entry), entry.source),
-            flags=tuple(self.annotator.list_flags(entry)),
-            kind=entry.kind,
-            thread=entry.thread,
-            diagram=entry.diagram,
-        )
-
     def render_section(self, kind: EntryKind, title: str) -> list[str]:
         entries = self.ledger.select(kind)
         if not entries:
@@ -172,20 +195,6 @@ class Board:
         sections = (self.render_section(kind, title) for kind, title in SECTIONS)
         return '\n'.join((*self.render_header(), *chain.from_iterable(sections)))
 
-    def compose_section(self, kind: EntryKind, title: str) -> Section:
-        entries = self.ledger.select(kind)
-        items = tuple(map(self.create_item, entries))
-        return Section(title=f'{title} ({len(entries)})', items=items)
-
-    def compose(self) -> Document:
-        sections = (self.compose_section(kind, title) for kind, title in SECTIONS)
-        return Document(
-            title=self.case.target,
-            summary=(f'Case {self.case.id}', *self.render_header()[2:]),
-            sections=tuple(section for section in sections if section.items),
-            map_lines=create_case_map(self.ledger).render(),
-        )
-
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class MarkdownWriter:
@@ -197,7 +206,7 @@ class MarkdownWriter:
         return f' `{cite}`'
 
     def write_item(self, item: Item) -> str:
-        remarks = '; '.join((*item.flags, *item.notes))
+        remarks = '; '.join((*item.flags, *list_cite_flags(item.finding), *item.notes))
         noted = f' ({remarks})' if remarks else ''
         cite = self.write_cite(item.cite) if item.cite is not None else ''
         ref = f' [{item.ref}]' if item.ref is not None else ''

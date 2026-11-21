@@ -11,6 +11,7 @@ from red_thread_casefile.views import Document, Item, Section
 
 from tests.casefile.pages.builders import (
     DOCUMENT_FIELDS,
+    PAYLOADS,
     PLAIN_URL,
     create_document,
     create_document_carrying,
@@ -30,19 +31,6 @@ from tests.casefile.pages.promises import assert_page_holds_only_its_own_markup
 
 if TYPE_CHECKING:
     from tests.casefile.pages.builders import DocumentField
-
-SCRIPT = '<script>alert(1)</script>'
-PAYLOADS = (
-    SCRIPT,
-    '</title><script>alert(1)</script>',
-    '"><img src=x onerror=alert(1)>',
-    "'><svg onload=alert(1)>",
-    '<SCRIPT SRC=//evil.invalid/x.js></SCRIPT>',
-    '&lt;script&gt;',
-    '<!-- <script> -->',
-    '</pre><script>alert(1)</script>',
-    '</button><script>alert(1)</script>',
-)
 
 
 def create_url_cite(tail: str) -> str:

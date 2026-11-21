@@ -2,7 +2,7 @@
 
 from typing import TYPE_CHECKING
 
-from tests.casefile.pages.html_reading import list_item_refs
+from tests.casefile.pages.html_reading import list_item_refs, list_spans
 from tests.casefile.pages.promises import assert_page_holds_only_its_own_markup
 
 if TYPE_CHECKING:
@@ -92,7 +92,8 @@ class TestRenderHtml:
 
         cli.render(case, '--html')
 
-        assert 'citation changed' in case.joinpath('board.html').read_text(encoding='utf-8')
+        page = case.joinpath('board.html').read_text(encoding='utf-8')
+        assert [span.body for span in list_spans(page, 'state')] == ['changed']
 
     def test_a_directory_that_is_not_a_case_writes_no_page(self, cli: CliHarness) -> None:
         nowhere = cli.git.root.joinpath('.red-thread', 'nothing-here')

@@ -10,6 +10,7 @@ from red_thread_casefile.errors import InvalidPageUrlError
 from tests.casefile.ledger.builders import create_case, create_entry
 from tests.casefile.lenses.cases import lens_name_params
 from tests.casefile.lenses.reading import list_section_lines
+from tests.casefile.pages.html_reading import list_facts
 
 if TYPE_CHECKING:
     from red_thread_casefile.lenses import LensName
@@ -133,5 +134,7 @@ class TestRecordedPageIsShown:
         harness.press.record_page(URL)
 
         harness.press.draw()
+        page = harness.pages.files['board.html']
 
-        assert f'Page: {URL}' in harness.pages.files['board.html']
+        (fact,) = [fact for fact in list_facts(page) if fact.label == 'Page']
+        assert (fact.value, fact.link) == (URL, URL)

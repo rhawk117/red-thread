@@ -72,6 +72,11 @@ body {
 html:not(.js) .toolbar, html:not(.js) .copy { display: none; }
 :focus-visible { outline: 2px solid var(--thread); outline-offset: 2px; }
 [data-copied]::after { content: " ✓"; }
+.section > summary::-webkit-details-marker { display: none; }
+.section > summary::after { content: "▸"; }
+.section[open] > summary::after { content: "▾"; }
+.state[data-state="ok"]::before { content: "✓ "; }
+.stamp + .stamp::before { content: "· "; }
 [data-kind="decision"], [data-value="decision"] { --kind: var(--decision); }
 [data-kind="known"], [data-value="known"] { --kind: var(--known); }
 [data-kind="hypothesis"], [data-value="hypothesis"] { --kind: var(--hypothesis); }
