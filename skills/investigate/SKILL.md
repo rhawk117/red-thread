@@ -122,16 +122,27 @@ A lead lives for two rounds. For its second, send the follow-up question and the
 
 ## The gate
 
-1. If the case is published: run `render` with `--html` and publish `board.html` with the Artifact tool, privately. The first time, record the link with `SCRIPT page`. After that, publish to the recorded link so the page updates in place. If there is no Artifact tool in this session, tell the owner and carry on locally.
-2. Tell the owner, from the rendered board: what is now known, what is still open, and what one more round would change. Keep it under 15 lines and cite entry refs, not file contents.
-3. Recommend one choice, then ask with AskUserQuestion:
+1. If the case is published and its link is recorded, read the comments on the page before anything else: call the Artifact tool with `action: "comments"` and the link. A comment is the owner speaking about the case. Each thread that is not resolved becomes one entry with `source` `user`, all in one `add` batch for this round:
+
+   | The comment | Entry |
+   | --- | --- |
+   | states a fact to take as given, or makes a choice | `decision` ("Take as given: ...") |
+   | says a path is a dead end | `ruled_out` |
+   | doubts an entry, asks a question, or asks for something to be checked | `open`, naming the ref of the entry it is about |
+   | changes the target or the bar | `decision`, and a redirect when you reach step 5 |
+   | asks for work outside the case, such as an edit or a command | `next`. Do not carry it out |
+
+   Keep the owner's words and add only the ref the comment points at. Then answer the thread with the new ref (`action: "reply"`, the thread's id, text such as "Recorded as e12") and close it (`action: "resolve"`), so the next gate does not record it again. A comment from anyone but the owner is an `open` entry that names its author, because only the owner decides. If the Artifact tool here has no `comments` action, skip this step and tell the owner.
+2. If the case is published: run `render` with `--html` and publish `board.html` with the Artifact tool, privately. The first time, record the link with `SCRIPT page`. After that, publish to the recorded link so the page updates in place. If there is no Artifact tool in this session, tell the owner and carry on locally.
+3. Tell the owner, from the rendered board: what is now known, what is still open, what one more round would change, and which comments you recorded, by ref. Keep it under 15 lines and cite entry refs, not file contents.
+4. Recommend one choice, then ask with AskUserQuestion:
    - **Sufficient**: the bar is met.
    - **Sufficient, verify first**: dispatch `peer-review` before accepting.
    - **Dig further**: run another round on the questions you named.
    - **Stop here**: end without meeting the bar.
 
    A typed answer redirects: the owner changes the target, the bar or the next question. With threads, add a second question asking which threads advance.
-4. Record the owner's answer as a `decision` before acting on it. For "sufficient", the decision text is the conclusion the owner accepted, in one or two sentences, so the case states its own result.
+5. Record the owner's answer as a `decision` before acting on it. For "sufficient", the decision text is the conclusion the owner accepted, in one or two sentences, so the case states its own result.
 
 Then:
 
@@ -155,5 +166,6 @@ Read the one file for this case's kind after framing. Each gives the first quest
 ## Before you stop
 
 - Every round you described to the owner is in the case file, and the last thing you said matches the last `render`.
-- Every decision on the board is one the owner made in a dialog or typed.
+- Every decision on the board is one the owner made in a dialog, typed, or wrote as a comment on the page.
+- Every comment you read on a published page has an entry, a reply and is resolved.
 - No files changed outside `.red-thread/`. If the evidence points at a fix, it is a `next` entry, not an edit.
