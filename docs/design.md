@@ -66,6 +66,7 @@ Platform facts checked on 2026-11-21 against the Claude Code docs and one live p
 
 - A subagent can dispatch subagents. The docs give a default depth of three layers below the main conversation. The probe confirmed dispatch and a follow-up to the child through SendMessage.
 - A type list in a subagent's `tools:` line, such as `Agent(a, b)`, is ignored. It applies only to an agent run as the main thread. "Dispatch only these agents" is therefore enforced by the prompt alone, unless a plugin-level PreToolUse hook on the Agent tool is added. That hook can see the target type and the prompt.
+- **Decided 2026-11-21: the roster is enforced by that hook.** `hooks/hooks.json` runs `hooks/roster.py` before every Agent call. The session may dispatch every agent, a lead may dispatch the three scouts, and a scout and the skeptic dispatch nobody. A dispatch outside the caller's roster is denied, and the reason names whom the caller may dispatch. A dispatch whose caller or target is not a red-thread agent is left alone, and so is any input the hook cannot read. The hook takes the caller from the `agent_type` field of its input, with or without the plugin prefix.
 - Plugin-shipped agents ignore the `hooks`, `mcpServers` and `permissionMode` frontmatter fields.
 - A SubagentStop hook can block a subagent from stopping and send it feedback, which could enforce the report format later.
 - A workflow cannot pause for input, so a workflow fits inside one round and never across a gate.
@@ -414,7 +415,6 @@ Open:
 - Step 6 is half done. On 2026-11-21 each agent ran once headless on a canned brief in a scratch repository (results below). No real case has gone from framing to a brief yet: the owner drives that in a new session. The scouts' cap of five calls was not binding on a three-file target, so five against eight is still untested.
 - Both skills pre-approve `scripts/casefile.sh` through `allowed-tools`. The docs say `${CLAUDE_PLUGIN_ROOT}` is substituted in Bash rules there, and that the grant lasts for the invoking turn only. Whether it reaches a subagent is not documented, so step 6 must confirm it.
 - The budgets for `issue`, `handoff` and `report`, and the rules listed as added while building in section 4.
-- Whether the roster is enforced by a hook. Version 1 enforces it by prompt alone.
 - Owner comments from the published page as ledger entries (section 4).
 - The restyled page has not been looked at in a browser from this machine, which has none, and its Tailwind block has not been compiled outside a browser. The owner checks a sample board. Since 2026-11-21 the tests run the page's script under Node (`tests/casefile/pages/integration`), against a small fake DOM and a stand-in for mermaid in `tests/casefile/pages/dom_harness.js`: the filters, the fold button, copying, and drawing and redrawing diagrams. That checks the script's logic and not what a browser or the real mermaid does with it.
 - `ruff.toml`, `pytest.toml`, `SECURITY.md` and the root `pyproject.toml` still carry mightymodels remnants. `.claude/CLAUDE.md`, `conftest.py` and the renamed rules in `ty.toml` are done.
@@ -478,4 +478,5 @@ All made by the owner on 2026-11-21.
 | Page | Tailwind and mermaid from cdnjs, pinned with integrity hashes; filters, folding, copying and a case map in plain JavaScript; case facts, section panels with a description, entry details and a folded list of retired entries; reverses the self-contained page |
 | Entry diagrams | an optional `diagram` field on an entry, drawn on the HTML pages only |
 | Test markers | tier marks come from the directory; a regression is an `@example` on a property marked `regression` |
+| Roster | a PreToolUse hook on the Agent tool denies a dispatch outside the caller's roster and says whom the caller may dispatch; a dispatch outside the plugin is left alone |
 | Remnants | `.claude/CLAUDE.md` and `conftest.py` cleaned, the three renamed rules in `ty.toml` updated; `ruff.toml` and the root `pyproject.toml` left alone |
