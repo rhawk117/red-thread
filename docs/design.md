@@ -419,8 +419,10 @@ Source: the Claude Code docs on subagents, skills and best practices, fetched by
 
 Open:
 
-- Step 6 is half done. On 2026-11-21 each agent ran once headless on a canned brief in a scratch repository (results below). No real case has gone from framing to a brief yet: the owner drives that in a new session. The scouts' cap of five calls was not binding on a three-file target, so five against eight is still untested.
-- Both skills pre-approve `scripts/casefile.sh` through `allowed-tools`. The docs say `${CLAUDE_PLUGIN_ROOT}` is substituted in Bash rules there, and that the grant lasts for the invoking turn only. Whether it reaches a subagent is not documented, so step 6 must confirm it.
+- Step 6 has run once. On 2026-11-21 each agent ran headless on a canned brief, and then one real case went from framing to a brief on this repository (both below). The owner has not driven a case by hand, and nothing has been published or commented on. The scouts' budgets are reported below and not changed: `code-sense` passed five calls in one run of five, and `code-lens` passed 6,000 tokens in two runs of nine.
+- The text board shows no citation flag, which the real case found (below). Whether `render` should run the check is the owner's call.
+- `research-cell` worked outside its worktree in the real case (below).
+- Both skills pre-approve `scripts/casefile.sh` through `allowed-tools`. The docs say `${CLAUDE_PLUGIN_ROOT}` is substituted in Bash rules there, and that the grant lasts for the invoking turn only. Whether it reaches a subagent is not documented, so step 6 must confirm it. The real case could not: it ran in `auto` permission mode, where sandboxed Bash never asks. It needs a session where Bash asks.
 - Owner comments are read at the gate (section 4). No published page has carried a comment through that step yet, so the shape of what the Artifact tool returns for a thread is untested.
 - The restyled page has not been looked at in a browser from this machine, which has none, and its Tailwind block has not been compiled outside a browser. The owner checks a sample board. Since 2026-11-21 the tests run the page's script under Node (`tests/casefile/pages/integration`), against a small fake DOM and a stand-in for mermaid in `tests/casefile/pages/dom_harness.js`: the filters, the fold button, copying, and drawing and redrawing diagrams. That checks the script's logic and not what a browser or the real mermaid does with it.
 - `ruff.toml`, `pytest.toml` and `SECURITY.md` lost their mightymodels remnants on 2026-11-21. Three are left, in files the owner has not cleared for editing: the release workflow and its script name the package `mightymodels-plugin` (`.github/workflows/cd.yml`, `.github/scripts/release.sh`); the pull request template mentions a `.mightymodels` slug; and the root `pyproject.toml` keeps three test dependencies that nothing uses (`anyio`, `pytest-anyio`, `pytest-mock`), with the `anyio_mode` setting in `pytest.toml` and the `anyio_backend` fixture in `conftest.py`.
@@ -434,7 +436,7 @@ Build order:
 | 3. `investigate`, with one file per case kind under `references/` | written |
 | 4. `distill`, with one file per lens under `references/` | written |
 | 5. HTML rendering and publishing | rendering built; publishing is a step in the skills, through the Artifact tool |
-| 6. A real case from start to finish | agents run headless; the owner's real case is next |
+| 6. A real case from start to finish | agents run headless; one real case run from framing to a brief on 2026-11-21, through headless turns |
 
 Headless runs on 2026-11-21. Each was one `claude -p --plugin-dir` session in a scratch repository of three files, whose only job was to dispatch the agent with a canned brief. The cost covers the whole session.
 
@@ -453,6 +455,31 @@ What the runs changed:
 - A nested session cannot start its Bash sandbox inside another session's sandbox, so there a scout that needs Bash returns BLOCKED. `code-sense` and `research-cell` both said so plainly and guessed nothing.
 - A run in worktree isolation leaves an empty `.claude/worktrees/` directory in the repository under investigation.
 - The user's own settings approve sandboxed Bash without asking, so these runs could not show what `allowed-tools` adds.
+
+The real case on 2026-11-21. The target was how a citation gets from `add` to a flag on the board, in the text board and on the HTML page, in this repository. It ran as five headless turns (`claude -p --plugin-dir`, outside the sandbox). A headless session has no AskUserQuestion and no Artifact tool, so the skill put each gate as numbered options in text, the replies were typed, and the case stayed local.
+
+| Turn | Primary | What happened | Cost |
+| --- | --- | --- | --- |
+| 1 | claude-fable-5-2 | framing: target, bar, known facts and page, asked as options in text | $0.79 |
+| 2 | claude-fable-5-2 | `init`, round 0, then round 1 with a lead on each of two threads; gate | $2.31 |
+| 3 | claude-sonnet-5-5, in a new session | resumed from the case file alone; round 2 on one thread with a fresh lead; gate | $0.50 |
+| 4 | claude-sonnet-5-5 | round 3, with scouts dispatched by the primary; gate | $0.73 |
+| 5 | claude-sonnet-5-5 | the decision recorded, then `distill` wrote a brief of 37 lines against a budget of 60 | $0.83 |
+
+The total was $5.17 against an agreed stop of $5. A call can end above its `--max-budget-usd`: turn 4 cost $0.73 against $0.55 and turn 5 cost $0.83 against $0.45. The primary's own estimate of its spending was low each time ($0.21 for the turn that cost $0.73).
+
+The case ended with 43 live entries, 12 retired, and `check` at 36 citations ok and 1 unchecked (a command). Its finding: the text board never shows a citation flag. `render` builds the board without findings, so only `check`, `export` and the HTML page report a changed citation. A lab scout confirmed it by experiment, and no test pins it either way.
+
+What it showed:
+
+- Resuming works from the case file alone. Turn 3 was a new session on another model, and it took the round, the threads and the open entries from `render`.
+- The roster hook's input is as assumed. A dispatch by the session carries no `agent_type`, and a dispatch by a lead carries `agent_type: red-thread:research-lead`, with the prefix. 18 dispatches went through the hook and none was outside a roster, so the deny path has still run only in tests.
+- `code-lens` took 9 of the 14 code lookups. All 76 of its agentlens calls were well formed and carried `--no-cache` and `--budget`. Six reports were VERIFIED and three INFERRED. Two runs passed the budget of 6,000 tokens (6,800 and 7,700), and one ran `rg` four times against a cap of three. This is one repository with no baseline arm, so it says nothing about the gate in section 8.
+- `code-sense` made 13 tool calls on one brief that held six numbered items, against its cap of five. Its other four runs made 3 to 5. The lead's file now says such a brief is several questions.
+- Follow-ups through SendMessage failed (section 3), which left the whole HTML thread INFERRED after round 1. After the change, rounds 2 and 3 had no refused follow-up and no waiting.
+- `research-cell` could not run `git -C` in its worktree: the harness refused it three times as too complex to verify. It built a scratch repository under `/tmp` instead and wrote its scripts there, one of them through a `..` path from the worktree. Its result was sound, but it worked outside the worktree the design puts it in.
+- The brief lists the gate decisions, with their budgets, under Decided. Its constraints come in the order the model ranked them, not the order of the chain. Entries recorded before a commit made during the case show as leads.
+- Still not shown: whether `allowed-tools` reaches a subagent, the primary resuming a lead through SendMessage, `peer-review` on a real conclusion, publishing, and comments.
 
 ## 12. Decision log
 
