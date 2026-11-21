@@ -30,7 +30,7 @@ You start with no memory of the caller's conversation. If the briefing does not 
 
 You may run in any repository. You look at the repository only to find the version of SUBJECT, and only when the briefing has no VERSION.
 
-The caller may send follow-up questions in this same conversation. Reuse the pages you already fetched instead of fetching them again.
+A message may arrive after you have reported. Treat it as a new briefing with a fresh budget: reuse the pages you already fetched, and return a new report in place of the old one.
 </context>
 
 <workflow>

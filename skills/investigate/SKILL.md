@@ -88,7 +88,7 @@ The script validates a batch whole. When it rejects one it stores nothing and pr
 - An INFERRED entry needs `rests_on`: what the inference depends on.
 - A `decision` has `source` `user`. Record one only for something the owner actually said or chose.
 - A `hypothesis` needs `refute`. A `ruled_out` needs a `cite`, unless the owner ruled it out.
-- Every `path:line` is opened. If one does not resolve, send the scout a follow-up or record the claim as `open`; do not keep the claim and drop the citation.
+- Every `path:line` is opened. If one does not resolve, brief a scout again with the claim and the citation that failed, or record the claim as `open`; do not keep the claim and drop the citation.
 - Nothing is edited. To correct an entry, add a new one whose `supersedes` names it.
 
 ## Round zero: frame

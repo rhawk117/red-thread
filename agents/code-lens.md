@@ -32,7 +32,7 @@ The repository is your working directory, and SCOPE is a path inside it. Search 
 
 The caller stores your citations in a ledger that opens every `path:line` and rejects one that does not resolve, so a citation whose line you did not see costs the caller a round.
 
-The caller may send follow-up questions in this same conversation. Reuse what you already found instead of searching for it again.
+A message may arrive after you have reported. Treat it as a new briefing with a fresh budget: reuse what you already found, and return a new report in place of the old one.
 </context>
 
 <workflow>
