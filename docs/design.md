@@ -157,7 +157,7 @@ It runs before every export. It also catches a citation a scout invented before 
 - **Decided:** whether a case is published to claude.ai is asked once, at framing. A published case republishes its board to the same URL at every gate. Pages are private by default. A local-only case never leaves the machine.
 - **Proposed, not built:** comments the owner sends to Claude from the page are recorded as ledger entries from `user`, so the owner can steer by annotating a finding.
 - **Decided 2026-11-21, reversing the self-contained page:** a page loads two scripts from cdnjs, each pinned to an exact version with a sha512 integrity hash: the Tailwind browser build (4.3.5), which styles the page, and mermaid (12.3.0), which draws diagrams. Nothing else is fetched, so web fonts stay out. Opened offline, a page still reads top to bottom: every entry is in the HTML, the token colors apply and the controls stay hidden. Tailwind documents its browser build as a development tool; the owner chose it for a page that one person reads.
-- Built: the page's own script, `assets/page.js`, uses no library. It filters entries by kind and by thread, folds sections and copies a ref or a citation. It holds no case data: entry text reaches the page only as escaped text and escaped attribute values.
+- Built: the page's own script, `assets/page.js`, uses no library. It filters entries by kind and by thread, folds sections and copies a ref or a citation. It draws a diagram when its section is open, and draws every diagram again from its source when the viewer's theme changes, whether the viewer chose the theme or the system switched. It holds no case data: entry text reaches the page only as escaped text and escaped attribute values.
 - Built: after its sections the board page draws a map of the case, a mermaid flowchart the script writes from the ledger. Each thread is a line of its entries in order, a retired entry has a dashed outline, and an edge runs to it from the entry that retired it. An entry's own `diagram` is drawn under its claim. Diagram text is escaped into the page and mermaid runs at its strict security level.
 - Built 2026-11-21, when the owner asked for more context on the page: the board page opens with the case facts (bar, kind, round, commit, created, languages, entry counts, threads and the totals of the citation check). Each section is a panel whose header names what the section holds and counts its entries. An entry shows its round, the day it was recorded, its verdict when it is not a `known`, the state of its citation at the last check and the source line the ledger quoted. A citation that changed, moved or went missing is that state badge on the page and stays a flag in markdown. The page ends with a folded list of the retired entries, each naming the entry that retired it. Lens pages share the panels and the entry details; the facts and the retired list are on the board only.
 - The colors are tokens in `assets/page.css`, one set per theme, and `assets/tailwind.css` maps them to Tailwind utilities, so a palette change is made in one file.
@@ -416,16 +416,14 @@ Open:
 - The budgets for `issue`, `handoff` and `report`, and the rules listed as added while building in section 4.
 - Whether the roster is enforced by a hook. Version 1 enforces it by prompt alone.
 - Owner comments from the published page as ledger entries (section 4).
-- The restyled page has not been looked at in a browser from this machine, which has none, and its Tailwind block has not been compiled outside a browser. The owner checks a sample board.
-- `page.js` is not run by any test. The tests pin its text, its place in the page and that it holds no case data.
-- A diagram drawn before the viewer switches theme keeps its first colors until the page is reloaded.
+- The restyled page has not been looked at in a browser from this machine, which has none, and its Tailwind block has not been compiled outside a browser. The owner checks a sample board. Since 2026-11-21 the tests run the page's script under Node (`tests/casefile/pages/integration`), against a small fake DOM and a stand-in for mermaid in `tests/casefile/pages/dom_harness.js`: the filters, the fold button, copying, and drawing and redrawing diagrams. That checks the script's logic and not what a browser or the real mermaid does with it.
 - `ruff.toml`, `pytest.toml`, `SECURITY.md` and the root `pyproject.toml` still carry mightymodels remnants. `.claude/CLAUDE.md`, `conftest.py` and the renamed rules in `ty.toml` are done.
 
 Build order:
 
 | Step | Status |
 | --- | --- |
-| 1. The script and its tests | built: `init`, `add`, `render`, `check`, `export` and `page` |
+| 1. The script and its tests | built: `init`, `add`, `render`, `check`, `export` and `page`. `tests/casefile/launcher/e2e` runs `scripts/casefile.sh` as a child process from a copy of the plugin |
 | 2. The agent files | written, validated, and each run once headless on its model |
 | 3. `investigate`, with one file per case kind under `references/` | written |
 | 4. `distill`, with one file per lens under `references/` | written |

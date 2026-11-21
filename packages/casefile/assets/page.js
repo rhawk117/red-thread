@@ -60,15 +60,14 @@
 
   const readToken = (name) => getComputedStyle(root).getPropertyValue(name).trim();
 
-  const drawOpenDiagrams = () => {
-    if (!window.mermaid) return;
-    const waiting = [...document.querySelectorAll('pre.mermaid:not([data-processed])')];
-    const nodes = waiting.filter((node) => !node.closest('details:not([open])'));
-    if (nodes.length) window.mermaid.run({ nodes, suppressErrors: true });
+  const sources = new Map();
+  let drawing = Promise.resolve();
+
+  const enqueue = (task) => {
+    drawing = drawing.then(task).catch(() => {});
   };
 
-  const startDiagrams = () => {
-    if (!window.mermaid || !document.querySelector('pre.mermaid')) return;
+  const configureDiagrams = () => {
     const chosen = root.dataset.theme;
     const dark = chosen ? chosen === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
     window.mermaid.initialize({
@@ -91,7 +90,44 @@
         fontFamily: readToken('--text'),
       },
     });
+  };
+
+  const drawWaiting = () => {
+    const waiting = [...document.querySelectorAll('pre.mermaid:not([data-processed])')];
+    const nodes = waiting.filter((node) => !node.closest('details:not([open])'));
+    for (const node of nodes) {
+      if (!sources.has(node)) sources.set(node, node.textContent);
+    }
+    if (!nodes.length) return undefined;
+    return window.mermaid.run({ nodes, suppressErrors: true });
+  };
+
+  const restoreSources = () => {
+    for (const [node, source] of sources) {
+      node.textContent = source;
+      node.removeAttribute('data-processed');
+    }
+  };
+
+  const drawOpenDiagrams = () => {
+    if (window.mermaid) enqueue(drawWaiting);
+  };
+
+  const redrawDiagrams = () => {
+    enqueue(() => {
+      restoreSources();
+      configureDiagrams();
+      return drawWaiting();
+    });
+  };
+
+  const startDiagrams = () => {
+    if (!window.mermaid || !document.querySelector('pre.mermaid')) return;
+    configureDiagrams();
     drawOpenDiagrams();
+    matchMedia('(prefers-color-scheme: dark)').addEventListener('change', redrawDiagrams);
+    const themes = new MutationObserver(redrawDiagrams);
+    themes.observe(root, { attributes: true, attributeFilter: ['data-theme'] });
   };
 
   const onToggle = () => {
