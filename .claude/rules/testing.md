@@ -21,8 +21,9 @@ These rules add to the Python rules, which still apply in full.
 
 ## Tiers
 
-- Tests live in `tests/casefile/<concept>/{unit,integration,smoke}/`. The directory sets the tier. The root `conftest.py` marks each test from its directory, and a test module under that tree outside a tier directory fails collection. Never write a tier mark by hand. A new test tree joins by adding its name to `TIER_NAMES_BY_TREE` in the root `conftest.py`.
-- `unit` tests use fakes and memory. `integration` tests touch SQLite (file or in-memory), real git, a child process or the filesystem. `smoke` tests run an entry-point concept through real resources (the command line over a real case directory).
+- Tests live in `tests/casefile/<concept>/{unit,integration,smoke,e2e}/`. The directory sets the tier. The root `conftest.py` marks each test from its directory, and a test module under that tree outside a tier directory fails collection. Never write a tier mark by hand. A new test tree joins by adding its name to `TIER_NAMES_BY_TREE` in the root `conftest.py`.
+- `unit` tests use fakes and memory. `integration` tests touch SQLite (file or in-memory), real git, a child process or the filesystem. `smoke` tests run an entry-point concept through real resources (the command line over a real case directory). `e2e` tests run the plugin from outside, through `scripts/casefile.sh` in a child process.
+- A test that needs a child process runs it through `ChildRunner` in `tests/casefile/launcher/children.py`.
 
 ## Helpers
 
