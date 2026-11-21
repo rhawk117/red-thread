@@ -135,7 +135,7 @@ Rules. The first six come from mightymodels. `add` enforces all eight.
 7. A `hypothesis` needs a `refute` line.
 8. A `ruled_out` entry needs a citation or the owner as its source.
 
-Added while building, and not yet owner decisions:
+Added while building. **Decided 2026-11-21:** the owner accepted all five as built.
 
 - A citation is a path, a URL or anything else. `add` opens every `path:line`. An absolute path, or one containing `..`, is never read and stays unchecked.
 - `add` compares a supplied `quote` with the cited line, and records the line itself when `quote` is left out.
@@ -225,7 +225,7 @@ Rules:
 - With no case open, `distill` first builds a ledger from the conversation, and any claim it cannot cite becomes `open`.
 - The brief carries its own reading instructions, so it works for a person, for an agent without the plugin, and inside a GitHub issue.
 
-`export` takes an optional JSON plan on standard input: `title`, `goal`, `include` (refs, most important first) and `blocking` (open refs). The model chooses and ranks. The script writes each entry's own text, citation and ref, flags leads and changed citations, redacts the title and goal, and writes nothing when the output is over budget. A budget counts lines that carry text: brief 60, issue 80, handoff 40, report 200. The last three were set while building and are not owner decisions.
+`export` takes an optional JSON plan on standard input: `title`, `goal`, `include` (refs, most important first) and `blocking` (open refs). The model chooses and ranks. The script writes each entry's own text, citation and ref, flags leads and changed citations, redacts the title and goal, and writes nothing when the output is over budget. A budget counts lines that carry text: brief 60, issue 80, handoff 40, report 200. The last three were set while building. **Decided 2026-11-21:** the owner accepted them as built. A budget that a real case shows to be wrong is reported, not changed on the spot.
 
 Brief template (Decided):
 
@@ -420,7 +420,6 @@ Open:
 
 - Step 6 is half done. On 2026-11-21 each agent ran once headless on a canned brief in a scratch repository (results below). No real case has gone from framing to a brief yet: the owner drives that in a new session. The scouts' cap of five calls was not binding on a three-file target, so five against eight is still untested.
 - Both skills pre-approve `scripts/casefile.sh` through `allowed-tools`. The docs say `${CLAUDE_PLUGIN_ROOT}` is substituted in Bash rules there, and that the grant lasts for the invoking turn only. Whether it reaches a subagent is not documented, so step 6 must confirm it.
-- The budgets for `issue`, `handoff` and `report`, and the rules listed as added while building in section 4.
 - Owner comments are read at the gate (section 4). No published page has carried a comment through that step yet, so the shape of what the Artifact tool returns for a thread is untested.
 - The restyled page has not been looked at in a browser from this machine, which has none, and its Tailwind block has not been compiled outside a browser. The owner checks a sample board. Since 2026-11-21 the tests run the page's script under Node (`tests/casefile/pages/integration`), against a small fake DOM and a stand-in for mermaid in `tests/casefile/pages/dom_harness.js`: the filters, the fold button, copying, and drawing and redrawing diagrams. That checks the script's logic and not what a browser or the real mermaid does with it.
 - `ruff.toml`, `pytest.toml` and `SECURITY.md` lost their mightymodels remnants on 2026-11-21. Three are left, in files the owner has not cleared for editing: the release workflow and its script name the package `mightymodels-plugin` (`.github/workflows/cd.yml`, `.github/scripts/release.sh`); the pull request template mentions a `.mightymodels` slug; and the root `pyproject.toml` keeps three test dependencies that nothing uses (`anyio`, `pytest-anyio`, `pytest-mock`), with the `anyio_mode` setting in `pytest.toml` and the `anyio_backend` fixture in `conftest.py`.
@@ -484,6 +483,7 @@ All made by the owner on 2026-11-21.
 | Page | Tailwind and mermaid from cdnjs, pinned with integrity hashes; filters, folding, copying and a case map in plain JavaScript; case facts, section panels with a description, entry details and a folded list of retired entries; reverses the self-contained page |
 | Entry diagrams | an optional `diagram` field on an entry, drawn on the HTML pages only |
 | Test markers | tier marks come from the directory; a regression is an `@example` on a property marked `regression` |
+| Rules and budgets added while building | accepted as built: the five ledger rules in section 4 and the line budgets for `issue`, `handoff` and `report` |
 | Owner comments | read at each gate from the published page and recorded as `user` entries, then answered with the ref and resolved |
 | Navigation scout | `code-lens`, experimental, for the installed agentlens 0.2.0 and only where `init` found the tool; the evaluation gate stays open |
 | Roster | a PreToolUse hook on the Agent tool denies a dispatch outside the caller's roster and says whom the caller may dispatch; a dispatch outside the plugin is left alone |
