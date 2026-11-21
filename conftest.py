@@ -23,9 +23,7 @@ settings.load_profile(resolve_hypothesis_profile())
 TIER_DEPTH = 2
 CORE_TIER_NAMES = frozenset({'unit', 'integration', 'smoke'})
 TIER_NAMES_BY_TREE = {
-    'core': CORE_TIER_NAMES,
-    'mcp': CORE_TIER_NAMES | {'e2e'},
-    'hooks': CORE_TIER_NAMES,
+    'casefile': CORE_TIER_NAMES,
 }
 
 
