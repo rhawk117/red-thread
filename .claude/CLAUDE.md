@@ -1,4 +1,6 @@
-# mightymodels: agent instructions
+# red-thread: agent instructions
+
+red-thread is a Claude Code plugin for investigation with a human gate. The `investigate` skill runs research rounds through scouts and records what they find in a case file. The `distill` skill turns a case file into a brief, an issue, a handoff or a report. `docs/design.md` holds the design, the owner's decisions and the build status: read it before changing a skill, an agent or the case file format.
 
 ## Commands
 
@@ -10,38 +12,46 @@ Every command goes through `make`. Each target delegates to uv, prek or a script
 - `make lint` runs the prek hooks in the `lint` group on all files: the hygiene checks, ruff check, ty and shellcheck.
 - `make typecheck` runs ty alone.
 - `make test` runs `pytest -q -m "unit or agents or smoke"`, with coverage.
-- `make test.end-to-end` runs `pytest -q -m e2e`.
+- `make test.end-to-end` runs `pytest -q -m e2e`: the tests under `tests/casefile/launcher/e2e`, which run `scripts/casefile.sh` as a child process from a copy of the plugin.
 - `make pre-commit` runs every prek hook in `.pre-commit-config.yaml` on all files.
 - `make check` runs lint, then test.
 - `make quality` runs every prek hook on all files, then `pytest -q -m "not integration"`, which matches CI's quality job.
 
 ## Stack
 
-Python 3.14 (`requires-python` in `pyproject.toml`), uv, ruff, ty, pytest, mdformat and prek. `.github/workflows/ci.yml` sets up CI: `astral-sh/setup-uv` takes its uv version from the `UV_VERSION` repository variable, and `actions/setup-node` takes its Node version from the `NODE_VERSION` repository variable.
+Python 3.14 (`requires-python` in `pyproject.toml`), uv, ruff, ty, pytest with Hypothesis, mdformat and prek. msgspec is the one runtime dependency, and only `packages/casefile` uses it. `.github/workflows/ci.yml` sets up CI: `astral-sh/setup-uv` takes its uv version from the `UV_VERSION` repository variable, and `actions/setup-node` takes its Node version from the `NODE_VERSION` repository variable.
 
 ## Layout
 
 - The plugin sits at the repository root, and `.claude-plugin/plugin.json` contains its manifest. The root `pyproject.toml` is both the plugin project and the uv workspace root, with members under `packages/`.
-- `packages/hooks` holds the plugin's hook code (`mightymodels_hooks`), which `hooks/hooks.json` runs through the shell wrappers in `hooks/`. `.claude/hooks/pyhooks.py` is the project's own hook script, a PEP 723 script that `.claude/settings.json` wires to Write, Edit and Read. ty does not check it, because `ty.toml` includes only `packages` and `tests`. The plugin's hooks record and route, and refuse only a dispatch outside the caller's roster, an intern dispatch unless a task is started for the intern and every such task owns exactly one file, a dispatch of the engineer or architect from the main thread while the branch's only unclosed ticket has no task in progress (with several unclosed tickets the hook warns instead of refusing), a dispatch whose task or ticket state cannot be read (it fails closed), and a payload that is malformed or names no target type (exit 2). When the hook itself cannot run (the launcher crashes or times out), it refuses any dispatch made by a plugin worker, and any dispatch of the engineer, architect or intern while the project has a `.mightymodels/` directory.
-- `packages/mcp` also holds the `review_metrics` and `review_signals` tool domains, which carry the review commands that the removed command line used to run.
+- `agents/` holds the six agent files: `research-lead`, `code-sense`, `code-lens`, `web-head`, `research-cell` and `peer-review`. Each is written for the model its frontmatter names. Check a change with `vibe-code subagent validate <file>`.
+- `hooks/hooks.json` runs `hooks/roster.py`, a PEP 723 script, before every Agent call. It denies a red-thread agent's dispatch outside its roster. A new agent file needs an entry in that roster, and a test fails without one. Check a change with `vibe-code hook validate --strict hooks/hooks.json`.
+- `skills/investigate/` and `skills/distill/` hold the two skills. Each keeps its supporting files under `references/` (one per case kind, one per lens) and links every one of them from `SKILL.md`. Check a change with `vibe-code skill validate <skill directory>`.
+- `packages/casefile` holds `red_thread_casefile`, the only writer and renderer of a case file. Its commands are `init`, `add`, `render`, `check`, `export` and `page`. The page's skeleton, styles, script and map header are in `packages/casefile/assets/`, beside `src/`, and the page loads Tailwind and mermaid from cdnjs at pinned versions.
+- `scripts/casefile.sh` is how the skills and agents run that package. It starts it with `uv run --no-project`, so it installs nothing into the project under investigation.
+- `tests/<tree>/<concept>/{unit,integration,smoke,e2e}/` holds the tests, in the trees `casefile` and `plugin`. The root `conftest.py` marks each test from its tier directory. The tests under `tests/casefile/pages/integration` run the page's script under `node` and skip when it is missing.
+- A case lives in `.red-thread/<case-id>/` in the repository under investigation: `case.json`, `ledger.jsonl`, `threads/`, `board.html` and `out/`.
+- `.claude/hooks/pyhooks.py` is the project's own hook script, a PEP 723 script that `.claude/settings.json` wires to Write, Edit and Read. ty does not check it, because `ty.toml` includes only `packages` and `tests`.
 - Read `.claude/rules/python.md` before writing Python and `.claude/rules/testing.md` before writing tests. Both load on their own when you touch a matching file.
 
 ## Conventions
 
-- Commit subjects follow Conventional Commits as the history does: `type(scope): subject`, with the subject in lowercase imperative and no closing period. The types in use are feat, fix, ci, build, style and docs.
-- The plugin version lives in both `pyproject.toml` and `.claude-plugin/plugin.json`. `tests/test_release_metadata.py` fails when they differ, and the release workflow (`.github/workflows/cd.yml`) bumps both.
+- Commit subjects follow Conventional Commits as the history does: `type(scope): subject`, with the subject in lowercase imperative and no closing period.
+- The plugin version lives in both `pyproject.toml` and `.claude-plugin/plugin.json`. Keep the two equal: `tests/plugin/manifest` fails when they differ.
+- An agent file or a skill is a prompt for one model. Write it for the model that will read it, and state what changed and why in `docs/design.md` when the change alters a decision recorded there.
 
 ## Boundaries
 
 - Always: run the Verification commands before calling work done.
-- Ask first: edits to `pyproject.toml`, `uv.lock`, `ruff.toml`, `pytest.toml` and `ty.toml`, which `.claude/settings.json` lists under `permissions.ask`; version bumps, which the release workflow owns; changes to `.claude/settings.json` or `.claude/hooks/pyhooks.py`, because every session runs the hooks they define.
-- Never: weaken the ruff or ty configuration; hand-edit `uv.lock`, which the uv-lock hook regenerates; commit `.mightymodels/`, which stays a local-only git exclusion (`SECURITY.md`).
+- Ask first: edits to `pyproject.toml`, `ruff.toml`, `pytest.toml`, `ty.toml` and `CLAUDE.md`, which `.claude/settings.json` lists under `permissions.ask`; edits to `uv.lock`; version bumps, which the release workflow (`.github/workflows/cd.yml`) owns; changes to `.claude/settings.json` or `.claude/hooks/pyhooks.py`, because every session runs the hooks they define.
+- Never: weaken the ruff or ty configuration; hand-edit `uv.lock`, which the uv-lock hook regenerates; commit `.red-thread/`, which `init` adds to the repository's local git exclude file.
 
 ## Verification
 
-`.github/workflows/ci.yml` defines CI's quality job, which runs every prek hook on all files and then the tests. Match it with `make pre-commit`, then `uv run pytest -q -m "not integration"`, because `make test` skips the e2e tests and the unmarked tests that CI runs. CI's integration job runs `pytest -q -m integration`. `make check` is the faster local loop, but it skips the `format` group (the hygiene fixers, uv-lock, shfmt and mdformat), so it can pass where CI fails.
+`.github/workflows/ci.yml` defines CI's quality job, which runs every prek hook on all files and then the tests. Match it with `make pre-commit`, then `uv run pytest -q -m "not integration"`, because `make test` skips the unmarked tests that CI runs. CI's integration job runs `pytest -q -m integration`. `make check` is the faster local loop, but it skips the `format` group (the hygiene fixers, uv-lock, shfmt and mdformat), so it can pass where CI fails.
 
 ## Claude Code
 
-- Inside the Bash sandbox, whole-tree checks (`make lint`, `make check`, `make pre-commit`) can fail on sandbox mount points such as `.mcp.json` or `.claude/skills`, which show up as character devices. A failure that names one of those paths comes from the sandbox, not the repository: report it rather than changing code to get past it.
+- `make lint`, `make check` and `make pre-commit` pass inside the Bash sandbox: three fixer hooks skip `uv.lock`, `.claude/settings.json` and `.claude/hooks/pyhooks.py`, which are read-only there. `claude plugin validate --strict .` still fails there on `.mcp.json`, a sandbox mount point that shows up as a character device. A failure that names such a path comes from the sandbox, not the repository: report it instead of changing code to get past it.
+- `uv add`, `uv lock` and `make sync` fail inside the Bash sandbox, and so does a nested `claude` run. Each needs a command run outside it.
 - The project hooks run on every tool call: before a Write or Edit, a check asks for approval when the change adds a lint or type suppression; after it, the formatter runs; after a Read, ruff and ty report diagnostics on the file.

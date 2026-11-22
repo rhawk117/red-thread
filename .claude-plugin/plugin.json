@@ -1,0 +1,20 @@
+{
+  "name": "red-thread",
+  "version": "0.1.0",
+  "description": "A Claude Code plugin for triaging work and conducting research before doing work.",
+  "author": {
+    "name": "rhawk117",
+    "email": "noplaceLike127dot0dot0dot1@proton.me",
+    "url": "https://github.com/rhawk117"
+  },
+  "homepage": "https://github.com/rhawk117/red-thread",
+  "repository": "https://github.com/rhawk117/red-thread",
+  "license": "MIT",
+  "keywords": [
+    "research",
+    "triage",
+    "investigation",
+    "subagents",
+    "documentation"
+  ]
+}

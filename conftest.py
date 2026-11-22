@@ -21,11 +21,10 @@ settings.register_profile('thorough', parent=settings.get_profile('ci'), max_exa
 settings.load_profile(resolve_hypothesis_profile())
 
 TIER_DEPTH = 2
-CORE_TIER_NAMES = frozenset({'unit', 'integration', 'smoke'})
+CORE_TIER_NAMES = frozenset({'unit', 'integration', 'smoke', 'e2e'})
 TIER_NAMES_BY_TREE = {
-    'core': CORE_TIER_NAMES,
-    'mcp': CORE_TIER_NAMES | {'e2e'},
-    'hooks': CORE_TIER_NAMES,
+    'casefile': CORE_TIER_NAMES,
+    'plugin': CORE_TIER_NAMES,
 }
 
 

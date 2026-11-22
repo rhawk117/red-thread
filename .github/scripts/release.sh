@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-readonly PACKAGE_NAME="${PACKAGE_NAME:-mightymodels-plugin}"
+readonly PACKAGE_NAME="${PACKAGE_NAME:-red-thread-plugin}"
 readonly VERSION_BUMP="${VERSION_BUMP:-recover}"
 readonly LOGGING_UTILS="./scripts/log.sh"
 readonly PLUGIN_MANIFEST=".claude-plugin/plugin.json"

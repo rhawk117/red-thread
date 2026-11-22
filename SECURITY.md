@@ -31,7 +31,7 @@ Reports are most useful when they involve one of these areas.
 | --- | --- |
 | Hooks and executables | Unsafe subprocess execution, command injection, unexpected side effects, access outside intended paths |
 | Skills, commands, agents and workflows | Instructions that lead to unsafe tool use, disclose sensitive data or bypass expected user approval |
-| MCP and LSP integrations | Running untrusted servers, excessive privileges, insecure communication, mishandled credentials |
+| Case files and published pages | A secret that reaches a case file or a page unredacted, a citation check that reads outside the repository, a page that loads a script without an integrity hash |
 | Plugin manifests and configuration | Unsafe defaults, path traversal, unintended component loading, insecure handling of environment variables |
 | Dependencies and releases | Compromised packages, vulnerable transitive dependencies, tampered artifacts, weaknesses in CI and release automation |
 
@@ -62,17 +62,19 @@ These checks find issues covered by their advisory sources and configured polici
 
 ## What the plugin's hooks do
 
-The plugin's hooks record and route. They refuse only a dispatch outside the caller's roster, an intern dispatch unless a task is started for the intern and every such task owns exactly one file, a dispatch of the engineer or architect from the main thread while the branch's only unclosed ticket has no task in progress (with several unclosed tickets the hook warns instead of refusing), a dispatch whose task or ticket state cannot be read (it fails closed), and a payload that is malformed or names no target type (exit 2). When the hook itself cannot run (the launcher crashes or times out), it refuses any dispatch made by a plugin worker, and any dispatch of the engineer, architect or intern while the project has a `.mightymodels/` directory. They are not a permission control: they do not run or approve commands, and they do not replace the permission prompts of Claude Code.
+The plugin ships one hook. `hooks/hooks.json` runs `hooks/roster.py` before every Agent tool call. The script reads the call and prints a decision. It refuses a dispatch only when a red-thread agent dispatches another red-thread agent outside its roster: a lead may dispatch the four scouts, and a scout or the skeptic dispatches nobody. A dispatch whose caller or target is not a red-thread agent is left alone. When the hook cannot read its input, or cannot run at all, the dispatch goes ahead. It is not a permission control: it does not run or approve commands, and it does not replace the permission prompts of Claude Code.
 
 ## Local working state
 
-A ticket's working files live in `.mightymodels/` at the git toplevel of the repository being worked on. Briefs and review runs there can carry raw command output, and raw output can hold secrets. Whenever the plugin opens its state database, it adds `.mightymodels/` to `info/exclude` in git's common directory, so the directory stays out of git without a commit, and a careless `git add -A` cannot ship it. Never commit it or move the exclusion into a tracked `.gitignore`.
+A case's working files live in `.red-thread/<case-id>/` at the root of the repository under investigation: the case record, the ledger, the thread files, the rendered board and the exported outputs. Entries quote lines of code and command output, and either can hold a secret. The case-file script redacts the secret patterns it knows from every free-text field before it stores an entry, which lowers that risk and does not remove it. When a case is created, the script adds `.red-thread/` to git's local exclude file (`info/exclude`), so the directory stays out of git without a commit, and a careless `git add -A` cannot ship it. Never commit it or move the exclusion into a tracked `.gitignore`.
+
+A case stays on the machine unless its owner chooses at framing to publish it. A published case is a private page on claude.ai that holds what the board holds, and comments on that page are read back into the case as entries. The page, local or published, loads its stylesheet build and its diagram library from cdnjs at pinned versions with integrity hashes.
 
 ## Guidance for users
 
 - Install updates from trusted repository releases, and review changes to hooks, scripts, executables and external-tool configuration.
 - Run the plugin with the fewest privileges it needs. Don't give agent processes broad access to credentials, production infrastructure or unrelated files.
-- Review requests to run commands or connect to MCP and LSP servers, especially when they come from untrusted content.
+- Review requests to run commands, especially when they come from untrusted content.
 - Keep dependencies and the plugin current, and look into security advisories for the version you have installed.
 
 Security tooling reduces exposure. It does not replace reviewing what executable plugin behavior does and which permissions it holds.

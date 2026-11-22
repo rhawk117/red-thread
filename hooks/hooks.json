@@ -1,0 +1,23 @@
+{
+  "description": "Keeps a red-thread agent's dispatches inside its roster.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv",
+            "args": [
+              "run",
+              "--quiet",
+              "--script",
+              "${CLAUDE_PLUGIN_ROOT}/hooks/roster.py"
+            ],
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

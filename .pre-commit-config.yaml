@@ -21,15 +21,18 @@ repos:
   - repo: builtin
     hooks:
       - id: end-of-file-fixer
+        exclude: ^(\.claude/(settings\.json|hooks/)|uv\.lock$)
         groups: [hygiene, format]
         priority: 0
 
       - id: mixed-line-ending
+        exclude: ^(\.claude/(settings\.json|hooks/)|uv\.lock$)
         args: [--fix=lf]
         groups: [hygiene, format]
         priority: 1
 
       - id: trailing-whitespace
+        exclude: ^(\.claude/(settings\.json|hooks/)|uv\.lock$)
         args: [--markdown-linebreak-ext=md]
         groups: [hygiene, format]
         priority: 2

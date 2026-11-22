@@ -17,12 +17,13 @@ These rules add to the Python rules, which still apply in full.
 - Bundle collaborators into a frozen dataclass fixture. Use `@pytest.mark.usefixtures` for fixtures the body never references.
 - Fake repositories over mocks. `monkeypatch` is a last resort for process state the code reads directly; inject the value instead, since `monkeypatch.chdir()` means the code should take a root path.
 - No side effects, no races, no inline imports of the code under test.
-- Builders, harnesses, suites and fakes are files in `tests/<pkg>/<concept>/`, imported by absolute path (`tests.core.<concept>.<module>`). A `conftest.py` holds fixtures only.
+- Builders, harnesses, suites and fakes are files in `tests/<pkg>/<concept>/`, imported by absolute path (`tests.casefile.<concept>.<module>`). A `conftest.py` holds fixtures only.
 
 ## Tiers
 
-- Under `tests/core`, tests live in `tests/core/<concept>/{unit,integration,smoke}/`. Under `tests/mcp`, they live in `tests/mcp/<concept>/{unit,integration,smoke,e2e}/`. The directory sets the tier. The root `conftest.py` marks each test from its directory, and a test module under either tree outside a tier directory fails collection. Never write a tier mark by hand under `tests/core` or `tests/mcp`. Other test trees keep explicit tier marks until they adopt this layout.
-- `unit` tests use fakes and memory. `integration` tests touch SQLite (file or in-memory), real git, a child process or the filesystem. `smoke` tests run an entry-point concept through real resources (`open_state`).
+- Tests live in `tests/casefile/<concept>/{unit,integration,smoke,e2e}/`. The directory sets the tier. The root `conftest.py` marks each test from its directory, and a test module under that tree outside a tier directory fails collection. Never write a tier mark by hand. A new test tree joins by adding its name to `TIER_NAMES_BY_TREE` in the root `conftest.py`.
+- `unit` tests use fakes and memory. `integration` tests touch SQLite (file or in-memory), real git, a child process or the filesystem. `smoke` tests run an entry-point concept through real resources (the command line over a real case directory). `e2e` tests run the plugin from outside, through `scripts/casefile.sh` in a child process.
+- A test that needs a child process runs it through `ChildRunner` in `tests/casefile/launcher/children.py`.
 
 ## Helpers
 
