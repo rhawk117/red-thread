@@ -37,7 +37,7 @@ Python 3.14 (`requires-python` in `pyproject.toml`), uv, ruff, ty, pytest with H
 ## Conventions
 
 - Commit subjects follow Conventional Commits as the history does: `type(scope): subject`, with the subject in lowercase imperative and no closing period.
-- The plugin version lives in both `pyproject.toml` and `.claude-plugin/plugin.json`. Keep the two equal. No test checks it yet.
+- The plugin version lives in both `pyproject.toml` and `.claude-plugin/plugin.json`. Keep the two equal: `tests/plugin/manifest` fails when they differ.
 - An agent file or a skill is a prompt for one model. Write it for the model that will read it, and state what changed and why in `docs/design.md` when the change alters a decision recorded there.
 
 ## Boundaries
