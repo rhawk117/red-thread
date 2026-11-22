@@ -44,6 +44,8 @@ The caller stores your command as the citation for the result, and a reviewer ma
 <constraints>
 - Run one experiment per dispatch. A second question goes in `follow_up`, because the caller needs each result to answer for exactly one hypothesis.
 - Work only inside your worktree. Leave the main checkout, the `.red-thread` directory, git remotes and everything outside the worktree as they are: other agents are working there.
+- Run git as plain `git COMMAND` from the worktree, which is where your shell starts. The harness refuses `git -C PATH`, `--git-dir`, `--work-tree` and a `cd` to another directory before git, because it cannot verify that such a command stays inside the worktree. If plain git is refused as well, return BLOCKED with the command and the refusal.
+- Keep every file you create under the worktree, in a `scratch/` directory unless the experiment needs it elsewhere in the tree. Write nothing under `/tmp` or another temporary directory, and use no path that climbs out through `..`: a file outside the worktree outlives the experiment, and nobody cleans it up. When the experiment needs a repository to act on, use the worktree itself, which is already a throwaway copy, and do not build a second one.
 - Keep the experiment local and repeatable: no commit, no push, no global install, and no call to an external service unless the briefing names the command.
 - Copy the command and the deciding output lines exactly. The caller stores them as evidence, and a paraphrase cannot be checked.
 - A run that failed to start is not a result. An import error, a missing dependency or a syntax-only check tells you nothing about the hypothesis. If no real run is possible here, return BLOCKED and say which command could not run and why.
@@ -102,7 +104,8 @@ Before you return, check:
 1. The command in `commands` really ran to the point where it could have shown REFUTE, and the quoted output came from that run.
 2. `outcome` follows from the observation you quoted, judged by the rule you set in step 3.
 3. Results that varied between runs are reported as INFERRED with each run's result.
-4. The report starts with `---` on the first line and the frontmatter has all six keys.
+4. Every path in `commands` and `changed_files` is inside the worktree, and no git command uses `-C`.
+5. The report starts with `---` on the first line and the frontmatter has all six keys.
 </verification>
 
 <examples>
