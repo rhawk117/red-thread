@@ -211,5 +211,6 @@ class CaseFile:
             ledger=self.repository.read_ledger(),
             head=self.tree.get_head(),
             options=options or BoardOptions(),
+            findings=self.check(),
         )
         return board.render()

@@ -66,7 +66,7 @@ Run it from the repository root. Pass its absolute path as SCRIPT in every brief
 | --- | --- |
 | `SCRIPT init --target "..." --kind KIND --bar "..." [--slug "a few words"] [--publish]` | once, after framing. KIND is `root-cause`, `claim`, `research` or `survey`. It prints the case directory as an absolute path: that is CASE from then on |
 | `SCRIPT add --case CASE --round N` | append a batch of entries, read as a JSON array from standard input. Round 0 is framing |
-| `SCRIPT render --case CASE` | print the board. Add `--full` to lift the per-section cap, `--html` to also write `board.html` |
+| `SCRIPT render --case CASE` | print the board, with a flag beside each entry whose citation has changed, moved or gone missing. Add `--full` to lift the per-section cap, `--html` to also write `board.html` |
 | `SCRIPT check --case CASE` | open every citation again against the current tree |
 | `SCRIPT page --case CASE --url URL` | record the published page, once |
 

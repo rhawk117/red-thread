@@ -203,7 +203,9 @@ def create_parser() -> ArgumentParser:
     commands = parser.add_subparsers(dest='command', required=True)
     describe_init(commands.add_parser('init', help='create a case and record what the tree offers'))
     describe_add(commands.add_parser('add', help='validate a JSON batch whole, then append it'))
-    describe_render(commands.add_parser('render', help='print the board'))
+    describe_render(
+        commands.add_parser('render', help='print the board, with its citations checked')
+    )
     add_case_argument(commands.add_parser('check', help='resolve every live citation again'))
     describe_export(commands.add_parser('export', help='write a lens output from the ledger'))
     describe_page(commands.add_parser('page', help='record the link of the published board'))

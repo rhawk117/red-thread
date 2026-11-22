@@ -97,7 +97,7 @@ The code is the workspace package `packages/casefile`. The stored records (`Entr
 | --- | --- | --- |
 | `init` | creates the case, records HEAD, and detects capabilities once (repository languages, whether the navigation tool is installed) | Built |
 | `add` | validates a batch of entries whole, stamps time and HEAD, redacts secrets, appends | Built |
-| `render` | prints the board, capped at about one screen; writes `board.html` on request | Built |
+| `render` | prints the board, capped at about one screen, after opening every citation again, so a changed, moved or missing one is flagged beside its entry; writes `board.html` on request | Built |
 | `check` | re-resolves every live citation against the current tree | Built |
 | `export` | assembles a lens output from the ledger and fails when it is over its line budget | Built |
 | `page` | records the link of the published board in `case.json` | Built |
@@ -420,7 +420,6 @@ Source: the Claude Code docs on subagents, skills and best practices, fetched by
 Open:
 
 - Step 6 has run once. On 2026-11-21 each agent ran headless on a canned brief, and then one real case went from framing to a brief on this repository (both below). The owner has not driven a case by hand, and nothing has been published or commented on. The scouts' budgets are reported below and not changed: `code-sense` passed five calls in one run of five, and `code-lens` passed 6,000 tokens in two runs of nine.
-- The text board shows no citation flag, which the real case found (below). Whether `render` should run the check is the owner's call.
 - `research-cell` worked outside its worktree in the real case (below).
 - Both skills pre-approve `scripts/casefile.sh` through `allowed-tools`. The docs say `${CLAUDE_PLUGIN_ROOT}` is substituted in Bash rules there, and that the grant lasts for the invoking turn only. Whether it reaches a subagent is not documented, so step 6 must confirm it. The real case could not: it ran in `auto` permission mode, where sandboxed Bash never asks. It needs a session where Bash asks.
 - Owner comments are read at the gate (section 4). No published page has carried a comment through that step yet, so the shape of what the Artifact tool returns for a thread is untested.
@@ -468,7 +467,7 @@ The real case on 2026-11-21. The target was how a citation gets from `add` to a 
 
 The total was $5.17 against an agreed stop of $5. A call can end above its `--max-budget-usd`: turn 4 cost $0.73 against $0.55 and turn 5 cost $0.83 against $0.45. The primary's own estimate of its spending was low each time ($0.21 for the turn that cost $0.73).
 
-The case ended with 43 live entries, 12 retired, and `check` at 36 citations ok and 1 unchecked (a command). Its finding: the text board never shows a citation flag. `render` builds the board without findings, so only `check`, `export` and the HTML page report a changed citation. A lab scout confirmed it by experiment, and no test pins it either way.
+The case ended with 43 live entries, 12 retired, and `check` at 36 citations ok and 1 unchecked (a command). Its finding: the text board never shows a citation flag. `render` builds the board without findings, so only `check`, `export` and the HTML page report a changed citation. A lab scout confirmed it by experiment, and no test pinned it either way. **Decided 2026-11-21:** `render` runs the check, so the text board carries the same flags as the page, and `tests/casefile/board/unit/test_board_citations.py` pins it.
 
 What it showed:
 
@@ -513,6 +512,7 @@ All made by the owner on 2026-11-21.
 | Test markers | tier marks come from the directory; a regression is an `@example` on a property marked `regression` |
 | Rules and budgets added while building | accepted as built: the five ledger rules in section 4 and the line budgets for `issue`, `handoff` and `report` |
 | Owner comments | read at each gate from the published page and recorded as `user` entries, then answered with the ref and resolved |
+| Text board flags | `render` opens every citation again and flags a changed, moved or missing one, as the page does |
 | Navigation scout | `code-lens`, experimental, for the installed agentlens 0.2.0 and only where `init` found the tool; the evaluation gate stays open |
 | Roster | a PreToolUse hook on the Agent tool denies a dispatch outside the caller's roster and says whom the caller may dispatch; a dispatch outside the plugin is left alone |
 | Remnants | `.claude/CLAUDE.md` and `conftest.py` cleaned, the three renamed rules in `ty.toml` updated; then `ruff.toml`, `pytest.toml` and `SECURITY.md`; the root `pyproject.toml` holds no mightymodels text |
