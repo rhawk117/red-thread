@@ -20,7 +20,7 @@ defaults:
     shell: bash
 
 env:
-  PACKAGE_NAME: mightymodels-plugin
+  PACKAGE_NAME: red-thread-plugin
   VERSION_BUMP: ${{ inputs.version-bump }}
   REPOSITORY_IS_FORK: ${{ github.event.repository.fork }}
 

@@ -1,6 +1,6 @@
 ## Ticket
 
-<!-- Issue number, or the .mightymodels slug if no issue exists. "None" is an answer; explain why in one line. -->
+<!-- Issue number, or the red-thread case id if no issue exists. "None" is an answer; explain why in one line. -->
 
 ## What changed
 
