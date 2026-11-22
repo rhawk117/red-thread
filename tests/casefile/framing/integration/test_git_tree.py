@@ -2,6 +2,7 @@
 
 from typing import TYPE_CHECKING
 
+import pytest
 from red_thread_casefile.services import CaseFile, Framing
 from red_thread_casefile.store import DirectoryCaseRepository, GitSourceTree
 
@@ -64,6 +65,19 @@ class TestFrameInGit:
         directory_harness.casefile.frame(FRAMING)
 
         assert directory_harness.git.run('status', '--porcelain') == ''
+
+
+class TestWithoutGit:
+    @pytest.fixture
+    def tree(self, git_repository: GitRepository, monkeypatch: pytest.MonkeyPatch) -> GitSourceTree:
+        monkeypatch.setenv('PATH', str(git_repository.root.joinpath('no-tools')))
+        return git_repository.tree
+
+    def test_tree_has_no_head_and_no_files_when_git_is_not_installed(
+        self, tree: GitSourceTree
+    ) -> None:
+        assert tree.get_head() is None
+        assert tree.list_files() == ()
 
 
 class TestExclusion:
