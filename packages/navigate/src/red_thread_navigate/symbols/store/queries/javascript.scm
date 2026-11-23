@@ -41,7 +41,7 @@
 
 (variable_declarator
   name: (identifier) @name
-  value: [(arrow_function) (function_expression)]) @definition.function
+  value: [(arrow_function) (function_expression) (generator_function)]) @definition.function
 
 (assignment_expression
   left: [

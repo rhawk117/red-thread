@@ -137,3 +137,14 @@ class TestAssignedFunctions:
 
     def test_a_function_passed_as_an_argument_is_not_a_symbol(self, parsed: FileSymbols) -> None:
         assert all('getrouter' not in symbol.qualified_name for symbol in parsed.symbols)
+
+
+class TestGeneratorConstants:
+    def test_generator_valued_const_is_a_function(self) -> None:
+        parsed = parse('const gen = function* () {}\n')
+        spans = [
+            (symbol.kind, symbol.start_line, symbol.end_line)
+            for symbol in parsed.symbols
+            if symbol.qualified_name == 'gen'
+        ]
+        assert spans == [('function', 1, 1)]
