@@ -117,7 +117,7 @@ def collect_references(tree: ast.Module) -> tuple[Reference, ...]:
     for node in ast.walk(tree):
         if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load):
             references.append(Reference(name=node.id, line=node.lineno))
-        elif isinstance(node, ast.Attribute) and (
+        if isinstance(node, ast.Attribute) and (
             isinstance(node.ctx, ast.Load) or id(node) in augmented
         ):
             references.append(Reference(name=node.attr, line=node.end_lineno or node.lineno))
@@ -146,6 +146,3 @@ class PythonBackend:
             references=collect_references(tree),
             notes=(),
         )
-
-
-PYTHON_BACKEND = PythonBackend()

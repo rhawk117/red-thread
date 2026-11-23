@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from red_thread_navigate.budget import fit_notes
-from red_thread_navigate.map.views import span
+from red_thread_navigate.util import span
 
 if TYPE_CHECKING:
     from pathlib import PurePosixPath

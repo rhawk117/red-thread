@@ -25,18 +25,15 @@ class Fitted:
 
 
 def estimate_tokens(text: str) -> int:
-    """Estimate tokens at 3.5 characters per token, rounded up."""
     scaled = len(text) * CHARS_PER_TOKEN_NUMERATOR
     return -(-scaled // CHARS_PER_TOKEN_DENOMINATOR)
 
 
 def printed_tokens(text: str) -> int:
-    """Estimate tokens for text with the newline that printing it adds."""
     return estimate_tokens(f'{text}\n')
 
 
 def cut_to_budget(text: str, budget: int) -> str:
-    """Cut text to a trailing ellipsis so it, printed with its newline, fits the budget."""
     keep = len(text)
     fitted = text
     while printed_tokens(fitted) > budget and keep > 0:
@@ -46,16 +43,16 @@ def cut_to_budget(text: str, budget: int) -> str:
 
 
 def fit_notes(notes: tuple[str, ...], *, budget: int) -> tuple[str, ...]:
-    """Keep the notes that fit in a share of the budget, ending with a count of the rest."""
     share = budget // NOTES_SHARE
     if estimate_tokens('\n'.join(notes)) <= share:
         return notes
     kept: list[str] = []
+    fits = True
     for note in notes:
         more = f'and {len(notes) - len(kept) - 1} more notes'
-        if estimate_tokens('\n'.join([*kept, note, more])) > share:
-            break
-        kept.append(note)
+        fits = fits and estimate_tokens('\n'.join([*kept, note, more])) <= share
+        if fits:
+            kept.append(note)
     return (*kept, f'and {len(notes) - len(kept)} more notes')
 
 
@@ -66,17 +63,17 @@ def footer_for(*, kept: int, total: int) -> str:
 def cut_rung(lines: tuple[str, ...], *, budget: int) -> Fitted:
     total = len(lines)
     kept: list[str] = []
+    fits = True
     for line in lines:
         candidate = '\n'.join([*kept, line, footer_for(kept=len(kept) + 1, total=total)])
-        if printed_tokens(candidate) > budget:
-            break
-        kept.append(line)
+        fits = fits and printed_tokens(candidate) <= budget
+        if fits:
+            kept.append(line)
     text = '\n'.join([*kept, footer_for(kept=len(kept), total=total)])
     return Fitted(text=text, rung=-1, kept=len(kept), total=total, cut=True)
 
 
 def fit_to_budget(rungs: Sequence[tuple[str, ...]], *, budget: int) -> Fitted:
-    """Return the first rung that fits whole, else the last rung cut with a footer."""
     if budget < MIN_BUDGET:
         raise BudgetBelowMinimumError(budget=budget, minimum=MIN_BUDGET)
     if not rungs:

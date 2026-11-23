@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from red_thread_navigate.symbols.store import create_backends
+from red_thread_navigate.util import plural, span
 
 if TYPE_CHECKING:
     from red_thread_navigate.symbols.domain import FileSymbols, Symbol
@@ -25,16 +26,6 @@ class RankedFile:
     @property
     def references(self) -> int:
         return sum(ranked.references for ranked in self.symbols)
-
-
-def span(symbol: Symbol) -> str:
-    if symbol.end_line == symbol.start_line:
-        return f'L{symbol.start_line}'
-    return f'L{symbol.start_line}-L{symbol.end_line}'
-
-
-def plural(count: int, noun: str) -> str:
-    return f'{count} {noun}' if count == 1 else f'{count} {noun}s'
 
 
 def file_line(ranked: RankedFile) -> str:

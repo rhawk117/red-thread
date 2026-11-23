@@ -2,7 +2,7 @@
 
 
 class BudgetError(ValueError):
-    """A budget the policy cannot honor."""
+    pass
 
 
 class BudgetBelowMinimumError(BudgetError):

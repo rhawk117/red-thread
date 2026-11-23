@@ -9,7 +9,7 @@ ADDRESS_FORMS = (
 
 
 class AddressError(ValueError):
-    """Base of every slice address failure."""
+    pass
 
 
 class MalformedAddressError(AddressError):

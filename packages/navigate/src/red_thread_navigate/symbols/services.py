@@ -14,15 +14,11 @@ if TYPE_CHECKING:
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class Index:
-    root: Path
     files: tuple[FileSymbols, ...]
     notes: tuple[str, ...]
 
 
 def index_path(path: Path) -> Index:
-    """Walk a directory or file and parse every file a backend reads."""
-    resolved = path.resolve()
-    root = resolved.parent if resolved.is_file() else resolved
     walked = walk(path)
     parsed = tuple(
         backend.parse(source)
@@ -31,4 +27,4 @@ def index_path(path: Path) -> Index:
     )
     notes = tuple(note for file in parsed for note in file.notes)
     leading = () if walked.note is None else (walked.note,)
-    return Index(root=root, files=parsed, notes=(*leading, *notes))
+    return Index(files=parsed, notes=(*leading, *notes))

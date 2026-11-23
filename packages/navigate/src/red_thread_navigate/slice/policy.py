@@ -24,8 +24,6 @@ type CutSteps = Callable[[str, str], Iterator[tuple[int, int]]]
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class Refused:
-    """The path a refusal names and the budget its message must fit; no budget leaves it whole."""
-
     path: PurePosixPath
     budget: int | None = None
 

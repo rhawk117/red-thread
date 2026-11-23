@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 
     from red_thread_navigate.symbols.domain import FileSymbols
 
+
 def is_match(qualified_name: str, name: str) -> bool:
     return qualified_name == name or qualified_name.endswith(f'.{name}')
 
@@ -36,15 +37,13 @@ def references_to(files: tuple[FileSymbols, ...], name: str) -> tuple[Occurrence
 
 
 def find_name(name: str, path: Path, *, budget: int) -> str:
-    """List every definition of a name under a path, then its references, inside the budget."""
     if not path.exists():
         raise PathMissingError(path=path)
     index = index_path(path)
     definitions = definitions_of(index.files, name)
     references = references_to(index.files, name)
+    rungs = (none_lines(name, str(path)),)
     if definitions or references:
         rungs = find_rungs(definitions, references)
-    else:
-        rungs = (none_lines(name, str(path)),)
     notes = fit_notes(index.notes, budget=budget)
     return fit_to_budget(tuple((*notes, *rung) for rung in rungs), budget=budget).text

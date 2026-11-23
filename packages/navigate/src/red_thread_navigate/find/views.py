@@ -4,7 +4,7 @@ from collections import Counter
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from red_thread_navigate.map.views import plural, span
+from red_thread_navigate.util import plural, span
 
 if TYPE_CHECKING:
     from pathlib import PurePosixPath

@@ -7,8 +7,6 @@ if TYPE_CHECKING:
 
 
 class PathMissingError(ValueError):
-    """The path a verb was asked to read does not exist."""
-
     def __init__(self, *, path: Path) -> None:
         self.path = path
         super().__init__(f'{path} does not exist')

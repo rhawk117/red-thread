@@ -93,20 +93,20 @@ def read_source(root: Path, path: Path, name: PurePosixPath) -> SourceFile | Ski
         return 'not_utf8'
 
 
-def walk(root: Path) -> Walk:
-    base = root.resolve()
-    escaped = unreadable = 0
-    git_failed = False
+def list_names(base: Path) -> tuple[tuple[str, ...], int, int, bool]:
     if base.is_file():
-        names = (base.name,)
-        base = base.parent
-    else:
-        tracked = list_tracked(base)
-        git_failed = tracked.failed
-        if tracked.names is None:
-            names, escaped, unreadable = list_directory(base)
-        else:
-            names = tracked.names
+        return (base.name,), 0, 0, False
+    tracked = list_tracked(base)
+    if tracked.names is not None:
+        return tracked.names, 0, 0, tracked.failed
+    names, escaped, unreadable = list_directory(base)
+    return names, escaped, unreadable, tracked.failed
+
+
+def walk(root: Path) -> Walk:
+    resolved = root.resolve()
+    names, escaped, unreadable, git_failed = list_names(resolved)
+    base = resolved.parent if resolved.is_file() else resolved
     reads = [read_source(base, base.joinpath(name), PurePosixPath(name)) for name in sorted(names)]
     files = tuple(read for read in reads if isinstance(read, SourceFile))
     kinds = tuple(read for read in reads if isinstance(read, str) and read != 'not_a_file')

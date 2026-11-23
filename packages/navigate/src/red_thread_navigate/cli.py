@@ -23,8 +23,6 @@ EXIT_USAGE = 2
 
 
 class UsageError(ValueError):
-    """The command line is not one navigate accepts."""
-
     def __init__(self, *, problem: str) -> None:
         super().__init__(f'{problem}; valid options are {VALID_OPTIONS}')
 
@@ -75,7 +73,6 @@ def build_parser() -> Parser:
 
 
 def parse_request(argv: list[str]) -> Request:
-    """Return the request; the arguments that ask for the version give the verb 'version'."""
     parsed = build_parser().parse_args(argv)
     if parsed.version:
         return Request(verb='version', budget=DEFAULT_BUDGET, target='')
@@ -97,15 +94,13 @@ def parse_request(argv: list[str]) -> Request:
 
 
 def run_verb(request: Request) -> str:
-    match request.verb:
-        case 'version':
-            return f'{PROGRAM} {version("red-thread-navigate")}'
-        case 'map':
-            return map_path(Path(request.target), budget=request.budget)
-        case 'find':
-            return find_name(request.target, Path(request.path or ''), budget=request.budget)
-        case _:
-            return slice_address(request.target, root=Path.cwd(), budget=request.budget)
+    verbs = {
+        'version': lambda: f'{PROGRAM} {version("red-thread-navigate")}',
+        'map': lambda: map_path(Path(request.target), budget=request.budget),
+        'find': lambda: find_name(request.target, Path(request.path or ''), budget=request.budget),
+        'slice': lambda: slice_address(request.target, root=Path.cwd(), budget=request.budget),
+    }
+    return verbs[request.verb]()
 
 
 def navigate(request: Request) -> int:
@@ -119,7 +114,6 @@ def navigate(request: Request) -> int:
 
 
 def run(argv: list[str]) -> int:
-    """Run the navigate command line over argv and return its exit code."""
     try:
         request = parse_request(argv)
     except UsageError as error:

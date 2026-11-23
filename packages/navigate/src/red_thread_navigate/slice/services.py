@@ -143,7 +143,6 @@ def address_refusal(text: str, error: AddressError, *, budget: int) -> FileRefus
 
 
 def slice_address(text: str, *, root: Path, budget: int) -> str:
-    """Return the code an address names, inside the budget; refuse what it cannot name."""
     resolved = root.resolve()
     try:
         address = parse_address(text, root=resolved)

@@ -39,7 +39,6 @@ def rank_files(files: tuple[FileSymbols, ...], *, key: SymbolKey) -> tuple[Ranke
 
 
 def map_path(path: Path, *, budget: int) -> str:
-    """List the files and symbols under a path, most-referenced first, inside the budget."""
     if not path.exists():
         raise PathMissingError(path=path)
     index = index_path(path)

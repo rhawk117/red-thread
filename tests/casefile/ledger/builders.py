@@ -126,9 +126,9 @@ class CaseHarness:
         return self.casefile.add(Batch(drafts=drafts, round=round_number, thread=thread))
 
 
-def create_case_harness(tools: frozenset[str] = frozenset()) -> CaseHarness:
+def create_case_harness() -> CaseHarness:
     repository = MemoryCaseRepository()
-    tree = MemorySourceTree(files={QUEUE_PATH: QUEUE_LINES}, tools=tools)
+    tree = MemorySourceTree(files={QUEUE_PATH: QUEUE_LINES})
     clock = FixedClock()
     casefile = CaseFile(repository=repository, tree=tree, clock=clock)
     return CaseHarness(repository=repository, tree=tree, clock=clock, casefile=casefile)

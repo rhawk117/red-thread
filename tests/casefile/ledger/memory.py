@@ -56,7 +56,6 @@ class MemoryCaseRepository:
 class MemorySourceTree:
     files: dict[str, tuple[str, ...]] = field(default_factory=dict)
     heads: list[str | None] = field(default_factory=start_heads)
-    tools: frozenset[str] = frozenset()
     reads: list[str] = field(default_factory=list)
     exclusions: list[str] = field(default_factory=list)
 

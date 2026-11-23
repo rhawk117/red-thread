@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 
 
 class SliceError(ValueError):
-    """Base of every refusal the slice verb makes."""
+    pass
 
 
 class FileRefusedError(SliceError):

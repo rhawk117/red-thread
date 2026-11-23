@@ -8,5 +8,4 @@ __all__ = ['main']
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Runs the navigate command line and returns its exit code."""
     return run(sys.argv[1:] if argv is None else argv)
