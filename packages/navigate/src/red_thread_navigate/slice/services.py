@@ -58,7 +58,6 @@ def fill(template: str, *, path: str, name: str) -> str:
 
 
 def cut_steps(full_path: str, name: str, *, deep: bool) -> Iterator[tuple[int, int]]:
-    """Yield path and name limits: the directory part first, then the name, then the file name."""
     file_name = PurePosixPath(full_path).name
     floor = min(
         len(full_path), max(MIN_SHOWN, min(len(file_name), FILE_NAME_FLOOR) + len(ELLIPSIS))
@@ -89,14 +88,11 @@ class Refused:
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class Wording:
-    """A refusal template with the path and name it shows, cut to the refusal's budget."""
-
     template: str
     refused: Refused
     name: str
 
     def fit(self, *, deep: bool) -> str | None:
-        """Fill with the least cutting that fits; None when the cuts allowed here do not."""
         full_path = str(self.refused.path)
         budget = self.refused.budget
         if budget is None:
@@ -123,7 +119,6 @@ class Wording:
 
 
 def refusal_text(template: str, *, refused: Refused, name: str) -> str:
-    """Fill <path> and <name>, cutting the directory part, then the name, then the file name."""
     return Wording(template=template, refused=refused, name=name).text()
 
 
@@ -199,7 +194,7 @@ def parse_file(source: SourceFile, *, budget: int) -> FileSymbols:
     backend = backend_for(source.path)
     if backend is None:
         suffix = shorten_name(source.path.suffix, MIN_SHOWN) or 'this'
-        reason = f'no symbol backend reads {suffix} files, address lines instead, such as #L1-L20'
+        reason = f'no symbol backend reads {suffix} files, use lines like #L1-L20'
         raise FileRefusedError(refused=Refused(path=source.path, budget=budget), reason=reason)
     return backend.parse(source)
 
@@ -216,17 +211,28 @@ def found_for(source: SourceFile, symbol: Symbol, parsed: FileSymbols) -> Found:
     )
 
 
+def nearest_candidates(nearest: tuple[str, ...]) -> Iterator[tuple[str, ...]]:
+    counts = range(len(nearest), 0, -1)
+    yield from (nearest[:count] for count in counts)
+    longest = max(map(len, nearest), default=0)
+    for count in counts:
+        yield from (
+            tuple(shorten_name(item, limit) for item in nearest[:count])
+            for limit in range(longest, MIN_SHOWN - 1, -1)
+        )
+
+
 def unknown_symbol(parsed: FileSymbols, name: str, *, budget: int) -> UnknownSymbolError:
     names = sorted({symbol.qualified_name for symbol in parsed.symbols})
     nearest = tuple(get_close_matches(name, names, n=NEAREST_NAMES))
     refused = Refused(path=parsed.path, budget=budget)
     shown = next(
         (
-            nearest[:count]
-            for count in range(len(nearest), 0, -1)
-            if Wording(
-                template=unknown_template(nearest[:count]), refused=refused, name=repr(name)
-            ).fit(deep=False)
+            candidate
+            for candidate in nearest_candidates(nearest)
+            if Wording(template=unknown_template(candidate), refused=refused, name=repr(name)).fit(
+                deep=False
+            )
             is not None
         ),
         (),

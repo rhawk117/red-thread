@@ -226,24 +226,50 @@ def test_a_long_extension_cannot_push_the_no_backend_refusal_past_the_budget(
 
 
 TWENTY_NAME = f'{"f" * 17}.py'
+TWENTY_TEXT = f'{"t" * 16}.txt'
+TWENTY_BLOB = f'{"b" * 17}.py'
+TWENTY_MISSING = f'{"m" * 17}.py'
 
 
 def whole_name_cases() -> list[str]:
-    return [f'{LONG_DIRS}/{TWENTY_NAME}#nosuch', f'{LONG_DIRS}/{TWENTY_NAME}#L99']
+    return [
+        f'{LONG_DIRS}/{TWENTY_NAME}#nosuch',
+        f'{LONG_DIRS}/{TWENTY_NAME}#L99',
+        f'{LONG_DIRS}/{TWENTY_TEXT}#nosuch',
+        f'{LONG_DIRS}/{TWENTY_BLOB}#L1',
+        f'{LONG_DIRS}/{TWENTY_MISSING}#L1',
+    ]
 
 
 @pytest.mark.parametrize('address', whole_name_cases())
 def test_a_twenty_character_file_name_survives_whole_under_a_long_directory(
     tmp_path: Path, address: str
 ) -> None:
-    assert len(TWENTY_NAME) == 20
+    file_name = address.split('#', maxsplit=1)[0].rsplit('/', 1)[-1]
+    assert len(file_name) == 20
     write(tmp_path, f'{LONG_DIRS}/{TWENTY_NAME}', NEAR_NAMES)
+    write(tmp_path, f'{LONG_DIRS}/{TWENTY_TEXT}', 'plain\n')
+    tmp_path.joinpath(LONG_DIRS, TWENTY_BLOB).write_bytes(b'\x00\x01')
 
     with pytest.raises(SliceError) as raised:
         slice_address(address, root=tmp_path, budget=MIN_BUDGET)
 
-    assert TWENTY_NAME in str(raised.value)
+    assert file_name in str(raised.value)
     assert estimate_tokens(str(raised.value)) <= MIN_BUDGET
+
+
+def test_a_long_nearest_name_is_cut_not_dropped(tmp_path: Path) -> None:
+    write(tmp_path, f'{LONG_DIRS}/{TWENTY_NAME}', f'def {LONG_NAME}():\n    pass\n')
+
+    with pytest.raises(SliceError) as raised:
+        slice_address(
+            f'{LONG_DIRS}/{TWENTY_NAME}#{LONG_NAME[:-1]}', root=tmp_path, budget=MIN_BUDGET
+        )
+
+    message = str(raised.value)
+    assert 'no similar name' not in message
+    assert 'a_very_long' in message
+    assert estimate_tokens(message) <= MIN_BUDGET
 
 
 def test_the_path_is_cut_to_its_floor_before_a_nearest_name_is_dropped(tmp_path: Path) -> None:
