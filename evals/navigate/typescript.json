@@ -1,0 +1,377 @@
+{
+  "schema_version": 1,
+  "subject": {
+    "repository": "excalidraw/excalidraw",
+    "tag": "v0.18.1",
+    "commit": "a2ec2889babf7d2295469c6d90ebe77fae57df84"
+  },
+  "tasks": [
+    {
+      "id": "T01",
+      "type": "comprehension",
+      "prompt": "When the user undoes a change, how does the editor's History move entries between its stacks, and what happens when an entry produces no visible change?",
+      "required_addresses": [
+        {
+          "address": "packages/excalidraw/history.ts#History.perform",
+          "start_line": 91,
+          "end_line": 134
+        }
+      ],
+      "supporting_addresses": [
+        {
+          "address": "packages/excalidraw/history.ts#History.undo",
+          "start_line": 63,
+          "end_line": 75
+        },
+        {
+          "address": "packages/excalidraw/history.ts#History.redo",
+          "start_line": 77,
+          "end_line": 89
+        },
+        {
+          "address": "packages/excalidraw/history.ts#History.record",
+          "start_line": 40,
+          "end_line": 61
+        }
+      ],
+      "required_facts": [
+        {
+          "id": "F1",
+          "any_of": [
+            "undo pops from the undo stack and pushes onto the redo stack",
+            "undo takes the entry from undoStack and puts it on redoStack",
+            "entries move from the undo stack to the redo stack"
+          ]
+        },
+        {
+          "id": "F2",
+          "any_of": [
+            "keeps popping entries until one contains a visible change",
+            "loops over entries until a visible change",
+            "skips entries that produce no visible change"
+          ]
+        },
+        {
+          "id": "F3",
+          "any_of": [
+            "pushes every popped entry even when applying it throws",
+            "push happens in a finally block",
+            "always pushed, even if the increment is corrupted"
+          ]
+        },
+        {
+          "id": "F4",
+          "any_of": [
+            "triggers the history changed event once",
+            "emits onHistoryChangedEmitter a single time after the loop"
+          ]
+        }
+      ],
+      "forbidden_claims": [
+        "undo only ever applies a single entry",
+        "the redo stack is cleared by undo",
+        "the history changed event fires once per entry"
+      ],
+      "source_of_truth": [
+        "packages/excalidraw/history.ts#History"
+      ]
+    },
+    {
+      "id": "T02",
+      "type": "comprehension",
+      "prompt": "What does mutateElement do when an update leaves every field unchanged, and what does it bump when something did change?",
+      "required_addresses": [
+        {
+          "address": "packages/excalidraw/element/mutateElement.ts#mutateElement",
+          "start_line": 21,
+          "end_line": 147
+        },
+        {
+          "address": "packages/excalidraw/element/mutateElement.ts#L88-L147",
+          "start_line": 88,
+          "end_line": 147
+        }
+      ],
+      "supporting_addresses": [
+        {
+          "address": "packages/excalidraw/element/mutateElement.ts#bumpVersion",
+          "start_line": 188,
+          "end_line": 196
+        }
+      ],
+      "required_facts": [
+        {
+          "id": "F1",
+          "any_of": [
+            "returns the element unchanged when nothing changed",
+            "returns early when didChange is false",
+            "does not bump version when no field changed"
+          ]
+        },
+        {
+          "id": "F2",
+          "any_of": [
+            "increments version",
+            "element.version++",
+            "bumps version, versionNonce and updated"
+          ]
+        },
+        {
+          "id": "F3",
+          "any_of": [
+            "sets a new random versionNonce",
+            "versionNonce = randomInteger()"
+          ]
+        },
+        {
+          "id": "F4",
+          "any_of": [
+            "clears the ShapeCache when width, height, fileId or points change",
+            "ShapeCache.delete(element)"
+          ]
+        },
+        {
+          "id": "F5",
+          "any_of": [
+            "triggers a scene update only when informMutation is true",
+            "Scene.getScene(element)?.triggerUpdate() guarded by informMutation"
+          ]
+        }
+      ],
+      "forbidden_claims": [
+        "mutateElement always bumps the version",
+        "mutateElement returns a new copy of the element",
+        "the shape cache is cleared on every mutation"
+      ],
+      "source_of_truth": [
+        "packages/excalidraw/element/mutateElement.ts#L21-L147"
+      ]
+    },
+    {
+      "id": "T03",
+      "type": "comprehension",
+      "prompt": "What does getSelectedElements return, and how do the includeBoundTextElement and includeElementsInFrames options change the result?",
+      "required_addresses": [
+        {
+          "address": "packages/excalidraw/scene/selection.ts#getSelectedElements",
+          "start_line": 178,
+          "end_line": 220
+        }
+      ],
+      "supporting_addresses": [
+        {
+          "address": "packages/excalidraw/scene/selection.ts#getTargetElements",
+          "start_line": 222,
+          "end_line": 235
+        }
+      ],
+      "required_facts": [
+        {
+          "id": "F1",
+          "any_of": [
+            "returns the elements whose ids are true in appState.selectedElementIds",
+            "filters elements by selectedElementIds"
+          ]
+        },
+        {
+          "id": "F2",
+          "any_of": [
+            "includeBoundTextElement adds the bound text of a selected container",
+            "text bound to a selected container is also returned"
+          ]
+        },
+        {
+          "id": "F3",
+          "any_of": [
+            "includeElementsInFrames adds the children of selected frames",
+            "children of a selected frame are returned too",
+            "getFrameChildren for frame-like elements"
+          ]
+        },
+        {
+          "id": "F4",
+          "any_of": [
+            "skips children already added",
+            "uses the addedElements set to avoid duplicates"
+          ]
+        }
+      ],
+      "forbidden_claims": [
+        "getSelectedElements mutates the selection",
+        "frame children are included by default",
+        "bound text elements are included by default"
+      ],
+      "source_of_truth": [
+        "packages/excalidraw/scene/selection.ts#L178-L220"
+      ]
+    },
+    {
+      "id": "T04",
+      "type": "comprehension",
+      "prompt": "When does the link popup of a hovered element stay open instead of hiding as the pointer moves?",
+      "required_addresses": [
+        {
+          "address": "packages/excalidraw/components/hyperlink/Hyperlink.tsx#shouldHideLinkPopup",
+          "start_line": 438,
+          "end_line": 480
+        }
+      ],
+      "supporting_addresses": [
+        {
+          "address": "packages/excalidraw/components/hyperlink/Hyperlink.tsx#getCoordsForPopover",
+          "start_line": 341,
+          "end_line": 354
+        }
+      ],
+      "required_facts": [
+        {
+          "id": "F1",
+          "any_of": [
+            "stays open while the pointer is over the element's bounding box",
+            "hitElementBoundingBox keeps the popup"
+          ]
+        },
+        {
+          "id": "F2",
+          "any_of": [
+            "stays open in the vertical gap between the element and the popover",
+            "uses SPACE_BOTTOM above the element's top edge"
+          ]
+        },
+        {
+          "id": "F3",
+          "any_of": [
+            "stays open within a threshold around the popover",
+            "threshold of 15 divided by zoom"
+          ]
+        },
+        {
+          "id": "F4",
+          "any_of": [
+            "returns true to hide otherwise",
+            "hides when none of the hit boxes match"
+          ]
+        }
+      ],
+      "forbidden_claims": [
+        "the popup hides as soon as the pointer leaves the element",
+        "the threshold is a fixed pixel size independent of zoom"
+      ],
+      "source_of_truth": [
+        "packages/excalidraw/components/hyperlink/Hyperlink.tsx#L438-L480"
+      ]
+    },
+    {
+      "id": "T05",
+      "type": "comprehension",
+      "prompt": "How does LayerUI decide whether to re-render, and which app state fields does it ignore when comparing?",
+      "required_addresses": [
+        {
+          "address": "packages/excalidraw/components/LayerUI.tsx#areEqual",
+          "start_line": 584,
+          "end_line": 605
+        },
+        {
+          "address": "packages/excalidraw/components/LayerUI.tsx#stripIrrelevantAppStateProps",
+          "start_line": 572,
+          "end_line": 582
+        }
+      ],
+      "supporting_addresses": [],
+      "required_facts": [
+        {
+          "id": "F1",
+          "any_of": [
+            "re-renders when children differ",
+            "returns false early if children changed",
+            "short-circuits on children"
+          ]
+        },
+        {
+          "id": "F2",
+          "any_of": [
+            "ignores scrollX, scrollY, cursorButton, suggestedBindings and startBoundElement",
+            "strips scroll and cursor props before comparing app state"
+          ]
+        },
+        {
+          "id": "F3",
+          "any_of": [
+            "shallow compares the remaining props",
+            "isShallowEqual on app state and on the other props"
+          ]
+        },
+        {
+          "id": "F4",
+          "any_of": [
+            "the canvas prop is excluded from the comparison",
+            "canvas is left out"
+          ]
+        }
+      ],
+      "forbidden_claims": [
+        "LayerUI re-renders on every scroll",
+        "areEqual does a deep comparison",
+        "the comparison includes the canvas prop"
+      ],
+      "source_of_truth": [
+        "packages/excalidraw/components/LayerUI.tsx#L572-L605"
+      ]
+    },
+    {
+      "id": "T06",
+      "type": "comprehension",
+      "prompt": "Under what conditions does LayerUI show the shapes toolbar, the stats panel and the default sidebar trigger in the top container?",
+      "required_addresses": [
+        {
+          "address": "packages/excalidraw/components/LayerUI.tsx#LayerUI.renderFixedSideContainer",
+          "start_line": 223,
+          "end_line": 362
+        },
+        {
+          "address": "packages/excalidraw/components/LayerUI.tsx#L223-L362",
+          "start_line": 223,
+          "end_line": 362
+        }
+      ],
+      "supporting_addresses": [],
+      "required_facts": [
+        {
+          "id": "F1",
+          "any_of": [
+            "the shapes section is hidden in view mode",
+            "shapes toolbar needs viewModeEnabled to be false"
+          ]
+        },
+        {
+          "id": "F2",
+          "any_of": [
+            "also hidden while the elementLinkSelector dialog is open",
+            "openDialog name elementLinkSelector hides the toolbar"
+          ]
+        },
+        {
+          "id": "F3",
+          "any_of": [
+            "stats show only when open and not in zen mode or view mode",
+            "shouldShowStats requires stats.open, no zen mode, no view mode"
+          ]
+        },
+        {
+          "id": "F4",
+          "any_of": [
+            "the sidebar trigger is hidden when the default sidebar is docked",
+            "DefaultSidebarTriggerTunnel renders unless the sidebar is docked and open"
+          ]
+        }
+      ],
+      "forbidden_claims": [
+        "the stats panel is shown in zen mode",
+        "the shapes toolbar is shown in view mode"
+      ],
+      "source_of_truth": [
+        "packages/excalidraw/components/LayerUI.tsx#L223-L362"
+      ]
+    }
+  ]
+}
