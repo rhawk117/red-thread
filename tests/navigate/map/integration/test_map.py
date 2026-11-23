@@ -2,6 +2,7 @@
 
 from typing import TYPE_CHECKING
 
+from red_thread_navigate.budget import estimate_tokens
 from red_thread_navigate.map import map_path
 
 if TYPE_CHECKING:
@@ -104,3 +105,32 @@ def test_empty_directory_names_languages_suffixes_and_next_step(tmp_path: Path) 
     assert 'python (.py, .pyi)' in text
     assert 'javascript (.cjs, .js, .jsx, .mjs)' in text
     assert 'Next step' in text
+
+
+def test_many_unparsable_files_stay_within_the_budget(tmp_path: Path) -> None:
+    for number in range(30):
+        write(tmp_path, f'bad{number:02}.py', 'def (:\n')
+
+    text = map_path(tmp_path, budget=64)
+
+    assert estimate_tokens(text) <= 64
+    assert 'more notes' in text
+
+
+def test_empty_path_message_is_fitted_to_the_budget(tmp_path: Path) -> None:
+    write(tmp_path, 'notes.txt', 'hello\n')
+
+    text = map_path(tmp_path, budget=32)
+
+    assert estimate_tokens(text) <= 32
+
+
+def test_file_outline_is_in_source_order(tmp_path: Path) -> None:
+    write(tmp_path, 'core.py', CORE)
+    write(tmp_path, 'client.py', CLIENT)
+
+    text = map_path(tmp_path / 'core.py', budget=BIG_BUDGET)
+
+    assert (
+        text.index('core.py#helper') < text.index('core.py#rarely') < text.index('core.py#Widget')
+    )
