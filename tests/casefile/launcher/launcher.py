@@ -5,11 +5,15 @@ import shutil
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+import pytest
+
 from tests.casefile.launcher.children import ChildRunner
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
     from pathlib import Path
+
+    from _pytest.mark import ParameterSet
 
     from tests.casefile.launcher.children import Finished
     from tests.casefile.ledger.git_repository import GitRepository
@@ -17,6 +21,13 @@ if TYPE_CHECKING:
 PLUGIN_ROOT = 'CLAUDE_PLUGIN_ROOT'
 OUTER_VARIABLES = frozenset({PLUGIN_ROOT, 'VIRTUAL_ENV'})
 TARGET = 'why the retry queue stalls'
+
+
+def hostile_uv_config_params() -> list[ParameterSet]:
+    return [
+        pytest.param('index-url = "http://127.0.0.1:9/simple"\n', id='unreachable-index'),
+        pytest.param('[[[\n', id='unparsable'),
+    ]
 
 
 def list_tree(root: Path) -> list[str]:

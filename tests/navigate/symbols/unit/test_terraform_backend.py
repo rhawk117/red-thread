@@ -56,6 +56,18 @@ def reference_cases() -> pytest.MarkDecorator:
     )
 
 
+def found_reference_cases() -> pytest.MarkDecorator:
+    return pytest.mark.parametrize(
+        ('name', 'lines'),
+        [
+            pytest.param('local.name', [7], id='local'),
+            pytest.param('var.region', [6], id='variable'),
+            pytest.param('aws_vpc.this', [25], id='resource'),
+            pytest.param('data.aws_ami.x', [21], id='data'),
+        ],
+    )
+
+
 class TestSymbols:
     @pytest.fixture
     def parsed(self) -> FileSymbols:
@@ -93,9 +105,7 @@ class TestSyntaxError:
         parsed = parse(text)
         valid = {symbol.qualified_name for symbol in parse(TERRAFORM_SAMPLE).symbols}
         assert valid <= {symbol.qualified_name for symbol in parsed.symbols}
-        assert len(parsed.notes) == 1
-        assert str(PATH) in parsed.notes[0]
-        assert 'syntax error at line' in parsed.notes[0]
+        assert parsed.notes == (f'{PATH}: syntax error at line 28',)
 
     def test_a_broken_file_still_yields_the_symbols_that_parse(self) -> None:
         parsed = parse(TERRAFORM_BROKEN)
@@ -118,15 +128,7 @@ class TestLookup:
 
 
 class TestFindReferences:
-    @pytest.mark.parametrize(
-        ('name', 'lines'),
-        [
-            pytest.param('local.name', [7], id='local'),
-            pytest.param('var.region', [6], id='variable'),
-            pytest.param('aws_vpc.this', [25], id='resource'),
-            pytest.param('data.aws_ami.x', [21], id='data'),
-        ],
-    )
+    @found_reference_cases()
     def test_find_matches_the_full_address_a_reference_is_named_by(
         self, name: str, lines: list[int]
     ) -> None:

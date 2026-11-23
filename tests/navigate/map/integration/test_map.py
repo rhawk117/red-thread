@@ -2,8 +2,11 @@
 
 from typing import TYPE_CHECKING
 
+import pytest
 from red_thread_navigate.budget import estimate_tokens
 from red_thread_navigate.cli import create_navigator
+
+from tests.navigate.symbols.samples import SourceDir
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -29,109 +32,120 @@ def run():
     helper()
     helper()
 """
+HOT = 'def hot():\n    pass\n\n\ndef use():\n    hot()\n    hot()\n'
 BIG_BUDGET = 10_000
 NAVIGATOR = create_navigator()
 
 
-def write(root: Path, name: str, text: str) -> None:
-    target = root.joinpath(name)
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(text, encoding='utf-8')
+@pytest.fixture
+def source(tmp_path: Path) -> SourceDir:
+    return SourceDir(root=tmp_path)
 
 
-def test_directory_lists_symbols_with_addresses_most_referenced_first(tmp_path: Path) -> None:
-    write(tmp_path, 'core.py', CORE)
-    write(tmp_path, 'client.py', CLIENT)
+class TestRanking:
+    @pytest.fixture
+    def project(self, source: SourceDir) -> SourceDir:
+        source.write('core.py', CORE)
+        source.write('client.py', CLIENT)
+        return source
 
-    text = NAVIGATOR.map(tmp_path, budget=BIG_BUDGET)
+    def test_directory_lists_symbols_with_addresses_most_referenced_first(
+        self, project: SourceDir
+    ) -> None:
+        text = NAVIGATOR.map(project.root, budget=BIG_BUDGET)
 
-    assert 'core.py#Widget.render' in text
-    assert 'L1-L2' in text
-    assert text.index('core.py#helper') < text.index('core.py#rarely')
-    assert text.index('core.py  ') < text.index('client.py  ')
+        assert 'core.py#Widget.render' in text
+        assert 'L1-L2' in text
+        assert text.index('core.py#helper') < text.index('core.py#rarely')
+        assert text.index('core.py  ') < text.index('client.py  ')
 
+    def test_file_lists_its_full_outline(self, project: SourceDir) -> None:
+        text = NAVIGATOR.map(project.root / 'core.py', budget=BIG_BUDGET)
 
-def test_file_lists_its_full_outline(tmp_path: Path) -> None:
-    write(tmp_path, 'core.py', CORE)
-    write(tmp_path, 'client.py', CLIENT)
-
-    text = NAVIGATOR.map(tmp_path / 'core.py', budget=BIG_BUDGET)
-
-    assert 'client.py' not in text
-    assert all(
-        address in text
-        for address in (
-            'core.py#helper',
-            'core.py#rarely',
-            'core.py#Widget',
-            'core.py#Widget.render',
+        assert 'client.py' not in text
+        assert all(
+            address in text
+            for address in (
+                'core.py#helper',
+                'core.py#rarely',
+                'core.py#Widget',
+                'core.py#Widget.render',
+            )
         )
-    )
+
+    def test_file_outline_is_in_source_order(self, project: SourceDir) -> None:
+        text = NAVIGATOR.map(project.root / 'core.py', budget=BIG_BUDGET)
+
+        assert (
+            text.index('core.py#helper')
+            < text.index('core.py#rarely')
+            < text.index('core.py#Widget')
+        )
 
 
-def test_small_budget_steps_down_and_keeps_the_most_referenced_file(tmp_path: Path) -> None:
-    for number in range(40):
-        write(tmp_path, f'm{number:02}.py', f'def f{number}():\n    return 1\n')
-    write(tmp_path, 'zz_hot.py', 'def hot():\n    pass\n\n\ndef use():\n    hot()\n    hot()\n')
+class TestBudget:
+    @pytest.fixture
+    def crowded(self, source: SourceDir) -> SourceDir:
+        for number in range(40):
+            source.write(f'm{number:02}.py', f'def f{number}():\n    return 1\n')
+        source.write('zz_hot.py', HOT)
+        return source
 
-    full = NAVIGATOR.map(tmp_path, budget=BIG_BUDGET)
-    small = NAVIGATOR.map(tmp_path, budget=150)
+    @pytest.fixture
+    def crowded_with_notes(self, source: SourceDir) -> SourceDir:
+        source.write('broken.py', 'def (:\n')
+        for number in range(40):
+            source.write(f'm{number:02}.py', f'def f{number}():\n    return 1\n')
+        source.root.joinpath('blob.bin').write_bytes(b'\0\1\2')
+        return source
 
-    assert 'zz_hot.py#hot' in full
-    assert '#' not in small
-    assert 'zz_hot.py' in small.splitlines()[1]
-    assert 'raise --budget' in small
+    @pytest.fixture
+    def unparsable(self, source: SourceDir) -> SourceDir:
+        for number in range(30):
+            source.write(f'bad{number:02}.py', 'def (:\n')
+        return source
 
+    def test_small_budget_steps_down_and_keeps_the_most_referenced_file(
+        self, crowded: SourceDir
+    ) -> None:
+        full = NAVIGATOR.map(crowded.root, budget=BIG_BUDGET)
+        small = NAVIGATOR.map(crowded.root, budget=150)
 
-def test_notes_come_first_and_survive_a_cut(tmp_path: Path) -> None:
-    write(tmp_path, 'broken.py', 'def (:\n')
-    for number in range(40):
-        write(tmp_path, f'm{number:02}.py', f'def f{number}():\n    return 1\n')
-    tmp_path.joinpath('blob.bin').write_bytes(b'\0\1\2')
+        assert 'zz_hot.py#hot' in full
+        assert '#' not in small
+        assert 'zz_hot.py' in small.splitlines()[1]
+        assert 'raise --budget' in small
 
-    text = NAVIGATOR.map(tmp_path, budget=64)
+    def test_notes_come_first_and_survive_a_cut(self, crowded_with_notes: SourceDir) -> None:
+        text = NAVIGATOR.map(crowded_with_notes.root, budget=64)
 
-    lines = text.splitlines()
-    assert lines[0].startswith('skipped 1 binary')
-    assert 'broken.py: syntax error' in lines[1]
-    assert 'raise --budget' in text
+        lines = text.splitlines()
+        assert lines[0].startswith('skipped 1 binary')
+        assert 'broken.py: syntax error' in lines[1]
+        assert 'raise --budget' in text
 
+    def test_many_unparsable_files_stay_within_the_budget(self, unparsable: SourceDir) -> None:
+        text = NAVIGATOR.map(unparsable.root, budget=64)
 
-def test_empty_directory_names_languages_suffixes_and_next_step(tmp_path: Path) -> None:
-    write(tmp_path, 'notes.txt', 'hello\n')
-
-    text = NAVIGATOR.map(tmp_path, budget=BIG_BUDGET)
-
-    assert 'No file navigate can read' in text
-    assert 'python (.py, .pyi)' in text
-    assert 'javascript (.cjs, .js, .jsx, .mjs)' in text
-    assert 'Next step' in text
-
-
-def test_many_unparsable_files_stay_within_the_budget(tmp_path: Path) -> None:
-    for number in range(30):
-        write(tmp_path, f'bad{number:02}.py', 'def (:\n')
-
-    text = NAVIGATOR.map(tmp_path, budget=64)
-
-    assert estimate_tokens(text) <= 64
-    assert 'more notes' in text
-
-
-def test_empty_path_message_is_fitted_to_the_budget(tmp_path: Path) -> None:
-    write(tmp_path, 'notes.txt', 'hello\n')
-
-    text = NAVIGATOR.map(tmp_path, budget=32)
-
-    assert estimate_tokens(text) <= 32
+        assert estimate_tokens(text) <= 64
+        assert 'more notes' in text
 
 
-def test_file_outline_is_in_source_order(tmp_path: Path) -> None:
-    write(tmp_path, 'core.py', CORE)
-    write(tmp_path, 'client.py', CLIENT)
+class TestEmptyDirectory:
+    @pytest.fixture
+    def notes_only(self, source: SourceDir) -> SourceDir:
+        source.write('notes.txt', 'hello\n')
+        return source
 
-    text = NAVIGATOR.map(tmp_path / 'core.py', budget=BIG_BUDGET)
+    def test_names_languages_suffixes_and_next_step(self, notes_only: SourceDir) -> None:
+        text = NAVIGATOR.map(notes_only.root, budget=BIG_BUDGET)
 
-    assert (
-        text.index('core.py#helper') < text.index('core.py#rarely') < text.index('core.py#Widget')
-    )
+        assert 'No file navigate can read' in text
+        assert 'python (.py, .pyi)' in text
+        assert 'javascript (.cjs, .js, .jsx, .mjs)' in text
+        assert 'Next step' in text
+
+    def test_message_is_fitted_to_the_budget(self, notes_only: SourceDir) -> None:
+        text = NAVIGATOR.map(notes_only.root, budget=32)
+
+        assert estimate_tokens(text) <= 32

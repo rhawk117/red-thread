@@ -1,3 +1,23 @@
+"""Source text for the backend tests, and a directory of source files for the verb tests."""
+
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+
+@dataclass(slots=True, kw_only=True, frozen=True)
+class SourceDir:
+    root: Path
+
+    def write(self, name: str, text: str) -> Path:
+        target = self.root.joinpath(name)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text, encoding='utf-8')
+        return target
+
+
 SAMPLE = '''\
 import functools
 

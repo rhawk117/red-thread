@@ -47,6 +47,10 @@ def symbol_cases() -> pytest.MarkDecorator:
     )
 
 
+def javascript_suffix_cases() -> pytest.MarkDecorator:
+    return pytest.mark.parametrize('suffix', ['.js', '.mjs', '.cjs', '.jsx'])
+
+
 class TestSymbols:
     @pytest.fixture
     def parsed(self) -> FileSymbols:
@@ -80,9 +84,7 @@ class TestSyntaxError:
         parsed = parse(JAVASCRIPT_SAMPLE + '\nfunction broken( {\n')
         names = {symbol.qualified_name for symbol in parsed.symbols}
         assert {'Widget', 'Widget.render'} <= names
-        assert len(parsed.notes) == 1
-        assert 'web/sample.js' in parsed.notes[0]
-        assert 'syntax error at line' in parsed.notes[0]
+        assert parsed.notes == ('web/sample.js: syntax error at line 33',)
 
 
 class TestTimeLimit:
@@ -98,7 +100,7 @@ class TestTimeLimit:
 
 
 class TestLookup:
-    @pytest.mark.parametrize('suffix', ['.js', '.mjs', '.cjs', '.jsx'])
+    @javascript_suffix_cases()
     def test_backend_for_finds_javascript_suffixes(self, suffix: str) -> None:
         assert backend_at(PurePosixPath(f'a{suffix}')).language == 'javascript'
 
@@ -137,6 +139,17 @@ class TestAssignedFunctions:
 
     def test_a_function_passed_as_an_argument_is_not_a_symbol(self, parsed: FileSymbols) -> None:
         assert all('getrouter' not in symbol.qualified_name for symbol in parsed.symbols)
+
+
+class TestExportedFunctionExpression:
+    def test_an_exported_const_function_expression_is_a_function(self) -> None:
+        parsed = parse('export const f = function () {}\n')
+        spans = [
+            (symbol.kind, symbol.start_line, symbol.end_line)
+            for symbol in parsed.symbols
+            if symbol.qualified_name == 'f'
+        ]
+        assert spans == [('function', 1, 1)]
 
 
 class TestGeneratorConstants:

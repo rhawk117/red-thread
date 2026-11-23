@@ -21,7 +21,7 @@ def make_thread_name(number: int) -> str:
 
 
 maybe_text = st.none() | st.text()
-RETIRED_FLAG = 'navigation' + '_tool'
+RETIRED_FLAG = 'navigation_tool'
 REQUIRED_FIELDS = ('seq', 'round', 'kind', 'text', 'source', 'at')
 OPTIONAL_FIELDS = (
     'head',

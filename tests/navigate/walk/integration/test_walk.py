@@ -245,3 +245,26 @@ class TestGitListingFailure:
         tree.write('a.py')
 
         assert walk(tree.root).note is None
+
+
+class TestGitRefusesTheRepository:
+    @pytest.fixture
+    def refusing_git(self, tree: Tree, monkeypatch: pytest.MonkeyPatch) -> Tree:
+        tree.write('a.py')
+        tree.init_git()
+        tree.commit_all()
+        script = tree.outside.joinpath('bin', 'git')
+        script.parent.mkdir()
+        refusal = 'fatal: detected dubious ownership in repository at $2'
+        script.write_text(f'#!/bin/sh\necho "{refusal}" >&2\nexit 128\n', encoding='utf-8')
+        script.chmod(0o755)
+        monkeypatch.setenv('PATH', str(script.parent))
+        return tree
+
+    def test_a_refusal_other_than_not_a_repository_is_noted_and_walks_the_directory(
+        self, refusing_git: Tree
+    ) -> None:
+        result = walk(refusing_git.root)
+
+        assert paths_of(result) == ['a.py']
+        assert result.note == 'git listing failed, walked the directory instead'

@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from tests.casefile.board.cases import CapCase, LeadCase
     from tests.casefile.ledger.builders import CaseHarness
 
-RETIRED_FLAG = 'navigation' + '_tool'
+RETIRED_FLAG = 'navigation_tool'
 SECTION_TITLES = ['Decided', 'Known', 'Hypotheses', 'Open', 'Ruled out', 'Next', 'Resources']
 
 

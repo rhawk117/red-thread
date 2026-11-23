@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from tests.casefile.launcher.launcher import list_tree, snapshot
+from tests.casefile.launcher.launcher import hostile_uv_config_params, list_tree, snapshot
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -23,12 +23,12 @@ BATCH = json.dumps([OPEN, KNOWN])
 CASE_HOME = '.red-thread'
 
 
-def hostile_uv_configs() -> list[str]:
-    return ['index-url = "http://127.0.0.1:9/simple"\n', '[[[\n']
+def hostile_uv_config_cases() -> pytest.MarkDecorator:
+    return pytest.mark.parametrize('config', hostile_uv_config_params())
 
 
 class TestCasefileScript:
-    @pytest.mark.parametrize('config', hostile_uv_configs())
+    @hostile_uv_config_cases()
     def test_the_uv_config_of_the_repository_is_ignored(
         self, launcher: Launcher, config: str
     ) -> None:

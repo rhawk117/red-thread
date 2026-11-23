@@ -103,11 +103,40 @@ def malformed_address_cases() -> pytest.MarkDecorator:
     )
 
 
+def outside_root_cases() -> pytest.MarkDecorator:
+    return pytest.mark.parametrize(
+        'text',
+        [
+            pytest.param('../x.py#run', id='dotdot'),
+            pytest.param('/etc/passwd#L1', id='absolute-outside'),
+            pytest.param('/work/repo2/x.py#run', id='sibling-prefix'),
+        ],
+    )
+
+
+def lexical_path(steps: list[str]) -> list[str]:
+    parts = list(ROOT.parts[1:])
+    for step in steps:
+        if step == '..':
+            parts = parts[:-1]
+        elif step != '.':
+            parts.append(step)
+    return parts
+
+
+def under_root(steps: list[str]) -> bool:
+    parts = lexical_path(steps)
+    root_parts = list(ROOT.parts[1:])
+    return parts[: len(root_parts)] == root_parts and len(parts) > len(root_parts)
+
+
 class TestParseAddress:
     segments = st.sampled_from(('a', 'b', 'src', 'x.py'))
     escaping_depths = st.integers(min_value=0, max_value=4)
     outside_roots = st.sampled_from(('/etc', '/work/repo2', '/work', '/'))
     steps = st.lists(st.sampled_from(('a', 'b', '..', '.')), max_size=8)
+    inside_steps = steps.filter(under_root)
+    other_steps = steps.filter(lambda chosen: not under_root(chosen))
 
     @address_form_cases()
     def test_each_form_parses_to_its_parts(self, case: FormCase) -> None:
@@ -122,16 +151,9 @@ class TestParseAddress:
             parse_address(text, root=ROOT)
 
         assert all(form in str(caught.value) for form in ADDRESS_FORMS)
-        assert '—' not in str(caught.value)
+        assert '\u2014' not in str(caught.value)
 
-    @pytest.mark.parametrize(
-        'text',
-        [
-            pytest.param('../x.py#run', id='dotdot'),
-            pytest.param('/etc/passwd#L1', id='absolute-outside'),
-            pytest.param('/work/repo2/x.py#run', id='sibling-prefix'),
-        ],
-    )
+    @outside_root_cases()
     def test_path_outside_the_root_is_refused(self, text: str) -> None:
         with pytest.raises(OutsideRootError):
             parse_address(text, root=ROOT)
@@ -152,16 +174,23 @@ class TestParseAddress:
         with pytest.raises(OutsideRootError):
             parse_address(f'{file}#L3', root=ROOT)
 
-    @given(steps=steps, absolute=st.booleans())
+    @given(steps=inside_steps, absolute=st.booleans())
     def test_accepted_path_never_leaves_the_root(self, steps: list[str], absolute: bool) -> None:
-        file = '/'.join(steps) or 'x'
+        file = '/'.join(steps)
         file = f'{ROOT.as_posix()}/{file}' if absolute else file
 
-        try:
-            address = parse_address(f'{file}#run', root=ROOT)
-        except AddressError:
-            return
+        address = parse_address(f'{file}#run', root=ROOT)
 
+        assert address.path.parts == tuple(lexical_path(steps)[len(ROOT.parts) - 1 :])
         assert not address.path.is_absolute()
         assert '..' not in address.path.parts
-        assert address.path.parts
+
+    @given(steps=other_steps, absolute=st.booleans())
+    def test_a_path_that_does_not_stay_under_the_root_is_refused(
+        self, steps: list[str], absolute: bool
+    ) -> None:
+        file = '/'.join(steps) or '.'
+        file = f'{ROOT.as_posix()}/{file}' if absolute else file
+
+        with pytest.raises(AddressError):
+            parse_address(f'{file}#run', root=ROOT)

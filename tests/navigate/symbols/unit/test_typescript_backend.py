@@ -166,6 +166,18 @@ def other_value_cases() -> pytest.MarkDecorator:
     )
 
 
+def inner_declaration_cases() -> pytest.MarkDecorator:
+    return pytest.mark.parametrize('name', ['cache', 'inside', 'again'])
+
+
+def typescript_suffix_cases() -> pytest.MarkDecorator:
+    return pytest.mark.parametrize('suffix', ['.ts', '.mts', '.cts'])
+
+
+def generator_suffix_cases() -> pytest.MarkDecorator:
+    return pytest.mark.parametrize('suffix', ['.ts', '.tsx'], ids=['ts', 'tsx'])
+
+
 class TestModuleConstants:
     @pytest.fixture
     def parsed(self) -> FileSymbols:
@@ -177,7 +189,7 @@ class TestModuleConstants:
     ) -> None:
         assert spans_of(parsed, qualified_name) == expected
 
-    @pytest.mark.parametrize('name', ['cache', 'inside', 'again'])
+    @inner_declaration_cases()
     def test_declarations_inside_functions_add_no_symbols(
         self, parsed: FileSymbols, name: str
     ) -> None:
@@ -206,7 +218,7 @@ class TestTsx:
 
 
 class TestLookup:
-    @pytest.mark.parametrize('suffix', ['.ts', '.mts', '.cts'])
+    @typescript_suffix_cases()
     def test_backend_for_finds_typescript_suffixes(self, suffix: str) -> None:
         assert backend_at(suffix).language == 'typescript'
 
@@ -225,7 +237,7 @@ class TestLookup:
 
 
 class TestGeneratorConstants:
-    @pytest.mark.parametrize('suffix', ['.ts', '.tsx'], ids=['ts', 'tsx'])
+    @generator_suffix_cases()
     def test_generator_valued_const_is_a_function(self, suffix: str) -> None:
         parsed = parse('const gen = function* () {}\n', suffix)
         assert spans_of(parsed, 'gen') == [('function', 1, 1)]

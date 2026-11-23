@@ -112,7 +112,7 @@ class TestReferences:
         self, lines_by_name: dict[str, list[int]]
     ) -> None:
         definition_line = SAMPLE.splitlines().index('def decorate(function):') + 1
-        assert definition_line not in lines_by_name.get('decorate', [])
+        assert definition_line not in lines_by_name['decorate']
         use_line = SAMPLE.splitlines().index('    value = Outer()') + 1
         assert lines_by_name['Outer'] == [use_line]
 
@@ -195,6 +195,42 @@ class TestSyntaxError:
         assert len(parsed.notes) == 1
         assert str(PATH) in parsed.notes[0]
         assert 'line 5' in parsed.notes[0]
+
+
+DECORATED_SAMPLE = """\
+import functools
+
+
+@functools.cache
+def cached():
+    return 1
+
+
+@functools.total_ordering
+@functools.cache
+class Marked:
+    pass
+"""
+
+
+class TestDecoratedTopLevel:
+    @pytest.fixture
+    def parsed(self) -> FileSymbols:
+        return parse(DECORATED_SAMPLE)
+
+    def test_a_decorated_function_is_a_function_spanning_from_its_def_line(
+        self, parsed: FileSymbols
+    ) -> None:
+        cached = find_symbol(parsed, 'cached')
+        assert (cached.kind, cached.start_line, cached.end_line) == ('function', 5, 6)
+        assert cached.signature == 'def cached():'
+
+    def test_a_decorated_class_is_a_class_spanning_from_its_class_line(
+        self, parsed: FileSymbols
+    ) -> None:
+        marked = find_symbol(parsed, 'Marked')
+        assert (marked.kind, marked.start_line, marked.end_line) == ('class', 11, 12)
+        assert marked.signature == 'class Marked:'
 
 
 class TestBackendFor:

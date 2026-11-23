@@ -7,7 +7,12 @@ from typing import TYPE_CHECKING
 import pytest
 
 from tests.casefile.launcher.children import ChildRunner
-from tests.casefile.launcher.launcher import copy_plugin, read_outside_environment, snapshot
+from tests.casefile.launcher.launcher import (
+    copy_plugin,
+    hostile_uv_config_params,
+    read_outside_environment,
+    snapshot,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -65,12 +70,12 @@ def navigator(navigate_script: Path, tmp_path: Path) -> Navigator:
     return Navigator(script=navigate_script, repository=repository)
 
 
-def hostile_uv_configs() -> list[str]:
-    return ['index-url = "http://127.0.0.1:9/simple"\n', '[[[\n']
+def hostile_uv_config_cases() -> pytest.MarkDecorator:
+    return pytest.mark.parametrize('config', hostile_uv_config_params())
 
 
 class TestNavigateScript:
-    @pytest.mark.parametrize('config', hostile_uv_configs())
+    @hostile_uv_config_cases()
     def test_the_uv_config_of_the_repository_is_ignored(
         self, navigator: Navigator, config: str
     ) -> None:

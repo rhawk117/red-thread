@@ -47,6 +47,18 @@ def run_in(root: Path, *argv: str) -> Printed:
     return Printed(code=code, out=out.getvalue(), err=err.getvalue())
 
 
+def missing_path_cases() -> pytest.MarkDecorator:
+    return pytest.mark.parametrize('argv', [('map', 'nowhere'), ('find', 'helper', 'nowhere')])
+
+
+def unknown_flag_cases() -> pytest.MarkDecorator:
+    return pytest.mark.parametrize('flag', ['--no-cache', '--bogus'])
+
+
+def empty_path_cases() -> pytest.MarkDecorator:
+    return pytest.mark.parametrize('argv', [('map', ''), ('find', 'helper', '')])
+
+
 @pytest.fixture
 def repository(tmp_path: Path) -> Path:
     tmp_path.joinpath('core.py').write_text(CORE)
@@ -96,7 +108,7 @@ class TestRefusals:
 
         assert (printed.code, printed.out) == (1, '')
 
-    @pytest.mark.parametrize('argv', [('map', 'nowhere'), ('find', 'helper', 'nowhere')])
+    @missing_path_cases()
     def test_a_missing_path_exits_one_naming_it_and_no_git_failure(
         self, repository: Path, argv: tuple[str, ...]
     ) -> None:
@@ -125,7 +137,7 @@ class TestRefusals:
 
 
 class TestUsage:
-    @pytest.mark.parametrize('flag', ['--no-cache', '--bogus'])
+    @unknown_flag_cases()
     def test_an_unknown_flag_exits_two_naming_it_and_the_valid_ones(
         self, repository: Path, flag: str
     ) -> None:
@@ -136,7 +148,7 @@ class TestUsage:
         assert '--budget' in printed.err
         assert '--version' in printed.err
 
-    @pytest.mark.parametrize('argv', [('map', ''), ('find', 'helper', '')])
+    @empty_path_cases()
     def test_an_empty_path_exits_two(self, repository: Path, argv: tuple[str, ...]) -> None:
         printed = run_in(repository, *argv)
 
@@ -156,11 +168,6 @@ class TestUsage:
 
         assert (printed.code, printed.out) == (2, '')
         assert 'map, find or slice' in printed.err
-
-
-@pytest.fixture(scope='module')
-def workspace(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    return tmp_path_factory.mktemp('property')
 
 
 def definitions(names: list[str]) -> str:
@@ -190,23 +197,29 @@ def scenarios(draw: st.DrawFn) -> tuple[str, str, str, str, int]:
     return file_name, draw(contents()), name, draw(addresses(file_name)), budget
 
 
-@settings(deadline=None)
-@given(scenario=scenarios())
-def test_no_verb_prints_more_than_its_budget(
-    workspace: Path, scenario: tuple[str, str, str, str, int]
-) -> None:
-    file_name, content, name, address, budget = scenario
-    for stale in workspace.iterdir():
-        stale.unlink()
-    workspace.joinpath(file_name).write_text(content)
-    commands = (
-        ('map', '--', str(workspace)),
-        ('find', '--', name, str(workspace)),
-        ('slice', '--', address),
-    )
+@pytest.fixture(scope='module')
+def workspace(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    return tmp_path_factory.mktemp('property')
 
-    for command in commands:
-        printed = run_in(workspace, '--budget', str(budget), *command)
 
-        assert printed.code in {0, 1}
-        assert estimate_tokens(printed.everything) <= budget, (command, printed)
+class TestBudgetProperty:
+    @settings(deadline=None)
+    @given(scenario=scenarios())
+    def test_no_verb_prints_more_than_its_budget(
+        self, workspace: Path, scenario: tuple[str, str, str, str, int]
+    ) -> None:
+        file_name, content, name, address, budget = scenario
+        for stale in workspace.iterdir():
+            stale.unlink()
+        workspace.joinpath(file_name).write_text(content)
+        commands = (
+            ('map', '--', str(workspace)),
+            ('find', '--', name, str(workspace)),
+            ('slice', '--', address),
+        )
+
+        for command in commands:
+            printed = run_in(workspace, '--budget', str(budget), *command)
+
+            assert printed.code in {0, 1}
+            assert estimate_tokens(printed.everything) <= budget, (command, printed)
