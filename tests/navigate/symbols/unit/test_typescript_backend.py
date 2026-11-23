@@ -5,18 +5,25 @@ from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
 
 import pytest
-from red_thread_navigate.symbols.store import TSX_BACKEND, TYPESCRIPT_BACKEND, backend_for
+from red_thread_navigate.symbols.store import backend_for
 from red_thread_navigate.walk import SourceFile
 
 from tests.navigate.symbols.samples import TSX_SAMPLE, TYPESCRIPT_SAMPLE
 
 if TYPE_CHECKING:
     from red_thread_navigate.symbols import FileSymbols
-    from red_thread_navigate.symbols.store.treesitter import TreeSitterBackend
+    from red_thread_navigate.symbols.domain import Backend
 
 
-def parse(text: str, backend: TreeSitterBackend) -> FileSymbols:
-    return backend.parse(SourceFile(path=PurePosixPath('web/sample.ts'), text=text))
+def backend_at(suffix: str) -> Backend:
+    backend = backend_for(PurePosixPath(f'web/sample{suffix}'))
+    assert backend is not None
+    return backend
+
+
+def parse(text: str, suffix: str) -> FileSymbols:
+    source = SourceFile(path=PurePosixPath('web/sample.ts'), text=text)
+    return backend_at(suffix).parse(source)
 
 
 CONSTANTS_SAMPLE = """const LIMIT = 5
@@ -63,7 +70,7 @@ def symbol_cases() -> pytest.MarkDecorator:
 class TestSymbols:
     @pytest.fixture
     def parsed(self) -> FileSymbols:
-        return parse(TYPESCRIPT_SAMPLE, TYPESCRIPT_BACKEND)
+        return parse(TYPESCRIPT_SAMPLE, '.ts')
 
     @symbol_cases()
     def test_each_definition_has_its_dotted_name_kind_and_span(
@@ -109,50 +116,48 @@ def module_constant_cases() -> pytest.MarkDecorator:
 
 def other_value_cases() -> pytest.MarkDecorator:
     return pytest.mark.parametrize(
-        ('text', 'backend', 'name', 'kind'),
+        ('text', 'suffix', 'name', 'kind'),
         [
             pytest.param(
                 'const asserted = <number>raw',
-                TYPESCRIPT_BACKEND,
+                '.ts',
                 'asserted',
                 'constant',
                 id='angle-assertion',
             ),
             pytest.param(
                 'const cast = raw as Config',
-                TYPESCRIPT_BACKEND,
+                '.ts',
                 'cast',
                 'constant',
                 id='as-assertion',
             ),
-            pytest.param('const self = this', TYPESCRIPT_BACKEND, 'self', 'constant', id='this'),
+            pytest.param('const self = this', '.ts', 'self', 'constant', id='this'),
             pytest.param(
                 'export const meta = import.meta',
-                TYPESCRIPT_BACKEND,
+                '.ts',
                 'meta',
                 'constant',
                 id='import-meta',
             ),
             pytest.param(
                 'let later = import.meta.url',
-                TYPESCRIPT_BACKEND,
+                '.ts',
                 'later',
                 'variable',
                 id='let-import-meta',
             ),
+            pytest.param('var old = <number>raw', '.ts', 'old', 'variable', id='var-assertion'),
             pytest.param(
-                'var old = <number>raw', TYPESCRIPT_BACKEND, 'old', 'variable', id='var-assertion'
+                'const icon = <span />', '.tsx', 'icon', 'constant', id='jsx-self-closing'
             ),
             pytest.param(
-                'const icon = <span />', TSX_BACKEND, 'icon', 'constant', id='jsx-self-closing'
+                'export const box = <div>hi</div>', '.tsx', 'box', 'constant', id='jsx-element'
             ),
-            pytest.param(
-                'export const box = <div>hi</div>', TSX_BACKEND, 'box', 'constant', id='jsx-element'
-            ),
-            pytest.param('let frag = <></>', TSX_BACKEND, 'frag', 'variable', id='jsx-fragment'),
+            pytest.param('let frag = <></>', '.tsx', 'frag', 'variable', id='jsx-fragment'),
             pytest.param(
                 'const named = function () {}',
-                TYPESCRIPT_BACKEND,
+                '.ts',
                 'named',
                 'function',
                 id='function-expression',
@@ -164,7 +169,7 @@ def other_value_cases() -> pytest.MarkDecorator:
 class TestModuleConstants:
     @pytest.fixture
     def parsed(self) -> FileSymbols:
-        return parse(CONSTANTS_SAMPLE, TYPESCRIPT_BACKEND)
+        return parse(CONSTANTS_SAMPLE, '.ts')
 
     @module_constant_cases()
     def test_top_level_declarations_are_symbols_with_their_span(
@@ -180,18 +185,18 @@ class TestModuleConstants:
 
     @other_value_cases()
     def test_constants_are_symbols_whatever_their_non_function_value(
-        self, text: str, backend: TreeSitterBackend, name: str, kind: str
+        self, text: str, suffix: str, name: str, kind: str
     ) -> None:
-        assert spans_of(parse(text, backend), name) == [(kind, 1, 1)]
+        assert spans_of(parse(text, suffix), name) == [(kind, 1, 1)]
 
     def test_tsx_files_get_the_same_constants(self) -> None:
-        parsed = parse(CONSTANTS_SAMPLE, TSX_BACKEND)
+        parsed = parse(CONSTANTS_SAMPLE, '.tsx')
         assert spans_of(parsed, 'LIMIT') == [('constant', 1, 1)]
 
 
 class TestTsx:
     def test_components_are_symbols_with_their_addresses(self) -> None:
-        parsed = parse(TSX_SAMPLE, TSX_BACKEND)
+        parsed = parse(TSX_SAMPLE, '.tsx')
         found = {(s.qualified_name, s.kind, s.start_line, s.end_line) for s in parsed.symbols}
         assert found == {
             ('Greeting', 'function', 1, 3),
@@ -203,10 +208,10 @@ class TestTsx:
 class TestLookup:
     @pytest.mark.parametrize('suffix', ['.ts', '.mts', '.cts'])
     def test_backend_for_finds_typescript_suffixes(self, suffix: str) -> None:
-        assert backend_for(PurePosixPath(f'a{suffix}')) is TYPESCRIPT_BACKEND
+        assert backend_at(suffix).language == 'typescript'
 
     def test_backend_for_finds_tsx(self) -> None:
-        assert backend_for(PurePosixPath('a.tsx')) is TSX_BACKEND
+        assert backend_at('.tsx').language == 'tsx'
 
     def test_query_loads_with_the_upstream_license_notice(self) -> None:
         query = (
@@ -220,7 +225,7 @@ class TestLookup:
 
 
 class TestGeneratorConstants:
-    @pytest.mark.parametrize('backend', [TYPESCRIPT_BACKEND, TSX_BACKEND], ids=['ts', 'tsx'])
-    def test_generator_valued_const_is_a_function(self, backend: TreeSitterBackend) -> None:
-        parsed = parse('const gen = function* () {}\n', backend)
+    @pytest.mark.parametrize('suffix', ['.ts', '.tsx'], ids=['ts', 'tsx'])
+    def test_generator_valued_const_is_a_function(self, suffix: str) -> None:
+        parsed = parse('const gen = function* () {}\n', suffix)
         assert spans_of(parsed, 'gen') == [('function', 1, 1)]

@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from red_thread_navigate.symbols.store import BACKENDS
+from red_thread_navigate.symbols.store import create_backends
 
 if TYPE_CHECKING:
     from red_thread_navigate.symbols.domain import FileSymbols, Symbol
@@ -83,7 +83,8 @@ def map_rungs(files: tuple[RankedFile, ...]) -> tuple[tuple[str, ...], ...]:
 
 def reads_line() -> str:
     reads = '; '.join(
-        f'{backend.language} ({", ".join(sorted(backend.suffixes))})' for backend in BACKENDS
+        f'{backend.language} ({", ".join(sorted(backend.suffixes))})'
+        for backend in create_backends()
     )
     return f'navigate reads {reads}.'
 

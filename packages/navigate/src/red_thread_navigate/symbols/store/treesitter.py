@@ -2,19 +2,15 @@ import re
 import time
 from dataclasses import dataclass, field
 from importlib import resources
+from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 import tree_sitter
-import tree_sitter_go
-import tree_sitter_hcl
-import tree_sitter_javascript
-import tree_sitter_rust
-import tree_sitter_typescript
 
 from red_thread_navigate.symbols.domain import FileSymbols, Reference, Symbol
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Mapping
     from pathlib import PurePosixPath
 
     from red_thread_navigate.symbols.domain import SymbolKind
@@ -25,7 +21,7 @@ REFERENCE_PREFIX = 'reference.'
 READ_CHUNK_BYTES = 65536
 LINE_BREAK = re.compile(r'\r\n|\r|\n')
 
-KINDS: dict[str, SymbolKind] = {
+KINDS: Mapping[str, SymbolKind] = MappingProxyType({
     'class': 'class',
     'function': 'function',
     'method': 'method',
@@ -41,7 +37,7 @@ KINDS: dict[str, SymbolKind] = {
     'data': 'data',
     'output': 'output',
     'local': 'local',
-}
+})
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -60,22 +56,27 @@ def load_query_source(query_name: str) -> str:
     return query_file.read_text(encoding='utf-8')
 
 
-def create_reader(data: bytes) -> Callable[[int, tree_sitter.Point], bytes]:
-    def read(offset: int, _point: tree_sitter.Point) -> bytes:
-        return data[offset : offset + READ_CHUNK_BYTES]
+@dataclass(slots=True, kw_only=True, frozen=True)
+class SourceReader:
+    data: bytes
 
-    return read
+    def read(self, offset: int, _point: tree_sitter.Point) -> bytes:
+        return self.data[offset : offset + READ_CHUNK_BYTES]
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, kw_only=True, frozen=True)
 class Deadline:
     expires_at: float
-    fired: bool = False
 
-    def __call__(self, *_progress: object) -> bool:
-        if time.monotonic() >= self.expires_at:
-            self.fired = True
-        return self.fired
+    def is_expired(self, *_progress: object) -> bool:
+        return time.monotonic() >= self.expires_at
+
+
+def first_text_of(captures: dict[str, list[tree_sitter.Node]], key: str) -> str | None:
+    nodes = captures.get(key, [])
+    if not nodes:
+        return None
+    return text_of(nodes[0])
 
 
 def capture_prefix_of(captures: dict[str, list[tree_sitter.Node]], prefix: str) -> str | None:
@@ -90,7 +91,7 @@ def contains(outer: tree_sitter.Node, inner: tree_sitter.Node) -> bool:
     return outer.start_byte <= inner.start_byte and inner.end_byte <= outer.end_byte
 
 
-def address_of(captures: dict[str, list[tree_sitter.Node]], aliases: dict[str, str]) -> str:
+def address_of(captures: dict[str, list[tree_sitter.Node]], aliases: Mapping[str, str]) -> str:
     head = text_of(captures['name'][0])
     parts = [aliases.get(head, head), *(text_of(tail) for tail in captures.get('tail', []))]
     return '.'.join(parts)
@@ -115,7 +116,7 @@ def note_only(path: PurePosixPath, language: str, note: str) -> FileSymbols:
 
 
 def collect_definitions(
-    matches: list[tuple[int, dict[str, list[tree_sitter.Node]]]], aliases: dict[str, str]
+    matches: list[tuple[int, dict[str, list[tree_sitter.Node]]]], aliases: Mapping[str, str]
 ) -> list[Definition]:
     found: dict[tuple[int, int], Definition] = {}
     for _index, captures in matches:
@@ -125,14 +126,12 @@ def collect_definitions(
 
         node = captures[capture][0]
         kind = KINDS[capture.removeprefix(DEFINITION_PREFIX)]
-        parent_nodes = captures.get('parent')
-        impl_nodes = captures.get('impl')
         definition = Definition(
             name=address_of(captures, aliases),
             kind=kind,
             node=node,
-            parent=text_of(parent_nodes[0]) if parent_nodes is not None else None,
-            impl=text_of(impl_nodes[0]) if impl_nodes is not None else None,
+            parent=first_text_of(captures, 'parent'),
+            impl=first_text_of(captures, 'impl'),
         )
         found.setdefault((node.start_byte, node.end_byte), definition)
     return sorted(found.values(), key=lambda item: (item.node.start_byte, -item.node.end_byte))
@@ -169,7 +168,7 @@ def build_symbols(definitions: list[Definition], lines: list[str]) -> list[Symbo
 
 
 def collect_references(
-    matches: list[tuple[int, dict[str, list[tree_sitter.Node]]]], aliases: dict[str, str]
+    matches: list[tuple[int, dict[str, list[tree_sitter.Node]]]], aliases: Mapping[str, str]
 ) -> tuple[Reference, ...]:
     found: set[tuple[int, str]] = set()
     for _index, captures in matches:
@@ -186,33 +185,28 @@ class TreeSitterBackend:
     language: str
     suffixes: frozenset[str]
     grammar: tree_sitter.Language
-    query_name: str
+    query: tree_sitter.Query
     deadline_seconds: float = 2.0
-    aliases: dict[str, str] = field(default_factory=dict)
-    query: tree_sitter.Query = field(init=False)
+    aliases: Mapping[str, str] = field(default_factory=dict)
 
-    def __post_init__(self) -> None:
-        query = tree_sitter.Query(self.grammar, load_query_source(self.query_name))
-        object.__setattr__(self, 'query', query)
+    def get_failure_note(self, source: SourceFile, deadline: Deadline, reason: str) -> str:
+        if deadline.is_expired():
+            return f'{source.path}: parse stopped after the {self.deadline_seconds} s time limit'
+        return f'{source.path}: parse failed: {reason}'
 
     def parse(self, source: SourceFile) -> FileSymbols:
-        data = source.text.encode('utf-8')
+        reader = SourceReader(data=source.text.encode('utf-8'))
         parser = tree_sitter.Parser(self.grammar)
         deadline = Deadline(expires_at=time.monotonic() + self.deadline_seconds)
         try:
-            tree = parser.parse(create_reader(data), progress_callback=deadline)
+            tree = parser.parse(reader.read, progress_callback=deadline.is_expired)
         except ValueError as error:
-            tree = None
-            failure = str(error)
-        else:
-            failure = 'the parser returned no tree'
-
-        if tree is None and deadline.fired:
-            note = f'{source.path}: parse stopped after the {self.deadline_seconds} s time limit'
+            note = self.get_failure_note(source, deadline, str(error))
             return note_only(source.path, self.language, note)
 
         if tree is None:
-            return note_only(source.path, self.language, f'{source.path}: parse failed: {failure}')
+            note = self.get_failure_note(source, deadline, 'the parser returned no tree')
+            return note_only(source.path, self.language, note)
 
         error_line = first_error_line(tree.root_node)
         notes = () if error_line is None else (f'{source.path}: syntax error at line {error_line}',)
@@ -227,46 +221,21 @@ class TreeSitterBackend:
         )
 
 
-JAVASCRIPT_BACKEND = TreeSitterBackend(
-    language='javascript',
-    suffixes=frozenset({'.js', '.mjs', '.cjs', '.jsx'}),
-    grammar=tree_sitter.Language(tree_sitter_javascript.language()),
-    query_name='javascript',
-)
+@dataclass(slots=True, kw_only=True, frozen=True)
+class TreeSitterSpec:
+    language: str
+    suffixes: frozenset[str]
+    grammar: tree_sitter.Language
+    query_name: str
+    aliases: Mapping[str, str] = field(default_factory=dict)
 
 
-TYPESCRIPT_BACKEND = TreeSitterBackend(
-    language='typescript',
-    suffixes=frozenset({'.ts', '.mts', '.cts'}),
-    grammar=tree_sitter.Language(tree_sitter_typescript.language_typescript()),
-    query_name='typescript',
-)
-
-TSX_BACKEND = TreeSitterBackend(
-    language='tsx',
-    suffixes=frozenset({'.tsx'}),
-    grammar=tree_sitter.Language(tree_sitter_typescript.language_tsx()),
-    query_name='typescript',
-)
-
-GO_BACKEND = TreeSitterBackend(
-    language='go',
-    suffixes=frozenset({'.go'}),
-    grammar=tree_sitter.Language(tree_sitter_go.language()),
-    query_name='go',
-)
-
-TERRAFORM_BACKEND = TreeSitterBackend(
-    language='terraform',
-    suffixes=frozenset({'.tf'}),
-    grammar=tree_sitter.Language(tree_sitter_hcl.language()),
-    query_name='terraform',
-    aliases={'variable': 'var', 'locals': 'local'},
-)
-
-RUST_BACKEND = TreeSitterBackend(
-    language='rust',
-    suffixes=frozenset({'.rs'}),
-    grammar=tree_sitter.Language(tree_sitter_rust.language()),
-    query_name='rust',
-)
+def create_tree_sitter_backend(spec: TreeSitterSpec) -> TreeSitterBackend:
+    query = tree_sitter.Query(spec.grammar, load_query_source(spec.query_name))
+    return TreeSitterBackend(
+        language=spec.language,
+        suffixes=spec.suffixes,
+        grammar=spec.grammar,
+        query=query,
+        aliases=MappingProxyType(dict(spec.aliases)),
+    )

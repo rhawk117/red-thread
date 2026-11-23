@@ -6,19 +6,26 @@ from typing import TYPE_CHECKING
 
 import pytest
 from red_thread_navigate.find.services import references_to
-from red_thread_navigate.symbols.store import TERRAFORM_BACKEND, backend_for
+from red_thread_navigate.symbols.store import backend_for
 from red_thread_navigate.walk import SourceFile
 
 from tests.navigate.symbols.samples import TERRAFORM_BROKEN, TERRAFORM_SAMPLE
 
 if TYPE_CHECKING:
     from red_thread_navigate.symbols import FileSymbols
+    from red_thread_navigate.symbols.domain import Backend
 
 PATH = PurePosixPath('infra/main.tf')
 
 
+def backend_at(path: PurePosixPath) -> Backend:
+    backend = backend_for(path)
+    assert backend is not None
+    return backend
+
+
 def parse(text: str) -> FileSymbols:
-    return TERRAFORM_BACKEND.parse(SourceFile(path=PATH, text=text))
+    return backend_at(PATH).parse(SourceFile(path=PATH, text=text))
 
 
 def symbol_cases() -> pytest.MarkDecorator:
@@ -98,7 +105,7 @@ class TestSyntaxError:
 
 class TestLookup:
     def test_tf_files_pick_the_terraform_backend(self) -> None:
-        assert backend_for(PurePosixPath('a/b.tf')) is TERRAFORM_BACKEND
+        assert backend_at(PurePosixPath('a/b.tf')).language == 'terraform'
 
     def test_query_loads_as_a_resource(self) -> None:
         text = (

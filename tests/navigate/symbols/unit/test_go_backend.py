@@ -7,17 +7,27 @@ from typing import TYPE_CHECKING
 
 import pytest
 import tree_sitter
-from red_thread_navigate.symbols.store import GO_BACKEND, backend_for
+from red_thread_navigate.symbols.store import backend_for
+from red_thread_navigate.symbols.store.treesitter import TreeSitterBackend
 from red_thread_navigate.walk import SourceFile
 
 from tests.navigate.symbols.samples import GO_SAMPLE
 
 if TYPE_CHECKING:
     from red_thread_navigate.symbols import FileSymbols
+    from red_thread_navigate.symbols.domain import Backend
+
+
+def backend_at(path: PurePosixPath) -> Backend:
+    backend = backend_for(path)
+    assert backend is not None
+    return backend
 
 
 def parse(text: str) -> FileSymbols:
-    return GO_BACKEND.parse(SourceFile(path=PurePosixPath('shapes/shapes.go'), text=text))
+    return backend_at(PurePosixPath('a/b.go')).parse(
+        SourceFile(path=PurePosixPath('shapes/shapes.go'), text=text)
+    )
 
 
 def spans_of(parsed: FileSymbols, qualified_name: str) -> list[tuple[str, int, int]]:
@@ -68,7 +78,7 @@ class TestSymbols:
         assert spans_of(parse(text), 'T.Run') == [('method', 5, 5)]
 
     def test_go_files_pick_the_go_backend(self) -> None:
-        assert backend_for(PurePosixPath('a/b.go')) is GO_BACKEND
+        assert backend_at(PurePosixPath('a/b.go')).language == 'go'
 
 
 class TestQuery:
@@ -92,7 +102,9 @@ class TestTimeLimit:
             raise ValueError(message)
 
         monkeypatch.setattr(tree_sitter.Parser, 'parse', fail)
-        backend = dataclasses.replace(GO_BACKEND, deadline_seconds=60.0)
+        original = backend_at(PurePosixPath('a/b.go'))
+        assert isinstance(original, TreeSitterBackend)
+        backend = dataclasses.replace(original, deadline_seconds=60.0)
         source = SourceFile(path=PurePosixPath('a.go'), text=GO_SAMPLE)
         parsed = backend.parse(source)
         assert parsed.symbols == ()

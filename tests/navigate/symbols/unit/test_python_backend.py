@@ -4,7 +4,7 @@ from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
 
 import pytest
-from red_thread_navigate.symbols.store import PYTHON_BACKEND, backend_for
+from red_thread_navigate.symbols.store import backend_for
 from red_thread_navigate.walk import SourceFile
 
 from tests.navigate.symbols.samples import (
@@ -17,12 +17,19 @@ from tests.navigate.symbols.samples import (
 
 if TYPE_CHECKING:
     from red_thread_navigate.symbols import FileSymbols, Symbol
+    from red_thread_navigate.symbols.domain import Backend
 
 PATH = PurePosixPath('pkg/sample.py')
 
 
+def backend_at(path: PurePosixPath) -> Backend:
+    backend = backend_for(path)
+    assert backend is not None
+    return backend
+
+
 def parse(text: str) -> FileSymbols:
-    return PYTHON_BACKEND.parse(SourceFile(path=PATH, text=text))
+    return backend_at(PATH).parse(SourceFile(path=PATH, text=text))
 
 
 def find_symbol(parsed: FileSymbols, qualified_name: str, kind: str | None = None) -> Symbol:
@@ -192,7 +199,7 @@ class TestSyntaxError:
 
 class TestBackendFor:
     def test_python_suffix_selects_the_python_backend(self) -> None:
-        assert backend_for(PATH) is PYTHON_BACKEND
+        assert backend_at(PATH).language == 'python'
 
     def test_unknown_suffix_selects_nothing(self) -> None:
         assert backend_for(PurePosixPath('notes.txt')) is None

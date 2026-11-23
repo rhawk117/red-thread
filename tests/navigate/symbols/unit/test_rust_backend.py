@@ -6,17 +6,26 @@ from typing import TYPE_CHECKING
 
 import pytest
 from red_thread_navigate.map.views import RankedFile, RankedSymbol, symbol_line
-from red_thread_navigate.symbols.store import RUST_BACKEND, backend_for
+from red_thread_navigate.symbols.store import backend_for
 from red_thread_navigate.walk import SourceFile
 
 from tests.navigate.symbols.samples import RUST_SAMPLE
 
 if TYPE_CHECKING:
     from red_thread_navigate.symbols import FileSymbols
+    from red_thread_navigate.symbols.domain import Backend
+
+
+def backend_at(path: PurePosixPath) -> Backend:
+    backend = backend_for(path)
+    assert backend is not None
+    return backend
 
 
 def parse(text: str) -> FileSymbols:
-    return RUST_BACKEND.parse(SourceFile(path=PurePosixPath('src/lib.rs'), text=text))
+    return backend_at(PurePosixPath('src/lib.rs')).parse(
+        SourceFile(path=PurePosixPath('src/lib.rs'), text=text)
+    )
 
 
 def spans_of(parsed: FileSymbols, qualified_name: str) -> list[tuple[str, int, int]]:
@@ -75,7 +84,7 @@ class TestSymbols:
         assert 'method (impl Shape) fn area(&self) -> f64 {' in line
 
     def test_rust_files_pick_the_rust_backend(self) -> None:
-        assert backend_for(PurePosixPath('a/b.rs')) is RUST_BACKEND
+        assert backend_at(PurePosixPath('a/b.rs')).language == 'rust'
 
 
 class TestQuery:

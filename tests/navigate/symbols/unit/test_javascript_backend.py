@@ -6,19 +6,27 @@ from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
 
 import pytest
-from red_thread_navigate.symbols.store import JAVASCRIPT_BACKEND, backend_for
+from red_thread_navigate.symbols.store import backend_for
+from red_thread_navigate.symbols.store.treesitter import TreeSitterBackend
 from red_thread_navigate.walk import SourceFile
 
 from tests.navigate.symbols.samples import JAVASCRIPT_SAMPLE
 
 if TYPE_CHECKING:
     from red_thread_navigate.symbols import FileSymbols
-    from red_thread_navigate.symbols.store.treesitter import TreeSitterBackend
+    from red_thread_navigate.symbols.domain import Backend
 
 PATH = PurePosixPath('web/sample.js')
 
 
-def parse(text: str, backend: TreeSitterBackend = JAVASCRIPT_BACKEND) -> FileSymbols:
+def backend_at(path: PurePosixPath) -> Backend:
+    backend = backend_for(path)
+    assert backend is not None
+    return backend
+
+
+def parse(text: str, backend: Backend | None = None) -> FileSymbols:
+    backend = backend or backend_at(PATH)
     return backend.parse(SourceFile(path=PATH, text=text))
 
 
@@ -79,7 +87,9 @@ class TestSyntaxError:
 
 class TestTimeLimit:
     def test_parse_past_the_deadline_yields_a_note_naming_file_and_limit(self) -> None:
-        backend = dataclasses.replace(JAVASCRIPT_BACKEND, deadline_seconds=1e-9)
+        original = backend_at(PATH)
+        assert isinstance(original, TreeSitterBackend)
+        backend = dataclasses.replace(original, deadline_seconds=1e-9)
         parsed = parse('[' * 200_000 + ']' * 200_000, backend)
         assert (parsed.symbols, parsed.references) == ((), ())
         assert len(parsed.notes) == 1
@@ -90,7 +100,7 @@ class TestTimeLimit:
 class TestLookup:
     @pytest.mark.parametrize('suffix', ['.js', '.mjs', '.cjs', '.jsx'])
     def test_backend_for_finds_javascript_suffixes(self, suffix: str) -> None:
-        assert backend_for(PurePosixPath(f'a{suffix}')) is JAVASCRIPT_BACKEND
+        assert backend_at(PurePosixPath(f'a{suffix}')).language == 'javascript'
 
     def test_query_loads_with_the_upstream_license_notice(self) -> None:
         query = (
