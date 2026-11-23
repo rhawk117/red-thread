@@ -33,7 +33,7 @@ def references_to(files: tuple[FileSymbols, ...], name: str) -> tuple[Occurrence
         Occurrence(path=file.path, line=reference.line)
         for file in sorted(files, key=lambda item: str(item.path))
         for reference in file.references
-        if reference.name == last
+        if reference.name in {name, last}
     )
 
 

@@ -5,6 +5,7 @@ from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
 
 import pytest
+from red_thread_navigate.find.services import references_to
 from red_thread_navigate.symbols.store import TERRAFORM_BACKEND, backend_for
 from red_thread_navigate.walk import SourceFile
 
@@ -107,3 +108,21 @@ class TestLookup:
             .read_text(encoding='utf-8')
         )
         assert '@definition.resource' in text
+
+
+class TestFindReferences:
+    @pytest.mark.parametrize(
+        ('name', 'lines'),
+        [
+            pytest.param('local.name', [7], id='local'),
+            pytest.param('var.region', [6], id='variable'),
+            pytest.param('aws_vpc.this', [25], id='resource'),
+            pytest.param('data.aws_ami.x', [21], id='data'),
+        ],
+    )
+    def test_find_matches_the_full_address_a_reference_is_named_by(
+        self, name: str, lines: list[int]
+    ) -> None:
+        file = parse(TERRAFORM_SAMPLE)
+        found = references_to((file,), name)
+        assert [occurrence.line for occurrence in found] == lines
