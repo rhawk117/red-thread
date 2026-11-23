@@ -115,3 +115,48 @@ class Box:
         self.count += 1
         return self.kept
 """
+
+TYPESCRIPT_SAMPLE = """\
+interface Shape {
+  area(): number;
+}
+
+type Id = string | number;
+
+enum Color {
+  Red,
+  Green,
+}
+
+class Circle implements Shape {
+  area(): number {
+    return 1;
+  }
+}
+
+function build(value: string): string;
+function build(value: number): string;
+function build(value: string | number): string {
+  return String(value);
+}
+
+const arrow = (x: number): number => x + 1;
+
+export class Store {
+  put(key: string): void;
+  put(key: number): void;
+  put(key: string | number): void {}
+}
+"""
+
+TSX_SAMPLE = """\
+function Greeting(props: { name: string }) {
+  return <h1>{props.name}</h1>;
+}
+
+const Badge = (props: { label: string }) => <span>{props.label}</span>;
+
+export default function Page() {
+  return <Greeting name="x" />;
+}
+"""

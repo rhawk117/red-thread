@@ -1,10 +1,12 @@
+import re
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from importlib import resources
 from typing import TYPE_CHECKING
 
 import tree_sitter
 import tree_sitter_javascript
+import tree_sitter_typescript
 
 from red_thread_navigate.symbols.domain import FileSymbols, Reference, Symbol
 
@@ -17,6 +19,7 @@ if TYPE_CHECKING:
 DEFINITION_PREFIX = 'definition.'
 REFERENCE_PREFIX = 'reference.'
 READ_CHUNK_BYTES = 65536
+LINE_BREAK = re.compile(r'\r\n|\r|\n')
 
 KINDS: dict[str, SymbolKind] = {
     'class': 'class',
@@ -53,13 +56,15 @@ def create_reader(data: bytes) -> Callable[[int, tree_sitter.Point], bytes]:
     return read
 
 
-def create_deadline(seconds: float) -> Callable[[int, bool], bool]:
-    expires_at = time.monotonic() + seconds
+@dataclass(slots=True)
+class Deadline:
+    expires_at: float
+    fired: bool = False
 
-    def expired(*_progress: object) -> bool:
-        return time.monotonic() >= expires_at
-
-    return expired
+    def __call__(self, *_progress: object) -> bool:
+        if time.monotonic() >= self.expires_at:
+            self.fired = True
+        return self.fired
 
 
 def capture_prefix_of(captures: dict[str, list[tree_sitter.Node]], prefix: str) -> str | None:
@@ -139,15 +144,21 @@ class TreeSitterBackend:
     grammar: tree_sitter.Language
     query_name: str
     deadline_seconds: float = 2.0
+    query: tree_sitter.Query = field(init=False)
+
+    def __post_init__(self) -> None:
+        query = tree_sitter.Query(self.grammar, load_query_source(self.query_name))
+        object.__setattr__(self, 'query', query)
 
     def parse(self, source: SourceFile) -> FileSymbols:
         data = source.text.encode('utf-8')
         parser = tree_sitter.Parser(self.grammar)
+        deadline = Deadline(expires_at=time.monotonic() + self.deadline_seconds)
         try:
-            tree = parser.parse(
-                create_reader(data), progress_callback=create_deadline(self.deadline_seconds)
-            )
+            tree = parser.parse(create_reader(data), progress_callback=deadline)
         except ValueError:
+            if not deadline.fired:
+                raise
             tree = None
         if tree is None:
             note = f'{source.path}: parse stopped after the {self.deadline_seconds} s time limit'
@@ -155,13 +166,12 @@ class TreeSitterBackend:
                 path=source.path, language=self.language, symbols=(), references=(), notes=(note,)
             )
 
-        query = tree_sitter.Query(self.grammar, load_query_source(self.query_name))
-        matches = tree_sitter.QueryCursor(query).matches(tree.root_node)
+        matches = tree_sitter.QueryCursor(self.query).matches(tree.root_node)
         definitions = collect_definitions(matches)
         return FileSymbols(
             path=source.path,
             language=self.language,
-            symbols=tuple(build_symbols(definitions, source.text.splitlines())),
+            symbols=tuple(build_symbols(definitions, LINE_BREAK.split(source.text))),
             references=collect_references(matches),
             notes=(),
         )
@@ -172,4 +182,19 @@ JAVASCRIPT_BACKEND = TreeSitterBackend(
     suffixes=frozenset({'.js', '.mjs', '.cjs', '.jsx'}),
     grammar=tree_sitter.Language(tree_sitter_javascript.language()),
     query_name='javascript',
+)
+
+
+TYPESCRIPT_BACKEND = TreeSitterBackend(
+    language='typescript',
+    suffixes=frozenset({'.ts', '.mts', '.cts'}),
+    grammar=tree_sitter.Language(tree_sitter_typescript.language_typescript()),
+    query_name='typescript',
+)
+
+TSX_BACKEND = TreeSitterBackend(
+    language='tsx',
+    suffixes=frozenset({'.tsx'}),
+    grammar=tree_sitter.Language(tree_sitter_typescript.language_tsx()),
+    query_name='typescript',
 )
