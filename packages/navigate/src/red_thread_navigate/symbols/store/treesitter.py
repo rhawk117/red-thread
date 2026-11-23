@@ -15,6 +15,7 @@ from red_thread_navigate.symbols.domain import FileSymbols, Reference, Symbol
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from pathlib import PurePosixPath
 
     from red_thread_navigate.symbols.domain import SymbolKind
     from red_thread_navigate.walk import SourceFile
@@ -96,13 +97,21 @@ def address_of(captures: dict[str, list[tree_sitter.Node]], aliases: dict[str, s
 
 
 def first_error_line(root: tree_sitter.Node) -> int | None:
+    if not root.has_error:
+        return None
+
+    rows: list[int] = []
     pending = [root]
     while pending:
         node = pending.pop()
         if node.is_error or node.is_missing:
-            return node.start_point.row + 1
-        pending.extend(reversed(node.children))
-    return None
+            rows.append(node.start_point.row + 1)
+        pending.extend(child for child in node.children if child.has_error or child.is_missing)
+    return min(rows, default=None)
+
+
+def note_only(path: PurePosixPath, language: str, note: str) -> FileSymbols:
+    return FileSymbols(path=path, language=language, symbols=(), references=(), notes=(note,))
 
 
 def collect_definitions(
@@ -180,7 +189,6 @@ class TreeSitterBackend:
     query_name: str
     deadline_seconds: float = 2.0
     aliases: dict[str, str] = field(default_factory=dict)
-    strict: bool = False
     query: tree_sitter.Query = field(init=False)
 
     def __post_init__(self) -> None:
@@ -193,23 +201,21 @@ class TreeSitterBackend:
         deadline = Deadline(expires_at=time.monotonic() + self.deadline_seconds)
         try:
             tree = parser.parse(create_reader(data), progress_callback=deadline)
-        except ValueError:
-            if not deadline.fired:
-                raise
+        except ValueError as error:
             tree = None
-        if tree is None:
+            failure = str(error)
+        else:
+            failure = 'the parser returned no tree'
+
+        if tree is None and deadline.fired:
             note = f'{source.path}: parse stopped after the {self.deadline_seconds} s time limit'
-            return FileSymbols(
-                path=source.path, language=self.language, symbols=(), references=(), notes=(note,)
-            )
+            return note_only(source.path, self.language, note)
 
-        error_line = first_error_line(tree.root_node) if self.strict else None
-        if error_line is not None:
-            note = f'{source.path}: syntax error at line {error_line}'
-            return FileSymbols(
-                path=source.path, language=self.language, symbols=(), references=(), notes=(note,)
-            )
+        if tree is None:
+            return note_only(source.path, self.language, f'{source.path}: parse failed: {failure}')
 
+        error_line = first_error_line(tree.root_node)
+        notes = () if error_line is None else (f'{source.path}: syntax error at line {error_line}',)
         matches = tree_sitter.QueryCursor(self.query).matches(tree.root_node)
         definitions = collect_definitions(matches, self.aliases)
         return FileSymbols(
@@ -217,7 +223,7 @@ class TreeSitterBackend:
             language=self.language,
             symbols=tuple(build_symbols(definitions, LINE_BREAK.split(source.text))),
             references=collect_references(matches, self.aliases),
-            notes=(),
+            notes=notes,
         )
 
 
@@ -256,7 +262,6 @@ TERRAFORM_BACKEND = TreeSitterBackend(
     grammar=tree_sitter.Language(tree_sitter_hcl.language()),
     query_name='terraform',
     aliases={'variable': 'var', 'locals': 'local'},
-    strict=True,
 )
 
 RUST_BACKEND = TreeSitterBackend(

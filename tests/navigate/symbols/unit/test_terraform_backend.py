@@ -80,12 +80,19 @@ class TestReferences:
 
 
 class TestSyntaxError:
-    def test_yields_no_symbols_and_a_note_naming_file_and_line(self) -> None:
-        parsed = parse(TERRAFORM_BROKEN)
-        assert parsed.symbols == ()
+    def test_keeps_the_valid_blocks_and_adds_a_note_naming_file_and_line(self) -> None:
+        text = TERRAFORM_SAMPLE + 'resource "aws_vpc" "bad" {\n  cidr_block =\n}\n'
+        parsed = parse(text)
+        valid = {symbol.qualified_name for symbol in parse(TERRAFORM_SAMPLE).symbols}
+        assert valid <= {symbol.qualified_name for symbol in parsed.symbols}
         assert len(parsed.notes) == 1
         assert str(PATH) in parsed.notes[0]
-        assert 'line' in parsed.notes[0]
+        assert 'syntax error at line' in parsed.notes[0]
+
+    def test_a_broken_file_still_yields_the_symbols_that_parse(self) -> None:
+        parsed = parse(TERRAFORM_BROKEN)
+        assert parsed.symbols
+        assert len(parsed.notes) == 1
 
 
 class TestLookup:

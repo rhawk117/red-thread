@@ -94,5 +94,8 @@ class TestTimeLimit:
         monkeypatch.setattr(tree_sitter.Parser, 'parse', fail)
         backend = dataclasses.replace(GO_BACKEND, deadline_seconds=60.0)
         source = SourceFile(path=PurePosixPath('a.go'), text=GO_SAMPLE)
-        with pytest.raises(ValueError, match='unreadable source'):
-            backend.parse(source)
+        parsed = backend.parse(source)
+        assert parsed.symbols == ()
+        assert len(parsed.notes) == 1
+        assert 'unreadable source' in parsed.notes[0]
+        assert 'time limit' not in parsed.notes[0]

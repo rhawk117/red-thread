@@ -67,6 +67,16 @@ class TestReferences:
         assert {('helper', 7), ('Widget', 12), ('arrow', 18), ('render', 23)} <= found
 
 
+class TestSyntaxError:
+    def test_keeps_the_symbols_that_parse_and_names_the_first_error_line(self) -> None:
+        parsed = parse(JAVASCRIPT_SAMPLE + '\nfunction broken( {\n')
+        names = {symbol.qualified_name for symbol in parsed.symbols}
+        assert {'Widget', 'Widget.render'} <= names
+        assert len(parsed.notes) == 1
+        assert 'web/sample.js' in parsed.notes[0]
+        assert 'syntax error at line' in parsed.notes[0]
+
+
 class TestTimeLimit:
     def test_parse_past_the_deadline_yields_a_note_naming_file_and_limit(self) -> None:
         backend = dataclasses.replace(JAVASCRIPT_BACKEND, deadline_seconds=1e-9)
