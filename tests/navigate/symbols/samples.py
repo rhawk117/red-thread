@@ -87,3 +87,30 @@ export function exportedFunction() {
 
 export const exportedArrow = () => bound(2);
 """
+
+MATCH_SAMPLE = """\
+def route(command):
+    match command:
+        case 'go':
+            def go():
+                return 1
+
+            return go
+        case _:
+            class Fallback:
+                pass
+
+            return Fallback
+"""
+
+LINE_BREAK_SAMPLE = (
+    "x = '\x0c'\ny = '\x0b'\nz = '\u2028'\n\n\ndef later(value):\n    return value\n"
+)
+
+WRITE_SAMPLE = """\
+class Box:
+    def put(self, value):
+        self._size = value
+        del self.gone
+        return self.kept
+"""

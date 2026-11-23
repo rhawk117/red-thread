@@ -1,4 +1,5 @@
 import ast
+import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -12,6 +13,7 @@ if TYPE_CHECKING:
 
 type Definition = ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef
 
+LINE_BREAK = re.compile(r'\r\n|\r|\n')
 PROPERTY_ACCESSORS = frozenset({'setter', 'getter', 'deleter'})
 
 
@@ -74,7 +76,7 @@ def symbols_of(node: ast.AST, scope: Scope, lines: list[str]) -> list[Symbol]:
     nested = [
         child
         for child in ast.iter_child_nodes(node)
-        if isinstance(child, ast.stmt | ast.excepthandler)
+        if isinstance(child, ast.stmt | ast.excepthandler | ast.match_case)
     ]
     return collect_symbols(nested, scope, lines)
 
@@ -84,7 +86,7 @@ def collect_references(tree: ast.Module) -> tuple[Reference, ...]:
     for node in ast.walk(tree):
         if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load):
             references.append(Reference(name=node.id, line=node.lineno))
-        elif isinstance(node, ast.Attribute):
+        elif isinstance(node, ast.Attribute) and isinstance(node.ctx, ast.Load):
             references.append(Reference(name=node.attr, line=node.end_lineno or node.lineno))
     return tuple(sorted(references, key=lambda reference: (reference.line, reference.name)))
 
@@ -103,7 +105,7 @@ class PythonBackend:
                 path=source.path, language=self.language, symbols=(), references=(), notes=(note,)
             )
         scope = Scope(qualified_name=None, in_class=False)
-        symbols = collect_symbols(tree.body, scope, source.text.splitlines())
+        symbols = collect_symbols(tree.body, scope, LINE_BREAK.split(source.text))
         return FileSymbols(
             path=source.path,
             language=self.language,

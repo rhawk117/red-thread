@@ -7,7 +7,13 @@ import pytest
 from red_thread_navigate.symbols.store import PYTHON_BACKEND, backend_for
 from red_thread_navigate.walk import SourceFile
 
-from tests.navigate.symbols.samples import BROKEN, SAMPLE
+from tests.navigate.symbols.samples import (
+    BROKEN,
+    LINE_BREAK_SAMPLE,
+    MATCH_SAMPLE,
+    SAMPLE,
+    WRITE_SAMPLE,
+)
 
 if TYPE_CHECKING:
     from red_thread_navigate.symbols import FileSymbols, Symbol
@@ -99,17 +105,30 @@ class TestReferences:
         self, lines_by_name: dict[str, list[int]]
     ) -> None:
         definition_line = SAMPLE.splitlines().index('def decorate(function):') + 1
-        assert (
-            definition_line not in lines_by_name['decorate']
-            if 'decorate' in lines_by_name
-            else True
-        )
+        assert definition_line not in lines_by_name.get('decorate', [])
         use_line = SAMPLE.splitlines().index('    value = Outer()') + 1
         assert lines_by_name['Outer'] == [use_line]
 
     def test_reference_lines_are_one_based(self, lines_by_name: dict[str, list[int]]) -> None:
         use_line = SAMPLE.splitlines().index('    return value.method(1) + helper') + 1
         assert use_line in lines_by_name['helper']
+
+
+class TestEdges:
+    def test_definitions_in_case_bodies_are_reported(self) -> None:
+        parsed = parse(MATCH_SAMPLE)
+        assert find_symbol(parsed, 'route.go').kind == 'function'
+        assert find_symbol(parsed, 'route.Fallback').kind == 'class'
+
+    def test_signature_is_its_own_line_despite_other_line_breaks(self) -> None:
+        parsed = parse(LINE_BREAK_SAMPLE)
+        assert find_symbol(parsed, 'later').signature == 'def later(value):'
+
+    def test_attribute_writes_are_not_references_but_reads_are(self) -> None:
+        names = {reference.name for reference in parse(WRITE_SAMPLE).references}
+        assert 'kept' in names
+        assert '_size' not in names
+        assert 'gone' not in names
 
 
 class TestSyntaxError:
