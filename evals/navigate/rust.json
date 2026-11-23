@@ -1,0 +1,393 @@
+{
+  "schema_version": 1,
+  "subject": {
+    "repository": "BurntSushi/ripgrep",
+    "tag": "16.0.0",
+    "commit": "669cb4c755db20b26c3af3d923c042ae224c7496"
+  },
+  "tasks": [
+    {
+      "id": "M01",
+      "type": "comprehension",
+      "prompt": "When several kinds of ignore rule match the same path, which one wins, and in what order does the ignore matcher consult them?",
+      "required_addresses": [
+        {
+          "address": "crates/ignore/src/dir.rs#Ignore.matched",
+          "start_line": 542,
+          "end_line": 586
+        },
+        {
+          "address": "crates/ignore/src/dir.rs#Ignore.matched_ignore",
+          "start_line": 590,
+          "end_line": 727
+        },
+        {
+          "address": "crates/ignore/src/dir.rs#L590-L727",
+          "start_line": 590,
+          "end_line": 727
+        }
+      ],
+      "supporting_addresses": [
+        {
+          "address": "crates/ignore/src/walk.rs#should_skip_entry",
+          "start_line": 2142,
+          "end_line": 2153
+        }
+      ],
+      "required_facts": [
+        {
+          "id": "F1",
+          "any_of": [
+            "overrides have the highest precedence",
+            "overrides are checked first",
+            "override match is returned immediately"
+          ]
+        },
+        {
+          "id": "F2",
+          "any_of": [
+            "custom ignore, then .ignore, then .gitignore",
+            "custom ignore files come first",
+            "custom_ignore.or(ignore).or(gi)",
+            "order of or calls"
+          ]
+        },
+        {
+          "id": "F3",
+          "any_of": [
+            "git exclude, then global, then explicit",
+            "explicit ignores are last",
+            "global gitignore comes after git exclude"
+          ]
+        },
+        {
+          "id": "F4",
+          "any_of": [
+            "an ignore match returns immediately",
+            "a whitelist match does not stop matching",
+            "file types are checked after ignore rules"
+          ]
+        }
+      ],
+      "forbidden_claims": [
+        ".gitignore takes precedence over .ignore",
+        "file types are checked before ignore files",
+        "a whitelist match in an ignore file ends all matching",
+        "explicit ignore files take precedence over .gitignore"
+      ],
+      "source_of_truth": [
+        "crates/ignore/src/dir.rs#L542-L586",
+        "crates/ignore/src/dir.rs#L590-L727"
+      ]
+    },
+    {
+      "id": "M02",
+      "type": "comprehension",
+      "prompt": "How does ripgrep decide how many search threads to use, and which settings override which?",
+      "required_addresses": [
+        {
+          "address": "crates/core/flags/hiargs.rs#HiArgs.from_low_args",
+          "start_line": 117,
+          "end_line": 340
+        },
+        {
+          "address": "crates/core/flags/hiargs.rs#L117-L340",
+          "start_line": 117,
+          "end_line": 340
+        }
+      ],
+      "supporting_addresses": [
+        {
+          "address": "crates/core/flags/hiargs.rs#threads_from_env",
+          "start_line": 1375,
+          "end_line": 1384
+        },
+        {
+          "address": "crates/core/flags/hiargs.rs#default_thread_count",
+          "start_line": 1367,
+          "end_line": 1369
+        }
+      ],
+      "required_facts": [
+        {
+          "id": "F1",
+          "any_of": [
+            "sorting forces one thread",
+            "one thread when sort is set",
+            "a single file forces one thread"
+          ]
+        },
+        {
+          "id": "F2",
+          "any_of": [
+            "cli flag first, then ripgrep_threads, then the default",
+            "threads flag overrides the environment variable",
+            "ripgrep_threads is read only when the flag is absent"
+          ]
+        },
+        {
+          "id": "F3",
+          "any_of": [
+            "default is available parallelism capped at 12",
+            "min(12)",
+            "at most 12 threads by default"
+          ]
+        },
+        {
+          "id": "F4",
+          "any_of": [
+            "ripgrep_threads=0 is treated as unset",
+            "zero means use the default",
+            "invalid ripgrep_threads is an error"
+          ]
+        }
+      ],
+      "forbidden_claims": [
+        "ripgrep_threads overrides the threads flag",
+        "the default uses every available core with no cap",
+        "an invalid ripgrep_threads value is silently ignored",
+        "sorting output still uses all threads"
+      ],
+      "source_of_truth": [
+        "crates/core/flags/hiargs.rs#L172-L192",
+        "crates/core/flags/hiargs.rs#L1367-L1384"
+      ]
+    },
+    {
+      "id": "M03",
+      "type": "comprehension",
+      "prompt": "What can a Sink implementation return from its methods to stop a search early, and what is the difference between returning false and returning an error?",
+      "required_addresses": [
+        {
+          "address": "crates/searcher/src/sink.rs#Sink",
+          "start_line": 102,
+          "end_line": 223
+        },
+        {
+          "address": "crates/searcher/src/sink.rs#L102-L223",
+          "start_line": 102,
+          "end_line": 223
+        }
+      ],
+      "supporting_addresses": [],
+      "required_facts": [
+        {
+          "id": "F1",
+          "any_of": [
+            "returning false stops the search and finish is called",
+            "false stops searching immediately but finish still runs"
+          ]
+        },
+        {
+          "id": "F2",
+          "any_of": [
+            "an error stops the search and finish is not called",
+            "the error is bubbled up to the caller of the searcher"
+          ]
+        },
+        {
+          "id": "F3",
+          "any_of": [
+            "matched is the only required method",
+            "context, binary_data and begin default to returning true",
+            "other methods have default implementations"
+          ]
+        }
+      ],
+      "forbidden_claims": [
+        "returning false skips finish",
+        "an error still calls finish",
+        "returning true stops the search",
+        "every method must be implemented"
+      ],
+      "source_of_truth": [
+        "crates/searcher/src/sink.rs#L102-L223"
+      ]
+    },
+    {
+      "id": "M04",
+      "type": "comprehension",
+      "prompt": "In the single-threaded Walk iterator, what happens when a directory matches an ignore rule: is it descended into, and what ignore state is still kept for it?",
+      "required_addresses": [
+        {
+          "address": "crates/ignore/src/walk.rs#Walk.next",
+          "start_line": 1218,
+          "end_line": 1305
+        }
+      ],
+      "supporting_addresses": [
+        {
+          "address": "crates/ignore/src/walk.rs#Walk.skip_entry",
+          "start_line": 1175,
+          "end_line": 1211
+        },
+        {
+          "address": "crates/ignore/src/walk.rs#should_skip_entry",
+          "start_line": 2142,
+          "end_line": 2153
+        }
+      ],
+      "required_facts": [
+        {
+          "id": "F1",
+          "any_of": [
+            "skip_current_dir",
+            "the directory is not descended into",
+            "skips the contents of an ignored directory"
+          ]
+        },
+        {
+          "id": "F2",
+          "any_of": [
+            "still pushes an ignore entry for the directory",
+            "add_child_with_entries with no entries",
+            "an exit event will pop it"
+          ]
+        },
+        {
+          "id": "F3",
+          "any_of": [
+            "root paths are never skipped",
+            "depth 0 is not skipped",
+            "ignored symlink errors are dropped"
+          ]
+        }
+      ],
+      "forbidden_claims": [
+        "ignored directories are walked and each file is checked",
+        "the ignore stack is not updated for skipped directories",
+        "the root path can be skipped by ignore rules"
+      ],
+      "source_of_truth": [
+        "crates/ignore/src/walk.rs#L1175-L1211",
+        "crates/ignore/src/walk.rs#L1218-L1305"
+      ]
+    },
+    {
+      "id": "M05",
+      "type": "comprehension",
+      "prompt": "In the parallel directory walker, which entries are dropped before they are queued for the visitor, and in what order are the checks made?",
+      "required_addresses": [
+        {
+          "address": "crates/ignore/src/walk.rs#Worker.generate_work",
+          "start_line": 1918,
+          "end_line": 1985
+        }
+      ],
+      "supporting_addresses": [
+        {
+          "address": "crates/ignore/src/walk.rs#Worker.run_one",
+          "start_line": 1813,
+          "end_line": 1903
+        },
+        {
+          "address": "crates/ignore/src/walk.rs#should_skip_entry",
+          "start_line": 2142,
+          "end_line": 2153
+        }
+      ],
+      "required_facts": [
+        {
+          "id": "F1",
+          "any_of": [
+            "ignore rules are checked first",
+            "should_skip_entry before the other checks",
+            "ignored entries are dropped"
+          ]
+        },
+        {
+          "id": "F2",
+          "any_of": [
+            "the file stdout is redirected to is skipped",
+            "skip entry that is stdout"
+          ]
+        },
+        {
+          "id": "F3",
+          "any_of": [
+            "max filesize applies to non-directories",
+            "files over the size limit are not queued"
+          ]
+        },
+        {
+          "id": "F4",
+          "any_of": [
+            "filter_entry predicate",
+            "entries rejected by the filter are not queued"
+          ]
+        }
+      ],
+      "forbidden_claims": [
+        "the visitor decides whether to skip ignored entries",
+        "max filesize also skips directories",
+        "dropped entries are reported to the visitor as errors"
+      ],
+      "source_of_truth": [
+        "crates/ignore/src/walk.rs#L1918-L1985"
+      ]
+    },
+    {
+      "id": "M06",
+      "type": "comprehension",
+      "prompt": "In the single-threaded search loop, how are a broken pipe, other search errors, and a quiet match handled?",
+      "required_addresses": [
+        {
+          "address": "crates/core/main.rs#L107-L155",
+          "start_line": 107,
+          "end_line": 155
+        }
+      ],
+      "supporting_addresses": [
+        {
+          "address": "crates/core/main.rs#search_parallel",
+          "start_line": 164,
+          "end_line": 241
+        },
+        {
+          "address": "crates/core/main.rs#eprint_nothing_searched",
+          "start_line": 427,
+          "end_line": 433
+        }
+      ],
+      "required_facts": [
+        {
+          "id": "F1",
+          "any_of": [
+            "a broken pipe ends the search quietly",
+            "broken pipe means graceful termination"
+          ]
+        },
+        {
+          "id": "F2",
+          "any_of": [
+            "other errors are printed and the search continues",
+            "err_message then continue to the next file"
+          ]
+        },
+        {
+          "id": "F3",
+          "any_of": [
+            "stops after the first match when quit_after_match",
+            "breaks once matched and quit after match is set"
+          ]
+        },
+        {
+          "id": "F4",
+          "any_of": [
+            "warns when an implicit path searched nothing",
+            "no files were searched message"
+          ]
+        }
+      ],
+      "forbidden_claims": [
+        "a broken pipe is printed as an error",
+        "any search error aborts the whole run",
+        "the loop always searches every file even in quiet mode"
+      ],
+      "source_of_truth": [
+        "crates/core/main.rs#L107-L155",
+        "crates/core/main.rs#L427-L433"
+      ]
+    }
+  ]
+}
