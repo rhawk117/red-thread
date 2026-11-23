@@ -3,7 +3,7 @@
 from collections import Counter
 from typing import TYPE_CHECKING
 
-from red_thread_navigate.budget import estimate_tokens, fit_to_budget
+from red_thread_navigate.budget import fit_notes, fit_to_budget
 from red_thread_navigate.map.views import RankedFile, RankedSymbol, empty_lines, map_rungs
 from red_thread_navigate.symbols.services import index_path
 
@@ -11,9 +11,6 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from red_thread_navigate.symbols.domain import FileSymbols
-
-
-NOTES_SHARE = 2
 
 
 def by_references(item: RankedSymbol) -> tuple[int, int]:
@@ -38,20 +35,6 @@ def rank_files(
     counts = Counter(reference.name for file in files for reference in file.references)
     ranked = (rank_file(file, counts, in_source_order=in_source_order) for file in files)
     return tuple(sorted(ranked, key=lambda item: (-item.references, str(item.file.path))))
-
-
-def fit_notes(notes: tuple[str, ...], *, budget: int) -> tuple[str, ...]:
-    """Keep the notes that fit in a share of the budget, ending with a count of the rest."""
-    share = budget // NOTES_SHARE
-    if estimate_tokens('\n'.join(notes)) <= share:
-        return notes
-    kept: list[str] = []
-    for note in notes:
-        more = f'and {len(notes) - len(kept) - 1} more notes'
-        if estimate_tokens('\n'.join([*kept, note, more])) > share:
-            break
-        kept.append(note)
-    return (*kept, f'and {len(notes) - len(kept)} more notes')
 
 
 def map_path(path: Path, *, budget: int) -> str:

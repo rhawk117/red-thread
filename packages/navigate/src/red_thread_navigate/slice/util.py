@@ -4,12 +4,11 @@ import re
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
 
-from red_thread_navigate.budget import estimate_tokens
+from red_thread_navigate.budget import ELLIPSIS
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-ELLIPSIS = '...'
 MIN_SHOWN = 8
 FILE_NAME_FLOOR = 20
 PLACEHOLDER = re.compile(r'<path>|<name>')
@@ -46,12 +45,3 @@ def cut_steps(full_path: str, name: str, *, deep: bool) -> Iterator[tuple[int, i
     yield from ((floor, limit) for limit in range(len(name), name_floor - 1, -1))
     if deep:
         yield from ((limit, name_floor) for limit in range(floor, MIN_SHOWN - 1, -1))
-
-
-def cut_to_budget(text: str, budget: int) -> str:
-    keep = len(text)
-    fitted = text
-    while estimate_tokens(fitted) > budget and keep > 0:
-        keep -= 1
-        fitted = f'{text[:keep]}{ELLIPSIS}'
-    return fitted

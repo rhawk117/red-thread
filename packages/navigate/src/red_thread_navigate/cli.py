@@ -8,16 +8,13 @@ from pathlib import Path
 from typing import NoReturn, override
 
 from red_thread_navigate.address import AddressError
-from red_thread_navigate.budget import MIN_BUDGET
+from red_thread_navigate.budget import MIN_BUDGET, cut_to_budget
 from red_thread_navigate.find.services import find_name
 from red_thread_navigate.map.services import map_path
 from red_thread_navigate.slice import SliceError, slice_address
 
 PROGRAM = 'red-thread-navigate'
 DEFAULT_BUDGET = 2000
-CHARS_PER_BUDGET_NUMERATOR = 7
-CHARS_PER_BUDGET_DENOMINATOR = 2
-ELLIPSIS = '...'
 VALID_OPTIONS = '--budget N, --version, --help'
 EXIT_OK = 0
 EXIT_REFUSED = 1
@@ -97,14 +94,6 @@ def run_verb(request: Request) -> str:
             return find_name(request.target, Path(request.path or '.'), budget=request.budget)
         case _:
             return slice_address(request.target, root=Path.cwd(), budget=request.budget)
-
-
-def cut_to_budget(text: str, budget: int) -> str:
-    """Cut text, with the newline printed after it, to a trailing ellipsis inside the budget."""
-    allowed = budget * CHARS_PER_BUDGET_NUMERATOR // CHARS_PER_BUDGET_DENOMINATOR
-    if len(text) + 1 <= allowed:
-        return text
-    return f'{text[: allowed - 1 - len(ELLIPSIS)]}{ELLIPSIS}'
 
 
 def navigate(request: Request) -> int:

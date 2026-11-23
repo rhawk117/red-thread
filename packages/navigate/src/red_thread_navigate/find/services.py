@@ -2,7 +2,7 @@
 
 from typing import TYPE_CHECKING
 
-from red_thread_navigate.budget import MIN_BUDGET, estimate_tokens, fit_to_budget
+from red_thread_navigate.budget import fit_notes, fit_to_budget
 from red_thread_navigate.find.views import Definition, Occurrence, find_rungs, none_lines
 from red_thread_navigate.symbols.services import index_path
 
@@ -10,9 +10,6 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from red_thread_navigate.symbols.domain import FileSymbols
-
-NOTES_SHARE = 4
-
 
 def is_match(qualified_name: str, name: str) -> bool:
     return qualified_name == name or qualified_name.endswith(f'.{name}')
@@ -37,27 +34,6 @@ def references_to(files: tuple[FileSymbols, ...], name: str) -> tuple[Occurrence
     )
 
 
-def trim_notes(notes: tuple[str, ...], *, budget: int) -> str:
-    """Keep leading notes within a share of the budget, then say how many were cut."""
-    allowance = budget // NOTES_SHARE
-    kept = list(notes)
-    while kept:
-        cut = len(notes) - len(kept)
-        lines = [*kept, f'and {cut} more notes'] if cut else kept
-        text = '\n'.join(lines)
-        if estimate_tokens(text) <= allowance and budget - estimate_tokens(text) - 1 >= MIN_BUDGET:
-            return text
-        kept.pop()
-    return ''
-
-
-def compose(notes: tuple[str, ...], rungs: tuple[tuple[str, ...], ...], *, budget: int) -> str:
-    leading = trim_notes(notes, budget=budget)
-    room = budget - estimate_tokens(leading) - 1 if leading else budget
-    text = fit_to_budget(rungs, budget=room).text
-    return f'{leading}\n{text}' if leading else text
-
-
 def find_name(name: str, path: Path, *, budget: int) -> str:
     """List every definition of a name under a path, then its references, inside the budget."""
     index = index_path(path)
@@ -67,4 +43,5 @@ def find_name(name: str, path: Path, *, budget: int) -> str:
         rungs = find_rungs(definitions, references)
     else:
         rungs = (none_lines(name, str(path)),)
-    return compose(index.notes, rungs, budget=budget)
+    notes = fit_notes(index.notes, budget=budget)
+    return fit_to_budget(tuple((*notes, *rung) for rung in rungs), budget=budget).text

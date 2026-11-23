@@ -153,10 +153,10 @@ def test_many_notes_never_push_the_output_past_the_budget() -> None:
         path=path, symbol=symbol, children=(), lines=('def go():', '    pass'), whole=True
     )
 
-    fitted = fit_to_budget(symbol_rungs((found,), notes), budget=64)
+    fitted = fit_to_budget(symbol_rungs((found,), notes, budget=64), budget=64)
 
     assert estimate_tokens(fitted.text) <= 64
-    assert 'and 28 more notes' in symbol_rungs((found,), notes)[0]
+    assert symbol_rungs((found,), notes, budget=64)[0][-1] == 'and 29 more notes'
 
 
 def test_unknown_symbol_message_stays_within_the_budget(tmp_path: Path) -> None:

@@ -3,14 +3,13 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from red_thread_navigate.budget import fit_notes
 from red_thread_navigate.map.views import span
 
 if TYPE_CHECKING:
     from pathlib import PurePosixPath
 
     from red_thread_navigate.symbols.domain import Symbol
-
-NOTE_LINES = 2
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -67,15 +66,11 @@ def label_lines(found: Found) -> tuple[str, ...]:
     return (label(found), body_line(found))
 
 
-def note_lines(notes: tuple[str, ...]) -> tuple[str, ...]:
-    shown = notes[:NOTE_LINES]
-    rest = len(notes) - len(shown)
-    return (*shown, f'and {rest} more notes') if rest > 0 else shown
-
-
-def symbol_rungs(founds: tuple[Found, ...], notes: tuple[str, ...]) -> tuple[tuple[str, ...], ...]:
+def symbol_rungs(
+    founds: tuple[Found, ...], notes: tuple[str, ...], *, budget: int
+) -> tuple[tuple[str, ...], ...]:
     heading = (f'{len(founds)} definitions match',) if len(founds) > 1 else ()
-    tail = note_lines(notes)
+    tail = fit_notes(notes, budget=budget)
     builders = (full_lines, outline_lines, label_lines)
     return tuple(
         (*heading, *(line for found in founds for line in build(found)), *tail)

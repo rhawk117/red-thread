@@ -3,9 +3,8 @@
 from typing import TYPE_CHECKING
 
 import pytest
-from red_thread_navigate.budget import estimate_tokens
+from red_thread_navigate.budget import estimate_tokens, fit_notes
 from red_thread_navigate.find import find_name
-from red_thread_navigate.find.services import trim_notes
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -83,11 +82,19 @@ def test_output_stays_within_budget_and_says_it_was_cut(tmp_path: Path, budget: 
 def test_crowding_notes_are_cut_and_counted() -> None:
     notes = tuple(f'note number {index} about a file' for index in range(20))
 
-    text = trim_notes(notes, budget=100)
+    kept = fit_notes(notes, budget=100)
 
-    assert text.endswith('more notes')
-    assert text.startswith('note number 0')
-    assert estimate_tokens(text) <= 100 // 4
+    assert kept[-1].endswith('more notes')
+    assert kept[0] == 'note number 0 about a file'
+    assert estimate_tokens('\n'.join(kept)) <= 100 // 4 + estimate_tokens(kept[-1])
+
+
+def test_a_syntax_error_note_too_long_for_its_share_is_still_counted(tmp_path: Path) -> None:
+    write(tmp_path, 'broken.py', 'def (:\n')
+
+    text = find_name('helper', tmp_path, budget=40)
+
+    assert 'and 1 more notes' in text
 
 
 @pytest.mark.parametrize('name', ['helper', 'missing'])

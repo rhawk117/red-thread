@@ -14,11 +14,10 @@ from red_thread_navigate.address import (
     SymbolTarget,
     parse_address,
 )
-from red_thread_navigate.budget import estimate_tokens, fit_to_budget
+from red_thread_navigate.budget import cut_to_budget, estimate_tokens, fit_to_budget
 from red_thread_navigate.slice.util import (
     MIN_SHOWN,
     cut_steps,
-    cut_to_budget,
     fill,
     shorten_name,
     shorten_path,
@@ -226,7 +225,7 @@ def slice_symbol(source: SourceFile, target: SymbolTarget, *, budget: int) -> st
     if not matches:
         raise unknown_symbol(parsed, name, budget=budget)
     founds = tuple(found_for(source, symbol, parsed) for symbol in matches)
-    return fit_to_budget(symbol_rungs(founds, parsed.notes), budget=budget).text
+    return fit_to_budget(symbol_rungs(founds, parsed.notes, budget=budget), budget=budget).text
 
 
 class HintedOutsideRootError(OutsideRootError):

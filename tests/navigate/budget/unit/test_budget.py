@@ -8,7 +8,9 @@ from red_thread_navigate.budget import (
     BudgetBelowMinimumError,
     BudgetError,
     NoRungsError,
+    cut_to_budget,
     estimate_tokens,
+    fit_notes,
     fit_to_budget,
 )
 
@@ -76,3 +78,18 @@ class TestFitToBudget:
 
         assert estimate_tokens(fitted.text) <= MIN_BUDGET
         assert fitted.text.endswith('of 10000, raise --budget')
+
+
+class TestFitNotes:
+    def test_notes_inside_their_share_are_kept_whole(self) -> None:
+        assert fit_notes(('a', 'b'), budget=MIN_BUDGET) == ('a', 'b')
+
+    def test_a_note_longer_than_the_share_leaves_only_the_count(self) -> None:
+        assert fit_notes(('n' * 500,), budget=MIN_BUDGET) == ('and 1 more notes',)
+
+
+class TestPrintedFit:
+    def test_fitted_text_with_its_newline_is_not_cut_again(self) -> None:
+        fitted = fit_to_budget([tuple('x' * 20 for _ in range(30))], budget=MIN_BUDGET)
+
+        assert cut_to_budget(fitted.text, MIN_BUDGET) == fitted.text
