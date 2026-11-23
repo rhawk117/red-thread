@@ -80,10 +80,13 @@ validate_current_release() {
 }
 
 validate_no_release_tags() {
-  [[ -z "$(git tag --list 'v*')" ]] || panic "The initial release requires a repository without release tags."
+  local local_tags remote_tags
 
-  [[ -z "$(git ls-remote --tags origin 'refs/tags/v*')" ]] ||
-    panic "The initial release requires an origin without release tags."
+  local_tags=$(git tag --list 'v*') || panic "Cannot read release tags from the repository."
+  [[ -z "$local_tags" ]] || panic "The initial release requires a repository without release tags."
+
+  remote_tags=$(git ls-remote --tags origin 'refs/tags/v*') || panic "Cannot read release tags from origin."
+  [[ -z "$remote_tags" ]] || panic "The initial release requires an origin without release tags."
 }
 
 bump_release() {

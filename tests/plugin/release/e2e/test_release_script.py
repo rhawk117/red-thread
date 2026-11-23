@@ -58,6 +58,15 @@ class TestInitialRelease:
         assert finished.code == 1
         assert release_repository.git('tag', '--list') == ''
 
+    def test_an_unreadable_origin_stops_it(self, release_repository: ReleaseRepository) -> None:
+        missing = release_repository.origin.parent / 'missing.git'
+        release_repository.git('remote', 'set-url', 'origin', str(missing))
+
+        finished = release_repository.release('initial')
+
+        assert finished.code != 0
+        assert release_repository.git('tag', '--list') == ''
+
     def test_disagreeing_manifest_and_package_versions_stop_it(
         self, release_repository: ReleaseRepository
     ) -> None:
