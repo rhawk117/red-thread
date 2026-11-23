@@ -122,9 +122,10 @@ def refusal_text(template: str, *, refused: Refused, name: str) -> str:
     return Wording(template=template, refused=refused, name=name).text()
 
 
-def unknown_template(nearest: tuple[str, ...]) -> str:
+def unknown_template(nearest: tuple[str, ...], *, mapped: bool = False) -> str:
     hint = f'nearest names: {", ".join(nearest)}' if nearest else 'the file has no similar name'
-    return f'no symbol <name> in <path>; {hint}'
+    next_step = '. Next step: map <path> to see the names there.' if mapped else ''
+    return f'no symbol <name> in <path>; {hint}{next_step}'
 
 
 class SliceError(ValueError):
@@ -145,6 +146,10 @@ class UnknownSymbolError(SliceError):
         self.name = name
         self.nearest = nearest
         template = unknown_template(nearest)
+        if not nearest:
+            mapped = unknown_template(nearest, mapped=True)
+            wording = Wording(template=mapped, refused=refused, name=repr(name))
+            template = mapped if wording.fit(deep=False) is not None else template
         super().__init__(refusal_text(template, refused=refused, name=repr(name)))
 
 

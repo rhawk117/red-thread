@@ -84,7 +84,7 @@ Below, NAV is the absolute navigate path from the briefing. Run every command fr
   - `find` with no match prints `Next step: map PATH ... or rg NAME PATH ...`. Do what it says.
   - `slice` with a malformed address (no `#`, or nothing after it) lists the valid address forms. Use one.
   - `slice` with an unknown name prints `nearest names: ...` when a similar name exists. Slice one of those.
-  - `slice` with an unknown name and no similar name prints `no symbol 'X' in FILE; the file has no similar name` and no hint. Run `map FILE` yourself to see the names.
+  - `slice` with an unknown name and no similar name prints `no symbol 'X' in FILE; the file has no similar name. Next step: map FILE to see the names there.` Do what it says.
   - `slice` of a path that is not a file prints `PATH cannot be sliced: it is not a file`. Run `map` on the directory.
 - A NAME or ADDRESS that starts with `-` goes after `--`, as in `NAV --budget 600 find -- -x PATH`.
 - `find` skips comments and strings. For text inside a string or a comment, use `rg -n`.

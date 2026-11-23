@@ -96,6 +96,15 @@ def test_unknown_symbol_is_refused_with_the_nearest_names(tmp_path: Path) -> Non
         slice_address('core.py#helpr', root=tmp_path, budget=BIG_BUDGET)
 
 
+def test_unknown_symbol_with_no_similar_name_names_map_as_the_next_step(tmp_path: Path) -> None:
+    write(tmp_path, 'core.py', SHORT)
+
+    with pytest.raises(SliceError) as raised:
+        slice_address('core.py#zzzzzz', root=tmp_path, budget=BIG_BUDGET)
+
+    assert str(raised.value).endswith('Next step: map core.py to see the names there.')
+
+
 def test_lines_past_the_end_are_refused(tmp_path: Path) -> None:
     write(tmp_path, 'core.py', SHORT)
 
