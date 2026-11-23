@@ -286,7 +286,7 @@ One symbol model sits behind a per-language backend, chosen by file suffix.
 - A syntax error is a note with the file and the line of the first error. For Python, `ast` stops at the first error, so the file returns no symbols and the note carries the parser's message. For the tree-sitter languages the file keeps the symbols that parsed, and the note carries the line only.
 - A JavaScript or TypeScript assignment such as `app.init = function init() {}` is one symbol named `app.init`. A callback passed as an argument is not a symbol.
 - Module-level Python and TypeScript constants and variables are symbols of kind `constant` or `variable`.
-- A symbol's span starts at its `def` or `class` line, and a decorator above it is not part of the span. This matches the gold spans of the evaluation cases.
+- A symbol's span starts at its `def` or `class` line, and a decorator above it is not part of the span. This holds for Python only; the tree-sitter languages (JavaScript, TypeScript and the rest) keep the decorator in the span. This matches the gold spans of the Python evaluation cases.
 - `find` matches a definition or a reference by its full address as well as by its last part, so `find aws_vpc.this` and `find this` both reach it.
 - A refused slice names the next command, so a scout does not guess. An unknown name, an address past the end of the file, a path outside the root and a directory each print `Next step: ...`. The read refusals (over 1 MiB, binary, not UTF-8, unreadable) print no hint, and `code-lens` quotes them with what to do instead.
 
@@ -302,7 +302,7 @@ The strongest competitor is no tool. In the agentlens 0.2.0 evaluation (agentlen
 
 - `init` does not look for the tool, the board header does not show it and a lead's brief does not mention it. The case file's `navigation_tool` field is gone from new cases, and a `case.json` that still has it loads and renders.
 - `code-lens` runs only `scripts/navigate.sh` (named in the briefing as NAVIGATE) and `rg`, with a budget of 6,000 tokens of output a question. The primary or a lead, through `skills/investigate/SKILL.md`, sends it questions about the structure of code in the six languages. Questions about behavior still go to `code-sense`. The agent file quotes the read refusals and says what to do instead.
-- `map` and `find` print a line number without the line's text, so the scout cites only lines it saw in `slice` or `rg -n` output.
+- `map` prints each symbol's signature line and `find` prints none, and neither prints the text of a line a scout would cite, so the scout cites only lines it saw in `slice` or `rg -n` output.
 
 ### Why not the other routes
 
@@ -314,7 +314,9 @@ The strongest competitor is no tool. In the agentlens 0.2.0 evaluation (agentlen
 
 "Twice" means a scout fetched the source and the designer re-fetched it. "Once" means a scout fetched it. Quotes come from page extraction, not from the raw PDF. Papers dated after June 2026 are newer than the designer's training data.
 
-### The agentlens 0.2.0 evaluation (historical: agentlens is the tool navigate replaced)
+### The agentlens 0.2.0 evaluation
+
+(Historical: agentlens is the external tool that navigate replaced; the Source line and the table below describe it, not navigate.)
 
 Source: `EVAL_RESULTS_0_2_0.md` in the agentlens repository. 162 runs on Django middleware with Claude Haiku 4.5.
 
@@ -545,4 +547,4 @@ All made by the owner on 2026-11-23.
 | 2026-11-23: JS names | `app.init = function init() {}` is one symbol named `app.init`, and callbacks are not symbols, because the express evaluation showed duplicates |
 | 2026-11-23: `find` full address | `find` matches a reference by its full address as well as its last part, because the terraform evaluation found 0 references |
 | 2026-11-23: module constants | module-level Python and TypeScript constants and variables are symbols of kind `constant` or `variable`, because the excalidraw and django evaluations missed them |
-| 2026-11-23: spans start at def | a decorated symbol's span starts at its `def` or `class` line, over the plan's "line span including decorators", to match the evaluation gold |
+| 2026-11-23: spans start at def | a decorated Python symbol's span starts at its `def` or `class` line, over the plan's "line span including decorators", to match the evaluation gold; tree-sitter languages keep the decorator |
