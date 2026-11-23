@@ -17,11 +17,15 @@ main() {
   validate_release_context
   validate_current_release
 
-  if [[ "$VERSION_BUMP" != recover ]]; then
-    bump_release
-    synchronize_plugin_manifest
-    record_version_bump
-  fi
+  case "$VERSION_BUMP" in
+    recover) ;;
+    initial) record_initial_release ;;
+    *)
+      bump_release
+      synchronize_plugin_manifest
+      record_version_bump
+      ;;
+  esac
 
   write_release_outputs
 }
@@ -48,7 +52,7 @@ validate_release_context() {
   [[ "${REPOSITORY_IS_FORK:-true}" == false ]] || panic "Releases are disabled in forks."
 
   case "$VERSION_BUMP" in
-    recover | major | minor | patch) ;;
+    initial | recover | major | minor | patch) ;;
     *) panic "Invalid version bump: $VERSION_BUMP" ;;
   esac
 }
@@ -65,10 +69,21 @@ validate_current_release() {
   [[ "$manifest_version" == "$release_version" ]] ||
     panic "Plugin manifest and package versions differ."
 
-  git show-ref --verify --quiet "refs/tags/$release_tag" ||
-    panic "Previous release tag does not exist: $release_tag"
+  if [[ "$VERSION_BUMP" == initial ]]; then
+    validate_no_release_tags
+  else
+    git show-ref --verify --quiet "refs/tags/$release_tag" ||
+      panic "Previous release tag does not exist: $release_tag"
+  fi
 
   log::step_end
+}
+
+validate_no_release_tags() {
+  [[ -z "$(git tag --list 'v*')" ]] || panic "The initial release requires a repository without release tags."
+
+  [[ -z "$(git ls-remote --tags origin 'refs/tags/v*')" ]] ||
+    panic "The initial release requires an origin without release tags."
 }
 
 bump_release() {
@@ -115,6 +130,18 @@ record_version_bump() {
   git push --atomic origin \
     HEAD:refs/heads/main \
     "refs/tags/$release_tag:refs/tags/$release_tag"
+
+  log::step_end
+}
+
+record_initial_release() {
+  log::step "Record Initial Release ($release_tag)"
+
+  git config user.name "${RELEASE_BOT_USERNAME}"
+  git config user.email "${RELEASE_BOT_EMAIL}"
+
+  git tag -a "$release_tag" -m "Release $release_tag"
+  git push origin "refs/tags/$release_tag:refs/tags/$release_tag"
 
   log::step_end
 }
