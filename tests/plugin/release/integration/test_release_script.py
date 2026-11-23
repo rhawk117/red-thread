@@ -11,11 +11,13 @@ TAG = 'v0.1.0'
 
 
 class TestInitialRelease:
-    def test_the_current_version_is_tagged_once_and_only_the_tag_is_pushed(
-        self, release_repository: ReleaseRepository
-    ) -> None:
-        main_before = release_repository.git('rev-parse', 'main', at=release_repository.origin)
+    @pytest.fixture
+    def origin_main_before(self, release_repository: ReleaseRepository) -> str:
+        return release_repository.git('rev-parse', 'main', at=release_repository.origin)
 
+    def test_the_current_version_is_tagged_once_and_only_the_tag_is_pushed(
+        self, release_repository: ReleaseRepository, origin_main_before: str
+    ) -> None:
         finished = release_repository.release('initial')
 
         assert finished.code == 0, finished.err
@@ -23,7 +25,8 @@ class TestInitialRelease:
         assert release_repository.git('cat-file', '-t', TAG, at=release_repository.origin) == 'tag'
         assert release_repository.git('tag', '--list', at=release_repository.origin) == TAG
         assert (
-            release_repository.git('rev-parse', 'main', at=release_repository.origin) == main_before
+            release_repository.git('rev-parse', 'main', at=release_repository.origin)
+            == origin_main_before
         )
         assert release_repository.git('status', '--porcelain') == ''
         assert (
