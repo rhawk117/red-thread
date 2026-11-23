@@ -10,6 +10,7 @@ from red_thread_navigate.address import (
     AddressError,
     LineTarget,
     MalformedAddressError,
+    OutsideRootError,
     SymbolTarget,
     parse_address,
 )
@@ -34,6 +35,7 @@ ELLIPSIS = '...'
 MIN_SHOWN = 8
 FILE_NAME_FLOOR = 20
 PLACEHOLDER = re.compile(r'<path>|<name>')
+OUTSIDE_ROOT_HINT = 'use a path under the root'
 
 
 def shorten_path(text: str, limit: int) -> str:
@@ -128,15 +130,23 @@ def unknown_template(nearest: tuple[str, ...], *, mapped: bool = False) -> str:
     return f'no symbol <name> in <path>; {hint}{next_step}'
 
 
+def hinted_template(plain: str, hint: str, *, refused: Refused) -> str:
+    hinted = f'{plain}. Next step: {hint}.'
+    fits = Wording(template=hinted, refused=refused, name='').fit(deep=False) is not None
+    return hinted if fits else plain
+
+
 class SliceError(ValueError):
     """Base of every refusal the slice verb makes."""
 
 
 class FileRefusedError(SliceError):
-    def __init__(self, *, refused: Refused, reason: str) -> None:
+    def __init__(self, *, refused: Refused, reason: str, hint: str = '') -> None:
         self.path = refused.path
         self.reason = reason
         template = f'<path> cannot be sliced: {reason}'
+        if hint:
+            template = hinted_template(template, hint, refused=refused)
         super().__init__(refusal_text(template, refused=refused, name=''))
 
 
@@ -159,6 +169,8 @@ class LinesOutOfRangeError(SliceError):
         self.start = start
         self.total = total
         template = f'<path> has {total} lines, so L{start} is past its end'
+        if total:
+            template = hinted_template(template, f'slice <path>#L1-L{total}', refused=refused)
         super().__init__(refusal_text(template, refused=refused, name=''))
 
 
@@ -174,7 +186,9 @@ def read_file(root: Path, path: PurePosixPath, *, budget: int) -> SourceFile:
         'not_utf8': 'it is not UTF-8',
         'unreadable': 'it cannot be read',
     }
-    raise FileRefusedError(refused=Refused(path=path, budget=budget), reason=reasons[source])
+    hints = {None: 'map <path> to see what it holds', 'outside_root': OUTSIDE_ROOT_HINT}
+    refused = Refused(path=path, budget=budget)
+    raise FileRefusedError(refused=refused, reason=reasons[source], hint=hints.get(source, ''))
 
 
 def split_lines(text: str) -> tuple[str, ...]:
@@ -255,11 +269,26 @@ def slice_symbol(source: SourceFile, target: SymbolTarget, *, budget: int) -> st
     return fit_to_budget(symbol_rungs(founds, parsed.notes), budget=budget).text
 
 
+class HintedOutsideRootError(OutsideRootError):
+    def __init__(self, *, error: OutsideRootError, message: str) -> None:
+        super().__init__(text=error.text, root=error.root)
+        self.args = (message,)
+
+
+def hinted_outside_root(error: AddressError, *, budget: int) -> HintedOutsideRootError | None:
+    message = f'{error}. Next step: {OUTSIDE_ROOT_HINT}.'
+    if isinstance(error, OutsideRootError) and estimate_tokens(message) <= budget:
+        return HintedOutsideRootError(error=error, message=message)
+    return None
+
+
 def address_refusal(text: str, error: AddressError, *, budget: int) -> FileRefusedError:
-    reason = (
-        error.reason if isinstance(error, MalformedAddressError) else 'it reaches outside the root'
+    refused = Refused(path=PurePosixPath(text), budget=budget)
+    if isinstance(error, MalformedAddressError):
+        return FileRefusedError(refused=refused, reason=error.reason)
+    return FileRefusedError(
+        refused=refused, reason='it reaches outside the root', hint=OUTSIDE_ROOT_HINT
     )
-    return FileRefusedError(refused=Refused(path=PurePosixPath(text), budget=budget), reason=reason)
 
 
 def slice_address(text: str, *, root: Path, budget: int) -> str:
@@ -268,6 +297,8 @@ def slice_address(text: str, *, root: Path, budget: int) -> str:
     try:
         address = parse_address(text, root=resolved)
     except AddressError as error:
+        if hinted := hinted_outside_root(error, budget=budget):
+            raise hinted from error
         if estimate_tokens(str(error)) <= budget:
             raise
         raise address_refusal(text, error, budget=budget) from error

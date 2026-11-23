@@ -7,7 +7,7 @@ import pytest
 from red_thread_navigate.address import AddressError
 from red_thread_navigate.budget import estimate_tokens, fit_to_budget
 from red_thread_navigate.slice import WINDOW_LINES, SliceError, slice_address
-from red_thread_navigate.slice.services import Refused, refusal_text
+from red_thread_navigate.slice.services import OUTSIDE_ROOT_HINT, Refused, refusal_text
 from red_thread_navigate.slice.views import Found, symbol_rungs
 from red_thread_navigate.symbols import Symbol
 
@@ -299,3 +299,72 @@ def test_the_whole_message_is_cut_when_the_floors_still_overflow() -> None:
 
     assert estimate_tokens(message) <= MIN_BUDGET
     assert message.endswith('...')
+
+
+def hint_cases() -> list[tuple[str, str]]:
+    return [
+        ('a.py#zzzzzz', 'Next step: map a.py to see the names there.'),
+        ('a.py#L50', 'Next step: slice a.py#L1-L7.'),
+        ('link.py#L1', f'Next step: {OUTSIDE_ROOT_HINT}.'),
+        ('pkg#L1', 'Next step: map pkg to see what it holds.'),
+        ('../x.py#L1', f'Next step: {OUTSIDE_ROOT_HINT}.'),
+    ]
+
+
+def hint_root(tmp_path: Path) -> Path:
+    root = tmp_path / 'r'
+    root.mkdir()
+    write(root, 'a.py', SHORT)
+    write(root, 'pkg/inner.py', SHORT)
+    write(tmp_path, 'secret.py', SHORT)
+    root.joinpath('link.py').symlink_to(tmp_path / 'secret.py')
+    return root
+
+
+def refusal_message(address: str, *, root: Path, budget: int) -> str:
+    with pytest.raises((SliceError, AddressError)) as raised:
+        slice_address(address, root=root, budget=budget)
+    return str(raised.value)
+
+
+@pytest.mark.parametrize(('address', 'tail'), hint_cases())
+def test_each_refusal_ends_with_a_next_step_at_a_large_budget(
+    tmp_path: Path, address: str, tail: str
+) -> None:
+    message = refusal_message(address, root=hint_root(tmp_path), budget=BIG_BUDGET)
+
+    assert message.endswith(tail)
+
+
+@pytest.mark.parametrize(('address', 'tail'), hint_cases()[:4])
+def test_a_short_refusal_keeps_its_next_step_at_the_minimum_budget(
+    tmp_path: Path, address: str, tail: str
+) -> None:
+    message = refusal_message(address, root=hint_root(tmp_path), budget=MIN_BUDGET)
+
+    assert message.endswith(tail)
+    assert estimate_tokens(message) <= MIN_BUDGET
+
+
+@pytest.mark.parametrize(('address', 'tail'), hint_cases())
+def test_the_next_step_is_dropped_where_it_does_not_fit_and_the_refusal_still_fits(
+    tmp_path: Path, address: str, tail: str
+) -> None:
+    root = hint_root(tmp_path)
+    hinted = refusal_message(address, root=root, budget=BIG_BUDGET)
+    budget = estimate_tokens(hinted) - 1
+
+    message = refusal_message(address, root=root, budget=budget)
+
+    assert 'Next step' not in message
+    assert estimate_tokens(message) <= budget
+    assert hinted.removesuffix(tail).rstrip('. ') in message
+
+
+@pytest.mark.parametrize('address', ['a.py#zzzzzz', 'a.py#L50', 'link.py#L1', 'pkg#L1'])
+def test_a_long_path_refusal_still_fits_the_minimum_budget(tmp_path: Path, address: str) -> None:
+    root = hint_root(tmp_path)
+
+    message = refusal_message(f'{LONG_DIRS}/../{address}', root=root, budget=MIN_BUDGET)
+
+    assert estimate_tokens(message) <= MIN_BUDGET

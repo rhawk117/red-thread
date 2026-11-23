@@ -85,7 +85,9 @@ Below, NAV is the absolute navigate path from the briefing. Run every command fr
   - `slice` with a malformed address (no `#`, or nothing after it) lists the valid address forms. Use one.
   - `slice` with an unknown name prints `nearest names: ...` when a similar name exists. Slice one of those.
   - `slice` with an unknown name and no similar name prints `no symbol 'X' in FILE; the file has no similar name. Next step: map FILE to see the names there.` Do what it says.
-  - `slice` of a path that is not a file prints `PATH cannot be sliced: it is not a file`. Run `map` on the directory.
+  - `slice` of a path that is not a file prints `PATH cannot be sliced: it is not a file. Next step: map PATH to see what it holds.` Run `map` on the directory.
+  - `slice` of a line past the end prints `FILE has N lines, so LX is past its end. Next step: slice FILE#L1-LN.` Do what it says.
+  - `slice` of a path outside the root prints `address 'ADDRESS' reaches outside the root ROOT. Next step: use a path under the root.` At a small budget it prints `PATH cannot be sliced: it reaches outside the root. Next step: use a path under the root.` Use a path under the root.
 - A NAME or ADDRESS that starts with `-` goes after `--`, as in `NAV --budget 600 find -- -x PATH`.
 - `find` skips comments and strings. For text inside a string or a comment, use `rg -n`.
 - `find` matches references by name. A call through an alias, a re-export or `getattr` is not listed, so "every caller" is INFERRED unless the name is unique.
