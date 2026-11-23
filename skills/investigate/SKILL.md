@@ -36,12 +36,12 @@ If that line is empty, take the target from the conversation.
 
 | Agent | Brief fields | Returns |
 | --- | --- | --- |
-| `code-sense` | QUESTION, SCOPE (a directory, file or package); optional known facts and paths to skip | `path:line` citations from this repository, its git history and its GitHub issues |
+| `code-sense` | QUESTION, SCOPE (a directory, file or package), NAVIGATE; optional known facts and paths to skip | `path:line` citations from this repository, its git history and its GitHub issues |
 | `code-lens` | QUESTION, SCOPE, NAVIGATE; optional known facts and paths to skip | `path:line` citations for the structure of code in Python, JavaScript, TypeScript, Go, Rust and Terraform (where a symbol is defined, what refers to it, what a file holds) |
 | `web-head` | QUESTION, SUBJECT (package name), LEAD (a URL or a search phrase), TODAY; optional VERSION | cited URLs from official docs, changelogs and upstream source |
-| `research-cell` | HYPOTHESIS, REFUTE (the observation that would prove it wrong), SCOPE; optional EXPERIMENT | one experiment run in its own worktree: the command, the deciding output, and whether the hypothesis survived |
+| `research-cell` | HYPOTHESIS, REFUTE (the observation that would prove it wrong), SCOPE, NAVIGATE; optional EXPERIMENT | one experiment run in its own worktree: the command, the deciding output, and whether the hypothesis survived |
 | `research-lead` | QUESTION, DECISION, CASE, THREAD, ROUND, SCRIPT, NAVIGATE, TODAY; optional KNOWN, SCOPE, SKIP | a short report that points at the entries it stored in its thread |
-| `peer-review` | CASE, SCRIPT, CONCLUSION, TODAY; optional REFS | a verdict per claim, and whether the conclusion follows |
+| `peer-review` | CASE, SCRIPT, CONCLUSION, TODAY, NAVIGATE; optional REFS | a verdict per claim, and whether the conclusion follows |
 
 The Agent tool lists them with the plugin prefix, as in `red-thread:code-sense`. Each one starts with no memory of this conversation, so a brief stands alone: use the field names above exactly, put one question in each brief, and say what to skip. TODAY is today's date; if you do not know it, run `date -u +%F`.
 
