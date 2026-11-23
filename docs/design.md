@@ -6,7 +6,7 @@ Status on 2026-11-21: the direction is agreed, and steps 1 to 5 of the build ord
 
 - Sections 1 to 3 are enough to understand the plugin.
 - Sections 4 to 7 are the contract for building it.
-- Section 8 describes the navigation tool red-thread ships in `packages/navigate`.
+- Section 8 describes `navigate`, the code navigation red-thread ships in `packages/navigate`, which replaced the external agentlens.
 - Section 9 lists the evidence, section 10 the prompting guidance for agent files, section 11 what is open and the build order, section 12 the decision log.
 
 ## 1. Purpose
@@ -283,25 +283,30 @@ One symbol model sits behind a per-language backend, chosen by file suffix.
 - JavaScript, TypeScript and TSX, Go, Rust and Terraform use tree-sitter with a vendored query for each language. Queries are vendored and not taken from the grammar packages, so a wheel upgrade cannot change the output without a change in this repository. The grammar wheels are pinned with `==` for the same reason. Terraform is parsed with the HCL grammar and a hand-written query that names blocks as Terraform references them (`aws_vpc.this`, `data.aws_ami.x`, `module.vpc`, `var.region`, `output.id`, `local.name`) and reports references between blocks with their lines.
 - A Go method is addressed as `Type.Method`, for a value or a pointer receiver. A Rust method is addressed as `Type.method`. A method in a trait impl carries an optional impl field, printed as `function (impl NAME)`, and the kind stays `function`.
 - A tree-sitter parse stops after 2 seconds, and the 1 MiB size cap bounds the rest.
-- A file with a syntax error keeps the symbols that parsed. The output adds a note with the file and the line of the first error. For Python the note carries the parser's message, and for the tree-sitter languages it carries the line only.
+- A syntax error is a note with the file and the line of the first error. For Python, `ast` stops at the first error, so the file returns no symbols and the note carries the parser's message. For the tree-sitter languages the file keeps the symbols that parsed, and the note carries the line only.
+- A JavaScript or TypeScript assignment such as `app.init = function init() {}` is one symbol named `app.init`. A callback passed as an argument is not a symbol.
+- Module-level Python and TypeScript constants and variables are symbols of kind `constant` or `variable`.
+- A symbol's span starts at its `def` or `class` line, and a decorator above it is not part of the span. This matches the gold spans of the evaluation cases.
+- `find` matches a definition or a reference by its full address as well as by its last part, so `find aws_vpc.this` and `find this` both reach it.
+- A refused slice names the next command, so a scout does not guess. An unknown name, an address past the end of the file, a path outside the root and a directory each print `Next step: ...`. The read refusals (over 1 MiB, binary, not UTF-8, unreadable) print no hint, and `code-lens` quotes them with what to do instead.
 
 ### Evaluation
 
-The evaluation cases are in `evals/navigate`, one file per language, in the task format of the agentlens evaluation: Python on Django 6.0.7 (the 18 Django tasks of that evaluation, each with a follow-up line-range address where the required symbol is over 100 lines), and JavaScript, TypeScript, Go, Rust and Terraform on public repositories at pinned tags, with gold spans read from the pinned source. A disagreement between a case and the tool goes to the owner. Nothing has run these cases on a model yet.
+The evaluation cases are in `evals/navigate`, six files (`python.json`, `javascript.json`, `typescript.json`, `go.json`, `rust.json` and `terraform.json`), one per language, in the task format of the agentlens evaluation (agentlens is the tool navigate replaced): Python on Django 6.0.7 (the 18 Django tasks of that evaluation, each with a follow-up line-range address where the required symbol is over 100 lines), and JavaScript, TypeScript, Go, Rust and Terraform on public repositories at pinned tags, with gold spans read from the pinned source. A disagreement between a case and the tool goes to the owner. Nothing has run these cases on a model yet.
 
 ### The gate
 
-The strongest competitor is no tool. In the agentlens 0.2.0 evaluation, `rg` with `sed` ranges was the most accurate arm. The tool is added as an arm, on repositories in three languages, with the current Haiku running the `code-lens` prompt and budget. It passes when it beats the `rg` and `sed` arm on cost at equal accuracy with fewer than 2% malformed calls. The gate is a measurement for the owner to run and no longer decides whether the tool ships: `code-lens` is the default scout for structure questions. If the tool loses to `rg` and `sed`, the owner decides what changes.
+The strongest competitor is no tool. In the agentlens 0.2.0 evaluation (agentlens is the external tool that navigate replaced), `rg` with `sed` ranges was the most accurate arm. The tool is added as an arm, on repositories in three languages, with the current Haiku running the `code-lens` prompt and budget. It passes when it beats the `rg` and `sed` arm on cost at equal accuracy with fewer than 2% malformed calls. The gate is a measurement for the owner to run and no longer decides whether the tool ships: `code-lens` is the default scout for structure questions. If the tool loses to `rg` and `sed`, the owner decides what changes.
 
 ### In red-thread
 
 - `init` does not look for the tool, the board header does not show it and a lead's brief does not mention it. The case file's `navigation_tool` field is gone from new cases, and a `case.json` that still has it loads and renders.
-- `code-lens` runs only `scripts/navigate.sh` and `rg`, with a budget of 6,000 tokens of output a question. The primary or a lead sends it questions about the structure of code in the six languages. Questions about behavior still go to `code-sense`.
+- `code-lens` runs only `scripts/navigate.sh` (named in the briefing as NAVIGATE) and `rg`, with a budget of 6,000 tokens of output a question. The primary or a lead, through `skills/investigate/SKILL.md`, sends it questions about the structure of code in the six languages. Questions about behavior still go to `code-sense`. The agent file quotes the read refusals and says what to do instead.
 - `map` and `find` print a line number without the line's text, so the scout cites only lines it saw in `slice` or `rg -n` output.
 
 ### Why not the other routes
 
-- Porting agentlens's Rust, or shipping it as wheels, puts a binary in the plugin or makes every user compile Rust. Binaries in `bin/` cost about 6.4 MB per platform per version in git history, plugin clones never fetch Git LFS content, and claude.ai and organisation-synced installs reject a plugin with a top-level `bin/`.
+- Porting agentlens's Rust (the external tool that navigate replaced), or shipping it as wheels, puts a binary in the plugin or makes every user compile Rust. Binaries in `bin/` cost about 6.4 MB per platform per version in git history, plugin clones never fetch Git LFS content, and claude.ai and organisation-synced installs reject a plugin with a top-level `bin/`.
 - A language server as the foundation needs a server per language, and the one study of it found it usually adds tokens.
 - The upstream `tags.scm` queries differ by grammar and some grammars ship none, so a language would change when a wheel does.
 
@@ -309,7 +314,7 @@ The strongest competitor is no tool. In the agentlens 0.2.0 evaluation, `rg` wit
 
 "Twice" means a scout fetched the source and the designer re-fetched it. "Once" means a scout fetched it. Quotes come from page extraction, not from the raw PDF. Papers dated after June 2026 are newer than the designer's training data.
 
-### The agentlens 0.2.0 evaluation
+### The agentlens 0.2.0 evaluation (historical: agentlens is the tool navigate replaced)
 
 Source: `EVAL_RESULTS_0_2_0.md` in the agentlens repository. 162 runs on Django middleware with Claude Haiku 4.5.
 
@@ -321,7 +326,7 @@ Source: `EVAL_RESULTS_0_2_0.md` in the agentlens repository. 162 runs on Django 
 | runs that hit the cap | 7 of 54 | 1 of 54 | 8 of 54 |
 | malformed calls | 6.3% | 1.0% | 1.8% |
 
-The malformed calls were mostly `rg` flags the model invented for agentlens. One repository, one feature area, three repetitions.
+The malformed calls were mostly `rg` flags the model invented for agentlens (historical: navigate replaced it). One repository, one feature area, three repetitions.
 
 ### Published sources
 
@@ -367,11 +372,11 @@ Source: Prompting Claude Haiku 5.5, <https://platform.claude.com/docs/en/build-w
 | --- | --- |
 | `medium` is the default effort: "Start here for most work, including agentic coding." At `low`, "In long agent prompts, the model is more likely to skip a search, stop early, or skip a check." | Scouts stay at `effort: medium`, as the three files already set, and never run at `low`. |
 | `high` "suits knowledge work, longer agent tasks, and strict instruction following." | If a scout breaks its report format in testing, try `high` before adding prompt text. |
-| "With a short system prompt, Claude Haiku 5.5 rarely stops before the work is done." | Scout prompts stay short. A command card goes in the agent file; the 982-line agentlens agent kit does not. |
+| "With a short system prompt, Claude Haiku 5.5 rarely stops before the work is done." | Scout prompts stay short. A command card goes in the agent file; the 982-line agentlens agent kit (agentlens is the tool navigate replaced) does not. |
 | "Claude Haiku 5.5 is trained to resist prompt injection through tool results." | Instructions go in the agent file or the brief, never in a file the scout is told to read. It also backs the rule that file contents are data. |
 | "When you give Claude Haiku 5.5 a search tool, also give it today's date." | The web scout's brief carries the date. |
 | At `low` and `medium` it "sometimes reports a code change as done without running a check." | A Haiku lab scout has to return the command and its output, or it is the wrong model for that job. |
-| "Existing Claude Haiku 4.5 prompts should perform well without changes, unless they ask the model to write its reasoning in the response." | The agentlens evaluation prompts carry over, but its numbers are from Haiku 4.5 and need a rerun. |
+| "Existing Claude Haiku 4.5 prompts should perform well without changes, unless they ask the model to write its reasoning in the response." | The agentlens evaluation prompts (agentlens is the tool navigate replaced) carry over, but its numbers are from Haiku 4.5 and need a rerun. |
 
 ### Sonnet 5.5: the lead, and the candidates for skeptic and lab scout
 
@@ -525,13 +530,19 @@ All made by the owner on 2026-11-23.
 | Decision | Choice and reason |
 | --- | --- |
 | Navigation tool | built in this repository as `packages/navigate`, in place of the external agentlens: a binary in the plugin or a Rust build for every user was ruled out in section 8, and the tool blocks v0.1.0 so `code-lens` never points at an unfinished one |
-| Command surface | the agentlens verbs `map`, `find` and `slice` and its addresses, so `code-lens` and the Django evaluation tasks carry over |
+| Command surface | the verbs of agentlens, the tool navigate replaced: `map`, `find` and `slice` and its addresses, so `code-lens` and the Django evaluation tasks carry over |
 | Language backends | `ast` for Python, because it is exact for 3.14 and has no grammar to lag; tree-sitter with vendored queries for JavaScript, TypeScript and TSX, Go, Rust and Terraform, so a wheel upgrade cannot silently change the output |
 | Grammar wheels | pinned with `==`, for the same reason as the vendored queries |
 | Hard budget cap | the cap wins over showing notes: notes are cut to `and N more notes`, because a scout's context is the scarce thing and a note that overflows it helps nobody |
 | Refusals | a cut refusal keeps the tail of the file name, since the end of a path is what tells files apart |
 | Rust impl methods | an optional impl field printed as `(impl NAME)`, in place of a wider kind, so the set of kinds stays the same in every language |
-| Syntax errors | every tree-sitter language keeps what parses and adds a syntax-error note, as Python does, because a half-parsed file still answers most questions |
-| `code-lens` | the default scout for structure questions in six languages, no longer experimental and not conditional on an install check |
-| Navigation-tool detection | removed from `init`, the board header and the lead's brief; `case.json` files that carry the old key still load |
+| Syntax errors | every tree-sitter language keeps what parses and adds a syntax-error note, because a half-parsed file still answers most questions; Python keeps nothing, because `ast` stops at the first error |
+| `code-lens` | the default scout for structure questions in six languages, no longer experimental and not conditional on an install check, because the tool ships in the plugin and a scout that exists only where an install was found would leave most cases without it |
+| Navigation-tool detection | removed from `init`, the board header and the lead's brief, because the tool is always there and a check that cannot fail only adds a field; `case.json` files that carry the old key still load |
 | Evaluation gate | kept as a measurement and no longer a condition for shipping, since the tool is part of the plugin |
+| 2026-11-23: refusal next steps | a refused slice names the next command (unknown name, past the end, outside the root, a directory), so a scout does not guess |
+| 2026-11-23: read refusals | not hinted by the launcher: `code-lens.md` quotes them (over 1 MiB, binary, not UTF-8, unreadable) and says what to do instead |
+| 2026-11-23: JS names | `app.init = function init() {}` is one symbol named `app.init`, and callbacks are not symbols, because the express evaluation showed duplicates |
+| 2026-11-23: `find` full address | `find` matches a reference by its full address as well as its last part, because the terraform evaluation found 0 references |
+| 2026-11-23: module constants | module-level Python and TypeScript constants and variables are symbols of kind `constant` or `variable`, because the excalidraw and django evaluations missed them |
+| 2026-11-23: spans start at def | a decorated symbol's span starts at its `def` or `class` line, over the plan's "line span including decorators", to match the evaluation gold |
