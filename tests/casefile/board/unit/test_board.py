@@ -97,13 +97,8 @@ class TestSections:
         assert 'Kind: root-cause | Round: 3 | HEAD: 1111111' in text
         assert 'Threads: T1 (2)' in text
 
-    def test_header_says_when_the_navigation_tool_is_installed(self) -> None:
+    def test_header_never_mentions_the_navigation_tool(self) -> None:
         text = create_equipped_board().render()
-
-        assert 'Navigation tool: installed' in text.splitlines()
-
-    def test_header_leaves_the_navigation_tool_out_when_it_is_missing(self) -> None:
-        text = create_board(()).render()
 
         assert 'Navigation tool' not in text
 

@@ -30,7 +30,7 @@ class TestInit:
         assert result.err == ''
         assert CASE_DIRECTORY.match(result.out)
         assert 'languages: Python' in result.out
-        assert 'navigation tool: ' in result.out
+        assert 'navigation tool' not in result.out
 
     def test_init_writes_a_case_file_that_records_the_framing_and_the_head(
         self, cli: CliHarness
