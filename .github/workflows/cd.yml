@@ -9,7 +9,7 @@ on:
         type: choice
         default: recover
         required: true
-        description: Semantic version bump or recover an existing release
+        description: Tag the current version once (initial), recover an existing release, or apply a semantic version bump
 
 concurrency:
   group: release-${{ github.repository }}
