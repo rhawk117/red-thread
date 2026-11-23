@@ -7,7 +7,14 @@ authors = [
     { name = "rhawk117", email = "noplaceLike127dot0dot0dot1@proton.me" },
 ]
 requires-python = ">=3.14"
-dependencies = []
+dependencies = [
+    "tree-sitter>=0.27.0",
+    "tree-sitter-go>=0.25.0",
+    "tree-sitter-hcl>=1.2.0",
+    "tree-sitter-javascript>=0.25.0",
+    "tree-sitter-rust>=0.24.2",
+    "tree-sitter-typescript>=0.23.2",
+]
 
 [project.scripts]
 red-thread-navigate = "red_thread_navigate:main"
