@@ -45,9 +45,8 @@ def file_line(ranked: RankedFile) -> str:
 def symbol_line(ranked_file: RankedFile, ranked: RankedSymbol) -> str:
     symbol = ranked.symbol
     address = f'{ranked_file.file.path}#{symbol.qualified_name}'
-    return (
-        f'  {symbol.kind} {symbol.signature}  {span(symbol)}  {address}  {ranked.references} refs'
-    )
+    label = f'{symbol.kind_label} {symbol.signature}'
+    return f'  {label}  {span(symbol)}  {address}  {ranked.references} refs'
 
 
 def header_line(files: tuple[RankedFile, ...]) -> str:

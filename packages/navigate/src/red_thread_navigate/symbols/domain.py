@@ -36,6 +36,13 @@ class Symbol:
     signature: str
     docstring: str | None
     parent: str | None
+    impl: str | None = None
+
+    @property
+    def kind_label(self) -> str:
+        if self.impl is None:
+            return self.kind
+        return f'{self.kind} (impl {self.impl})'
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)

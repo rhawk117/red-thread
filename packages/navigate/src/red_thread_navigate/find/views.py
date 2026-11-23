@@ -27,7 +27,7 @@ class Occurrence:
 def definition_line(definition: Definition) -> str:
     symbol = definition.symbol
     address = f'{definition.path}#{symbol.qualified_name}'
-    return f'  {address}  {symbol.kind}  {span(symbol)}'
+    return f'  {address}  {symbol.kind_label}  {span(symbol)}'
 
 
 def header_line(definitions: tuple[Definition, ...], references: tuple[Occurrence, ...]) -> str:

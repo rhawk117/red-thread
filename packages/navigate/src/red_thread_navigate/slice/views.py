@@ -33,7 +33,7 @@ def line_address(path: PurePosixPath, start: int, end: int) -> str:
 def label(found: Found) -> str:
     symbol = found.symbol
     parent = f'in {symbol.parent}' if symbol.parent is not None else 'at the top level'
-    return f'{found.path}#{symbol.qualified_name}  {symbol.kind}  {span(symbol)}  {parent}'
+    return f'{found.path}#{symbol.qualified_name}  {symbol.kind_label}  {span(symbol)}  {parent}'
 
 
 def body_line(found: Found) -> str:
@@ -43,7 +43,7 @@ def body_line(found: Found) -> str:
 
 def child_line(found: Found, child: Symbol) -> str:
     signature = child.signature.splitlines()[0] if child.signature else child.name
-    return f'  {child.kind} {signature}  {span(child)}  {found.path}#{child.qualified_name}'
+    return f'  {child.kind_label} {signature}  {span(child)}  {found.path}#{child.qualified_name}'
 
 
 def indented(text: str) -> tuple[str, ...]:
