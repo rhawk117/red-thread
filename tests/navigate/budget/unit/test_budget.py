@@ -12,7 +12,7 @@ from red_thread_navigate.budget import (
     fit_to_budget,
 )
 
-lines_strategy = st.lists(st.text(max_size=80).filter(lambda s: '\n' not in s), max_size=40)
+lines_strategy = st.lists(st.text(max_size=2000).filter(lambda s: '\n' not in s), max_size=40)
 rungs_strategy = st.lists(lines_strategy.map(tuple), min_size=1, max_size=3)
 
 
@@ -25,7 +25,7 @@ class TestEstimateTokens:
 
 
 class TestFitToBudget:
-    @given(rungs=rungs_strategy, budget=st.integers(min_value=MIN_BUDGET, max_value=400))
+    @given(rungs=rungs_strategy, budget=st.integers(min_value=MIN_BUDGET, max_value=5000))
     def test_fitted_output_never_exceeds_the_budget(
         self, rungs: list[tuple[str, ...]], budget: int
     ) -> None:
@@ -61,6 +61,15 @@ class TestFitToBudget:
     def test_no_rungs_is_refused(self) -> None:
         with pytest.raises(NoRungsError):
             fit_to_budget([], budget=MIN_BUDGET)
+
+    def test_first_line_longer_than_the_budget_leaves_only_the_footer(self) -> None:
+        rung = ('z' * 3000, 'short')
+
+        fitted = fit_to_budget([rung], budget=MIN_BUDGET)
+
+        assert estimate_tokens(fitted.text) <= MIN_BUDGET
+        assert fitted.text == 'showing 0 of 2, raise --budget'
+        assert fitted.kept == 0
 
     def test_minimum_budget_holds_the_footer_for_a_huge_rung(self) -> None:
         fitted = fit_to_budget([tuple('y' * 50 for _ in range(10_000))], budget=MIN_BUDGET)
