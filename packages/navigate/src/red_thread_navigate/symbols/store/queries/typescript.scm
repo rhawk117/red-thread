@@ -54,11 +54,11 @@
 
 (pair
   key: (property_identifier) @name
-  value: [(arrow_function) (function_expression)]) @definition.function
+  value: [(arrow_function) (function_expression) (generator_function)]) @definition.function
 
 (variable_declarator
   name: (identifier) @name
-  value: [(arrow_function) (function_expression)]) @definition.function
+  value: [(arrow_function) (function_expression) (generator_function)]) @definition.function
 
 (call_expression
   function: (identifier) @name
@@ -107,11 +107,11 @@
     (lexical_declaration
       (variable_declarator
       name: (identifier) @name
-      value: [(arrow_function) (function_expression)]) @definition.function)
+      value: [(arrow_function) (function_expression) (generator_function)]) @definition.function)
     (variable_declaration
       (variable_declarator
       name: (identifier) @name
-      value: [(arrow_function) (function_expression)]) @definition.function)
+      value: [(arrow_function) (function_expression) (generator_function)]) @definition.function)
   ])
 
 (export_statement
@@ -119,11 +119,11 @@
     (lexical_declaration
       (variable_declarator
       name: (identifier) @name
-      value: [(arrow_function) (function_expression)]) @definition.function)
+      value: [(arrow_function) (function_expression) (generator_function)]) @definition.function)
     (variable_declaration
       (variable_declarator
       name: (identifier) @name
-      value: [(arrow_function) (function_expression)]) @definition.function)
+      value: [(arrow_function) (function_expression) (generator_function)]) @definition.function)
   ])
 
 (program

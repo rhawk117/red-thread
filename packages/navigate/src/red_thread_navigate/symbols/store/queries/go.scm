@@ -85,3 +85,5 @@
       (selector_expression
         field: (field_identifier) @name))
   ]) @reference.call
+
+(type_identifier) @name @reference.type

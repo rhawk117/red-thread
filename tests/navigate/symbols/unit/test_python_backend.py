@@ -196,3 +196,22 @@ class TestBackendFor:
 
     def test_unknown_suffix_selects_nothing(self) -> None:
         assert backend_for(PurePosixPath('notes.txt')) is None
+
+
+def unpacking_cases() -> pytest.MarkDecorator:
+    return pytest.mark.parametrize(
+        ('text', 'expected'),
+        [
+            pytest.param('a, *rest = f()\n', {'a', 'rest'}, id='starred'),
+            pytest.param('(a, (b, c)), d = f()\n', {'a', 'b', 'c', 'd'}, id='nested-tuple'),
+            pytest.param('[a, [b, *c]] = f()\n', {'a', 'b', 'c'}, id='nested-list-starred'),
+        ],
+    )
+
+
+class TestUnpackingTargets:
+    @unpacking_cases()
+    def test_every_name_a_module_level_target_binds_is_a_symbol(
+        self, text: str, expected: set[str]
+    ) -> None:
+        assert {symbol.name for symbol in parse(text).symbols} == expected

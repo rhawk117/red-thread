@@ -99,3 +99,19 @@ class TestTimeLimit:
         assert len(parsed.notes) == 1
         assert 'unreadable source' in parsed.notes[0]
         assert 'time limit' not in parsed.notes[0]
+
+
+TYPE_USE_SAMPLE = """package shapes
+
+type Handler struct{}
+
+func serve(h Handler) {
+	_ = Handler{}
+}
+"""
+
+
+class TestTypeReferences:
+    def test_parameter_and_composite_literal_types_are_references_at_their_lines(self) -> None:
+        lines = [r.line for r in parse(TYPE_USE_SAMPLE).references if r.name == 'Handler']
+        assert {5, 6} <= set(lines)

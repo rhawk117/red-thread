@@ -217,3 +217,10 @@ class TestLookup:
         )
         assert 'Max Brunsfeld' in query
         assert 'MIT License' in query
+
+
+class TestGeneratorConstants:
+    @pytest.mark.parametrize('backend', [TYPESCRIPT_BACKEND, TSX_BACKEND], ids=['ts', 'tsx'])
+    def test_generator_valued_const_is_a_function(self, backend: TreeSitterBackend) -> None:
+        parsed = parse('const gen = function* () {}\n', backend)
+        assert spans_of(parsed, 'gen') == [('function', 1, 1)]

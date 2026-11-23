@@ -57,13 +57,19 @@ def build_symbol(node: Definition, scope: Scope, lines: list[str]) -> Symbol:
     )
 
 
+def target_names(target: ast.expr) -> list[str]:
+    if isinstance(target, ast.Name):
+        return [target.id]
+    if isinstance(target, ast.Starred):
+        return target_names(target.value)
+    if isinstance(target, ast.Tuple | ast.List):
+        return [name for element in target.elts for name in target_names(element)]
+    return []
+
+
 def assigned_names(node: ast.Assign | ast.AnnAssign) -> list[str]:
     targets = node.targets if isinstance(node, ast.Assign) else [node.target]
-    names: list[str] = []
-    for target in targets:
-        elements = target.elts if isinstance(target, ast.Tuple | ast.List) else [target]
-        names.extend(element.id for element in elements if isinstance(element, ast.Name))
-    return names
+    return [name for target in targets for name in target_names(target)]
 
 
 def build_variable(node: ast.Assign | ast.AnnAssign, name: str, lines: list[str]) -> Symbol:
