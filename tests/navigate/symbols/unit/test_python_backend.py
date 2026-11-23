@@ -130,6 +130,10 @@ class TestEdges:
         assert '_size' not in names
         assert 'gone' not in names
 
+    def test_augmented_assignment_target_is_a_reference_at_its_line(self) -> None:
+        references = parse(WRITE_SAMPLE).references
+        assert [reference.line for reference in references if reference.name == 'count'] == [5]
+
 
 class TestSyntaxError:
     def test_yields_no_symbols_and_a_note_naming_file_and_line(self) -> None:

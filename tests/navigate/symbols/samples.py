@@ -112,5 +112,6 @@ class Box:
     def put(self, value):
         self._size = value
         del self.gone
+        self.count += 1
         return self.kept
 """
