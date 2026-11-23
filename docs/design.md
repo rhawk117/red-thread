@@ -255,7 +255,7 @@ Every agent file is rewritten against section 10 before it ships.
 
 ## 8. Navigation tool
 
-**Decided 2026-11-23:** red-thread ships its own code navigation, the workspace package `packages/navigate` (`red_thread_navigate`), run through `scripts/navigate.sh`. It replaces the external agentlens tool, which the first version of this section planned to gut and distribute as wheels. agentlens 0.2.0 (`/home/rhawk/dev/agentlens`) stays the source of the command surface and the evaluation harness, and nothing in the plugin depends on it. The launcher starts the package the way `scripts/casefile.sh` starts the case file script, so nothing is installed into the project under investigation.
+**Decided 2026-11-23:** red-thread ships its own code navigation, the workspace package `packages/navigate` (`red_thread_navigate`), run through `scripts/navigate.sh`. It replaces the external agentlens tool, which the first version of this section planned to gut and distribute as wheels. agentlens 0.2.0 (`/home/rhawk/dev/agentlens`) stays the source of the command surface and the evaluation harness, and nothing in the plugin depends on it. The launcher starts the package the way `scripts/casefile.sh` starts the case file script, so nothing is installed into the project under investigation. Both launchers run uv with `--no-config`, so a `uv.toml` or `pyproject.toml` uv setting in the investigated repository cannot change what they install.
 
 ### What it is
 
@@ -267,7 +267,7 @@ Every agent file is rewritten against section 10 before it ships.
 
 An address is `file#Symbol`, `file#A.b.c`, `file#Lnn` or `file#Lnn-Lmm`. A symbol of 100 lines or fewer comes back whole. A longer one comes back as its signature, its docstring and an outline of its children, each with its span and the line-range address of its body, and the scout reads the body with a second slice. An explicit line range comes back as asked. An address that matches several definitions returns all of them, each labelled with its context, and an unknown symbol lists the nearest names. Every output line starts with a path and a line, so it drops into the ledger as a citation.
 
-**Hard budget cap.** `--budget N` is the most tokens a call prints, at least 32, and the default is 2,000. The tool estimates tokens at 3.5 characters each, rounded up, and no output goes over the budget by that estimate. When a result does not fit, it steps down to a shorter form and then cuts at a line boundary with the footer `showing N of M, raise --budget`. The footer counts against the budget too. Notes (below) come last and are cut first, to `and N more notes`. A refusal also fits the budget and keeps the tail of a long file name, since the end of a path is the part that tells files apart. An unknown flag, `--no-cache` included, is an error that names the valid flags. There is no index and no cache.
+**Hard budget cap.** `--budget N` is the most tokens a call prints, at least 32, and the default is 2,000. The tool estimates tokens at 3.5 characters each, rounded up, and no output goes over the budget by that estimate. When a result does not fit, it steps down to a shorter form and then cuts at a line boundary with the footer `showing N of M, raise --budget`. The footer counts against the budget too. Notes (below) lead `map` and `find` output, trail `slice` output, and are cut first, to `and N more notes`. A refusal also fits the budget and keeps the tail of a long file name, since the end of a path is the part that tells files apart. An unknown flag, `--no-cache` included, is an error that names the valid flags. There is no index and no cache.
 
 ### The file walk
 
@@ -286,9 +286,11 @@ One symbol model sits behind a per-language backend, chosen by file suffix.
 - A syntax error is a note with the file and the line of the first error. For Python, `ast` stops at the first error, so the file returns no symbols and the note carries the parser's message. For the tree-sitter languages the file keeps the symbols that parsed, and the note carries the line only.
 - A JavaScript or TypeScript assignment such as `app.init = function init() {}` is one symbol named `app.init`. A callback passed as an argument is not a symbol.
 - Module-level Python and TypeScript constants and variables are symbols of kind `constant` or `variable`.
-- A symbol's span starts at its `def` or `class` line, and a decorator above it is not part of the span. This holds for Python only; the tree-sitter languages (JavaScript, TypeScript and the rest) keep the decorator in the span. This matches the gold spans of the Python evaluation cases.
+- A symbol's span starts at its `def` or `class` line, and a decorator above it is not part of the span. The tree-sitter languages differ: a TypeScript or JavaScript class decorator is inside the span, but Rust attributes (`#[derive(...)]`, `#[inline]`) and TypeScript or JavaScript member decorators sit outside it, so a slice of a Rust item does not show its `#[cfg]` or `#[test]` gate. This matches the gold spans of the Python evaluation cases.
+- A missing PATH is a refusal that prints a message and exits 1, and an empty PATH is a usage error that exits 2.
+- In Go, a use of a type counts as a reference to it, so `find` and the `map` reference counts include type uses.
 - `find` matches a definition or a reference by its full address as well as by its last part, so `find aws_vpc.this` and `find this` both reach it.
-- A refused slice names the next command, so a scout does not guess. An unknown name, an address past the end of the file, a path outside the root and a directory each print `Next step: ...`. The read refusals (over 1 MiB, binary, not UTF-8, unreadable) print no hint, and `code-lens` quotes them with what to do instead.
+- A refused slice names the next command, so a scout does not guess. An unknown name, an address past the end of the file, a path outside the root and a directory each print `Next step: ...`. The read refusals (over 1 MiB, binary, not UTF-8, unreadable) print no hint, and `code-lens` quotes them with what to do instead. `code-lens` recognizes a refusal by its stable markers (`Next step:`, `cannot be sliced:`, `nearest names:`, `is not valid:`) and not by the wording around them.
 
 ### Evaluation
 
@@ -547,4 +549,8 @@ All made by the owner on 2026-11-23.
 | 2026-11-23: JS names | `app.init = function init() {}` is one symbol named `app.init`, and callbacks are not symbols, because the express evaluation showed duplicates |
 | 2026-11-23: `find` full address | `find` matches a reference by its full address as well as its last part, because the terraform evaluation found 0 references |
 | 2026-11-23: module constants | module-level Python and TypeScript constants and variables are symbols of kind `constant` or `variable`, because the excalidraw and django evaluations missed them |
-| 2026-11-23: spans start at def | a decorated Python symbol's span starts at its `def` or `class` line, over the plan's "line span including decorators", to match the evaluation gold; tree-sitter languages keep the decorator |
+| 2026-11-23: spans start at def | a decorated Python symbol's span starts at its `def` or `class` line, over the plan's "line span including decorators", to match the evaluation gold; a TS/JS class decorator is inside the span, while Rust attributes and TS/JS member decorators are outside it |
+| 2026-11-23: launchers ignore uv config | both launchers run uv with `--no-config`, because the investigated repository's uv settings could change what a launcher installs |
+| 2026-11-23: missing PATH | a missing PATH is a refusal with exit 1, not an empty result, so a scout sees the mistake |
+| 2026-11-23: Go type uses | a use of a type counts as a reference in Go, because `find` found none for types |
+| 2026-11-23: refusal markers | `code-lens` describes refusals by their stable markers, so rewording a message does not break the agent |

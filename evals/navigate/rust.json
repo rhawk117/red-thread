@@ -120,9 +120,9 @@
         {
           "id": "F2",
           "any_of": [
-            "cli flag first, then ripgrep_threads, then the default",
+            "cli flag first, then RIPGREP_THREADS, then the default",
             "threads flag overrides the environment variable",
-            "ripgrep_threads is read only when the flag is absent"
+            "RIPGREP_THREADS is read only when the flag is absent"
           ]
         },
         {
@@ -136,16 +136,16 @@
         {
           "id": "F4",
           "any_of": [
-            "ripgrep_threads=0 is treated as unset",
+            "RIPGREP_THREADS=0 is treated as unset",
             "zero means use the default",
-            "invalid ripgrep_threads is an error"
+            "invalid RIPGREP_THREADS is an error"
           ]
         }
       ],
       "forbidden_claims": [
-        "ripgrep_threads overrides the threads flag",
+        "RIPGREP_THREADS overrides the threads flag",
         "the default uses every available core with no cap",
-        "an invalid ripgrep_threads value is silently ignored",
+        "an invalid RIPGREP_THREADS value is silently ignored",
         "sorting output still uses all threads"
       ],
       "source_of_truth": [

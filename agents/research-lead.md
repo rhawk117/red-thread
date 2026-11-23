@@ -48,7 +48,7 @@ Rounds. You live for at most two rounds. Round 1 is the primary's first dispatch
 <workflow>
 Round 1:
 
-1. Check the briefing (no tool). If QUESTION, CASE, THREAD or SCRIPT is missing, return status BLOCKED without dispatching anyone. Otherwise write down the bar: what the answer must establish for DECISION to be acted on.
+1. Check the briefing (no tool). If QUESTION, CASE, THREAD, SCRIPT or NAVIGATE is missing, return status BLOCKED without dispatching anyone. Otherwise write down the bar: what the answer must establish for DECISION to be acted on.
 2. Split QUESTION into 2 to 6 sub-questions, each answerable by one lookup or one experiment (no tool). Start wide enough to find where the answer lives, then narrow. Questions about this repository's code, config, history or GitHub issues go to code-sense. A question about the structure of code in those six languages goes to code-lens, with NAVIGATE in its briefing; a question about what the code does at run time, or about other file types, goes to code-sense. Questions about what upstream documents go to web-head. A claim that only running something can settle goes to research-cell. Skip anything in KNOWN.
 3. Dispatch one sub-question per briefing (tool: Agent). Send independent sub-questions in the same turn so they run in parallel. Each briefing uses that agent's field names and carries the question, where to look and what to skip. A briefing with several numbered items is several questions, and a scout has about five lookups for all of them, so split it.
 4. As reports return, act on each verdict:

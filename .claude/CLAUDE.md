@@ -12,14 +12,14 @@ Every command goes through `make`. Each target delegates to uv, prek or a script
 - `make lint` runs the prek hooks in the `lint` group on all files: the hygiene checks, ruff check, ty and shellcheck.
 - `make typecheck` runs ty alone.
 - `make test` runs `pytest -q -m "unit or agents or smoke"`, with coverage.
-- `make test.end-to-end` runs `pytest -q -m e2e`: the tests under `tests/casefile/launcher/e2e`, which run `scripts/casefile.sh` as a child process from a copy of the plugin.
+- `make test.end-to-end` runs `pytest -q -m e2e`: the tests under `tests/casefile/launcher/e2e` and `tests/navigate/launcher/e2e`, which run `scripts/casefile.sh` and `scripts/navigate.sh` as child processes from a copy of the plugin.
 - `make pre-commit` runs every prek hook in `.pre-commit-config.yaml` on all files.
 - `make check` runs lint, then test.
 - `make quality` runs every prek hook on all files, then `pytest -q -m "not integration"`, which matches CI's quality job.
 
 ## Stack
 
-Python 3.14 (`requires-python` in `pyproject.toml`), uv, ruff, ty, pytest with Hypothesis, mdformat and prek. msgspec is the one runtime dependency, and only `packages/casefile` uses it. `.github/workflows/ci.yml` sets up CI: `astral-sh/setup-uv` takes its uv version from the `UV_VERSION` repository variable, and `actions/setup-node` takes its Node version from the `NODE_VERSION` repository variable.
+Python 3.14 (`requires-python` in `pyproject.toml`), uv, ruff, ty, pytest with Hypothesis, mdformat and prek. `packages/casefile` depends on msgspec. `packages/navigate` depends on tree-sitter and the grammar wheels for JavaScript, TypeScript, Go, Rust and Terraform (`tree-sitter-javascript`, `tree-sitter-typescript`, `tree-sitter-go`, `tree-sitter-rust` and `tree-sitter-hcl`), all pinned with `==`. `.github/workflows/ci.yml` sets up CI: `astral-sh/setup-uv` takes its uv version from the `UV_VERSION` repository variable, and `actions/setup-node` takes its Node version from the `NODE_VERSION` repository variable.
 
 ## Layout
 
@@ -29,7 +29,9 @@ Python 3.14 (`requires-python` in `pyproject.toml`), uv, ruff, ty, pytest with H
 - `skills/investigate/` and `skills/distill/` hold the two skills. Each keeps its supporting files under `references/` (one per case kind, one per lens) and links every one of them from `SKILL.md`. Check a change with `vibe-code skill validate <skill directory>`.
 - `packages/casefile` holds `red_thread_casefile`, the only writer and renderer of a case file. Its commands are `init`, `add`, `render`, `check`, `export` and `page`. The page's skeleton, styles, script and map header are in `packages/casefile/assets/`, beside `src/`, and the page loads Tailwind and mermaid from cdnjs at pinned versions.
 - `scripts/casefile.sh` is how the skills and agents run that package. It starts it with `uv run --no-project`, so it installs nothing into the project under investigation.
-- `tests/<tree>/<concept>/{unit,integration,smoke,e2e}/` holds the tests, in the trees `casefile` and `plugin`. The root `conftest.py` marks each test from its tier directory. The tests under `tests/casefile/pages/integration` run the page's script under `node` and skip when it is missing.
+- `packages/navigate` holds `red_thread_navigate`, the code navigation tool behind `code-lens`. Its verbs are `map`, `find` and `slice`, and its tree-sitter queries are vendored in the package.
+- `scripts/navigate.sh` is how the agents run that package, started the same way as `scripts/casefile.sh`.
+- `tests/<tree>/<concept>/{unit,integration,smoke,e2e}/` holds the tests, in the trees `casefile`, `navigate` and `plugin`. The root `conftest.py` marks each test from its tier directory. The tests under `tests/casefile/pages/integration` run the page's script under `node` and skip when it is missing.
 - A case lives in `.red-thread/<case-id>/` in the repository under investigation: `case.json`, `ledger.jsonl`, `threads/`, `board.html` and `out/`.
 - `.claude/hooks/pyhooks.py` is the project's own hook script, a PEP 723 script that `.claude/settings.json` wires to Write, Edit and Read. ty does not check it, because `ty.toml` includes only `packages` and `tests`.
 - Read `.claude/rules/python.md` before writing Python and `.claude/rules/testing.md` before writing tests. Both load on their own when you touch a matching file.

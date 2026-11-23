@@ -45,6 +45,8 @@ Then, in a session opened in the repository you want to investigate:
 | `hooks/roster.py` | a hook that denies a red-thread agent's dispatch outside its roster |
 | `packages/casefile` | the only writer and renderer of a case file: `init`, `add`, `render`, `check`, `export` and `page` |
 | `scripts/casefile.sh` | how the skills and agents run that package, without installing anything into your project |
+| `packages/navigate` | code navigation for the `code-lens` scout: `map`, `find` and `slice` over six languages |
+| `scripts/navigate.sh` | how the agents run that package, without installing anything into your project |
 
 ## Development
 
