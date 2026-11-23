@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 from red_thread_navigate.budget import estimate_tokens, fit_notes
-from red_thread_navigate.find import find_name
+from red_thread_navigate.cli import create_navigator
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -27,6 +27,7 @@ def run():
     helper()
 """
 BIG_BUDGET = 10_000
+NAVIGATOR = create_navigator()
 SMALL_BUDGET = 40
 
 
@@ -40,7 +41,7 @@ def test_definitions_come_before_references(tmp_path: Path) -> None:
     write(tmp_path, 'core.py', CORE)
     write(tmp_path, 'client.py', CLIENT)
 
-    text = find_name('helper', tmp_path, budget=BIG_BUDGET)
+    text = NAVIGATOR.find('helper', tmp_path, budget=BIG_BUDGET)
 
     assert 'core.py#helper  function  L1-L2' in text
     assert 'client.py:5' in text
@@ -52,7 +53,7 @@ def test_definitions_come_before_references(tmp_path: Path) -> None:
 def test_dotted_name_matches_the_qualified_ending(tmp_path: Path) -> None:
     write(tmp_path, 'core.py', CORE)
 
-    text = find_name('Widget.render', tmp_path, budget=BIG_BUDGET)
+    text = NAVIGATOR.find('Widget.render', tmp_path, budget=BIG_BUDGET)
 
     assert 'core.py#Widget.render  method' in text
 
@@ -60,7 +61,7 @@ def test_dotted_name_matches_the_qualified_ending(tmp_path: Path) -> None:
 def test_unknown_name_suggests_a_next_step(tmp_path: Path) -> None:
     write(tmp_path, 'core.py', CORE)
 
-    text = find_name('missing', tmp_path, budget=BIG_BUDGET)
+    text = NAVIGATOR.find('missing', tmp_path, budget=BIG_BUDGET)
 
     assert f'no matches for missing in {tmp_path}' in text
     assert f'map {tmp_path}' in text
@@ -73,7 +74,7 @@ def test_output_stays_within_budget_and_says_it_was_cut(tmp_path: Path, budget: 
     for index in range(60):
         write(tmp_path, f'client{index}.py', CLIENT)
 
-    text = find_name('helper', tmp_path, budget=budget)
+    text = NAVIGATOR.find('helper', tmp_path, budget=budget)
 
     assert estimate_tokens(text) <= budget
     assert 'raise --budget' in text
@@ -92,7 +93,7 @@ def test_crowding_notes_are_cut_and_counted() -> None:
 def test_a_syntax_error_note_too_long_for_its_share_is_still_counted(tmp_path: Path) -> None:
     write(tmp_path, 'broken.py', 'def (:\n')
 
-    text = find_name('helper', tmp_path, budget=40)
+    text = NAVIGATOR.find('helper', tmp_path, budget=40)
 
     assert 'and 1 more notes' in text
 
@@ -106,6 +107,6 @@ def test_many_notes_keep_the_whole_output_within_budget(
     for index in range(30):
         write(tmp_path, f'broken{index}.py', 'def (:\n')
 
-    text = find_name(name, tmp_path, budget=budget)
+    text = NAVIGATOR.find(name, tmp_path, budget=budget)
 
     assert estimate_tokens(text) <= budget

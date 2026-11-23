@@ -1,6 +1,7 @@
 """Slicing an address: read the one file, find the target and fit the result to a budget."""
 
 import re
+from dataclasses import dataclass
 from difflib import get_close_matches
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
@@ -30,9 +31,7 @@ from red_thread_navigate.slice.policy import (
 )
 from red_thread_navigate.slice.util import MIN_SHOWN, shorten_name
 from red_thread_navigate.slice.views import Found, line_rungs, symbol_rungs
-from red_thread_navigate.symbols.store import backend_for
 from red_thread_navigate.walk import SKIP_LABELS, SourceFile
-from red_thread_navigate.walk.store import read_source
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -40,25 +39,12 @@ if TYPE_CHECKING:
     from red_thread_navigate.address import (
         SymbolTarget,
     )
-    from red_thread_navigate.symbols.domain import FileSymbols, Symbol
-    from red_thread_navigate.walk import SkipKind
+    from red_thread_navigate.symbols.domain import Backends, FileSymbols, Symbol
+    from red_thread_navigate.walk import SkipKind, SourceTree
 
 WINDOW_LINES = 100
 NEAREST_NAMES = 5
 LINE_BREAK = re.compile(r'\r\n|\r|\n')
-
-
-def read_file(root: Path, path: PurePosixPath, *, budget: int) -> SourceFile:
-    source = read_source(root, root.joinpath(path), path)
-    if isinstance(source, SourceFile):
-        return source
-    hints: dict[SkipKind, str] = {
-        'not_a_file': 'map <path> to see what it holds',
-        'outside_root': OUTSIDE_ROOT_HINT,
-    }
-    refused = Refused(path=path, budget=budget)
-    reason = SKIP_LABELS[source].reason
-    raise refuse_file(refused=refused, reason=reason, hint=hints.get(source, ''))
 
 
 def refuse_file(*, refused: Refused, reason: str, hint: str = '') -> FileRefusedError:
@@ -84,15 +70,6 @@ def slice_lines(source: SourceFile, target: LineTarget, *, budget: int) -> str:
     return fit_to_budget(rungs, budget=budget).text
 
 
-def parse_file(source: SourceFile, *, budget: int) -> FileSymbols:
-    backend = backend_for(source.path)
-    if backend is None:
-        suffix = shorten_name(source.path.suffix, MIN_SHOWN) or 'this'
-        reason = f'no symbol backend reads {suffix} files, use lines like #L1-L20'
-        raise refuse_file(refused=Refused(path=source.path, budget=budget), reason=reason)
-    return backend.parse(source)
-
-
 def found_for(source: SourceFile, symbol: Symbol, parsed: FileSymbols) -> Found:
     lines = split_lines(source.text)
     children = tuple(child for child in parsed.symbols if child.parent == symbol.qualified_name)
@@ -114,16 +91,6 @@ def unknown_symbol(parsed: FileSymbols, name: str, *, budget: int) -> UnknownSym
     return UnknownSymbolError(name=name, nearest=shown, message=message)
 
 
-def slice_symbol(source: SourceFile, target: SymbolTarget, *, budget: int) -> str:
-    parsed = parse_file(source, budget=budget)
-    name = '.'.join(target.parts)
-    matches = tuple(symbol for symbol in parsed.symbols if symbol.qualified_name == name)
-    if not matches:
-        raise unknown_symbol(parsed, name, budget=budget)
-    founds = tuple(found_for(source, symbol, parsed) for symbol in matches)
-    return fit_to_budget(symbol_rungs(founds, parsed.notes, budget=budget), budget=budget).text
-
-
 def hinted_outside_root(error: AddressError, *, budget: int) -> HintedOutsideRootError | None:
     if not isinstance(error, OutsideRootError):
         return None
@@ -142,17 +109,51 @@ def address_refusal(text: str, error: AddressError, *, budget: int) -> FileRefus
     )
 
 
-def slice_address(text: str, *, root: Path, budget: int) -> str:
-    resolved = root.resolve()
-    try:
-        address = parse_address(text, root=resolved)
-    except AddressError as error:
-        if hinted := hinted_outside_root(error, budget=budget):
-            raise hinted from error
-        if estimate_tokens(str(error)) <= budget:
-            raise
-        raise address_refusal(text, error, budget=budget) from error
-    source = read_file(resolved, address.path, budget=budget)
-    if isinstance(address.target, LineTarget):
-        return slice_lines(source, address.target, budget=budget)
-    return slice_symbol(source, address.target, budget=budget)
+@dataclass(slots=True, kw_only=True, frozen=True)
+class Slicer:
+    tree: SourceTree
+    backends: Backends
+
+    def read_file(self, root: Path, path: PurePosixPath, *, budget: int) -> SourceFile:
+        source = self.tree.read(root, path)
+        if isinstance(source, SourceFile):
+            return source
+        hints: dict[SkipKind, str] = {
+            'not_a_file': 'map <path> to see what it holds',
+            'outside_root': OUTSIDE_ROOT_HINT,
+        }
+        refused = Refused(path=path, budget=budget)
+        reason = SKIP_LABELS[source].reason
+        raise refuse_file(refused=refused, reason=reason, hint=hints.get(source, ''))
+
+    def parse_file(self, source: SourceFile, *, budget: int) -> FileSymbols:
+        backend = self.backends.for_path(source.path)
+        if backend is None:
+            suffix = shorten_name(source.path.suffix, MIN_SHOWN) or 'this'
+            reason = f'no symbol backend reads {suffix} files, use lines like #L1-L20'
+            raise refuse_file(refused=Refused(path=source.path, budget=budget), reason=reason)
+        return backend.parse(source)
+
+    def slice_symbol(self, source: SourceFile, target: SymbolTarget, *, budget: int) -> str:
+        parsed = self.parse_file(source, budget=budget)
+        name = '.'.join(target.parts)
+        matches = tuple(symbol for symbol in parsed.symbols if symbol.qualified_name == name)
+        if not matches:
+            raise unknown_symbol(parsed, name, budget=budget)
+        founds = tuple(found_for(source, symbol, parsed) for symbol in matches)
+        return fit_to_budget(symbol_rungs(founds, parsed.notes, budget=budget), budget=budget).text
+
+    def slice_address(self, text: str, *, root: Path, budget: int) -> str:
+        resolved = root.resolve()
+        try:
+            address = parse_address(text, root=resolved)
+        except AddressError as error:
+            if hinted := hinted_outside_root(error, budget=budget):
+                raise hinted from error
+            if estimate_tokens(str(error)) <= budget:
+                raise
+            raise address_refusal(text, error, budget=budget) from error
+        source = self.read_file(resolved, address.path, budget=budget)
+        if isinstance(address.target, LineTarget):
+            return slice_lines(source, address.target, budget=budget)
+        return self.slice_symbol(source, address.target, budget=budget)

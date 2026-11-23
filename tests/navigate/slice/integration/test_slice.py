@@ -6,7 +6,8 @@ from typing import TYPE_CHECKING
 import pytest
 from red_thread_navigate.address import AddressError
 from red_thread_navigate.budget import estimate_tokens, fit_to_budget
-from red_thread_navigate.slice import WINDOW_LINES, SliceError, slice_address
+from red_thread_navigate.cli import create_navigator
+from red_thread_navigate.slice import WINDOW_LINES, SliceError
 from red_thread_navigate.slice.policy import OUTSIDE_ROOT_HINT, Refused, refusal_text
 from red_thread_navigate.slice.views import Found, symbol_rungs
 from red_thread_navigate.symbols import Symbol
@@ -24,6 +25,7 @@ class Widget:
         return helper()
 """
 BIG_BUDGET = 10_000
+NAVIGATOR = create_navigator()
 
 
 def long_class() -> str:
@@ -48,7 +50,7 @@ def write(root: Path, name: str, text: str) -> None:
 def test_short_symbol_comes_back_whole_with_line_numbers(tmp_path: Path) -> None:
     write(tmp_path, 'core.py', SHORT)
 
-    text = slice_address('core.py#Widget', root=tmp_path, budget=BIG_BUDGET)
+    text = NAVIGATOR.slice('core.py#Widget', root=tmp_path, budget=BIG_BUDGET)
 
     assert '5: class Widget:' in text
     assert '7:         return helper()' in text
@@ -58,7 +60,7 @@ def test_short_symbol_comes_back_whole_with_line_numbers(tmp_path: Path) -> None
 def test_long_symbol_comes_back_as_an_outline_with_addresses(tmp_path: Path) -> None:
     write(tmp_path, 'big.py', long_class())
 
-    text = slice_address('big.py#Big', root=tmp_path, budget=BIG_BUDGET)
+    text = NAVIGATOR.slice('big.py#Big', root=tmp_path, budget=BIG_BUDGET)
 
     assert 'A long class.' in text
     assert 'big.py#Big.first' in text
@@ -70,8 +72,8 @@ def test_long_symbol_comes_back_as_an_outline_with_addresses(tmp_path: Path) -> 
 def test_line_range_on_any_text_file_is_cut_only_by_the_budget(tmp_path: Path) -> None:
     write(tmp_path, 'notes.txt', '\n'.join(f'line {number}' for number in range(1, 400)))
 
-    exact = slice_address('notes.txt#L3-L5', root=tmp_path, budget=BIG_BUDGET)
-    small = slice_address('notes.txt#L1-L399', root=tmp_path, budget=64)
+    exact = NAVIGATOR.slice('notes.txt#L3-L5', root=tmp_path, budget=BIG_BUDGET)
+    small = NAVIGATOR.slice('notes.txt#L1-L399', root=tmp_path, budget=64)
 
     assert exact.splitlines() == ['notes.txt#L3-L5', '3: line 3', '4: line 4', '5: line 5']
     assert 'raise --budget' in small
@@ -81,7 +83,7 @@ def test_line_range_on_any_text_file_is_cut_only_by_the_budget(tmp_path: Path) -
 def test_several_definitions_are_all_returned_with_parent_and_span(tmp_path: Path) -> None:
     write(tmp_path, 'twice.py', 'def go():\n    return 1\n\n\ndef go():\n    return 2\n')
 
-    text = slice_address('twice.py#go', root=tmp_path, budget=BIG_BUDGET)
+    text = NAVIGATOR.slice('twice.py#go', root=tmp_path, budget=BIG_BUDGET)
 
     assert '2 definitions match' in text
     assert 'L1-L2' in text
@@ -93,14 +95,14 @@ def test_unknown_symbol_is_refused_with_the_nearest_names(tmp_path: Path) -> Non
     write(tmp_path, 'core.py', SHORT)
 
     with pytest.raises(SliceError, match=r'nearest names: .*helper'):
-        slice_address('core.py#helpr', root=tmp_path, budget=BIG_BUDGET)
+        NAVIGATOR.slice('core.py#helpr', root=tmp_path, budget=BIG_BUDGET)
 
 
 def test_unknown_symbol_with_no_similar_name_names_map_as_the_next_step(tmp_path: Path) -> None:
     write(tmp_path, 'core.py', SHORT)
 
     with pytest.raises(SliceError) as raised:
-        slice_address('core.py#zzzzzz', root=tmp_path, budget=BIG_BUDGET)
+        NAVIGATOR.slice('core.py#zzzzzz', root=tmp_path, budget=BIG_BUDGET)
 
     assert str(raised.value).endswith('Next step: map core.py to see the names there.')
 
@@ -109,7 +111,7 @@ def test_lines_past_the_end_are_refused(tmp_path: Path) -> None:
     write(tmp_path, 'core.py', SHORT)
 
     with pytest.raises(SliceError, match='past its end'):
-        slice_address('core.py#L50', root=tmp_path, budget=BIG_BUDGET)
+        NAVIGATOR.slice('core.py#L50', root=tmp_path, budget=BIG_BUDGET)
 
 
 def test_symlink_leaving_the_root_is_refused(tmp_path: Path) -> None:
@@ -119,19 +121,19 @@ def test_symlink_leaving_the_root_is_refused(tmp_path: Path) -> None:
     root.joinpath('link.py').symlink_to(tmp_path / 'secret.py')
 
     with pytest.raises(SliceError, match='outside the root'):
-        slice_address('link.py#L1-L2', root=root, budget=BIG_BUDGET)
+        NAVIGATOR.slice('link.py#L1-L2', root=root, budget=BIG_BUDGET)
 
 
 def test_address_outside_the_root_is_refused(tmp_path: Path) -> None:
     with pytest.raises(AddressError):
-        slice_address('../x.py#L1', root=tmp_path, budget=BIG_BUDGET)
+        NAVIGATOR.slice('../x.py#L1', root=tmp_path, budget=BIG_BUDGET)
 
 
 @pytest.mark.parametrize('budget', [40, 80, 150, 300])
 def test_symbol_output_stays_within_the_budget(tmp_path: Path, budget: int) -> None:
     write(tmp_path, 'big.py', long_class())
 
-    text = slice_address('big.py#Big', root=tmp_path, budget=budget)
+    text = NAVIGATOR.slice('big.py#Big', root=tmp_path, budget=budget)
 
     assert estimate_tokens(text) <= budget
 
@@ -164,7 +166,7 @@ def test_unknown_symbol_message_stays_within_the_budget(tmp_path: Path) -> None:
     write(tmp_path, 'core.py', names)
 
     with pytest.raises(SliceError) as raised:
-        slice_address('core.py#similar_name', root=tmp_path, budget=40)
+        NAVIGATOR.slice('core.py#similar_name', root=tmp_path, budget=40)
 
     assert estimate_tokens(str(raised.value)) <= 40
 
@@ -203,7 +205,7 @@ def test_every_refusal_stays_within_the_minimum_budget(
     root.joinpath(f'{LONG_DIRS}/blob.py').write_bytes(b'\x00\x01\x02')
 
     with pytest.raises(SliceError) as raised:
-        slice_address(address, root=root, budget=MIN_BUDGET)
+        NAVIGATOR.slice(address, root=root, budget=MIN_BUDGET)
 
     message = str(raised.value)
     assert estimate_tokens(message) <= MIN_BUDGET
@@ -215,7 +217,7 @@ def test_a_cut_path_keeps_its_file_name_and_a_cut_name_keeps_its_start(tmp_path:
     write(tmp_path, LONG_PATH, 'def similar_name():\n    pass\n')
 
     with pytest.raises(SliceError) as raised:
-        slice_address(f'{LONG_PATH}#{LONG_NAME}', root=tmp_path, budget=MIN_BUDGET)
+        NAVIGATOR.slice(f'{LONG_PATH}#{LONG_NAME}', root=tmp_path, budget=MIN_BUDGET)
 
     assert 'target_module.py' in str(raised.value)
     assert 'a_very_long' in str(raised.value)
@@ -229,7 +231,7 @@ def test_a_long_extension_cannot_push_the_no_backend_refusal_past_the_budget(
     write(tmp_path, LONG_SUFFIX_PATH, 'plain\n')
 
     with pytest.raises(SliceError) as raised:
-        slice_address(f'{LONG_SUFFIX_PATH}#nosuch', root=tmp_path, budget=MIN_BUDGET)
+        NAVIGATOR.slice(f'{LONG_SUFFIX_PATH}#nosuch', root=tmp_path, budget=MIN_BUDGET)
 
     assert estimate_tokens(str(raised.value)) <= MIN_BUDGET
 
@@ -261,7 +263,7 @@ def test_a_twenty_character_file_name_survives_whole_under_a_long_directory(
     tmp_path.joinpath(LONG_DIRS, TWENTY_BLOB).write_bytes(b'\x00\x01')
 
     with pytest.raises(SliceError) as raised:
-        slice_address(address, root=tmp_path, budget=MIN_BUDGET)
+        NAVIGATOR.slice(address, root=tmp_path, budget=MIN_BUDGET)
 
     assert file_name in str(raised.value)
     assert estimate_tokens(str(raised.value)) <= MIN_BUDGET
@@ -271,7 +273,7 @@ def test_a_long_nearest_name_is_cut_not_dropped(tmp_path: Path) -> None:
     write(tmp_path, f'{LONG_DIRS}/{TWENTY_NAME}', f'def {LONG_NAME}():\n    pass\n')
 
     with pytest.raises(SliceError) as raised:
-        slice_address(
+        NAVIGATOR.slice(
             f'{LONG_DIRS}/{TWENTY_NAME}#{LONG_NAME[:-1]}', root=tmp_path, budget=MIN_BUDGET
         )
 
@@ -286,7 +288,7 @@ def test_the_path_is_cut_to_its_floor_before_a_nearest_name_is_dropped(tmp_path:
     write(tmp_path, LONG_PATH, NEAR_NAMES)
 
     with pytest.raises(SliceError) as raised:
-        slice_address(address, root=tmp_path, budget=MIN_BUDGET)
+        NAVIGATOR.slice(address, root=tmp_path, budget=MIN_BUDGET)
 
     assert 'similar_name_' in str(raised.value)
     assert estimate_tokens(str(raised.value)) <= MIN_BUDGET
@@ -323,7 +325,7 @@ def hint_root(tmp_path: Path) -> Path:
 
 def refusal_message(address: str, *, root: Path, budget: int) -> str:
     with pytest.raises((SliceError, AddressError)) as raised:
-        slice_address(address, root=root, budget=budget)
+        NAVIGATOR.slice(address, root=root, budget=budget)
     return str(raised.value)
 
 

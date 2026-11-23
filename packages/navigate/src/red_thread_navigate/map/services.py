@@ -6,13 +6,10 @@ from typing import TYPE_CHECKING
 
 from red_thread_navigate.budget import fit_notes, fit_to_budget
 from red_thread_navigate.map.views import RankedFile, RankedSymbol, empty_lines, map_rungs
-from red_thread_navigate.symbols.services import index_path
-from red_thread_navigate.walk import PathMissingError
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
-    from red_thread_navigate.symbols.domain import FileSymbols
+    from red_thread_navigate.symbols.domain import Backends, FileSymbols
+    from red_thread_navigate.symbols.services import Index
 
 type SymbolKey = Callable[[RankedSymbol], tuple[int, int] | int]
 
@@ -38,15 +35,12 @@ def rank_files(files: tuple[FileSymbols, ...], *, key: SymbolKey) -> tuple[Ranke
     return tuple(sorted(ranked, key=lambda item: (-item.references, str(item.file.path))))
 
 
-def map_path(path: Path, *, budget: int) -> str:
-    if not path.exists():
-        raise PathMissingError(path=path)
-    index = index_path(path)
+def map_path(index: Index, backends: Backends, *, budget: int) -> str:
     notes = fit_notes(index.notes, budget=budget)
     if not index.files:
-        rung = (*notes, *empty_lines(str(path)))
+        rung = (*notes, *empty_lines(str(index.path), backends))
         return fit_to_budget((rung,), budget=budget).text
-    key = by_source if path.is_file() else by_references
+    key = by_source if index.single_file else by_references
     ranked = rank_files(index.files, key=key)
     rungs = tuple((*notes, *rung) for rung in map_rungs(ranked))
     return fit_to_budget(rungs, budget=budget).text

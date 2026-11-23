@@ -9,10 +9,10 @@ from typing import NoReturn, override
 
 from red_thread_navigate.address import AddressError
 from red_thread_navigate.budget import MIN_BUDGET, cut_to_budget
-from red_thread_navigate.find.services import find_name
-from red_thread_navigate.map.services import map_path
-from red_thread_navigate.slice import SliceError, slice_address
-from red_thread_navigate.walk import PathMissingError
+from red_thread_navigate.services import Navigator
+from red_thread_navigate.slice import SliceError
+from red_thread_navigate.symbols.store import RegistryBackends
+from red_thread_navigate.walk import DiskTree, PathMissingError
 
 PROGRAM = 'red-thread-navigate'
 DEFAULT_BUDGET = 2000
@@ -93,19 +93,25 @@ def parse_request(argv: list[str]) -> Request:
     )
 
 
-def run_verb(request: Request) -> str:
+def create_navigator() -> Navigator:
+    return Navigator(tree=DiskTree(), backends=RegistryBackends())
+
+
+def run_verb(navigator: Navigator, request: Request) -> str:
     verbs = {
         'version': lambda: f'{PROGRAM} {version("red-thread-navigate")}',
-        'map': lambda: map_path(Path(request.target), budget=request.budget),
-        'find': lambda: find_name(request.target, Path(request.path or ''), budget=request.budget),
-        'slice': lambda: slice_address(request.target, root=Path.cwd(), budget=request.budget),
+        'map': lambda: navigator.map(Path(request.target), budget=request.budget),
+        'find': lambda: navigator.find(
+            request.target, Path(request.path or ''), budget=request.budget
+        ),
+        'slice': lambda: navigator.slice(request.target, root=Path.cwd(), budget=request.budget),
     }
     return verbs[request.verb]()
 
 
-def navigate(request: Request) -> int:
+def navigate(navigator: Navigator, request: Request) -> int:
     try:
-        text = run_verb(request)
+        text = run_verb(navigator, request)
     except (SliceError, AddressError, PathMissingError) as refusal:
         print(cut_to_budget(str(refusal), request.budget), file=sys.stderr)
         return EXIT_REFUSED
@@ -119,4 +125,4 @@ def run(argv: list[str]) -> int:
     except UsageError as error:
         print(f'{PROGRAM}: {error}', file=sys.stderr)
         return EXIT_USAGE
-    return navigate(request)
+    return navigate(create_navigator(), request)

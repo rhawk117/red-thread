@@ -2,10 +2,10 @@
 
 from collections import Counter
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
-    from pathlib import PurePosixPath
+    from pathlib import Path, PurePosixPath
 
 BYTES_PER_MIB = 1024 * 1024
 MAX_FILE_BYTES = BYTES_PER_MIB
@@ -78,6 +78,7 @@ class Walk:
     files: tuple[SourceFile, ...]
     skipped: SkipTally
     git_failed: bool = False
+    single_file: bool = False
 
     @property
     def note(self) -> str | None:
@@ -87,6 +88,13 @@ class Walk:
         if self.git_failed:
             parts.append('git listing failed, walked the directory instead')
         return '; '.join(parts) or None
+
+
+@runtime_checkable
+class SourceTree(Protocol):
+    def walk(self, root: Path) -> Walk: ...
+
+    def read(self, root: Path, name: PurePosixPath) -> SourceFile | SkipKind: ...
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)

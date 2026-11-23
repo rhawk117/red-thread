@@ -4,14 +4,14 @@ import re
 from typing import TYPE_CHECKING
 
 import pytest
-from red_thread_navigate.find import find_name
-from red_thread_navigate.slice import slice_address
+from red_thread_navigate.cli import create_navigator
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 MARKERS = ('cannot be sliced:', 'Next step:', 'nearest names:', 'is not valid:')
 BUDGET = 1500
+NAVIGATOR = create_navigator()
 
 
 def slice_refusals(root: Path) -> tuple[str, ...]:
@@ -31,13 +31,13 @@ def slice_refusals(root: Path) -> tuple[str, ...]:
     messages = []
     for address in addresses:
         with pytest.raises(ValueError, match=r'\S') as raised:
-            slice_address(address, root=root, budget=BUDGET)
+            NAVIGATOR.slice(address, root=root, budget=BUDGET)
         messages.append(str(raised.value))
     return tuple(messages)
 
 
 def find_refusal(root: Path) -> str:
-    return find_name('nosuch', root, budget=BUDGET)
+    return NAVIGATOR.find('nosuch', root, budget=BUDGET)
 
 
 class TestRefusalContract:

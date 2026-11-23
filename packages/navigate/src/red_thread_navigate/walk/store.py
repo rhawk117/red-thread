@@ -3,6 +3,7 @@
 import os
 import shutil
 import subprocess
+from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING
 
@@ -15,6 +16,7 @@ from red_thread_navigate.walk.domain import (
     Walk,
     tally_skips,
 )
+from red_thread_navigate.walk.errors import PathMissingError
 
 if TYPE_CHECKING:
     from red_thread_navigate.walk.domain import SkipKind
@@ -104,6 +106,8 @@ def list_names(base: Path) -> tuple[tuple[str, ...], int, int, bool]:
 
 
 def walk(root: Path) -> Walk:
+    if not root.exists():
+        raise PathMissingError(path=root)
     resolved = root.resolve()
     names, escaped, unreadable, git_failed = list_names(resolved)
     base = resolved.parent if resolved.is_file() else resolved
@@ -111,4 +115,13 @@ def walk(root: Path) -> Walk:
     files = tuple(read for read in reads if isinstance(read, SourceFile))
     kinds = tuple(read for read in reads if isinstance(read, str) and read != 'not_a_file')
     skipped = tally_skips((*kinds, *('outside_root',) * escaped, *('unreadable',) * unreadable))
-    return Walk(files=files, skipped=skipped, git_failed=git_failed)
+    return Walk(files=files, skipped=skipped, git_failed=git_failed, single_file=resolved.is_file())
+
+
+@dataclass(slots=True, kw_only=True, frozen=True)
+class DiskTree:
+    def walk(self, root: Path) -> Walk:
+        return walk(root)
+
+    def read(self, root: Path, name: PurePosixPath) -> SourceFile | SkipKind:
+        return read_source(root, root.joinpath(name), name)

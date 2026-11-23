@@ -1,5 +1,6 @@
 """Language backends and the lookup that picks one by file suffix."""
 
+from dataclasses import dataclass
 from functools import cache
 from typing import TYPE_CHECKING
 
@@ -84,4 +85,13 @@ def backend_for(path: PurePosixPath) -> Backend | None:
     return next((backend for backend in create_backends() if path.suffix in backend.suffixes), None)
 
 
-__all__ = ['backend_for', 'create_backends']
+@dataclass(slots=True, kw_only=True, frozen=True)
+class RegistryBackends:
+    def for_path(self, path: PurePosixPath) -> Backend | None:
+        return backend_for(path)
+
+    def available(self) -> tuple[Backend, ...]:
+        return create_backends()
+
+
+__all__ = ['RegistryBackends', 'backend_for', 'create_backends']

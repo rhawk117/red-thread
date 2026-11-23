@@ -3,11 +3,10 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from red_thread_navigate.symbols.store import create_backends
 from red_thread_navigate.util import plural, span
 
 if TYPE_CHECKING:
-    from red_thread_navigate.symbols.domain import FileSymbols, Symbol
+    from red_thread_navigate.symbols.domain import Backends, FileSymbols, Symbol
 
 SUMMARY_NAMES = 3
 
@@ -72,17 +71,17 @@ def map_rungs(files: tuple[RankedFile, ...]) -> tuple[tuple[str, ...], ...]:
     return (full_rung(files), summary_rung(files), counts_rung(files))
 
 
-def reads_line() -> str:
+def reads_line(backends: Backends) -> str:
     reads = '; '.join(
         f'{backend.language} ({", ".join(sorted(backend.suffixes))})'
-        for backend in create_backends()
+        for backend in backends.available()
     )
     return f'navigate reads {reads}.'
 
 
-def empty_lines(target: str) -> tuple[str, ...]:
+def empty_lines(target: str, backends: Backends) -> tuple[str, ...]:
     return (
         f'No file navigate can read under {target}.',
-        reads_line(),
+        reads_line(backends),
         'Next step: map a directory or a file with one of those suffixes.',
     )

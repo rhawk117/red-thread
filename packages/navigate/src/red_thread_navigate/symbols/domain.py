@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal, Protocol
+from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     from pathlib import PurePosixPath
@@ -60,6 +60,7 @@ class FileSymbols:
     notes: tuple[str, ...]
 
 
+@runtime_checkable
 class Backend(Protocol):
     @property
     def language(self) -> str: ...
@@ -68,3 +69,10 @@ class Backend(Protocol):
     def suffixes(self) -> frozenset[str]: ...
 
     def parse(self, source: SourceFile) -> FileSymbols: ...
+
+
+@runtime_checkable
+class Backends(Protocol):
+    def for_path(self, path: PurePosixPath) -> Backend | None: ...
+
+    def available(self) -> tuple[Backend, ...]: ...

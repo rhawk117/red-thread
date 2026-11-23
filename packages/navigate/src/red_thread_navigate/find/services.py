@@ -4,13 +4,10 @@ from typing import TYPE_CHECKING
 
 from red_thread_navigate.budget import fit_notes, fit_to_budget
 from red_thread_navigate.find.views import Definition, Occurrence, find_rungs, none_lines
-from red_thread_navigate.symbols.services import index_path
-from red_thread_navigate.walk import PathMissingError
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from red_thread_navigate.symbols.domain import FileSymbols
+    from red_thread_navigate.symbols.services import Index
 
 
 def is_match(qualified_name: str, name: str) -> bool:
@@ -36,13 +33,10 @@ def references_to(files: tuple[FileSymbols, ...], name: str) -> tuple[Occurrence
     )
 
 
-def find_name(name: str, path: Path, *, budget: int) -> str:
-    if not path.exists():
-        raise PathMissingError(path=path)
-    index = index_path(path)
+def find_name(index: Index, name: str, *, budget: int) -> str:
     definitions = definitions_of(index.files, name)
     references = references_to(index.files, name)
-    rungs = (none_lines(name, str(path)),)
+    rungs = (none_lines(name, str(index.path)),)
     if definitions or references:
         rungs = find_rungs(definitions, references)
     notes = fit_notes(index.notes, budget=budget)
