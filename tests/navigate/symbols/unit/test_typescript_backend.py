@@ -92,12 +92,8 @@ class TestSymbols:
         ]
 
 
-class TestModuleConstants:
-    @pytest.fixture
-    def parsed(self) -> FileSymbols:
-        return parse(CONSTANTS_SAMPLE, TYPESCRIPT_BACKEND)
-
-    @pytest.mark.parametrize(
+def module_constant_cases() -> pytest.MarkDecorator:
+    return pytest.mark.parametrize(
         ('qualified_name', 'expected'),
         [
             pytest.param('LIMIT', [('constant', 1, 1)], id='const'),
@@ -109,6 +105,68 @@ class TestModuleConstants:
             pytest.param('total', [('variable', 10, 10)], id='exported-let-without-value'),
         ],
     )
+
+
+def other_value_cases() -> pytest.MarkDecorator:
+    return pytest.mark.parametrize(
+        ('text', 'backend', 'name', 'kind'),
+        [
+            pytest.param(
+                'const asserted = <number>raw',
+                TYPESCRIPT_BACKEND,
+                'asserted',
+                'constant',
+                id='angle-assertion',
+            ),
+            pytest.param(
+                'const cast = raw as Config',
+                TYPESCRIPT_BACKEND,
+                'cast',
+                'constant',
+                id='as-assertion',
+            ),
+            pytest.param('const self = this', TYPESCRIPT_BACKEND, 'self', 'constant', id='this'),
+            pytest.param(
+                'export const meta = import.meta',
+                TYPESCRIPT_BACKEND,
+                'meta',
+                'constant',
+                id='import-meta',
+            ),
+            pytest.param(
+                'let later = import.meta.url',
+                TYPESCRIPT_BACKEND,
+                'later',
+                'variable',
+                id='let-import-meta',
+            ),
+            pytest.param(
+                'var old = <number>raw', TYPESCRIPT_BACKEND, 'old', 'variable', id='var-assertion'
+            ),
+            pytest.param(
+                'const icon = <span />', TSX_BACKEND, 'icon', 'constant', id='jsx-self-closing'
+            ),
+            pytest.param(
+                'export const box = <div>hi</div>', TSX_BACKEND, 'box', 'constant', id='jsx-element'
+            ),
+            pytest.param('let frag = <></>', TSX_BACKEND, 'frag', 'variable', id='jsx-fragment'),
+            pytest.param(
+                'const named = function () {}',
+                TYPESCRIPT_BACKEND,
+                'named',
+                'function',
+                id='function-expression',
+            ),
+        ],
+    )
+
+
+class TestModuleConstants:
+    @pytest.fixture
+    def parsed(self) -> FileSymbols:
+        return parse(CONSTANTS_SAMPLE, TYPESCRIPT_BACKEND)
+
+    @module_constant_cases()
     def test_top_level_declarations_are_symbols_with_their_span(
         self, parsed: FileSymbols, qualified_name: str, expected: list[tuple[str, int, int]]
     ) -> None:
@@ -119,6 +177,12 @@ class TestModuleConstants:
         self, parsed: FileSymbols, name: str
     ) -> None:
         assert not [s for s in parsed.symbols if s.name == name]
+
+    @other_value_cases()
+    def test_constants_are_symbols_whatever_their_non_function_value(
+        self, text: str, backend: TreeSitterBackend, name: str, kind: str
+    ) -> None:
+        assert spans_of(parse(text, backend), name) == [(kind, 1, 1)]
 
     def test_tsx_files_get_the_same_constants(self) -> None:
         parsed = parse(CONSTANTS_SAMPLE, TSX_BACKEND)

@@ -44,10 +44,6 @@
     name: (identifier) @name)
 ] @definition.function
 
-(variable_declarator
-  name: (identifier) @name
-  value: [(arrow_function) (function_expression)]) @definition.function
-
 (assignment_expression
   left: [
     (identifier) @name
@@ -58,6 +54,10 @@
 
 (pair
   key: (property_identifier) @name
+  value: [(arrow_function) (function_expression)]) @definition.function
+
+(variable_declarator
+  name: (identifier) @name
   value: [(arrow_function) (function_expression)]) @definition.function
 
 (call_expression
@@ -98,17 +98,41 @@
 (type_annotation
   (type_identifier) @name) @reference.type
 
+; A top-level declarator matches whatever its value is. For a function value two patterns match the
+; same node, and the backend keeps the first match tree-sitter reports. That is the function pattern
+; here, ahead of the constant patterns, because the constant patterns also name a value: with the
+; same shape, the lower pattern index is reported first.
+(program
+  [
+    (lexical_declaration
+      (variable_declarator
+      name: (identifier) @name
+      value: [(arrow_function) (function_expression)]) @definition.function)
+    (variable_declaration
+      (variable_declarator
+      name: (identifier) @name
+      value: [(arrow_function) (function_expression)]) @definition.function)
+  ])
+
+(export_statement
+  declaration: [
+    (lexical_declaration
+      (variable_declarator
+      name: (identifier) @name
+      value: [(arrow_function) (function_expression)]) @definition.function)
+    (variable_declaration
+      (variable_declarator
+      name: (identifier) @name
+      value: [(arrow_function) (function_expression)]) @definition.function)
+  ])
+
 (program
   (lexical_declaration
     kind: "const"
     [
       (variable_declarator
         name: (identifier) @name
-        value: [(call_expression) (parenthesized_expression) (new_expression) (await_expression) (object) (array)
-      (string) (template_string) (number) (regex) (true) (false) (null) (undefined) (identifier)
-      (member_expression) (subscript_expression) (binary_expression) (unary_expression)
-      (ternary_expression) (as_expression) (satisfies_expression) (non_null_expression)
-      (class) (sequence_expression)]) @definition.constant
+        value: (_)) @definition.constant
       (variable_declarator
         name: (identifier) @name
         !value) @definition.constant
@@ -120,11 +144,7 @@
     [
       (variable_declarator
         name: (identifier) @name
-        value: [(call_expression) (parenthesized_expression) (new_expression) (await_expression) (object) (array)
-      (string) (template_string) (number) (regex) (true) (false) (null) (undefined) (identifier)
-      (member_expression) (subscript_expression) (binary_expression) (unary_expression)
-      (ternary_expression) (as_expression) (satisfies_expression) (non_null_expression)
-      (class) (sequence_expression)]) @definition.variable
+        value: (_)) @definition.variable
       (variable_declarator
         name: (identifier) @name
         !value) @definition.variable
@@ -135,11 +155,7 @@
     [
       (variable_declarator
         name: (identifier) @name
-        value: [(call_expression) (parenthesized_expression) (new_expression) (await_expression) (object) (array)
-      (string) (template_string) (number) (regex) (true) (false) (null) (undefined) (identifier)
-      (member_expression) (subscript_expression) (binary_expression) (unary_expression)
-      (ternary_expression) (as_expression) (satisfies_expression) (non_null_expression)
-      (class) (sequence_expression)]) @definition.variable
+        value: (_)) @definition.variable
       (variable_declarator
         name: (identifier) @name
         !value) @definition.variable
@@ -151,11 +167,7 @@
     [
       (variable_declarator
         name: (identifier) @name
-        value: [(call_expression) (parenthesized_expression) (new_expression) (await_expression) (object) (array)
-      (string) (template_string) (number) (regex) (true) (false) (null) (undefined) (identifier)
-      (member_expression) (subscript_expression) (binary_expression) (unary_expression)
-      (ternary_expression) (as_expression) (satisfies_expression) (non_null_expression)
-      (class) (sequence_expression)]) @definition.constant
+        value: (_)) @definition.constant
       (variable_declarator
         name: (identifier) @name
         !value) @definition.constant
@@ -167,11 +179,7 @@
     [
       (variable_declarator
         name: (identifier) @name
-        value: [(call_expression) (parenthesized_expression) (new_expression) (await_expression) (object) (array)
-      (string) (template_string) (number) (regex) (true) (false) (null) (undefined) (identifier)
-      (member_expression) (subscript_expression) (binary_expression) (unary_expression)
-      (ternary_expression) (as_expression) (satisfies_expression) (non_null_expression)
-      (class) (sequence_expression)]) @definition.variable
+        value: (_)) @definition.variable
       (variable_declarator
         name: (identifier) @name
         !value) @definition.variable
@@ -182,11 +190,7 @@
     [
       (variable_declarator
         name: (identifier) @name
-        value: [(call_expression) (parenthesized_expression) (new_expression) (await_expression) (object) (array)
-      (string) (template_string) (number) (regex) (true) (false) (null) (undefined) (identifier)
-      (member_expression) (subscript_expression) (binary_expression) (unary_expression)
-      (ternary_expression) (as_expression) (satisfies_expression) (non_null_expression)
-      (class) (sequence_expression)]) @definition.variable
+        value: (_)) @definition.variable
       (variable_declarator
         name: (identifier) @name
         !value) @definition.variable
