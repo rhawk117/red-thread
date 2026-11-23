@@ -10,7 +10,6 @@ MAX_FILE_BYTES = 1024 * 1024
 SNIFF_BYTES = 8 * 1024
 SKIPPED_DIRECTORIES = frozenset({
     '.svn',
-    '.agentlens-cache',
     '.mypy_cache',
     '.pytest_cache',
     '.ruff_cache',

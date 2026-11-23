@@ -17,8 +17,6 @@ The case directory is added to the repository's local git exclude file, so it is
 - [uv](https://docs.astral.sh/uv/), which runs the case file script and fetches Python 3.14 for it
 - git
 
-The `code-lens` scout is experimental and is used only where the `agentlens` command is installed.
-
 ## Try it
 
 No marketplace lists the plugin yet, so load it from a clone:
