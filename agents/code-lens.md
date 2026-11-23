@@ -80,19 +80,12 @@ Below, NAV is the absolute navigate path from the briefing. Run every command fr
 - `map` and `find` print addresses relative to PATH. A `find` over `src` prints `pkg/mod.py#name`, so the address to slice is `src/pkg/mod.py#name`.
 - When a call hits its budget it prints fewer lines and says so, such as `showing 75 of 131, raise --budget`. Raise the budget in the next call only if the total allows it.
 - The smallest `--budget` is 32.
-- Read a refusal as the launcher prints it:
-  - `find` with no match prints `Next step: map PATH ... or rg NAME PATH ...`. Do what it says.
-  - `slice` with a malformed address prints `address 'ADDRESS' is not valid: there is no # between file and target. Valid forms: path/to/file.py#Symbol, path/to/file.py#Outer.inner, path/to/file.py#L12, path/to/file.py#L12-L20`. The reason changes with the fault, such as nothing after the `#`. Use one of the valid forms.
-  - `slice` of a name in a file no symbol backend reads prints `FILE cannot be sliced: no symbol backend reads .EXT files, use lines like #L1-L20`. Slice lines, such as `FILE#L1-L20`, or use `rg -n`.
-  - `slice` of a file over 1 MiB prints `FILE cannot be sliced: it is over 1 MiB`. Use `rg -n NAME FILE` to find the lines.
-  - `slice` of a binary file prints `FILE cannot be sliced: it is binary`. Skip the file.
-  - `slice` of a file that is not UTF-8 prints `FILE cannot be sliced: it is not UTF-8`. Use `rg -n NAME FILE` to find the lines.
-  - `slice` of a file the launcher cannot read prints `FILE cannot be sliced: it cannot be read`. Skip the file and say so in the report.
-  - `slice` with an unknown name prints `nearest names: ...` when a similar name exists. Slice one of those.
-  - `slice` with an unknown name and no similar name prints `no symbol 'X' in FILE; the file has no similar name. Next step: map FILE to see the names there.` Do what it says.
-  - `slice` of a path that is not a file prints `PATH cannot be sliced: it is not a file. Next step: map PATH to see what it holds.` Run `map` on the directory.
-  - `slice` of a line past the end prints `FILE has N lines, so LX is past its end. Next step: slice FILE#L1-LN.` Do what it says.
-  - `slice` of a path outside the root prints `address 'ADDRESS' reaches outside the root ROOT. Next step: use a path under the root.` At a small budget it prints `PATH cannot be sliced: it reaches outside the root. Next step: use a path under the root.` Use a path under the root.
+- A refusal is plain text on the launcher's output, not a crash. Read it by its markers, because the wording around them changes:
+  - A closing `Next step: ...` is an instruction. Do what it says. It follows a `find` with no match, a `slice` of an unknown name with no similar name, a `slice` of a path that is not a file, a `slice` of a line past the end and a `slice` of a path outside the root.
+  - `FILE cannot be sliced: REASON` means the launcher will not read that file. Act on the reason. No symbol backend for the suffix: slice lines, such as `FILE#L1-L20`, or use `rg -n`. Over 1 MiB or not UTF-8: use `rg -n NAME FILE` to find the lines. Binary: skip the file. It cannot be read: skip the file and say so in the report.
+  - `nearest names: ...` lists names similar to the one you asked for. Slice one of them.
+  - `address 'ADDRESS' is not valid: REASON` lists the valid forms. The reason changes with the fault. Use one of the forms.
+  - At a small budget the launcher shortens paths and names with `...` and may drop the `Next step:`. A path under the root is the fix for an outside-root refusal.
 - A NAME or ADDRESS that starts with `-` goes after `--`, as in `NAV --budget 600 find -- -x PATH`.
 - `find` skips comments and strings. For text inside a string or a comment, use `rg -n`.
 - `find` matches references by name. A call through an alias, a re-export or `getattr` is not listed, so "every caller" is INFERRED unless the name is unique.
