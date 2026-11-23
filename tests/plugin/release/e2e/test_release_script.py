@@ -2,6 +2,8 @@
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 if TYPE_CHECKING:
     from tests.plugin.release.repository import ReleaseRepository
 
@@ -39,44 +41,59 @@ class TestInitialRelease:
 
         assert tagger == 'github-actions[bot]'
 
-    def test_an_existing_release_tag_stops_it(self, release_repository: ReleaseRepository) -> None:
+
+class TestInitialReleaseRefusal:
+    @pytest.fixture
+    def locally_tagged(self, release_repository: ReleaseRepository) -> ReleaseRepository:
         release_repository.git('tag', 'v0.0.1')
+        return release_repository
 
-        finished = release_repository.release('initial')
-
-        assert finished.code == 1
-        assert release_repository.git('tag', '--list') == 'v0.0.1'
-        assert release_repository.git('tag', '--list', at=release_repository.origin) == ''
-
-    def test_a_release_tag_on_origin_only_stops_it(
-        self, release_repository: ReleaseRepository
-    ) -> None:
+    @pytest.fixture
+    def origin_tagged(self, release_repository: ReleaseRepository) -> ReleaseRepository:
         release_repository.git('push', 'origin', 'HEAD:refs/tags/v0.0.1')
+        return release_repository
 
-        finished = release_repository.release('initial')
-
-        assert finished.code == 1
-        assert release_repository.git('tag', '--list') == ''
-
-    def test_an_unreadable_origin_stops_it(self, release_repository: ReleaseRepository) -> None:
+    @pytest.fixture
+    def unreadable_origin(self, release_repository: ReleaseRepository) -> ReleaseRepository:
         missing = release_repository.origin.parent / 'missing.git'
         release_repository.git('remote', 'set-url', 'origin', str(missing))
+        return release_repository
 
-        finished = release_repository.release('initial')
-
-        assert finished.code != 0
-        assert release_repository.git('tag', '--list') == ''
-
-    def test_disagreeing_manifest_and_package_versions_stop_it(
-        self, release_repository: ReleaseRepository
-    ) -> None:
+    @pytest.fixture
+    def mismatched_manifest(self, release_repository: ReleaseRepository) -> ReleaseRepository:
         release_repository.write_manifest_version('0.2.0')
+        return release_repository
 
-        finished = release_repository.release('initial')
+    def assert_stopped_without_tags(self, repository: ReleaseRepository, message: str) -> None:
+        local_before = repository.git('tag', '--list')
+        origin_before = repository.git('tag', '--list', at=repository.origin)
+
+        finished = repository.release('initial')
 
         assert finished.code == 1
-        assert release_repository.git('tag', '--list') == ''
-        assert release_repository.git('tag', '--list', at=release_repository.origin) == ''
+        assert message in finished.out + finished.err
+        assert repository.git('tag', '--list') == local_before
+        assert repository.git('tag', '--list', at=repository.origin) == origin_before
+
+    def test_an_existing_release_tag_stops_it(self, locally_tagged: ReleaseRepository) -> None:
+        self.assert_stopped_without_tags(
+            locally_tagged, 'The initial release requires a repository without release tags.'
+        )
+
+    def test_a_release_tag_on_origin_only_stops_it(self, origin_tagged: ReleaseRepository) -> None:
+        self.assert_stopped_without_tags(
+            origin_tagged, 'The initial release requires an origin without release tags.'
+        )
+
+    def test_an_unreadable_origin_stops_it(self, unreadable_origin: ReleaseRepository) -> None:
+        self.assert_stopped_without_tags(unreadable_origin, 'Cannot read release tags from origin.')
+
+    def test_disagreeing_manifest_and_package_versions_stop_it(
+        self, mismatched_manifest: ReleaseRepository
+    ) -> None:
+        self.assert_stopped_without_tags(
+            mismatched_manifest, 'Plugin manifest and package versions differ.'
+        )
 
 
 class TestRecover:
