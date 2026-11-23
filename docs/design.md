@@ -6,7 +6,7 @@ Status on 2026-11-21: the direction is agreed, and steps 1 to 5 of the build ord
 
 - Sections 1 to 3 are enough to understand the plugin.
 - Sections 4 to 7 are the contract for building it.
-- Section 8 is a separate track, the navigation tool, which red-thread does not depend on.
+- Section 8 describes the navigation tool red-thread ships in `packages/navigate`.
 - Section 9 lists the evidence, section 10 the prompting guidance for agent files, section 11 what is open and the build order, section 12 the decision log.
 
 ## 1. Purpose
@@ -42,7 +42,7 @@ you         intent, priors, "is this sufficient"   sees the board at each gate
 primary     target, thread list, your decisions    holds the rendered board, never raw reports
 ├ lead ×N   judgment for one thread                holds its scouts' reports
 │ ├ code scout   reads the repository    path:line @ commit
-│ ├ lens scout   reads Python structure  path:line @ commit, experimental
+│ ├ lens scout   reads code structure  path:line @ commit
 │ ├ web scout    reads documentation     URL#heading @ version
 │ └ lab scout    runs one experiment     command + output
 └ skeptic   gets claims and citations only; tries to break them before an export
@@ -53,7 +53,7 @@ primary     target, thread list, your decisions    holds the rendered board, nev
 | primary | none, it is the session | the session's model | never reads raw scout output when leads are in use |
 | lead | `agents/research-lead.md` | `claude-sonnet-5-5` | six jobs a round, two rounds |
 | code scout | `agents/code-sense.md` | `claude-haiku-5-5` | five tool calls, read-only |
-| lens scout (experimental) | `agents/code-lens.md` | `claude-haiku-5-5` | 6,000 tokens of agentlens output, read-only; dispatched only when `init` found the tool |
+| lens scout | `agents/code-lens.md` | `claude-haiku-5-5` | 6,000 tokens of navigate output, read-only |
 | web scout | `agents/web-head.md` | `claude-haiku-5-5` | five tool calls, read-only |
 | lab scout | `agents/research-cell.md` | `claude-sonnet-5-5` | one experiment per dispatch, in a git worktree |
 | skeptic | `agents/peer-review.md` | `claude-sonnet-5-5` | receives claims and citations, never the reasoning; read-only |
@@ -95,7 +95,7 @@ The code is the workspace package `packages/casefile`. The stored records (`Entr
 
 | Command | What it does | Status |
 | --- | --- | --- |
-| `init` | creates the case, records HEAD, and detects capabilities once (repository languages, whether the navigation tool is installed) | Built |
+| `init` | creates the case, records HEAD, and detects capabilities once (repository languages) | Built |
 | `add` | validates a batch of entries whole, stamps time and HEAD, redacts secrets, appends | Built |
 | `render` | prints the board, capped at about one screen, after opening every citation again, so a changed, moved or missing one is flagged beside its entry; writes `board.html` on request | Built |
 | `check` | re-resolves every live citation against the current tree | Built |
@@ -245,64 +245,65 @@ All scouts share one report contract, already used by `code-sense` and `web-head
 | Agent | Change |
 | --- | --- |
 | `research-lead` | writes its thread file through the script instead of a ledger in a temporary directory; gains the lab scout on its team |
-| `code-sense` (was `eyes`) | renamed; LSP dropped; navigates with `rg` and ranged reads until the navigation tool passes its gate; cites paths from the repository root, because the ledger opens them |
-| `code-lens` (lens scout) | new and experimental: the `code-sense` contract over the agentlens 0.2.0 commands `map`, `find` and `slice`, with a budget of tool output in place of five calls (section 8) |
+| `code-sense` (was `eyes`) | renamed; LSP dropped; navigates with `rg` and ranged reads, and takes the behavior questions that `code-lens` does not; cites paths from the repository root, because the ledger opens them |
+| `code-lens` (lens scout) | new: the `code-sense` contract over the navigate verbs `map`, `find` and `slice`, with a budget of tool output in place of five calls (section 8) |
 | `web-head` | the brief gains today's date |
 | `research-cell` (lab scout) | new: one experiment per dispatch in a worktree, returns the command and its output |
 | `peer-review` (skeptic) | new: tries to break each claim from its citation alone, against a four-question rubric. It is read-only, so the primary records its verdicts |
 
 Every agent file is rewritten against section 10 before it ships.
 
-## 8. Navigation tool (separate track)
+## 8. Navigation tool
 
-agentlens (`/home/rhawk/dev/agentlens`) is the owner's Rust tool for code navigation by weaker models. Version 0.2.0 has about 9,000 lines of Rust, resolves symbols in Python only, and ships a second binary, `doclens`, for json, yaml and markdown.
+**Decided 2026-11-23:** red-thread ships its own code navigation, the workspace package `packages/navigate` (`red_thread_navigate`), run through `scripts/navigate.sh`. It replaces the external agentlens tool, which the first version of this section planned to gut and distribute as wheels. agentlens 0.2.0 (`/home/rhawk/dev/agentlens`) stays the source of the command surface and the evaluation harness, and nothing in the plugin depends on it. The launcher starts the package the way `scripts/casefile.sh` starts the case file script, so nothing is installed into the project under investigation.
 
-Decisions:
-
-- **Decided:** it is an optional accelerator. red-thread works the same without it.
-- **Decided:** it is distributed as wheels through uv from its own repository. Nothing binary lives in the plugin, and the source is not ported here.
-- **Decided:** it is gutted to three verbs that work in any language.
-- **Decided:** red-thread is built first. The tool plugs in only if it passes the gate below.
-- **Decided 2026-11-21:** an experimental scout for the installed 0.2.0 ships before the gate (see "In red-thread"). It is used only where `init` found the tool, and `code-sense` stays the default until the gate is passed.
-
-### What it becomes
+### What it is
 
 | Verb | Output |
 | --- | --- |
-| `outline <file or dir>` | signatures with line ranges |
-| `find <name>` | hits shaped like `rg` output, each labelled definition, call or reference, with its enclosing symbol; capped, with a message to narrow the query |
-| `slice <path#Symbol or path:line>` | the enclosing definition, bounded |
+| `map PATH` | a header with the file and symbol counts, then one line per file with its symbol count, its reference count and its most referenced symbols; files with the most references come first |
+| `find NAME PATH` | the definitions of the name, each with its address, kind and line span, then the references as `path:line`; with no match, `no matches for NAME in PATH` and a next step |
+| `slice ADDRESS` | the code the address names, with line numbers |
 
-- No index and no cache.
-- Languages come from tree-sitter grammars and their `tags.scm` queries, so a language is data, not code. An unknown language falls back to `rg` and line windows in the same output shape.
-- Every output line starts with `path:line`, so it drops into the ledger as a citation.
-- `rg` flags are accepted, and an error prints the corrected command.
+An address is `file#Symbol`, `file#A.b.c`, `file#Lnn` or `file#Lnn-Lmm`. A symbol of 100 lines or fewer comes back whole. A longer one comes back as its signature, its docstring and an outline of its children, each with its span and the line-range address of its body, and the scout reads the body with a second slice. An explicit line range comes back as asked. An address that matches several definitions returns all of them, each labelled with its context, and an unknown symbol lists the nearest names. Every output line starts with a path and a line, so it drops into the ledger as a citation.
 
-Removed: the index, `callers`, `dead`, `packet`, `literals`, `sym` and all Python-specific resolution. `doclens` can stay. The evaluation harness stays; it is the most valuable part of that repository.
+**Hard budget cap.** `--budget N` is the most tokens a call prints, at least 32, and the default is 2,000. The tool estimates tokens at 3.5 characters each, rounded up, and no output goes over the budget by that estimate. When a result does not fit, it steps down to a shorter form and then cuts at a line boundary with the footer `showing N of M, raise --budget`. The footer counts against the budget too. Notes (below) come last and are cut first, to `and N more notes`. A refusal also fits the budget and keeps the tail of a long file name, since the end of a path is the part that tells files apart. An unknown flag, `--no-cache` included, is an error that names the valid flags. There is no index and no cache.
+
+### The file walk
+
+- Inside a git repository only tracked files are listed. Outside git, dot-directories and the usual build and dependency directories (`node_modules`, `target`, `build`, `dist`, `venv`, `.venv`, `site-packages`, `__pycache__` and the like) are left out.
+- A file over 1 MiB, a binary file (a null byte in its first 8 KiB) and a file that is not UTF-8 are skipped, and the output carries a note counting what was skipped and why.
+- A symlink that resolves outside the root is not followed, and the tool resolves no path outside the root it was given. It runs nothing from the repository it reads and writes nothing into it.
+
+### Backends
+
+One symbol model sits behind a per-language backend, chosen by file suffix.
+
+- Python uses the standard library `ast`, which is exact for the running Python version and has no grammar to lag behind it.
+- JavaScript, TypeScript and TSX, Go, Rust and Terraform use tree-sitter with a vendored query for each language. Queries are vendored and not taken from the grammar packages, so a wheel upgrade cannot change the output without a change in this repository. The grammar wheels are pinned with `==` for the same reason. Terraform is parsed with the HCL grammar and a hand-written query that names blocks as Terraform references them (`aws_vpc.this`, `data.aws_ami.x`, `module.vpc`, `var.region`, `output.id`, `local.name`) and reports references between blocks with their lines.
+- A Go method is addressed as `Type.Method`, for a value or a pointer receiver. A Rust method is addressed as `Type.method`. A method in a trait impl carries an optional impl field, printed as `function (impl NAME)`, and the kind stays `function`.
+- A tree-sitter parse stops after 2 seconds, and the 1 MiB size cap bounds the rest.
+- A file with a syntax error keeps the symbols that parsed. The output adds a note with the file and the line of the first error. For Python the note carries the parser's message, and for the tree-sitter languages it carries the line only.
+
+### Evaluation
+
+The evaluation cases are in `evals/navigate`, one file per language, in the task format of the agentlens evaluation: Python on Django 6.0.7 (the 18 Django tasks of that evaluation, each with a follow-up line-range address where the required symbol is over 100 lines), and JavaScript, TypeScript, Go, Rust and Terraform on public repositories at pinned tags, with gold spans read from the pinned source. A disagreement between a case and the tool goes to the owner. Nothing has run these cases on a model yet.
 
 ### The gate
 
-The strongest competitor is no tool. In the agentlens 0.2.0 evaluation, `rg` with `sed` ranges was the most accurate arm. The new tool is added as an arm, on repositories in three languages, with the current Haiku running the red-thread scout prompt and budget. It passes when it beats the `rg` and `sed` arm on cost at equal accuracy with fewer than 2% malformed calls. If it fails, red-thread keeps the line-range prompt and the tool stops there.
+The strongest competitor is no tool. In the agentlens 0.2.0 evaluation, `rg` with `sed` ranges was the most accurate arm. The tool is added as an arm, on repositories in three languages, with the current Haiku running the `code-lens` prompt and budget. It passes when it beats the `rg` and `sed` arm on cost at equal accuracy with fewer than 2% malformed calls. The gate is a measurement for the owner to run and no longer decides whether the tool ships: `code-lens` is the default scout for structure questions. If the tool loses to `rg` and `sed`, the owner decides what changes.
 
 ### In red-thread
 
-- `init` detects the tool once per case and the brief carries that down, so no scout spends a call probing. Built: `init` prints `navigation tool: installed`, the board header repeats it as `Navigation tool: installed`, and a lead gets `NAVIGATION: installed` in its brief. Nothing installs from a tool call.
-- Not built: the one hint for an owner who lacks the tool. The evaluated build cannot be downloaded yet (see below), so there is nothing to point them at.
-- A dedicated scout uses it, with the same report contract, a short command card instead of the 982-line agent kit, and a token budget in place of five calls. Built as experimental in `agents/code-lens.md`, for the 0.2.0 that is installed today: a card for `map`, `find` and `slice`, 6,000 tokens of agentlens output a question, every call with `--no-cache` so no cache folder lands in the repository, and Python only. `map` and `find` print a line number without the line's text, so the scout cites only lines it saw in `slice` or `rg -n` output. The primary or a lead sends it a question about the structure of Python code; every other code question still goes to `code-sense`.
-- Nothing about this scout has been measured. The gate above is still open, and the file is rewritten or removed when the tool is gutted to three verbs.
-
-### To fix in the agentlens repository first
-
-- Only v0.1.0 is released, so the evaluated build cannot be downloaded.
-- The release workflow builds four targets and has no Linux arm64 or musl target.
-- `Cargo.toml` points `repository` at `github.com/agentlens/agentlens`, not the real remote.
-- Add maturin with `bindings = "bin"` for wheels. Whether the PyPI name is free has not been checked.
+- `init` does not look for the tool, the board header does not show it and a lead's brief does not mention it. The case file's `navigation_tool` field is gone from new cases, and a `case.json` that still has it loads and renders.
+- `code-lens` runs only `scripts/navigate.sh` and `rg`, with a budget of 6,000 tokens of output a question. The primary or a lead sends it questions about the structure of code in the six languages. Questions about behavior still go to `code-sense`.
+- `map` and `find` print a line number without the line's text, so the scout cites only lines it saw in `slice` or `rg -n` output.
 
 ### Why not the other routes
 
-- uv from a git source makes every user compile Rust.
-- Binaries in `bin/` cost about 6.4 MB per platform per version in git history. Plugin clones never fetch Git LFS content, and claude.ai and organisation-synced installs reject a plugin with a top-level `bin/`.
+- Porting agentlens's Rust, or shipping it as wheels, puts a binary in the plugin or makes every user compile Rust. Binaries in `bin/` cost about 6.4 MB per platform per version in git history, plugin clones never fetch Git LFS content, and claude.ai and organisation-synced installs reject a plugin with a top-level `bin/`.
 - A language server as the foundation needs a server per language, and the one study of it found it usually adds tokens.
+- The upstream `tags.scm` queries differ by grammar and some grammars ship none, so a language would change when a wheel does.
 
 ## 9. Evidence
 
@@ -472,7 +473,7 @@ What it showed:
 
 - Resuming works from the case file alone. Turn 3 was a new session on another model, and it took the round, the threads and the open entries from `render`.
 - The roster hook's input is as assumed. A dispatch by the session carries no `agent_type`, and a dispatch by a lead carries `agent_type: red-thread:research-lead`, with the prefix. 18 dispatches went through the hook and none was outside a roster, so the deny path has still run only in tests.
-- `code-lens` took 9 of the 14 code lookups. All 76 of its agentlens calls were well formed and carried `--no-cache` and `--budget`. Six reports were VERIFIED and three INFERRED. Two runs passed the budget of 6,000 tokens (6,800 and 7,700), and one ran `rg` four times against a cap of three. This is one repository with no baseline arm, so it says nothing about the gate in section 8.
+- `code-lens` took 9 of the 14 code lookups, then running the external agentlens 0.2.0 that the navigate package replaced. All 76 of its agentlens calls were well formed and carried `--no-cache` and `--budget`. Six reports were VERIFIED and three INFERRED. Two runs passed the budget of 6,000 tokens (6,800 and 7,700), and one ran `rg` four times against a cap of three. This is one repository with no baseline arm, so it says nothing about the gate in section 8, which no longer decides whether the tool ships.
 - `code-sense` made 13 tool calls on one brief that held six numbered items, against its cap of five. Its other four runs made 3 to 5. The lead's file now says such a brief is several questions.
 - Follow-ups through SendMessage failed (section 3), which left the whole HTML thread INFERRED after round 1. After the change, rounds 2 and 3 had no refused follow-up and no waiting.
 - `research-cell` could not run `git -C` in its worktree: the harness refused it three times as too complex to verify. It built a scratch repository under `/tmp` instead and wrote its scripts there, one of them through a `..` path from the worktree. Its result was sound, but it worked outside the worktree the design puts it in. **Decided 2026-11-21:** fix the prompt and not re-test: it tells the scout to run plain `git` from the worktree, to keep scratch files under it, and to return BLOCKED when plain git is refused too.
@@ -492,11 +493,11 @@ All made by the owner on 2026-11-21.
 | Experiments | a lab scout in a git worktree |
 | Skeptic | offered at the gate |
 | Design document | a repository file plus a private page |
-| agentlens role | optional accelerator |
-| agentlens distribution | wheels through uv, nothing in the plugin |
+| agentlens role | optional accelerator (historical: replaced on 2026-11-23, see below) |
+| agentlens distribution | wheels through uv, nothing in the plugin (historical: replaced on 2026-11-23) |
 | Symbol addresses | reserve the field on ledger entries |
-| agentlens direction | gut to three verbs, any language, grounded in published research |
-| Order of work | document, then build red-thread; the tool is a separate track |
+| agentlens direction | gut to three verbs, any language, grounded in published research (historical: built in this repository instead, 2026-11-23) |
+| Order of work | document, then build red-thread; the tool was a separate track until 2026-11-23 |
 | Agent prompts | written per model from Anthropic's guidance |
 | Proposed items | all accepted as written |
 | Case-file code | the workspace package `packages/casefile`, run through `scripts/casefile.sh` |
@@ -512,7 +513,25 @@ All made by the owner on 2026-11-21.
 | Rules and budgets added while building | accepted as built: the five ledger rules in section 4 and the line budgets for `issue`, `handoff` and `report` |
 | Owner comments | read at each gate from the published page and recorded as `user` entries, then answered with the ref and resolved |
 | Text board flags | `render` opens every citation again and flags a changed, moved or missing one, as the page does |
-| Navigation scout | `code-lens`, experimental, for the installed agentlens 0.2.0 and only where `init` found the tool; the evaluation gate stays open |
+| Navigation scout | `code-lens`, experimental, for the installed agentlens 0.2.0 and only where `init` found the tool; the evaluation gate stays open (historical: replaced on 2026-11-23, see below) |
 | Lab scout worktree | the prompt says to run plain `git` from the worktree and to keep every scratch file under it; fixed without a paid re-test |
 | Roster | a PreToolUse hook on the Agent tool denies a dispatch outside the caller's roster and says whom the caller may dispatch; a dispatch outside the plugin is left alone |
 | Remnants | `.claude/CLAUDE.md` and `conftest.py` cleaned, the three renamed rules in `ty.toml` updated; then `ruff.toml`, `pytest.toml` and `SECURITY.md`; then the release workflow and its script, which name the package `red-thread-plugin`, and the pull request template. `pytest-anyio` (an empty placeholder) and `pytest-mock` left the test group. `anyio` stays with `anyio_mode` and the `anyio_backend` fixture, on the owner's word, though no test is async yet |
+
+### 2026-11-23: in-repo navigation
+
+All made by the owner on 2026-11-23.
+
+| Decision | Choice and reason |
+| --- | --- |
+| Navigation tool | built in this repository as `packages/navigate`, in place of the external agentlens: a binary in the plugin or a Rust build for every user was ruled out in section 8, and the tool blocks v0.1.0 so `code-lens` never points at an unfinished one |
+| Command surface | the agentlens verbs `map`, `find` and `slice` and its addresses, so `code-lens` and the Django evaluation tasks carry over |
+| Language backends | `ast` for Python, because it is exact for 3.14 and has no grammar to lag; tree-sitter with vendored queries for JavaScript, TypeScript and TSX, Go, Rust and Terraform, so a wheel upgrade cannot silently change the output |
+| Grammar wheels | pinned with `==`, for the same reason as the vendored queries |
+| Hard budget cap | the cap wins over showing notes: notes are cut to `and N more notes`, because a scout's context is the scarce thing and a note that overflows it helps nobody |
+| Refusals | a cut refusal keeps the tail of the file name, since the end of a path is what tells files apart |
+| Rust impl methods | an optional impl field printed as `(impl NAME)`, in place of a wider kind, so the set of kinds stays the same in every language |
+| Syntax errors | every tree-sitter language keeps what parses and adds a syntax-error note, as Python does, because a half-parsed file still answers most questions |
+| `code-lens` | the default scout for structure questions in six languages, no longer experimental and not conditional on an install check |
+| Navigation-tool detection | removed from `init`, the board header and the lead's brief; `case.json` files that carry the old key still load |
+| Evaluation gate | kept as a measurement and no longer a condition for shipping, since the tool is part of the plugin |
