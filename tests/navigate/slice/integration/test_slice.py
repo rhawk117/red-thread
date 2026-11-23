@@ -177,6 +177,8 @@ def refusal_cases() -> list[tuple[str, str]]:
         (f'{LONG_DIRS}/notes.txt#nosuch', 'notes.txt'),
         (f'{LONG_DIRS}/link.py#L1', 'link.py'),
         (f'{LONG_DIRS}/blob.py#L1', 'blob.py'),
+        (f'../{"o" * 191}.py#L1', 'o.py#L1'),
+        (f'{"x" * 200}', 'xxxxxxx'),
     ]
 
 
@@ -220,6 +222,38 @@ def test_a_long_extension_cannot_push_the_no_backend_refusal_past_the_budget(
     with pytest.raises(SliceError) as raised:
         slice_address(f'{LONG_SUFFIX_PATH}#nosuch', root=tmp_path, budget=MIN_BUDGET)
 
+    assert estimate_tokens(str(raised.value)) <= MIN_BUDGET
+
+
+TWENTY_NAME = f'{"f" * 17}.py'
+
+
+def whole_name_cases() -> list[str]:
+    return [f'{LONG_DIRS}/{TWENTY_NAME}#nosuch', f'{LONG_DIRS}/{TWENTY_NAME}#L99']
+
+
+@pytest.mark.parametrize('address', whole_name_cases())
+def test_a_twenty_character_file_name_survives_whole_under_a_long_directory(
+    tmp_path: Path, address: str
+) -> None:
+    assert len(TWENTY_NAME) == 20
+    write(tmp_path, f'{LONG_DIRS}/{TWENTY_NAME}', NEAR_NAMES)
+
+    with pytest.raises(SliceError) as raised:
+        slice_address(address, root=tmp_path, budget=MIN_BUDGET)
+
+    assert TWENTY_NAME in str(raised.value)
+    assert estimate_tokens(str(raised.value)) <= MIN_BUDGET
+
+
+def test_the_path_is_cut_to_its_floor_before_a_nearest_name_is_dropped(tmp_path: Path) -> None:
+    address = f'{LONG_PATH}#similar_nam'
+    write(tmp_path, LONG_PATH, NEAR_NAMES)
+
+    with pytest.raises(SliceError) as raised:
+        slice_address(address, root=tmp_path, budget=MIN_BUDGET)
+
+    assert 'similar_name_' in str(raised.value)
     assert estimate_tokens(str(raised.value)) <= MIN_BUDGET
 
 
