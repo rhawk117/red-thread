@@ -41,10 +41,6 @@ def kind_of(node: Definition, scope: Scope) -> SymbolKind:
     return 'method'
 
 
-def start_line_of(node: Definition) -> int:
-    return min([node.lineno, *(decorator.lineno for decorator in node.decorator_list)])
-
-
 def build_symbol(node: Definition, scope: Scope, lines: list[str]) -> Symbol:
     qualified_name = (
         node.name if scope.qualified_name is None else f'{scope.qualified_name}.{node.name}'
@@ -53,7 +49,7 @@ def build_symbol(node: Definition, scope: Scope, lines: list[str]) -> Symbol:
         name=node.name,
         qualified_name=qualified_name,
         kind=kind_of(node, scope),
-        start_line=start_line_of(node),
+        start_line=node.lineno,
         end_line=node.end_lineno or node.lineno,
         signature=lines[node.lineno - 1].strip(),
         docstring=ast.get_docstring(node),

@@ -66,10 +66,10 @@ class TestSymbols:
         sizes = [symbol for symbol in parsed.symbols if symbol.qualified_name == 'Outer.size']
         assert [symbol.kind for symbol in sizes] == ['property', 'property']
 
-    def test_span_starts_at_the_first_decorator(self, parsed: FileSymbols) -> None:
+    def test_span_starts_at_the_definition_line(self, parsed: FileSymbols) -> None:
         method = find_symbol(parsed, 'Outer.method')
         lines = SAMPLE.splitlines()
-        assert lines[method.start_line - 1].strip() == '@decorate'
+        assert lines[method.start_line - 1].strip() == 'def method(self, item: int) -> int:'
         assert lines[method.end_line - 1].strip() == 'return inner()'
 
     def test_signature_is_the_definition_line(self, parsed: FileSymbols) -> None:
