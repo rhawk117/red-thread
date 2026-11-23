@@ -130,7 +130,6 @@ class Entry(
 
 class Capabilities(msgspec.Struct, frozen=True, kw_only=True, gc=False):
     languages: tuple[str, ...] = ()
-    navigation_tool: bool = False
 
 
 class Case(msgspec.Struct, frozen=True, kw_only=True, gc=False):

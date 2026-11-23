@@ -13,7 +13,7 @@ from red_thread_casefile.schemas import (
     entry_to_line,
 )
 
-from tests.casefile.ledger.builders import create_entry
+from tests.casefile.ledger.builders import create_case, create_entry
 
 
 def make_thread_name(number: int) -> str:
@@ -21,6 +21,7 @@ def make_thread_name(number: int) -> str:
 
 
 maybe_text = st.none() | st.text()
+RETIRED_FLAG = 'navigation' + '_tool'
 REQUIRED_FIELDS = ('seq', 'round', 'kind', 'text', 'source', 'at')
 OPTIONAL_FIELDS = (
     'head',
@@ -138,13 +139,18 @@ class TestCaseText:
         capabilities=st.builds(
             Capabilities,
             languages=st.lists(st.text(), max_size=5).map(tuple),
-            navigation_tool=st.booleans(),
         ),
     )
 
     @given(case=cases)
     def test_case_reads_back_as_the_case_it_was_written_from(self, case: Case) -> None:
         assert case_from_text(case_to_text(case)) == case
+
+    def test_case_written_with_the_retired_flag_still_reads_back(self) -> None:
+        document = json.loads(case_to_text(create_case()))
+        document['capabilities'][RETIRED_FLAG] = True
+
+        assert case_from_text(json.dumps(document)) == create_case()
 
     @given(case=cases)
     def test_text_is_indented_by_two_and_ends_with_one_newline(self, case: Case) -> None:

@@ -70,9 +70,6 @@ class MemorySourceTree:
         self.reads.append(path)
         return self.files.get(path)
 
-    def has_tool(self, name: str) -> bool:
-        return name in self.tools
-
     def exclude(self, pattern: str) -> None:
         self.exclusions.append(pattern)
 

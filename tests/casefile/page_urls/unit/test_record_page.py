@@ -32,7 +32,7 @@ class TestRecordPage:
             replace(
                 create_case(),
                 publish=True,
-                capabilities=Capabilities(languages=('Python', 'Go'), navigation_tool=True),
+                capabilities=Capabilities(languages=('Python', 'Go')),
             )
         )
         press_harness.seed(create_entry(seq=1, kind='open', text='who owns the queue'))

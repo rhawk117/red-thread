@@ -25,7 +25,6 @@ if TYPE_CHECKING:
 type CiteProblem = UnresolvedCiteError | MisquotedCiteError
 
 TEXT_FIELDS = ('text', 'cite', 'quote', 'addr', 'rests_on', 'refute', 'diagram')
-NAVIGATION_TOOL = 'agentlens'
 EXCLUDED = '.red-thread/'
 
 
@@ -146,10 +145,7 @@ class CaseFile:
         if self.repository.exists():
             raise CaseExistsError(case_id=framing.id)
 
-        capabilities = Capabilities(
-            languages=rank_languages(self.tree.list_files()),
-            navigation_tool=self.tree.has_tool(NAVIGATION_TOOL),
-        )
+        capabilities = Capabilities(languages=rank_languages(self.tree.list_files()))
         case = Case(
             id=framing.id,
             target=framing.target,

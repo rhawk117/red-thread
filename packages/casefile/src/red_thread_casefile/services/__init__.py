@@ -2,7 +2,6 @@
 
 from red_thread_casefile.services.casefile import (
     EXCLUDED,
-    NAVIGATION_TOOL,
     TEXT_FIELDS,
     Added,
     Batch,
@@ -17,7 +16,6 @@ from red_thread_casefile.services.press import BOARD_PAGE, Exported, ExportReque
 __all__ = [
     'BOARD_PAGE',
     'EXCLUDED',
-    'NAVIGATION_TOOL',
     'TEXT_FIELDS',
     'Added',
     'Batch',
