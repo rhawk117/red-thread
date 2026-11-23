@@ -61,6 +61,28 @@ def build_symbol(node: Definition, scope: Scope, lines: list[str]) -> Symbol:
     )
 
 
+def assigned_names(node: ast.Assign | ast.AnnAssign) -> list[str]:
+    targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+    names: list[str] = []
+    for target in targets:
+        elements = target.elts if isinstance(target, ast.Tuple | ast.List) else [target]
+        names.extend(element.id for element in elements if isinstance(element, ast.Name))
+    return names
+
+
+def build_variable(node: ast.Assign | ast.AnnAssign, name: str, lines: list[str]) -> Symbol:
+    return Symbol(
+        name=name,
+        qualified_name=name,
+        kind='constant' if name.isupper() else 'variable',
+        start_line=node.lineno,
+        end_line=node.end_lineno or node.lineno,
+        signature=lines[node.lineno - 1].strip(),
+        docstring=None,
+        parent=None,
+    )
+
+
 def collect_symbols(nodes: Sequence[ast.AST], scope: Scope, lines: list[str]) -> list[Symbol]:
     symbols: list[Symbol] = []
     for node in nodes:
@@ -73,6 +95,8 @@ def symbols_of(node: ast.AST, scope: Scope, lines: list[str]) -> list[Symbol]:
         symbol = build_symbol(node, scope, lines)
         inner = Scope(qualified_name=symbol.qualified_name, in_class=isinstance(node, ast.ClassDef))
         return [symbol, *collect_symbols(node.body, inner, lines)]
+    if isinstance(node, ast.Assign | ast.AnnAssign) and scope.qualified_name is None:
+        return [build_variable(node, name, lines) for name in assigned_names(node)]
     nested = [
         child
         for child in ast.iter_child_nodes(node)

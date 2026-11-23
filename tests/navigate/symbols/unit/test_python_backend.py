@@ -135,6 +135,52 @@ class TestEdges:
         assert [reference.line for reference in references if reference.name == 'count'] == [5]
 
 
+VARIABLE_SAMPLE = """MIDDLEWARE = [
+    'a',
+    'b',
+]
+count: int = 1
+first, SECOND = 1, 2
+__all__ = ['f']
+if True:
+    GUARDED = 1
+
+
+def f():
+    local = 1
+    LOCAL_CONSTANT = 2
+    return local + LOCAL_CONSTANT
+
+
+class K:
+    attr = 1
+    LIMIT = 2
+"""
+
+
+class TestVariables:
+    @pytest.fixture
+    def parsed(self) -> FileSymbols:
+        return parse(VARIABLE_SAMPLE)
+
+    def test_module_assignments_are_constants_or_variables_with_their_full_span(
+        self, parsed: FileSymbols
+    ) -> None:
+        middleware = find_symbol(parsed, 'MIDDLEWARE')
+        assert (middleware.kind, middleware.start_line, middleware.end_line) == ('constant', 1, 4)
+        assert find_symbol(parsed, 'count').kind == 'variable'
+        assert find_symbol(parsed, 'GUARDED').kind == 'constant'
+
+    def test_tuple_targets_and_dunder_names_are_symbols(self, parsed: FileSymbols) -> None:
+        assert find_symbol(parsed, 'first').kind == 'variable'
+        assert find_symbol(parsed, 'SECOND').kind == 'constant'
+        assert find_symbol(parsed, '__all__').kind == 'variable'
+
+    def test_assignments_in_functions_and_classes_add_no_symbols(self, parsed: FileSymbols) -> None:
+        names = {symbol.qualified_name for symbol in parsed.symbols}
+        assert names.isdisjoint({'local', 'LOCAL_CONSTANT', 'attr', 'LIMIT', 'K.LIMIT', 'f.local'})
+
+
 class TestSyntaxError:
     def test_yields_no_symbols_and_a_note_naming_file_and_line(self) -> None:
         parsed = parse(BROKEN)
