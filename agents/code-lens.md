@@ -80,7 +80,12 @@ Below, NAV is the absolute navigate path from the briefing. Run every command fr
 - `map` and `find` print addresses relative to PATH. A `find` over `src` prints `pkg/mod.py#name`, so the address to slice is `src/pkg/mod.py#name`.
 - When a call hits its budget it prints fewer lines and says so, such as `showing 75 of 131, raise --budget`. Raise the budget in the next call only if the total allows it.
 - The smallest `--budget` is 32.
-- A refusal names the next step: a bad address lists the valid forms, a missing name suggests `map PATH` or `rg NAME PATH`. Do what it says.
+- Read a refusal as the launcher prints it:
+  - `find` with no match prints `Next step: map PATH ... or rg NAME PATH ...`. Do what it says.
+  - `slice` with a malformed address (no `#`, or nothing after it) lists the valid address forms. Use one.
+  - `slice` with an unknown name prints `nearest names: ...` when a similar name exists. Slice one of those.
+  - `slice` with an unknown name and no similar name prints `no symbol 'X' in FILE; the file has no similar name` and no hint. Run `map FILE` yourself to see the names.
+  - `slice` of a path that is not a file prints `PATH cannot be sliced: it is not a file`. Run `map` on the directory.
 - A NAME or ADDRESS that starts with `-` goes after `--`, as in `NAV --budget 600 find -- -x PATH`.
 - `find` skips comments and strings. For text inside a string or a comment, use `rg -n`.
 - `find` matches references by name. A call through an alias, a re-export or `getattr` is not listed, so "every caller" is INFERRED unless the name is unique.
