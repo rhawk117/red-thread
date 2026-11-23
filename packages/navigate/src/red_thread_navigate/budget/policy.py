@@ -79,10 +79,16 @@ def fit_to_budget(rungs: Sequence[tuple[str, ...]], *, budget: int) -> Fitted:
     if not rungs:
         raise NoRungsError
 
-    for index, lines in enumerate(rungs):
-        text = '\n'.join(lines)
-        if printed_tokens(text) <= budget:
-            return Fitted(text=text, rung=index, kept=len(lines), total=len(lines), cut=False)
+    whole = next(
+        (
+            Fitted(text=text, rung=index, kept=len(lines), total=len(lines), cut=False)
+            for index, lines in enumerate(rungs)
+            if printed_tokens(text := '\n'.join(lines)) <= budget
+        ),
+        None,
+    )
+    if whole is not None:
+        return whole
 
     last = len(rungs) - 1
     cut = cut_rung(rungs[last], budget=budget)
