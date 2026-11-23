@@ -69,7 +69,16 @@ def refusal_text(template: str, *, refused: Refused, name: str) -> str:
             path=shorten_path(full_path, path_limit),
             name=shorten_name(name, name_limit),
         )
-    return text
+    return text if budget is None else cut_to_budget(text, budget)
+
+
+def cut_to_budget(text: str, budget: int) -> str:
+    keep = len(text)
+    fitted = text
+    while estimate_tokens(fitted) > budget and keep > 0:
+        keep -= 1
+        fitted = f'{text[:keep]}{ELLIPSIS}'
+    return fitted
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -147,10 +156,8 @@ def slice_lines(source: SourceFile, target: LineTarget, *, budget: int) -> str:
 def parse_file(source: SourceFile, *, budget: int) -> FileSymbols:
     backend = backend_for(source.path)
     if backend is None:
-        reason = (
-            f'no symbol backend reads {source.path.suffix or "this"} files, '
-            f'address lines instead, such as #L1-L20'
-        )
+        suffix = shorten_name(source.path.suffix, MIN_SHOWN) or 'this'
+        reason = f'no symbol backend reads {suffix} files, address lines instead, such as #L1-L20'
         raise FileRefusedError(refused=Refused(path=source.path, budget=budget), reason=reason)
     return backend.parse(source)
 

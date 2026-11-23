@@ -7,6 +7,7 @@ import pytest
 from red_thread_navigate.address import AddressError
 from red_thread_navigate.budget import estimate_tokens, fit_to_budget
 from red_thread_navigate.slice import WINDOW_LINES, SliceError, slice_address
+from red_thread_navigate.slice.services import Refused, refusal_text
 from red_thread_navigate.slice.views import Found, symbol_rungs
 from red_thread_navigate.symbols import Symbol
 
@@ -161,14 +162,17 @@ def test_unknown_symbol_message_stays_within_the_budget(tmp_path: Path) -> None:
 
 MIN_BUDGET = 32
 LONG_DIRS = '/'.join(f'directory{number}' for number in range(14))
-LONG_PATH = f'{LONG_DIRS}/target_module.py'
-LONG_NAME = 'a_very_long_symbol_name_' * 4
+LONG_PATH = f'{LONG_DIRS}/{"x" * 26}target_module.py'
+LONG_NAME = ('a_very_long_symbol_name_' * 4)[:80]
+LONG_SUFFIX_PATH = f'{"a" * 50}.{"x" * 149}'
+NEAR_NAMES = '\n\n'.join(f'def similar_name_{number}():\n    pass' for number in range(8))
 
 
 def refusal_cases() -> list[tuple[str, str]]:
     return [
         (f'{LONG_PATH}#{LONG_NAME}', 'target_module.py'),
         (f'{LONG_PATH}#nosuch', 'target_module.py'),
+        (f'{LONG_PATH}#similar_name', 'target_module.py'),
         (f'{LONG_PATH}#L99', 'target_module.py'),
         (f'{LONG_DIRS}/notes.txt#nosuch', 'notes.txt'),
         (f'{LONG_DIRS}/link.py#L1', 'link.py'),
@@ -181,7 +185,7 @@ def test_every_refusal_stays_within_the_minimum_budget(
     tmp_path: Path, address: str, file_name: str
 ) -> None:
     root = tmp_path / 'root'
-    write(root, LONG_PATH, 'def similar_name():\n    pass\n')
+    write(root, LONG_PATH, NEAR_NAMES)
     write(root, f'{LONG_DIRS}/notes.txt', 'plain\n')
     write(tmp_path, 'secret.py', SHORT)
     root.joinpath(f'{LONG_DIRS}/link.py').symlink_to(tmp_path / 'secret.py')
@@ -204,3 +208,25 @@ def test_a_cut_path_keeps_its_file_name_and_a_cut_name_keeps_its_start(tmp_path:
 
     assert 'target_module.py' in str(raised.value)
     assert 'a_very_long' in str(raised.value)
+
+
+def test_a_long_extension_cannot_push_the_no_backend_refusal_past_the_budget(
+    tmp_path: Path,
+) -> None:
+    assert len(LONG_SUFFIX_PATH) == len(LONG_PATH) == 200
+    assert len(LONG_NAME) == 80
+    write(tmp_path, LONG_SUFFIX_PATH, 'plain\n')
+
+    with pytest.raises(SliceError) as raised:
+        slice_address(f'{LONG_SUFFIX_PATH}#nosuch', root=tmp_path, budget=MIN_BUDGET)
+
+    assert estimate_tokens(str(raised.value)) <= MIN_BUDGET
+
+
+def test_the_whole_message_is_cut_when_the_floors_still_overflow() -> None:
+    refused = Refused(path=PurePosixPath('a' * 200), budget=MIN_BUDGET)
+
+    message = refusal_text(f'<path> {"word " * 100}', refused=refused, name='')
+
+    assert estimate_tokens(message) <= MIN_BUDGET
+    assert message.endswith('...')
