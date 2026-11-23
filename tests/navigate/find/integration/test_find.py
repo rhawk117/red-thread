@@ -88,3 +88,17 @@ def test_crowding_notes_are_cut_and_counted() -> None:
     assert text.endswith('more notes')
     assert text.startswith('note number 0')
     assert estimate_tokens(text) <= 100 // 4
+
+
+@pytest.mark.parametrize('name', ['helper', 'missing'])
+@pytest.mark.parametrize('budget', [SMALL_BUDGET, 64, 200])
+def test_many_notes_keep_the_whole_output_within_budget(
+    tmp_path: Path, name: str, budget: int
+) -> None:
+    write(tmp_path, 'core.py', CORE)
+    for index in range(30):
+        write(tmp_path, f'broken{index}.py', 'def (:\n')
+
+    text = find_name(name, tmp_path, budget=budget)
+
+    assert estimate_tokens(text) <= budget
