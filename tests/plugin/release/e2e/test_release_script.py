@@ -3,7 +3,7 @@
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from tests.plugin.release.conftest import ReleaseRepository
+    from tests.plugin.release.repository import ReleaseRepository
 
 TAG = 'v0.1.0'
 
