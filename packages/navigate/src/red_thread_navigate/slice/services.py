@@ -1,6 +1,7 @@
 """Slicing an address: read the one file, find the target and fit the result to a budget."""
 
 import re
+from dataclasses import dataclass
 from difflib import get_close_matches
 from typing import TYPE_CHECKING
 
@@ -21,35 +22,96 @@ NEAREST_NAMES = 5
 LINE_BREAK = re.compile(r'\r\n|\r|\n')
 
 
+ELLIPSIS = '...'
+MIN_SHOWN = 8
+PLACEHOLDER = re.compile(r'<path>|<name>')
+
+
+def shorten_path(text: str, limit: int) -> str:
+    if len(text) <= limit:
+        return text
+    head = (limit - len(ELLIPSIS)) // 3
+    tail = limit - len(ELLIPSIS) - head
+    return f'{text[:head]}{ELLIPSIS}{text[-tail:]}'
+
+
+def shorten_name(text: str, limit: int) -> str:
+    if len(text) <= limit:
+        return text
+    return f'{text[: limit - len(ELLIPSIS)]}{ELLIPSIS}'
+
+
+def fill(template: str, *, path: str, name: str) -> str:
+    shown = {'<path>': path, '<name>': name}
+    segments = PLACEHOLDER.split(template)
+    values = [shown[token] for token in PLACEHOLDER.findall(template)]
+    return ''.join(
+        f'{segment}{value}' for segment, value in zip(segments, [*values, ''], strict=True)
+    )
+
+
+def refusal_text(template: str, *, refused: Refused, name: str) -> str:
+    """Fill <path> and <name>, cutting the longer of the two until the text fits the budget."""
+    full_path = str(refused.path)
+    budget = refused.budget
+    path_limit = len(full_path)
+    name_limit = len(name)
+    text = fill(template, path=full_path, name=name)
+    while budget is not None and estimate_tokens(text) > budget:
+        if path_limit >= name_limit and path_limit > MIN_SHOWN:
+            path_limit -= 1
+        elif name_limit > MIN_SHOWN:
+            name_limit -= 1
+        else:
+            break
+        text = fill(
+            template,
+            path=shorten_path(full_path, path_limit),
+            name=shorten_name(name, name_limit),
+        )
+    return text
+
+
+@dataclass(slots=True, kw_only=True, frozen=True)
+class Refused:
+    """The path a refusal names and the budget its message must fit; no budget leaves it whole."""
+
+    path: PurePosixPath
+    budget: int | None = None
+
+
 class SliceError(ValueError):
     """Base of every refusal the slice verb makes."""
 
 
 class FileRefusedError(SliceError):
-    def __init__(self, *, path: PurePosixPath, reason: str) -> None:
-        self.path = path
+    def __init__(self, *, refused: Refused, reason: str) -> None:
+        self.path = refused.path
         self.reason = reason
-        super().__init__(f'{path} cannot be sliced: {reason}')
+        template = f'<path> cannot be sliced: {reason}'
+        super().__init__(refusal_text(template, refused=refused, name=''))
 
 
 class UnknownSymbolError(SliceError):
-    def __init__(self, *, path: PurePosixPath, name: str, nearest: tuple[str, ...]) -> None:
-        self.path = path
+    def __init__(self, *, refused: Refused, name: str, nearest: tuple[str, ...]) -> None:
+        self.path = refused.path
         self.name = name
         self.nearest = nearest
         hint = f'nearest names: {", ".join(nearest)}' if nearest else 'the file has no similar name'
-        super().__init__(f'no symbol {name!r} in {path}; {hint}')
+        template = f'no symbol <name> in <path>; {hint}'
+        super().__init__(refusal_text(template, refused=refused, name=repr(name)))
 
 
 class LinesOutOfRangeError(SliceError):
-    def __init__(self, *, path: PurePosixPath, start: int, total: int) -> None:
-        self.path = path
+    def __init__(self, *, refused: Refused, start: int, total: int) -> None:
+        self.path = refused.path
         self.start = start
         self.total = total
-        super().__init__(f'{path} has {total} lines, so L{start} is past its end')
+        template = f'<path> has {total} lines, so L{start} is past its end'
+        super().__init__(refusal_text(template, refused=refused, name=''))
 
 
-def read_file(root: Path, path: PurePosixPath) -> SourceFile:
+def read_file(root: Path, path: PurePosixPath, *, budget: int) -> SourceFile:
     source = read_source(root, root.joinpath(path), path)
     if isinstance(source, SourceFile):
         return source
@@ -61,7 +123,7 @@ def read_file(root: Path, path: PurePosixPath) -> SourceFile:
         'not_utf8': 'it is not UTF-8',
         'unreadable': 'it cannot be read',
     }
-    raise FileRefusedError(path=path, reason=reasons[source])
+    raise FileRefusedError(refused=Refused(path=path, budget=budget), reason=reasons[source])
 
 
 def split_lines(text: str) -> tuple[str, ...]:
@@ -74,20 +136,22 @@ def split_lines(text: str) -> tuple[str, ...]:
 def slice_lines(source: SourceFile, target: LineTarget, *, budget: int) -> str:
     lines = split_lines(source.text)
     if target.start > len(lines):
-        raise LinesOutOfRangeError(path=source.path, start=target.start, total=len(lines))
+        raise LinesOutOfRangeError(
+            refused=Refused(path=source.path, budget=budget), start=target.start, total=len(lines)
+        )
     chosen = lines[target.start - 1 : target.end]
     rungs = line_rungs(source.path, start=target.start, lines=chosen)
     return fit_to_budget(rungs, budget=budget).text
 
 
-def parse_file(source: SourceFile) -> FileSymbols:
+def parse_file(source: SourceFile, *, budget: int) -> FileSymbols:
     backend = backend_for(source.path)
     if backend is None:
         reason = (
             f'no symbol backend reads {source.path.suffix or "this"} files, '
-            f'address lines instead, such as {source.path}#L1-L20'
+            f'address lines instead, such as #L1-L20'
         )
-        raise FileRefusedError(path=source.path, reason=reason)
+        raise FileRefusedError(refused=Refused(path=source.path, budget=budget), reason=reason)
     return backend.parse(source)
 
 
@@ -106,15 +170,17 @@ def found_for(source: SourceFile, symbol: Symbol, parsed: FileSymbols) -> Found:
 def unknown_symbol(parsed: FileSymbols, name: str, *, budget: int) -> UnknownSymbolError:
     names = sorted({symbol.qualified_name for symbol in parsed.symbols})
     nearest = tuple(get_close_matches(name, names, n=NEAREST_NAMES))
-    error = UnknownSymbolError(path=parsed.path, name=name, nearest=nearest)
+    whole = Refused(path=parsed.path)
+    error = UnknownSymbolError(refused=whole, name=name, nearest=nearest)
     while nearest and estimate_tokens(str(error)) > budget:
         nearest = nearest[:-1]
-        error = UnknownSymbolError(path=parsed.path, name=name, nearest=nearest)
-    return error
+        error = UnknownSymbolError(refused=whole, name=name, nearest=nearest)
+    refused = Refused(path=parsed.path, budget=budget)
+    return UnknownSymbolError(refused=refused, name=name, nearest=nearest)
 
 
 def slice_symbol(source: SourceFile, target: SymbolTarget, *, budget: int) -> str:
-    parsed = parse_file(source)
+    parsed = parse_file(source, budget=budget)
     name = '.'.join(target.parts)
     matches = tuple(symbol for symbol in parsed.symbols if symbol.qualified_name == name)
     if not matches:
@@ -127,7 +193,7 @@ def slice_address(text: str, *, root: Path, budget: int) -> str:
     """Return the code an address names, inside the budget; refuse what it cannot name."""
     resolved = root.resolve()
     address = parse_address(text, root=resolved)
-    source = read_file(resolved, address.path)
+    source = read_file(resolved, address.path, budget=budget)
     match address.target:
         case LineTarget() as lines:
             return slice_lines(source, lines, budget=budget)

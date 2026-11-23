@@ -157,3 +157,50 @@ def test_unknown_symbol_message_stays_within_the_budget(tmp_path: Path) -> None:
         slice_address('core.py#similar_name', root=tmp_path, budget=40)
 
     assert estimate_tokens(str(raised.value)) <= 40
+
+
+MIN_BUDGET = 32
+LONG_DIRS = '/'.join(f'directory{number}' for number in range(14))
+LONG_PATH = f'{LONG_DIRS}/target_module.py'
+LONG_NAME = 'a_very_long_symbol_name_' * 4
+
+
+def refusal_cases() -> list[tuple[str, str]]:
+    return [
+        (f'{LONG_PATH}#{LONG_NAME}', 'target_module.py'),
+        (f'{LONG_PATH}#nosuch', 'target_module.py'),
+        (f'{LONG_PATH}#L99', 'target_module.py'),
+        (f'{LONG_DIRS}/notes.txt#nosuch', 'notes.txt'),
+        (f'{LONG_DIRS}/link.py#L1', 'link.py'),
+        (f'{LONG_DIRS}/blob.py#L1', 'blob.py'),
+    ]
+
+
+@pytest.mark.parametrize(('address', 'file_name'), refusal_cases())
+def test_every_refusal_stays_within_the_minimum_budget(
+    tmp_path: Path, address: str, file_name: str
+) -> None:
+    root = tmp_path / 'root'
+    write(root, LONG_PATH, 'def similar_name():\n    pass\n')
+    write(root, f'{LONG_DIRS}/notes.txt', 'plain\n')
+    write(tmp_path, 'secret.py', SHORT)
+    root.joinpath(f'{LONG_DIRS}/link.py').symlink_to(tmp_path / 'secret.py')
+    root.joinpath(f'{LONG_DIRS}/blob.py').write_bytes(b'\x00\x01\x02')
+
+    with pytest.raises(SliceError) as raised:
+        slice_address(address, root=root, budget=MIN_BUDGET)
+
+    message = str(raised.value)
+    assert estimate_tokens(message) <= MIN_BUDGET
+    assert '...' in message
+    assert file_name in message
+
+
+def test_a_cut_path_keeps_its_file_name_and_a_cut_name_keeps_its_start(tmp_path: Path) -> None:
+    write(tmp_path, LONG_PATH, 'def similar_name():\n    pass\n')
+
+    with pytest.raises(SliceError) as raised:
+        slice_address(f'{LONG_PATH}#{LONG_NAME}', root=tmp_path, budget=MIN_BUDGET)
+
+    assert 'target_module.py' in str(raised.value)
+    assert 'a_very_long' in str(raised.value)
