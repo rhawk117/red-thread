@@ -53,3 +53,37 @@ def fine():
 def broken(:
     return 2
 """
+
+JAVASCRIPT_SAMPLE = """\
+class Widget {
+  constructor(name) {
+    this.name = name;
+  }
+
+  render() {
+    return helper(this.name);
+  }
+}
+
+function build() {
+  return new Widget('a');
+}
+
+const arrow = (value) => value + 1;
+
+const bound = function (value) {
+  return arrow(value);
+};
+
+export class Exported {
+  open() {
+    return build().render();
+  }
+}
+
+export function exportedFunction() {
+  return 1;
+}
+
+export const exportedArrow = () => bound(2);
+"""

@@ -3,13 +3,14 @@
 from typing import TYPE_CHECKING
 
 from red_thread_navigate.symbols.store.python import PYTHON_BACKEND
+from red_thread_navigate.symbols.store.treesitter import JAVASCRIPT_BACKEND
 
 if TYPE_CHECKING:
     from pathlib import PurePosixPath
 
     from red_thread_navigate.symbols.domain import Backend
 
-BACKENDS: tuple[Backend, ...] = (PYTHON_BACKEND,)
+BACKENDS: tuple[Backend, ...] = (PYTHON_BACKEND, JAVASCRIPT_BACKEND)
 
 
 def backend_for(path: PurePosixPath) -> Backend | None:
@@ -19,4 +20,4 @@ def backend_for(path: PurePosixPath) -> Backend | None:
     return None
 
 
-__all__ = ['BACKENDS', 'PYTHON_BACKEND', 'backend_for']
+__all__ = ['BACKENDS', 'JAVASCRIPT_BACKEND', 'PYTHON_BACKEND', 'backend_for']
