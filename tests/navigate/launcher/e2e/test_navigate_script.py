@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from tests.casefile.launcher.children import ChildRunner
-from tests.casefile.launcher.launcher import copy_plugin, read_outside_environment
+from tests.casefile.launcher.launcher import copy_plugin, read_outside_environment, snapshot
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -30,13 +30,6 @@ from core import helper
 def use():
     return helper() + helper()
 """
-
-
-def snapshot(root: Path) -> dict[str, bytes | None]:
-    return {
-        str(path.relative_to(root)): path.read_bytes() if path.is_file() else None
-        for path in sorted(root.rglob('*'))
-    }
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -72,7 +65,23 @@ def navigator(navigate_script: Path, tmp_path: Path) -> Navigator:
     return Navigator(script=navigate_script, repository=repository)
 
 
+def hostile_uv_configs() -> list[str]:
+    return ['index-url = "http://127.0.0.1:9/simple"\n', '[[[\n']
+
+
 class TestNavigateScript:
+    @pytest.mark.parametrize('config', hostile_uv_configs())
+    def test_the_uv_config_of_the_repository_is_ignored(
+        self, navigator: Navigator, config: str
+    ) -> None:
+        navigator.repository.joinpath('uv.toml').write_text(config)
+        before = snapshot(navigator.repository)
+
+        mapped = navigator.run('map', '.')
+
+        assert (mapped.code, 'core.py#Widget.render' in mapped.out) == (0, True)
+        assert snapshot(navigator.repository) == before
+
     def test_map_find_and_slice_print_their_addresses_and_leave_the_repository_alone(
         self, navigator: Navigator
     ) -> None:

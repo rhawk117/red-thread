@@ -9,4 +9,4 @@ here=$(cd -- "$(dirname -- "$0")" && pwd -P)
 root=${CLAUDE_PLUGIN_ROOT:-${here%/*}}
 
 export PYTHONDONTWRITEBYTECODE=1
-exec uv run --no-project --python 3.14 --with-editable "${root}/packages/navigate" -- python -m red_thread_navigate "$@"
+exec uv run --no-config --no-project --python 3.14 --with-editable "${root}/packages/navigate" -- python -m red_thread_navigate "$@"

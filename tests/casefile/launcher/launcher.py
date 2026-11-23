@@ -23,6 +23,13 @@ def list_tree(root: Path) -> list[str]:
     return sorted(str(path.relative_to(root)) for path in root.rglob('*'))
 
 
+def snapshot(root: Path) -> dict[str, bytes | None]:
+    return {
+        str(path.relative_to(root)): path.read_bytes() if path.is_file() else None
+        for path in sorted(root.rglob('*'))
+    }
+
+
 def read_outside_environment() -> dict[str, str]:
     return {name: value for name, value in os.environ.items() if name not in OUTER_VARIABLES}
 

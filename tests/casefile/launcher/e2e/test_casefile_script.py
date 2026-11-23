@@ -3,7 +3,9 @@
 import json
 from typing import TYPE_CHECKING
 
-from tests.casefile.launcher.launcher import list_tree
+import pytest
+
+from tests.casefile.launcher.launcher import list_tree, snapshot
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -21,7 +23,24 @@ BATCH = json.dumps([OPEN, KNOWN])
 CASE_HOME = '.red-thread'
 
 
+def hostile_uv_configs() -> list[str]:
+    return ['index-url = "http://127.0.0.1:9/simple"\n', '[[[\n']
+
+
 class TestCasefileScript:
+    @pytest.mark.parametrize('config', hostile_uv_configs())
+    def test_the_uv_config_of_the_repository_is_ignored(
+        self, launcher: Launcher, config: str
+    ) -> None:
+        case = launcher.init()
+        launcher.git.root.joinpath('uv.toml').write_text(config)
+        before = snapshot(launcher.git.root)
+
+        checked = launcher.on_case('check', case)
+
+        assert checked.code == 0, checked.err
+        assert snapshot(launcher.git.root) == before
+
     def test_a_case_goes_from_init_to_a_board_page_and_a_brief(self, launcher: Launcher) -> None:
         case = launcher.init()
 
