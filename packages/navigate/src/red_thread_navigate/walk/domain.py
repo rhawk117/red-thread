@@ -25,7 +25,7 @@ SKIPPED_DIRECTORIES = frozenset({
     'venv',
 })
 
-type SkipKind = Literal['too_large', 'binary', 'not_utf8', 'outside_root']
+type SkipKind = Literal['too_large', 'binary', 'not_utf8', 'outside_root', 'unreadable']
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -40,10 +40,11 @@ class SkipTally:
     binary: int = 0
     not_utf8: int = 0
     outside_root: int = 0
+    unreadable: int = 0
 
     @property
     def total(self) -> int:
-        return self.too_large + self.binary + self.not_utf8 + self.outside_root
+        return self.too_large + self.binary + self.not_utf8 + self.outside_root + self.unreadable
 
     @property
     def parts(self) -> tuple[str, ...]:
@@ -52,6 +53,7 @@ class SkipTally:
             (self.binary, 'binary'),
             (self.not_utf8, 'not UTF-8'),
             (self.outside_root, 'outside the root'),
+            (self.unreadable, 'unreadable'),
         )
         return tuple(f'{count} {label}' for count, label in counted if count)
 
@@ -60,12 +62,22 @@ class SkipTally:
 class Walk:
     files: tuple[SourceFile, ...]
     skipped: SkipTally
+    git_failed: bool = False
 
     @property
     def note(self) -> str | None:
-        if not self.skipped.total:
-            return None
-        return f'skipped {", ".join(self.skipped.parts)}'
+        parts = []
+        if self.skipped.total:
+            parts.append(f'skipped {", ".join(self.skipped.parts)}')
+        if self.git_failed:
+            parts.append('git listing failed, walked the directory instead')
+        return '; '.join(parts) or None
+
+
+@dataclass(slots=True, kw_only=True, frozen=True)
+class TrackedFiles:
+    names: tuple[str, ...] | None
+    failed: bool = False
 
 
 def tally_skips(kinds: tuple[SkipKind, ...]) -> SkipTally:
@@ -74,4 +86,5 @@ def tally_skips(kinds: tuple[SkipKind, ...]) -> SkipTally:
         binary=kinds.count('binary'),
         not_utf8=kinds.count('not_utf8'),
         outside_root=kinds.count('outside_root'),
+        unreadable=kinds.count('unreadable'),
     )

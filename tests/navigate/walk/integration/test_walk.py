@@ -1,5 +1,6 @@
 """Walking a real directory and a real git repository for the source files under a path."""
 
+import os
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -9,6 +10,7 @@ from red_thread_navigate.walk import SkipTally, walk
 from tests.casefile.launcher.children import ChildRunner
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
     from pathlib import Path
 
     from red_thread_navigate.walk import Walk
@@ -188,3 +190,57 @@ class TestSymlinksOutsideTheRoot:
 
         assert paths_of(result) == ['inner_link.py', 'real.py']
         assert result.skipped == SkipTally(outside_root=2)
+
+
+class TestUnreadableEntries:
+    @pytest.fixture
+    def locked(self, tree: Tree) -> Iterator[Tree]:
+        tree.write('ok.py')
+        tree.write('locked.py')
+        tree.write('closed/inner.py')
+        tree.root.joinpath('locked.py').chmod(0o000)
+        tree.root.joinpath('closed').chmod(0o000)
+        if os.access(tree.root.joinpath('locked.py'), os.R_OK):
+            tree.root.joinpath('closed').chmod(0o755)
+            pytest.skip('the user reads files whatever their mode')
+        yield tree
+        tree.root.joinpath('closed').chmod(0o755)
+
+    def test_a_directory_walk_skips_and_counts_what_it_cannot_read(self, locked: Tree) -> None:
+        result = walk(locked.root)
+
+        assert paths_of(result) == ['ok.py']
+        assert result.skipped == SkipTally(unreadable=2)
+        assert result.note == 'skipped 2 unreadable'
+
+    def test_a_git_walk_skips_and_counts_an_unreadable_file(self, tree: Tree) -> None:
+        tree.write('ok.py')
+        tree.write('locked.py')
+        tree.init_git()
+        tree.commit_all()
+        tree.root.joinpath('locked.py').chmod(0o000)
+        if os.access(tree.root.joinpath('locked.py'), os.R_OK):
+            pytest.skip('the user reads files whatever their mode')
+
+        result = walk(tree.root)
+
+        assert paths_of(result) == ['ok.py']
+        assert result.skipped == SkipTally(unreadable=1)
+
+
+class TestGitListingFailure:
+    def test_a_failed_listing_inside_a_work_tree_is_noted(self, tree: Tree) -> None:
+        tree.write('a.py')
+        tree.init_git()
+        tree.commit_all()
+        tree.root.joinpath('.git', 'index').write_bytes(b'garbage')
+
+        result = walk(tree.root)
+
+        assert paths_of(result) == ['a.py']
+        assert result.note == 'git listing failed, walked the directory instead'
+
+    def test_a_path_outside_any_work_tree_falls_back_without_a_note(self, tree: Tree) -> None:
+        tree.write('a.py')
+
+        assert walk(tree.root).note is None
