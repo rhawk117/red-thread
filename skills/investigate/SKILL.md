@@ -66,7 +66,7 @@ NAVIGATE is the absolute path of the navigate script, which you derive the same 
 ${CLAUDE_PLUGIN_ROOT}/scripts/navigate.sh
 ```
 
-Run it from the repository root. Pass its absolute path as SCRIPT in every brief that has that field.
+Run it from the repository root. Pass its absolute path as SCRIPT, and the navigate script's as NAVIGATE, in every brief that has that field.
 
 | Command | Use |
 | --- | --- |
@@ -112,7 +112,7 @@ The script validates a batch whole. When it rejects one it stores nothing and pr
 ## Each round
 
 1. Choose two or three questions the board cannot answer, or the threads to advance. Start wide enough to find where the answer lives, then narrow.
-2. Dispatch. To a scout: its fields, with what is already known and what to skip. To a lead: the question, the decision it serves, CASE, THREAD, ROUND, SCRIPT, TODAY, and the knowns that bear on its thread.
+2. Dispatch. To a scout: its fields, with what is already known and what to skip. To a lead: the question, the decision it serves, CASE, THREAD, ROUND, SCRIPT, NAVIGATE, TODAY, and the knowns that bear on its thread.
 3. Fold each scout report into the ledger by its verdict, in one `add` batch for the round. A lead has already stored its own entries, so you add nothing for it.
 
    | Report | Entry |
