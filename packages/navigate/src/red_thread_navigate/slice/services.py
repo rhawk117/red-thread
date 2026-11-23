@@ -15,6 +15,14 @@ from red_thread_navigate.address import (
     parse_address,
 )
 from red_thread_navigate.budget import estimate_tokens, fit_to_budget
+from red_thread_navigate.slice.util import (
+    MIN_SHOWN,
+    cut_steps,
+    cut_to_budget,
+    fill,
+    shorten_name,
+    shorten_path,
+)
 from red_thread_navigate.slice.views import Found, line_rungs, symbol_rungs
 from red_thread_navigate.symbols.store import backend_for
 from red_thread_navigate.walk import SourceFile
@@ -29,55 +37,7 @@ if TYPE_CHECKING:
 WINDOW_LINES = 100
 NEAREST_NAMES = 5
 LINE_BREAK = re.compile(r'\r\n|\r|\n')
-
-
-ELLIPSIS = '...'
-MIN_SHOWN = 8
-FILE_NAME_FLOOR = 20
-PLACEHOLDER = re.compile(r'<path>|<name>')
 OUTSIDE_ROOT_HINT = 'use a path under the root'
-
-
-def shorten_path(text: str, limit: int) -> str:
-    if len(text) <= limit:
-        return text
-    return f'{ELLIPSIS}{text[len(ELLIPSIS) - limit :]}'
-
-
-def shorten_name(text: str, limit: int) -> str:
-    if len(text) <= limit:
-        return text
-    return f'{text[: limit - len(ELLIPSIS)]}{ELLIPSIS}'
-
-
-def fill(template: str, *, path: str, name: str) -> str:
-    shown = {'<path>': path, '<name>': name}
-    segments = PLACEHOLDER.split(template)
-    values = [shown[token] for token in PLACEHOLDER.findall(template)]
-    return ''.join(
-        f'{segment}{value}' for segment, value in zip(segments, [*values, ''], strict=True)
-    )
-
-
-def cut_steps(full_path: str, name: str, *, deep: bool) -> Iterator[tuple[int, int]]:
-    file_name = PurePosixPath(full_path).name
-    floor = min(
-        len(full_path), max(MIN_SHOWN, min(len(file_name), FILE_NAME_FLOOR) + len(ELLIPSIS))
-    )
-    name_floor = min(len(name), MIN_SHOWN)
-    yield from ((limit, len(name)) for limit in range(len(full_path), floor - 1, -1))
-    yield from ((floor, limit) for limit in range(len(name), name_floor - 1, -1))
-    if deep:
-        yield from ((limit, name_floor) for limit in range(floor, MIN_SHOWN - 1, -1))
-
-
-def cut_to_budget(text: str, budget: int) -> str:
-    keep = len(text)
-    fitted = text
-    while estimate_tokens(fitted) > budget and keep > 0:
-        keep -= 1
-        fitted = f'{text[:keep]}{ELLIPSIS}'
-    return fitted
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
