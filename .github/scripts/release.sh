@@ -17,11 +17,7 @@ main() {
   validate_release_context
   validate_current_release
 
-  if [[ "$VERSION_BUMP" != recover ]]; then
-    bump_release
-    synchronize_plugin_manifest
-    record_version_bump
-  fi
+  "record_${VERSION_BUMP}_release"
 
   write_release_outputs
 }
@@ -48,7 +44,7 @@ validate_release_context() {
   [[ "${REPOSITORY_IS_FORK:-true}" == false ]] || panic "Releases are disabled in forks."
 
   case "$VERSION_BUMP" in
-    recover | major | minor | patch) ;;
+    initial | recover | major | minor | patch) ;;
     *) panic "Invalid version bump: $VERSION_BUMP" ;;
   esac
 }
@@ -65,10 +61,33 @@ validate_current_release() {
   [[ "$manifest_version" == "$release_version" ]] ||
     panic "Plugin manifest and package versions differ."
 
-  git show-ref --verify --quiet "refs/tags/$release_tag" ||
-    panic "Previous release tag does not exist: $release_tag"
+  "validate_${VERSION_BUMP}_release"
 
   log::step_end
+}
+
+validate_initial_release() {
+  validate_no_release_tags
+}
+
+validate_recover_release() { validate_previous_release_tag; }
+validate_patch_release() { validate_previous_release_tag; }
+validate_minor_release() { validate_previous_release_tag; }
+validate_major_release() { validate_previous_release_tag; }
+
+validate_previous_release_tag() {
+  git show-ref --verify --quiet "refs/tags/$release_tag" ||
+    panic "Previous release tag does not exist: $release_tag"
+}
+
+validate_no_release_tags() {
+  local local_tags remote_tags
+
+  local_tags=$(git tag --list 'v*') || panic "Cannot read release tags from the repository."
+  [[ -z "$local_tags" ]] || panic "The initial release requires a repository without release tags."
+
+  remote_tags=$(git ls-remote --tags origin 'refs/tags/v*') || panic "Cannot read release tags from origin."
+  [[ -z "$remote_tags" ]] || panic "The initial release requires an origin without release tags."
 }
 
 bump_release() {
@@ -101,20 +120,53 @@ synchronize_plugin_manifest() {
   log::step_end
 }
 
+configure_release_identity() {
+  git config user.name "${RELEASE_BOT_USERNAME}"
+  git config user.email "${RELEASE_BOT_EMAIL}"
+}
+
+create_release_tag() {
+  git tag -a "$release_tag" -m "Release $release_tag"
+}
+
 record_version_bump() {
   log::step "Record Version Bump ($release_tag)"
 
-  git config user.name "${RELEASE_BOT_USERNAME}"
-  git config user.email "${RELEASE_BOT_EMAIL}"
+  configure_release_identity
 
   git add -- pyproject.toml uv.lock "$PLUGIN_MANIFEST"
 
   git commit -m "release: $release_tag"
-  git tag -a "$release_tag" -m "Release $release_tag"
+  create_release_tag
 
   git push --atomic origin \
     HEAD:refs/heads/main \
     "refs/tags/$release_tag:refs/tags/$release_tag"
+
+  log::step_end
+}
+
+record_recover_release() {
+  :
+}
+
+record_patch_release() { record_bumped_release; }
+record_minor_release() { record_bumped_release; }
+record_major_release() { record_bumped_release; }
+
+record_bumped_release() {
+  bump_release
+  synchronize_plugin_manifest
+  record_version_bump
+}
+
+record_initial_release() {
+  log::step "Record Initial Release ($release_tag)"
+
+  configure_release_identity
+
+  create_release_tag
+  git push origin "refs/tags/$release_tag:refs/tags/$release_tag"
 
   log::step_end
 }
