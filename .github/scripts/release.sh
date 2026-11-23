@@ -17,15 +17,7 @@ main() {
   validate_release_context
   validate_current_release
 
-  case "$VERSION_BUMP" in
-    recover) ;;
-    initial) record_initial_release ;;
-    *)
-      bump_release
-      synchronize_plugin_manifest
-      record_version_bump
-      ;;
-  esac
+  "record_${VERSION_BUMP}_release"
 
   write_release_outputs
 }
@@ -69,14 +61,23 @@ validate_current_release() {
   [[ "$manifest_version" == "$release_version" ]] ||
     panic "Plugin manifest and package versions differ."
 
-  if [[ "$VERSION_BUMP" == initial ]]; then
-    validate_no_release_tags
-  else
-    git show-ref --verify --quiet "refs/tags/$release_tag" ||
-      panic "Previous release tag does not exist: $release_tag"
-  fi
+  "validate_${VERSION_BUMP}_release"
 
   log::step_end
+}
+
+validate_initial_release() {
+  validate_no_release_tags
+}
+
+validate_recover_release() { validate_previous_release_tag; }
+validate_patch_release() { validate_previous_release_tag; }
+validate_minor_release() { validate_previous_release_tag; }
+validate_major_release() { validate_previous_release_tag; }
+
+validate_previous_release_tag() {
+  git show-ref --verify --quiet "refs/tags/$release_tag" ||
+    panic "Previous release tag does not exist: $release_tag"
 }
 
 validate_no_release_tags() {
@@ -143,6 +144,20 @@ record_version_bump() {
     "refs/tags/$release_tag:refs/tags/$release_tag"
 
   log::step_end
+}
+
+record_recover_release() {
+  :
+}
+
+record_patch_release() { record_bumped_release; }
+record_minor_release() { record_bumped_release; }
+record_major_release() { record_bumped_release; }
+
+record_bumped_release() {
+  bump_release
+  synchronize_plugin_manifest
+  record_version_bump
 }
 
 record_initial_release() {
