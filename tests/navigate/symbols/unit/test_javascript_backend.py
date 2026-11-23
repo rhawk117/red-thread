@@ -101,3 +101,29 @@ class TestLookup:
         )
         assert 'Max Brunsfeld' in query
         assert 'MIT License' in query
+
+
+ASSIGNED_SAMPLE = """\
+app.init = function init() {
+  app.get('/', function getrouter() {});
+};
+
+View.prototype.lookup = function lookup(name) {
+  return name;
+};
+"""
+
+
+class TestAssignedFunctions:
+    @pytest.fixture
+    def parsed(self) -> FileSymbols:
+        return parse(ASSIGNED_SAMPLE)
+
+    def test_each_assignment_is_one_symbol_named_as_its_target_is_written(
+        self, parsed: FileSymbols
+    ) -> None:
+        names = [symbol.qualified_name for symbol in parsed.symbols]
+        assert names == ['app.init', 'View.prototype.lookup']
+
+    def test_a_function_passed_as_an_argument_is_not_a_symbol(self, parsed: FileSymbols) -> None:
+        assert all('getrouter' not in symbol.qualified_name for symbol in parsed.symbols)

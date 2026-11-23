@@ -33,11 +33,7 @@
 ] @definition.class
 
 [
-  (function_expression
-    name: (identifier) @name)
   (function_declaration
-    name: (identifier) @name)
-  (generator_function
     name: (identifier) @name)
   (generator_function_declaration
     name: (identifier) @name)
@@ -50,8 +46,7 @@
 (assignment_expression
   left: [
     (identifier) @name
-    (member_expression
-      property: (property_identifier) @name)
+    (member_expression) @name
   ]
   right: [(arrow_function) (function_expression)]) @definition.function
 
