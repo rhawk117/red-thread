@@ -19,6 +19,23 @@ def parse(text: str, backend: TreeSitterBackend) -> FileSymbols:
     return backend.parse(SourceFile(path=PurePosixPath('web/sample.ts'), text=text))
 
 
+CONSTANTS_SAMPLE = """const LIMIT = 5
+let count = 0
+var legacy = 1
+const handler = () => LIMIT
+export const isSomeElementSelected = (function () {
+  const cache = 1
+  function ret() {}
+  return ret
+})()
+export let total: number
+function work() {
+  const inside = 1
+  let again = 2
+}
+"""
+
+
 def spans_of(parsed: FileSymbols, qualified_name: str) -> list[tuple[str, int, int]]:
     return sorted(
         (symbol.kind, symbol.start_line, symbol.end_line)
@@ -73,6 +90,39 @@ class TestSymbols:
             ('method', 28, 28),
             ('method', 29, 29),
         ]
+
+
+class TestModuleConstants:
+    @pytest.fixture
+    def parsed(self) -> FileSymbols:
+        return parse(CONSTANTS_SAMPLE, TYPESCRIPT_BACKEND)
+
+    @pytest.mark.parametrize(
+        ('qualified_name', 'expected'),
+        [
+            pytest.param('LIMIT', [('constant', 1, 1)], id='const'),
+            pytest.param('count', [('variable', 2, 2)], id='let'),
+            pytest.param('legacy', [('variable', 3, 3)], id='var'),
+            pytest.param('handler', [('function', 4, 4)], id='function-valued-const'),
+            pytest.param('isSomeElementSelected', [('constant', 5, 9)], id='exported-iife'),
+            pytest.param('isSomeElementSelected.ret', [('function', 7, 7)], id='iife-inner'),
+            pytest.param('total', [('variable', 10, 10)], id='exported-let-without-value'),
+        ],
+    )
+    def test_top_level_declarations_are_symbols_with_their_span(
+        self, parsed: FileSymbols, qualified_name: str, expected: list[tuple[str, int, int]]
+    ) -> None:
+        assert spans_of(parsed, qualified_name) == expected
+
+    @pytest.mark.parametrize('name', ['cache', 'inside', 'again'])
+    def test_declarations_inside_functions_add_no_symbols(
+        self, parsed: FileSymbols, name: str
+    ) -> None:
+        assert not [s for s in parsed.symbols if s.name == name]
+
+    def test_tsx_files_get_the_same_constants(self) -> None:
+        parsed = parse(CONSTANTS_SAMPLE, TSX_BACKEND)
+        assert spans_of(parsed, 'LIMIT') == [('constant', 1, 1)]
 
 
 class TestTsx:

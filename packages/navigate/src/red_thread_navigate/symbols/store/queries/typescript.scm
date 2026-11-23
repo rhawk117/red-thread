@@ -97,3 +97,97 @@
 
 (type_annotation
   (type_identifier) @name) @reference.type
+
+(program
+  (lexical_declaration
+    kind: "const"
+    [
+      (variable_declarator
+        name: (identifier) @name
+        value: [(call_expression) (parenthesized_expression) (new_expression) (await_expression) (object) (array)
+      (string) (template_string) (number) (regex) (true) (false) (null) (undefined) (identifier)
+      (member_expression) (subscript_expression) (binary_expression) (unary_expression)
+      (ternary_expression) (as_expression) (satisfies_expression) (non_null_expression)
+      (class) (sequence_expression)]) @definition.constant
+      (variable_declarator
+        name: (identifier) @name
+        !value) @definition.constant
+    ]))
+
+(program
+  (lexical_declaration
+    kind: "let"
+    [
+      (variable_declarator
+        name: (identifier) @name
+        value: [(call_expression) (parenthesized_expression) (new_expression) (await_expression) (object) (array)
+      (string) (template_string) (number) (regex) (true) (false) (null) (undefined) (identifier)
+      (member_expression) (subscript_expression) (binary_expression) (unary_expression)
+      (ternary_expression) (as_expression) (satisfies_expression) (non_null_expression)
+      (class) (sequence_expression)]) @definition.variable
+      (variable_declarator
+        name: (identifier) @name
+        !value) @definition.variable
+    ]))
+
+(program
+  (variable_declaration
+    [
+      (variable_declarator
+        name: (identifier) @name
+        value: [(call_expression) (parenthesized_expression) (new_expression) (await_expression) (object) (array)
+      (string) (template_string) (number) (regex) (true) (false) (null) (undefined) (identifier)
+      (member_expression) (subscript_expression) (binary_expression) (unary_expression)
+      (ternary_expression) (as_expression) (satisfies_expression) (non_null_expression)
+      (class) (sequence_expression)]) @definition.variable
+      (variable_declarator
+        name: (identifier) @name
+        !value) @definition.variable
+    ]))
+
+(export_statement
+  declaration: (lexical_declaration
+    kind: "const"
+    [
+      (variable_declarator
+        name: (identifier) @name
+        value: [(call_expression) (parenthesized_expression) (new_expression) (await_expression) (object) (array)
+      (string) (template_string) (number) (regex) (true) (false) (null) (undefined) (identifier)
+      (member_expression) (subscript_expression) (binary_expression) (unary_expression)
+      (ternary_expression) (as_expression) (satisfies_expression) (non_null_expression)
+      (class) (sequence_expression)]) @definition.constant
+      (variable_declarator
+        name: (identifier) @name
+        !value) @definition.constant
+    ]))
+
+(export_statement
+  declaration: (lexical_declaration
+    kind: "let"
+    [
+      (variable_declarator
+        name: (identifier) @name
+        value: [(call_expression) (parenthesized_expression) (new_expression) (await_expression) (object) (array)
+      (string) (template_string) (number) (regex) (true) (false) (null) (undefined) (identifier)
+      (member_expression) (subscript_expression) (binary_expression) (unary_expression)
+      (ternary_expression) (as_expression) (satisfies_expression) (non_null_expression)
+      (class) (sequence_expression)]) @definition.variable
+      (variable_declarator
+        name: (identifier) @name
+        !value) @definition.variable
+    ]))
+
+(export_statement
+  declaration: (variable_declaration
+    [
+      (variable_declarator
+        name: (identifier) @name
+        value: [(call_expression) (parenthesized_expression) (new_expression) (await_expression) (object) (array)
+      (string) (template_string) (number) (regex) (true) (false) (null) (undefined) (identifier)
+      (member_expression) (subscript_expression) (binary_expression) (unary_expression)
+      (ternary_expression) (as_expression) (satisfies_expression) (non_null_expression)
+      (class) (sequence_expression)]) @definition.variable
+      (variable_declarator
+        name: (identifier) @name
+        !value) @definition.variable
+    ]))
