@@ -25,6 +25,7 @@ CORE_TIER_NAMES = frozenset({'unit', 'integration', 'smoke', 'e2e'})
 TIER_NAMES_BY_TREE = {
     'casefile': CORE_TIER_NAMES,
     'plugin': CORE_TIER_NAMES,
+    'navigate': CORE_TIER_NAMES,
 }
 
 
