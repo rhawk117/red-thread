@@ -82,7 +82,12 @@ Below, NAV is the absolute navigate path from the briefing. Run every command fr
 - The smallest `--budget` is 32.
 - Read a refusal as the launcher prints it:
   - `find` with no match prints `Next step: map PATH ... or rg NAME PATH ...`. Do what it says.
-  - `slice` with a malformed address (no `#`, or nothing after it) lists the valid address forms. Use one.
+  - `slice` with a malformed address prints `address 'ADDRESS' is not valid: there is no # between file and target. Valid forms: path/to/file.py#Symbol, path/to/file.py#Outer.inner, path/to/file.py#L12, path/to/file.py#L12-L20`. The reason changes with the fault, such as nothing after the `#`. Use one of the valid forms.
+  - `slice` of a name in a file no symbol backend reads prints `FILE cannot be sliced: no symbol backend reads .EXT files, use lines like #L1-L20`. Slice lines, such as `FILE#L1-L20`, or use `rg -n`.
+  - `slice` of a file over 1 MiB prints `FILE cannot be sliced: it is over 1 MiB`. Use `rg -n NAME FILE` to find the lines.
+  - `slice` of a binary file prints `FILE cannot be sliced: it is binary`. Skip the file.
+  - `slice` of a file that is not UTF-8 prints `FILE cannot be sliced: it is not UTF-8`. Use `rg -n NAME FILE` to find the lines.
+  - `slice` of a file the launcher cannot read prints `FILE cannot be sliced: it cannot be read`. Skip the file and say so in the report.
   - `slice` with an unknown name prints `nearest names: ...` when a similar name exists. Slice one of those.
   - `slice` with an unknown name and no similar name prints `no symbol 'X' in FILE; the file has no similar name. Next step: map FILE to see the names there.` Do what it says.
   - `slice` of a path that is not a file prints `PATH cannot be sliced: it is not a file. Next step: map PATH to see what it holds.` Run `map` on the directory.
