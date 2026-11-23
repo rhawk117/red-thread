@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from red_thread_navigate.symbols.store.python import PYTHON_BACKEND
 from red_thread_navigate.symbols.store.treesitter import (
+    GO_BACKEND,
     JAVASCRIPT_BACKEND,
     TSX_BACKEND,
     TYPESCRIPT_BACKEND,
@@ -19,6 +20,7 @@ BACKENDS: tuple[Backend, ...] = (
     JAVASCRIPT_BACKEND,
     TYPESCRIPT_BACKEND,
     TSX_BACKEND,
+    GO_BACKEND,
 )
 
 
@@ -31,6 +33,7 @@ def backend_for(path: PurePosixPath) -> Backend | None:
 
 __all__ = [
     'BACKENDS',
+    'GO_BACKEND',
     'JAVASCRIPT_BACKEND',
     'PYTHON_BACKEND',
     'TSX_BACKEND',

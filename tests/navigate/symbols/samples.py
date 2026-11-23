@@ -160,3 +160,31 @@ export default function Page() {
   return <Greeting name="x" />;
 }
 """
+
+GO_SAMPLE = """\
+package shapes
+
+const Pi = 3
+
+type Shape interface {
+	Area() float64
+}
+
+type Circle struct {
+	Radius float64
+}
+
+type ID string
+
+func (c Circle) Area() float64 {
+	return Pi
+}
+
+func Build() Circle {
+	return Circle{}
+}
+
+func (c *Circle) Grow() {
+	c.Radius++
+}
+"""

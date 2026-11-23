@@ -5,6 +5,7 @@ from importlib import resources
 from typing import TYPE_CHECKING
 
 import tree_sitter
+import tree_sitter_go
 import tree_sitter_javascript
 import tree_sitter_typescript
 
@@ -40,6 +41,7 @@ class Definition:
     name: str
     kind: SymbolKind
     node: tree_sitter.Node
+    parent: str | None = None
 
 
 def load_query_source(query_name: str) -> str:
@@ -90,7 +92,13 @@ def collect_definitions(
 
         node = captures[capture][0]
         kind = KINDS[capture.removeprefix(DEFINITION_PREFIX)]
-        definition = Definition(name=text_of(captures['name'][0]), kind=kind, node=node)
+        parent_nodes = captures.get('parent')
+        definition = Definition(
+            name=text_of(captures['name'][0]),
+            kind=kind,
+            node=node,
+            parent=text_of(parent_nodes[0]) if parent_nodes is not None else None,
+        )
         found.setdefault((node.start_byte, node.end_byte), definition)
     return sorted(found.values(), key=lambda item: (item.node.start_byte, -item.node.end_byte))
 
@@ -104,7 +112,7 @@ def build_symbols(definitions: list[Definition], lines: list[str]) -> list[Symbo
             open_scopes.pop()
             names.pop()
 
-        parent = names[-1] if names else None
+        parent = definition.parent or (names[-1] if names else None)
         qualified_name = definition.name if parent is None else f'{parent}.{definition.name}'
         start_line = definition.node.start_point.row + 1
         symbols.append(
@@ -197,4 +205,11 @@ TSX_BACKEND = TreeSitterBackend(
     suffixes=frozenset({'.tsx'}),
     grammar=tree_sitter.Language(tree_sitter_typescript.language_tsx()),
     query_name='typescript',
+)
+
+GO_BACKEND = TreeSitterBackend(
+    language='go',
+    suffixes=frozenset({'.go'}),
+    grammar=tree_sitter.Language(tree_sitter_go.language()),
+    query_name='go',
 )
