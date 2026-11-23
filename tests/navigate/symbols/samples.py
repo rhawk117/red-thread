@@ -188,3 +188,40 @@ func (c *Circle) Grow() {
 	c.Radius++
 }
 """
+
+TERRAFORM_SAMPLE = """\
+variable "region" {
+  type = string
+}
+
+locals {
+  name = "app-${var.region}"
+  tags = { Name = local.name }
+}
+
+data "aws_ami" "x" {
+  most_recent = true
+}
+
+resource "aws_vpc" "this" {
+  cidr_block = "10.0.0.0/16"
+  tags       = local.tags
+}
+
+module "vpc" {
+  source = "./vpc"
+  ami    = data.aws_ami.x.id
+}
+
+output "id" {
+  value = aws_vpc.this.id
+}
+"""
+
+TERRAFORM_BROKEN = """\
+resource "aws_vpc" "this" {
+  cidr_block =
+}
+
+variable "region" {
+"""

@@ -6,6 +6,7 @@ from red_thread_navigate.symbols.store.python import PYTHON_BACKEND
 from red_thread_navigate.symbols.store.treesitter import (
     GO_BACKEND,
     JAVASCRIPT_BACKEND,
+    TERRAFORM_BACKEND,
     TSX_BACKEND,
     TYPESCRIPT_BACKEND,
 )
@@ -21,6 +22,7 @@ BACKENDS: tuple[Backend, ...] = (
     TYPESCRIPT_BACKEND,
     TSX_BACKEND,
     GO_BACKEND,
+    TERRAFORM_BACKEND,
 )
 
 
@@ -36,6 +38,7 @@ __all__ = [
     'GO_BACKEND',
     'JAVASCRIPT_BACKEND',
     'PYTHON_BACKEND',
+    'TERRAFORM_BACKEND',
     'TSX_BACKEND',
     'TYPESCRIPT_BACKEND',
     'backend_for',

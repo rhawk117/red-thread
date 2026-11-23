@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 import tree_sitter
 import tree_sitter_go
+import tree_sitter_hcl
 import tree_sitter_javascript
 import tree_sitter_typescript
 
@@ -33,6 +34,11 @@ KINDS: dict[str, SymbolKind] = {
     'trait': 'trait',
     'constant': 'constant',
     'module': 'module',
+    'variable': 'variable',
+    'resource': 'resource',
+    'data': 'data',
+    'output': 'output',
+    'local': 'local',
 }
 
 
@@ -81,8 +87,24 @@ def contains(outer: tree_sitter.Node, inner: tree_sitter.Node) -> bool:
     return outer.start_byte <= inner.start_byte and inner.end_byte <= outer.end_byte
 
 
+def address_of(captures: dict[str, list[tree_sitter.Node]], aliases: dict[str, str]) -> str:
+    head = text_of(captures['name'][0])
+    parts = [aliases.get(head, head), *(text_of(tail) for tail in captures.get('tail', []))]
+    return '.'.join(parts)
+
+
+def first_error_line(root: tree_sitter.Node) -> int | None:
+    pending = [root]
+    while pending:
+        node = pending.pop()
+        if node.is_error or node.is_missing:
+            return node.start_point.row + 1
+        pending.extend(reversed(node.children))
+    return None
+
+
 def collect_definitions(
-    matches: list[tuple[int, dict[str, list[tree_sitter.Node]]]],
+    matches: list[tuple[int, dict[str, list[tree_sitter.Node]]]], aliases: dict[str, str]
 ) -> list[Definition]:
     found: dict[tuple[int, int], Definition] = {}
     for _index, captures in matches:
@@ -94,7 +116,7 @@ def collect_definitions(
         kind = KINDS[capture.removeprefix(DEFINITION_PREFIX)]
         parent_nodes = captures.get('parent')
         definition = Definition(
-            name=text_of(captures['name'][0]),
+            name=address_of(captures, aliases),
             kind=kind,
             node=node,
             parent=text_of(parent_nodes[0]) if parent_nodes is not None else None,
@@ -133,7 +155,7 @@ def build_symbols(definitions: list[Definition], lines: list[str]) -> list[Symbo
 
 
 def collect_references(
-    matches: list[tuple[int, dict[str, list[tree_sitter.Node]]]],
+    matches: list[tuple[int, dict[str, list[tree_sitter.Node]]]], aliases: dict[str, str]
 ) -> tuple[Reference, ...]:
     found: set[tuple[int, str]] = set()
     for _index, captures in matches:
@@ -141,7 +163,7 @@ def collect_references(
             continue
 
         name_node = captures['name'][0]
-        found.add((name_node.end_point.row + 1, text_of(name_node)))
+        found.add((name_node.end_point.row + 1, address_of(captures, aliases)))
     return tuple(Reference(name=name, line=line) for line, name in sorted(found))
 
 
@@ -152,6 +174,8 @@ class TreeSitterBackend:
     grammar: tree_sitter.Language
     query_name: str
     deadline_seconds: float = 2.0
+    aliases: dict[str, str] = field(default_factory=dict)
+    strict: bool = False
     query: tree_sitter.Query = field(init=False)
 
     def __post_init__(self) -> None:
@@ -174,13 +198,20 @@ class TreeSitterBackend:
                 path=source.path, language=self.language, symbols=(), references=(), notes=(note,)
             )
 
+        error_line = first_error_line(tree.root_node) if self.strict else None
+        if error_line is not None:
+            note = f'{source.path}: syntax error at line {error_line}'
+            return FileSymbols(
+                path=source.path, language=self.language, symbols=(), references=(), notes=(note,)
+            )
+
         matches = tree_sitter.QueryCursor(self.query).matches(tree.root_node)
-        definitions = collect_definitions(matches)
+        definitions = collect_definitions(matches, self.aliases)
         return FileSymbols(
             path=source.path,
             language=self.language,
             symbols=tuple(build_symbols(definitions, LINE_BREAK.split(source.text))),
-            references=collect_references(matches),
+            references=collect_references(matches, self.aliases),
             notes=(),
         )
 
@@ -212,4 +243,13 @@ GO_BACKEND = TreeSitterBackend(
     suffixes=frozenset({'.go'}),
     grammar=tree_sitter.Language(tree_sitter_go.language()),
     query_name='go',
+)
+
+TERRAFORM_BACKEND = TreeSitterBackend(
+    language='terraform',
+    suffixes=frozenset({'.tf'}),
+    grammar=tree_sitter.Language(tree_sitter_hcl.language()),
+    query_name='terraform',
+    aliases={'variable': 'var', 'locals': 'local'},
+    strict=True,
 )
