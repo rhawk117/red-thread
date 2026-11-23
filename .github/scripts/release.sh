@@ -119,16 +119,24 @@ synchronize_plugin_manifest() {
   log::step_end
 }
 
+configure_release_identity() {
+  git config user.name "${RELEASE_BOT_USERNAME}"
+  git config user.email "${RELEASE_BOT_EMAIL}"
+}
+
+create_release_tag() {
+  git tag -a "$release_tag" -m "Release $release_tag"
+}
+
 record_version_bump() {
   log::step "Record Version Bump ($release_tag)"
 
-  git config user.name "${RELEASE_BOT_USERNAME}"
-  git config user.email "${RELEASE_BOT_EMAIL}"
+  configure_release_identity
 
   git add -- pyproject.toml uv.lock "$PLUGIN_MANIFEST"
 
   git commit -m "release: $release_tag"
-  git tag -a "$release_tag" -m "Release $release_tag"
+  create_release_tag
 
   git push --atomic origin \
     HEAD:refs/heads/main \
@@ -140,10 +148,9 @@ record_version_bump() {
 record_initial_release() {
   log::step "Record Initial Release ($release_tag)"
 
-  git config user.name "${RELEASE_BOT_USERNAME}"
-  git config user.email "${RELEASE_BOT_EMAIL}"
+  configure_release_identity
 
-  git tag -a "$release_tag" -m "Release $release_tag"
+  create_release_tag
   git push origin "refs/tags/$release_tag:refs/tags/$release_tag"
 
   log::step_end
