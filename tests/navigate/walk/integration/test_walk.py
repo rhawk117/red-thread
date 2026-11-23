@@ -5,7 +5,8 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
-from red_thread_navigate.walk import SkipTally, walk
+from red_thread_navigate.walk import walk
+from red_thread_navigate.walk.domain import tally_skips
 
 from tests.casefile.launcher.children import ChildRunner
 
@@ -147,7 +148,7 @@ class TestSkippedFiles:
         result = walk(skipped.root)
 
         assert paths_of(result) == ['ok.py']
-        assert result.skipped == SkipTally(too_large=1, binary=1, not_utf8=1)
+        assert result.skipped == tally_skips(('too_large', 'binary', 'not_utf8'))
         assert result.note == 'skipped 1 over 1 MiB, 1 binary, 1 not UTF-8'
 
     def test_a_file_of_exactly_one_mebibyte_is_kept(self, tree: Tree) -> None:
@@ -179,7 +180,7 @@ class TestSymlinksOutsideTheRoot:
         result = walk(linked.root)
 
         assert paths_of(result) == ['inner_link.py', 'real.py']
-        assert result.skipped == SkipTally(outside_root=2)
+        assert result.skipped == tally_skips(('outside_root', 'outside_root'))
         assert result.note == 'skipped 2 outside the root'
 
     def test_a_git_walk_neither_follows_nor_lists_them(self, linked: Tree) -> None:
@@ -189,7 +190,7 @@ class TestSymlinksOutsideTheRoot:
         result = walk(linked.root)
 
         assert paths_of(result) == ['inner_link.py', 'real.py']
-        assert result.skipped == SkipTally(outside_root=2)
+        assert result.skipped == tally_skips(('outside_root', 'outside_root'))
 
 
 class TestUnreadableEntries:
@@ -210,7 +211,7 @@ class TestUnreadableEntries:
         result = walk(locked.root)
 
         assert paths_of(result) == ['ok.py']
-        assert result.skipped == SkipTally(unreadable=2)
+        assert result.skipped == tally_skips(('unreadable', 'unreadable'))
         assert result.note == 'skipped 2 unreadable'
 
     def test_a_git_walk_skips_and_counts_an_unreadable_file(self, tree: Tree) -> None:
@@ -225,7 +226,7 @@ class TestUnreadableEntries:
         result = walk(tree.root)
 
         assert paths_of(result) == ['ok.py']
-        assert result.skipped == SkipTally(unreadable=1)
+        assert result.skipped == tally_skips(('unreadable',))
 
 
 class TestGitListingFailure:

@@ -12,6 +12,7 @@ from red_thread_navigate.budget import MIN_BUDGET, cut_to_budget
 from red_thread_navigate.find.services import find_name
 from red_thread_navigate.map.services import map_path
 from red_thread_navigate.slice import SliceError, slice_address
+from red_thread_navigate.walk import PathMissingError
 
 PROGRAM = 'red-thread-navigate'
 DEFAULT_BUDGET = 2000
@@ -26,6 +27,11 @@ class UsageError(ValueError):
 
     def __init__(self, *, problem: str) -> None:
         super().__init__(f'{problem}; valid options are {VALID_OPTIONS}')
+
+
+class EmptyPathError(UsageError):
+    def __init__(self, *, verb: str) -> None:
+        super().__init__(problem=f'{verb} needs a PATH that is not empty')
 
 
 class BudgetTooSmallError(UsageError):
@@ -68,30 +74,36 @@ def build_parser() -> Parser:
     return parser
 
 
-def parse_request(argv: list[str]) -> Request | None:
-    """Return the request, or None when the arguments ask for the version."""
+def parse_request(argv: list[str]) -> Request:
+    """Return the request; the arguments that ask for the version give the verb 'version'."""
     parsed = build_parser().parse_args(argv)
     if parsed.version:
-        return None
+        return Request(verb='version', budget=DEFAULT_BUDGET, target='')
     if parsed.verb is None:
         message = 'a verb is required: map, find or slice'
         raise UsageError(problem=message)
     if parsed.budget < MIN_BUDGET:
         raise BudgetTooSmallError(budget=parsed.budget)
+    path = getattr(parsed, 'path', None)
+    searched = path if parsed.verb == 'find' else parsed.target
+    if parsed.verb != 'slice' and not searched:
+        raise EmptyPathError(verb=parsed.verb)
     return Request(
         verb=parsed.verb,
         budget=parsed.budget,
         target=parsed.target,
-        path=getattr(parsed, 'path', None),
+        path=path,
     )
 
 
 def run_verb(request: Request) -> str:
     match request.verb:
+        case 'version':
+            return f'{PROGRAM} {version("red-thread-navigate")}'
         case 'map':
             return map_path(Path(request.target), budget=request.budget)
         case 'find':
-            return find_name(request.target, Path(request.path or '.'), budget=request.budget)
+            return find_name(request.target, Path(request.path or ''), budget=request.budget)
         case _:
             return slice_address(request.target, root=Path.cwd(), budget=request.budget)
 
@@ -99,7 +111,7 @@ def run_verb(request: Request) -> str:
 def navigate(request: Request) -> int:
     try:
         text = run_verb(request)
-    except (SliceError, AddressError) as refusal:
+    except (SliceError, AddressError, PathMissingError) as refusal:
         print(cut_to_budget(str(refusal), request.budget), file=sys.stderr)
         return EXIT_REFUSED
     print(cut_to_budget(text, request.budget))
@@ -113,7 +125,4 @@ def run(argv: list[str]) -> int:
     except UsageError as error:
         print(f'{PROGRAM}: {error}', file=sys.stderr)
         return EXIT_USAGE
-    if request is None:
-        print(f'{PROGRAM} {version("red-thread-navigate")}')
-        return EXIT_OK
     return navigate(request)

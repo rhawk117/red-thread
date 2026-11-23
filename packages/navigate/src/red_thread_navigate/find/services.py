@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from red_thread_navigate.budget import fit_notes, fit_to_budget
 from red_thread_navigate.find.views import Definition, Occurrence, find_rungs, none_lines
 from red_thread_navigate.symbols.services import index_path
+from red_thread_navigate.walk import PathMissingError
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -36,6 +37,8 @@ def references_to(files: tuple[FileSymbols, ...], name: str) -> tuple[Occurrence
 
 def find_name(name: str, path: Path, *, budget: int) -> str:
     """List every definition of a name under a path, then its references, inside the budget."""
+    if not path.exists():
+        raise PathMissingError(path=path)
     index = index_path(path)
     definitions = definitions_of(index.files, name)
     references = references_to(index.files, name)

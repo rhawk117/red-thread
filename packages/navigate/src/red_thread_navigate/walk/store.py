@@ -67,20 +67,10 @@ def list_directory(root: Path) -> tuple[tuple[str, ...], int, int]:
     return tuple(names), escaped, len(errors)
 
 
-def classify(data: bytes) -> SkipKind | None:
-    if b'\0' in data[:SNIFF_BYTES]:
-        return 'binary'
-    try:
-        data.decode('utf-8')
-    except UnicodeDecodeError:
-        return 'not_utf8'
-    return None
-
-
-def read_limited(target: Path) -> bytes | SkipKind | None:
+def read_limited(target: Path) -> bytes | SkipKind:
     try:
         if not target.is_file():
-            return None
+            return 'not_a_file'
         if target.stat().st_size > MAX_FILE_BYTES:
             return 'too_large'
         return target.read_bytes()
@@ -88,17 +78,19 @@ def read_limited(target: Path) -> bytes | SkipKind | None:
         return 'unreadable'
 
 
-def read_source(root: Path, path: Path, name: PurePosixPath) -> SourceFile | SkipKind | None:
-    if not is_inside(root, path):
-        return 'outside_root'
+def read_source(root: Path, path: Path, name: PurePosixPath) -> SourceFile | SkipKind:
     target = path.resolve()
+    if not target.is_relative_to(root):
+        return 'outside_root'
     data = read_limited(target)
-    if data is None or isinstance(data, str):
+    if isinstance(data, str):
         return data
-    skipped = classify(data)
-    if skipped:
-        return skipped
-    return SourceFile(path=name, text=data.decode('utf-8'))
+    if b'\0' in data[:SNIFF_BYTES]:
+        return 'binary'
+    try:
+        return SourceFile(path=name, text=data.decode('utf-8'))
+    except UnicodeDecodeError:
+        return 'not_utf8'
 
 
 def walk(root: Path) -> Walk:
@@ -117,6 +109,6 @@ def walk(root: Path) -> Walk:
             names = tracked.names
     reads = [read_source(base, base.joinpath(name), PurePosixPath(name)) for name in sorted(names)]
     files = tuple(read for read in reads if isinstance(read, SourceFile))
-    kinds = tuple(read for read in reads if isinstance(read, str))
+    kinds = tuple(read for read in reads if isinstance(read, str) and read != 'not_a_file')
     skipped = tally_skips((*kinds, *('outside_root',) * escaped, *('unreadable',) * unreadable))
     return Walk(files=files, skipped=skipped, git_failed=git_failed)

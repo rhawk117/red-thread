@@ -24,7 +24,7 @@ from red_thread_navigate.slice.util import (
 )
 from red_thread_navigate.slice.views import Found, line_rungs, symbol_rungs
 from red_thread_navigate.symbols.store import backend_for
-from red_thread_navigate.walk import SourceFile
+from red_thread_navigate.walk import SKIP_LABELS, SourceFile
 from red_thread_navigate.walk.store import read_source
 
 if TYPE_CHECKING:
@@ -32,6 +32,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from red_thread_navigate.symbols.domain import FileSymbols, Symbol
+    from red_thread_navigate.walk import SkipKind
 
 WINDOW_LINES = 100
 NEAREST_NAMES = 5
@@ -137,17 +138,13 @@ def read_file(root: Path, path: PurePosixPath, *, budget: int) -> SourceFile:
     source = read_source(root, root.joinpath(path), path)
     if isinstance(source, SourceFile):
         return source
-    reasons = {
-        None: 'it is not a file',
-        'outside_root': 'it resolves outside the root',
-        'too_large': 'it is over 1 MiB',
-        'binary': 'it is binary',
-        'not_utf8': 'it is not UTF-8',
-        'unreadable': 'it cannot be read',
+    hints: dict[SkipKind, str] = {
+        'not_a_file': 'map <path> to see what it holds',
+        'outside_root': OUTSIDE_ROOT_HINT,
     }
-    hints = {None: 'map <path> to see what it holds', 'outside_root': OUTSIDE_ROOT_HINT}
     refused = Refused(path=path, budget=budget)
-    raise FileRefusedError(refused=refused, reason=reasons[source], hint=hints.get(source, ''))
+    reason = SKIP_LABELS[source].reason
+    raise FileRefusedError(refused=refused, reason=reason, hint=hints.get(source, ''))
 
 
 def split_lines(text: str) -> tuple[str, ...]:

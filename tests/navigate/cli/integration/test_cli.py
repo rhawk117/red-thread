@@ -96,6 +96,27 @@ class TestRefusals:
 
         assert (printed.code, printed.out) == (1, '')
 
+    @pytest.mark.parametrize('argv', [('map', 'nowhere'), ('find', 'helper', 'nowhere')])
+    def test_a_missing_path_exits_one_naming_it_and_no_git_failure(
+        self, repository: Path, argv: tuple[str, ...]
+    ) -> None:
+        printed = run_in(repository, *argv)
+
+        assert (printed.code, printed.out) == (1, '')
+        assert 'nowhere does not exist' in printed.err
+        assert 'git' not in printed.err
+
+    def test_slice_of_a_directory_says_it_is_not_a_file_and_names_map(
+        self, repository: Path
+    ) -> None:
+        repository.joinpath('pkg').mkdir()
+
+        printed = run_in(repository, 'slice', 'pkg#L1')
+
+        assert (printed.code, printed.out) == (1, '')
+        assert 'it is not a file' in printed.err
+        assert 'Next step: map' in printed.err
+
     def test_a_long_refusal_is_cut_to_the_budget(self, repository: Path) -> None:
         printed = run_in(repository, '--budget', str(MIN_BUDGET), 'slice', f'{"d/" * 80}core.py#x')
 
@@ -114,6 +135,13 @@ class TestUsage:
         assert flag in printed.err
         assert '--budget' in printed.err
         assert '--version' in printed.err
+
+    @pytest.mark.parametrize('argv', [('map', ''), ('find', 'helper', '')])
+    def test_an_empty_path_exits_two(self, repository: Path, argv: tuple[str, ...]) -> None:
+        printed = run_in(repository, *argv)
+
+        assert (printed.code, printed.out) == (2, '')
+        assert 'PATH' in printed.err
 
     def test_a_budget_below_the_minimum_exits_two_naming_the_minimum(
         self, repository: Path

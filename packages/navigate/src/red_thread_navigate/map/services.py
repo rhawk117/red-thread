@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from red_thread_navigate.budget import fit_notes, fit_to_budget
 from red_thread_navigate.map.views import RankedFile, RankedSymbol, empty_lines, map_rungs
 from red_thread_navigate.symbols.services import index_path
+from red_thread_navigate.walk import PathMissingError
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -39,6 +40,8 @@ def rank_files(
 
 def map_path(path: Path, *, budget: int) -> str:
     """List the files and symbols under a path, most-referenced first, inside the budget."""
+    if not path.exists():
+        raise PathMissingError(path=path)
     index = index_path(path)
     notes = fit_notes(index.notes, budget=budget)
     if not index.files:
