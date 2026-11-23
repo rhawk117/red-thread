@@ -1,0 +1,408 @@
+{
+  "schema_version": 1,
+  "subject": {
+    "repository": "spf13/cobra",
+    "tag": "v1.10.2",
+    "commit": "88b30ab89da2d0d0abb153818746c5a2d30eccec"
+  },
+  "tasks": [
+    {
+      "id": "G01",
+      "type": "comprehension",
+      "prompt": "In what order does a command run its argument validation, persistent and local pre-run hooks, flag validation, Run and post-run hooks, and which parent's persistent hooks run by default?",
+      "required_addresses": [
+        {
+          "address": "command.go#Command.execute",
+          "start_line": 905,
+          "end_line": 1045
+        },
+        {
+          "address": "command.go#L905-L1045",
+          "start_line": 905,
+          "end_line": 1045
+        }
+      ],
+      "supporting_addresses": [
+        {
+          "address": "command.go#Command.ValidateRequiredFlags",
+          "start_line": 1180,
+          "end_line": 1201
+        },
+        {
+          "address": "flag_groups.go#Command.ValidateFlagGroups",
+          "start_line": 81,
+          "end_line": 109
+        }
+      ],
+      "required_facts": [
+        {
+          "id": "F1",
+          "any_of": [
+            "validateargs runs before the pre-run hooks",
+            "arguments are validated first",
+            "positional args are validated before persistentprerun"
+          ]
+        },
+        {
+          "id": "F2",
+          "any_of": [
+            "persistentprerun runs before prerun",
+            "persistent pre-run then pre-run",
+            "persistent hooks run before the local prerun"
+          ]
+        },
+        {
+          "id": "F3",
+          "any_of": [
+            "only the first persistent hook found",
+            "nearest parent with a persistentprerun",
+            "stops after the first persistent hook",
+            "enabletraverserunhooks"
+          ]
+        },
+        {
+          "id": "F4",
+          "any_of": [
+            "required flags and flag groups are validated after prerun",
+            "flag validation happens before run",
+            "validaterequiredflags and validateflaggroups"
+          ]
+        },
+        {
+          "id": "F5",
+          "any_of": [
+            "run then postrun then persistentpostrun",
+            "post-run hooks run after run",
+            "persistentpostrun runs last"
+          ]
+        }
+      ],
+      "forbidden_claims": [
+        "every parent's persistentprerun runs by default",
+        "persistentpostrun runs before postrun",
+        "required flags are checked before the pre-run hooks",
+        "run is called even when preRunE returns an error"
+      ],
+      "source_of_truth": [
+        "command.go#L905-L1045"
+      ]
+    },
+    {
+      "id": "G02",
+      "type": "comprehension",
+      "prompt": "When Execute is called on a subcommand, which command actually runs, and how does ExecuteC choose between Find and Traverse to locate the target and its remaining arguments?",
+      "required_addresses": [
+        {
+          "address": "command.go#Command.ExecuteC",
+          "start_line": 1084,
+          "end_line": 1170
+        },
+        {
+          "address": "command.go#Command.Find",
+          "start_line": 757,
+          "end_line": 779
+        }
+      ],
+      "supporting_addresses": [
+        {
+          "address": "command.go#Command.Traverse",
+          "start_line": 821,
+          "end_line": 860
+        },
+        {
+          "address": "command.go#Command.findNext",
+          "start_line": 798,
+          "end_line": 817
+        },
+        {
+          "address": "args.go#legacyArgs",
+          "start_line": 28,
+          "end_line": 39
+        }
+      ],
+      "required_facts": [
+        {
+          "id": "F1",
+          "any_of": [
+            "executec on a non-root command calls root().executec",
+            "execution is delegated to the root command",
+            "always runs on the root"
+          ]
+        },
+        {
+          "id": "F2",
+          "any_of": [
+            "traversechildren selects traverse",
+            "uses traverse when traversechildren is set",
+            "otherwise it calls find"
+          ]
+        },
+        {
+          "id": "F3",
+          "any_of": [
+            "args default to os.args[1:]",
+            "falls back to os.args when args is nil",
+            "c.args is nil"
+          ]
+        },
+        {
+          "id": "F4",
+          "any_of": [
+            "flag.errhelp prints help and returns nil",
+            "errhelp shows the help function",
+            "help requested returns no error"
+          ]
+        },
+        {
+          "id": "F5",
+          "any_of": [
+            "find applies legacyargs when args is nil",
+            "find returns an error from legacyargs",
+            "find walks down using findnext"
+          ]
+        }
+      ],
+      "forbidden_claims": [
+        "executec runs the subcommand it was called on directly",
+        "find searches parent commands upwards",
+        "traverse is used by default",
+        "an error from execute always prints usage"
+      ],
+      "source_of_truth": [
+        "command.go#L1084-L1170",
+        "command.go#L757-L779"
+      ]
+    },
+    {
+      "id": "G03",
+      "type": "comprehension",
+      "prompt": "How are flag groups (required together, one required, mutually exclusive) validated, when is a group ignored, and which error is returned first?",
+      "required_addresses": [
+        {
+          "address": "flag_groups.go#Command.ValidateFlagGroups",
+          "start_line": 81,
+          "end_line": 109
+        },
+        {
+          "address": "flag_groups.go#processFlagForGroupAnnotation",
+          "start_line": 121,
+          "end_line": 142
+        },
+        {
+          "address": "flag_groups.go#validateRequiredFlagGroups",
+          "start_line": 144,
+          "end_line": 165
+        },
+        {
+          "address": "flag_groups.go#validateExclusiveFlagGroups",
+          "start_line": 188,
+          "end_line": 207
+        }
+      ],
+      "supporting_addresses": [
+        {
+          "address": "flag_groups.go#validateOneRequiredFlagGroups",
+          "start_line": 167,
+          "end_line": 186
+        },
+        {
+          "address": "flag_groups.go#Command.MarkFlagsRequiredTogether",
+          "start_line": 33,
+          "end_line": 45
+        }
+      ],
+      "required_facts": [
+        {
+          "id": "F1",
+          "any_of": [
+            "three annotations",
+            "required together, one required and mutually exclusive",
+            "three kinds of group"
+          ]
+        },
+        {
+          "id": "F2",
+          "any_of": [
+            "group is ignored unless all its flags are defined",
+            "hasallflags",
+            "only considered if all the flags are defined"
+          ]
+        },
+        {
+          "id": "F3",
+          "any_of": [
+            "required together fails when some but not all are set",
+            "if any flags in the group are set they must all be set"
+          ]
+        },
+        {
+          "id": "F4",
+          "any_of": [
+            "mutually exclusive fails when more than one is set",
+            "none of the others can be"
+          ]
+        },
+        {
+          "id": "F5",
+          "any_of": [
+            "returns the first error",
+            "required groups are checked first",
+            "validation is skipped when disableflagparsing is set"
+          ]
+        }
+      ],
+      "forbidden_claims": [
+        "a group with an undefined flag is an error",
+        "required together fails when none of the flags are set",
+        "validation collects every error before returning",
+        "mutually exclusive fails when exactly one flag is set"
+      ],
+      "source_of_truth": [
+        "flag_groups.go#L81-L109",
+        "flag_groups.go#L121-L207"
+      ]
+    },
+    {
+      "id": "G04",
+      "type": "comprehension",
+      "prompt": "How are positional arguments validated when a command leaves Args unset versus sets it, and what does legacyArgs enforce?",
+      "required_addresses": [
+        {
+          "address": "command.go#Command.ValidateArgs",
+          "start_line": 1172,
+          "end_line": 1177
+        },
+        {
+          "address": "args.go#legacyArgs",
+          "start_line": 28,
+          "end_line": 39
+        },
+        {
+          "address": "command.go#Command.Find",
+          "start_line": 757,
+          "end_line": 779
+        }
+      ],
+      "supporting_addresses": [
+        {
+          "address": "args.go#ArbitraryArgs",
+          "start_line": 69,
+          "end_line": 71
+        },
+        {
+          "address": "args.go#MatchAll",
+          "start_line": 114,
+          "end_line": 123
+        }
+      ],
+      "required_facts": [
+        {
+          "id": "F1",
+          "any_of": [
+            "nil args falls back to arbitraryargs",
+            "validateargs accepts arbitrary args when args is nil",
+            "args is nil so any arguments are accepted"
+          ]
+        },
+        {
+          "id": "F2",
+          "any_of": [
+            "find calls legacyargs when args is nil",
+            "legacyargs runs inside find",
+            "legacyargs is applied during command lookup"
+          ]
+        },
+        {
+          "id": "F3",
+          "any_of": [
+            "root command with subcommands rejects unknown arguments",
+            "unknown command error for the root",
+            "only a root command with subcommands checks arguments"
+          ]
+        },
+        {
+          "id": "F4",
+          "any_of": [
+            "subcommands accept arbitrary arguments",
+            "a command without subcommands accepts any args"
+          ]
+        },
+        {
+          "id": "F5",
+          "any_of": [
+            "matchall runs each validator in order",
+            "matchall returns the first error"
+          ]
+        }
+      ],
+      "forbidden_claims": [
+        "a nil args field rejects all positional arguments",
+        "legacyargs rejects unknown arguments on subcommands",
+        "matchall requires only one validator to pass",
+        "validateargs runs after run"
+      ],
+      "source_of_truth": [
+        "args.go#L24-L39",
+        "command.go#L1172-L1177"
+      ]
+    },
+    {
+      "id": "L01",
+      "type": "localization",
+      "prompt": "Change the generated default 'completion' command so its short description is different. Which existing address would you edit?",
+      "required_addresses": [
+        {
+          "address": "completions.go#Command.InitDefaultCompletionCmd",
+          "start_line": 745,
+          "end_line": 927
+        },
+        {
+          "address": "completions.go#L745-L927",
+          "start_line": 745,
+          "end_line": 927
+        }
+      ],
+      "supporting_addresses": [
+        {
+          "address": "command.go#Command.ExecuteC",
+          "start_line": 1084,
+          "end_line": 1170
+        }
+      ],
+      "required_facts": [],
+      "forbidden_claims": [],
+      "source_of_truth": [
+        "completions.go#L745-L927"
+      ]
+    },
+    {
+      "id": "L02",
+      "type": "localization",
+      "prompt": "Remove the -h shorthand from the default help flag while keeping --help. Which existing address would you edit?",
+      "required_addresses": [
+        {
+          "address": "command.go#Command.InitDefaultHelpFlag",
+          "start_line": 1219,
+          "end_line": 1232
+        }
+      ],
+      "supporting_addresses": [
+        {
+          "address": "command.go#Command.InitDefaultVersionFlag",
+          "start_line": 1238,
+          "end_line": 1258
+        },
+        {
+          "address": "command.go#Command.execute",
+          "start_line": 905,
+          "end_line": 1045
+        }
+      ],
+      "required_facts": [],
+      "forbidden_claims": [],
+      "source_of_truth": [
+        "command.go#L1219-L1232"
+      ]
+    }
+  ]
+}
