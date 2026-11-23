@@ -448,12 +448,12 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "tree-sitter", specifier = ">=0.27.0" },
-    { name = "tree-sitter-go", specifier = ">=0.25.0" },
-    { name = "tree-sitter-hcl", specifier = ">=1.2.0" },
-    { name = "tree-sitter-javascript", specifier = ">=0.25.0" },
-    { name = "tree-sitter-rust", specifier = ">=0.24.2" },
-    { name = "tree-sitter-typescript", specifier = ">=0.23.2" },
+    { name = "tree-sitter", specifier = "==0.27.0" },
+    { name = "tree-sitter-go", specifier = "==0.25.0" },
+    { name = "tree-sitter-hcl", specifier = "==1.2.0" },
+    { name = "tree-sitter-javascript", specifier = "==0.25.0" },
+    { name = "tree-sitter-rust", specifier = "==0.24.2" },
+    { name = "tree-sitter-typescript", specifier = "==0.23.2" },
 ]
 
 [[package]]
