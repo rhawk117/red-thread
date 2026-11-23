@@ -127,3 +127,7 @@ class TestTypeReferences:
     def test_parameter_and_composite_literal_types_are_references_at_their_lines(self) -> None:
         lines = [r.line for r in parse(TYPE_USE_SAMPLE).references if r.name == 'Handler']
         assert {5, 6} <= set(lines)
+
+    def test_type_declaration_is_not_a_reference_to_itself(self) -> None:
+        lines = [r.line for r in parse(TYPE_USE_SAMPLE).references if r.name == 'Handler']
+        assert 3 not in lines

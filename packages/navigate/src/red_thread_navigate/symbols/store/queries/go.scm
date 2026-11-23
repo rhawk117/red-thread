@@ -86,4 +86,35 @@
         field: (field_identifier) @name))
   ]) @reference.call
 
-(type_identifier) @name @reference.type
+; A type name in use position. The name of a type_spec or type_alias is its declaration, so
+; those two match only through their type field.
+[
+  (argument_list (type_identifier) @name)
+  (array_type (type_identifier) @name)
+  (channel_type (type_identifier) @name)
+  (composite_literal (type_identifier) @name)
+  (const_spec (type_identifier) @name)
+  (field_declaration (type_identifier) @name)
+  (func_literal (type_identifier) @name)
+  (function_declaration (type_identifier) @name)
+  (function_type (type_identifier) @name)
+  (generic_type (type_identifier) @name)
+  (implicit_length_array_type (type_identifier) @name)
+  (map_type (type_identifier) @name)
+  (method_declaration (type_identifier) @name)
+  (method_elem (type_identifier) @name)
+  (negated_type (type_identifier) @name)
+  (parameter_declaration (type_identifier) @name)
+  (parenthesized_type (type_identifier) @name)
+  (pointer_type (type_identifier) @name)
+  (qualified_type (type_identifier) @name)
+  (slice_type (type_identifier) @name)
+  (type_assertion_expression (type_identifier) @name)
+  (type_case (type_identifier) @name)
+  (type_constraint (type_identifier) @name)
+  (type_elem (type_identifier) @name)
+  (var_spec (type_identifier) @name)
+  (variadic_parameter_declaration (type_identifier) @name)
+  (type_spec type: (type_identifier) @name)
+  (type_alias type: (type_identifier) @name)
+] @reference.type
