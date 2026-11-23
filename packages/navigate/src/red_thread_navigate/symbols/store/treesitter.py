@@ -8,6 +8,7 @@ import tree_sitter
 import tree_sitter_go
 import tree_sitter_hcl
 import tree_sitter_javascript
+import tree_sitter_rust
 import tree_sitter_typescript
 
 from red_thread_navigate.symbols.domain import FileSymbols, Reference, Symbol
@@ -48,6 +49,7 @@ class Definition:
     kind: SymbolKind
     node: tree_sitter.Node
     parent: str | None = None
+    impl: str | None = None
 
 
 def load_query_source(query_name: str) -> str:
@@ -115,11 +117,13 @@ def collect_definitions(
         node = captures[capture][0]
         kind = KINDS[capture.removeprefix(DEFINITION_PREFIX)]
         parent_nodes = captures.get('parent')
+        impl_nodes = captures.get('impl')
         definition = Definition(
             name=address_of(captures, aliases),
             kind=kind,
             node=node,
             parent=text_of(parent_nodes[0]) if parent_nodes is not None else None,
+            impl=text_of(impl_nodes[0]) if impl_nodes is not None else None,
         )
         found.setdefault((node.start_byte, node.end_byte), definition)
     return sorted(found.values(), key=lambda item: (item.node.start_byte, -item.node.end_byte))
@@ -147,6 +151,7 @@ def build_symbols(definitions: list[Definition], lines: list[str]) -> list[Symbo
                 signature=lines[start_line - 1].strip(),
                 docstring=None,
                 parent=parent,
+                impl=definition.impl,
             )
         )
         open_scopes.append(definition)
@@ -252,4 +257,11 @@ TERRAFORM_BACKEND = TreeSitterBackend(
     query_name='terraform',
     aliases={'variable': 'var', 'locals': 'local'},
     strict=True,
+)
+
+RUST_BACKEND = TreeSitterBackend(
+    language='rust',
+    suffixes=frozenset({'.rs'}),
+    grammar=tree_sitter.Language(tree_sitter_rust.language()),
+    query_name='rust',
 )

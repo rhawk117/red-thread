@@ -225,3 +225,49 @@ resource "aws_vpc" "this" {
 
 variable "region" {
 """
+
+RUST_SAMPLE = """\
+use std::fmt;
+
+const LIMIT: u32 = 3;
+
+struct Wrapper<T> {
+    inner: T,
+}
+
+enum Color {
+    Red,
+}
+
+trait Shape {
+    fn area(&self) -> f64;
+}
+
+impl<T> Wrapper<T> {
+    fn new(inner: T) -> Self {
+        Wrapper { inner }
+    }
+}
+
+impl fmt::Display for Color {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        Ok(())
+    }
+}
+
+impl fmt::Debug for Color {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        Ok(())
+    }
+}
+
+impl Shape for &Color {
+    fn area(&self) -> f64 {
+        0.0
+    }
+}
+
+fn build() -> u32 {
+    LIMIT
+}
+"""
