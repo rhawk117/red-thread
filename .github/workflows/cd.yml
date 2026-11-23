@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       version-bump:
-        options: [recover, patch, minor, major]
+        options: [recover, initial, patch, minor, major]
         type: choice
         default: recover
         required: true
