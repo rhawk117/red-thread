@@ -1,11 +1,14 @@
 """Slicing real files: whole symbols, outlines, line ranges, ambiguity, refusals and the budget."""
 
+from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
 
 import pytest
 from red_thread_navigate.address import AddressError
-from red_thread_navigate.budget import estimate_tokens
+from red_thread_navigate.budget import estimate_tokens, fit_to_budget
 from red_thread_navigate.slice import WINDOW_LINES, SliceError, slice_address
+from red_thread_navigate.slice.views import Found, symbol_rungs
+from red_thread_navigate.symbols import Symbol
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -121,3 +124,36 @@ def test_symbol_output_stays_within_the_budget(tmp_path: Path, budget: int) -> N
     text = slice_address('big.py#Big', root=tmp_path, budget=budget)
 
     assert estimate_tokens(text) <= budget
+
+
+def test_many_notes_never_push_the_output_past_the_budget() -> None:
+    notes = tuple(f'could not parse module_{number}.py cleanly' for number in range(30))
+    path = PurePosixPath('big.py')
+    symbol = Symbol(
+        name='go',
+        qualified_name='go',
+        kind='function',
+        start_line=1,
+        end_line=2,
+        signature='def go()',
+        docstring=None,
+        parent=None,
+    )
+    found = Found(
+        path=path, symbol=symbol, children=(), lines=('def go():', '    pass'), whole=True
+    )
+
+    fitted = fit_to_budget(symbol_rungs((found,), notes), budget=64)
+
+    assert estimate_tokens(fitted.text) <= 64
+    assert 'and 28 more notes' in symbol_rungs((found,), notes)[0]
+
+
+def test_unknown_symbol_message_stays_within_the_budget(tmp_path: Path) -> None:
+    names = '\n\n'.join(f'def similar_name_{number}():\n    pass' for number in range(8))
+    write(tmp_path, 'core.py', names)
+
+    with pytest.raises(SliceError) as raised:
+        slice_address('core.py#similar_name', root=tmp_path, budget=40)
+
+    assert estimate_tokens(str(raised.value)) <= 40

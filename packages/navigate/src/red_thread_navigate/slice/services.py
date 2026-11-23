@@ -5,7 +5,7 @@ from difflib import get_close_matches
 from typing import TYPE_CHECKING
 
 from red_thread_navigate.address import LineTarget, SymbolTarget, parse_address
-from red_thread_navigate.budget import fit_to_budget
+from red_thread_navigate.budget import estimate_tokens, fit_to_budget
 from red_thread_navigate.slice.views import Found, line_rungs, symbol_rungs
 from red_thread_navigate.symbols.store import backend_for
 from red_thread_navigate.walk import SourceFile
@@ -103,14 +103,22 @@ def found_for(source: SourceFile, symbol: Symbol, parsed: FileSymbols) -> Found:
     )
 
 
+def unknown_symbol(parsed: FileSymbols, name: str, *, budget: int) -> UnknownSymbolError:
+    names = sorted({symbol.qualified_name for symbol in parsed.symbols})
+    nearest = tuple(get_close_matches(name, names, n=NEAREST_NAMES))
+    error = UnknownSymbolError(path=parsed.path, name=name, nearest=nearest)
+    while nearest and estimate_tokens(str(error)) > budget:
+        nearest = nearest[:-1]
+        error = UnknownSymbolError(path=parsed.path, name=name, nearest=nearest)
+    return error
+
+
 def slice_symbol(source: SourceFile, target: SymbolTarget, *, budget: int) -> str:
     parsed = parse_file(source)
     name = '.'.join(target.parts)
     matches = tuple(symbol for symbol in parsed.symbols if symbol.qualified_name == name)
     if not matches:
-        names = sorted({symbol.qualified_name for symbol in parsed.symbols})
-        nearest = tuple(get_close_matches(name, names, n=NEAREST_NAMES))
-        raise UnknownSymbolError(path=source.path, name=name, nearest=nearest)
+        raise unknown_symbol(parsed, name, budget=budget)
     founds = tuple(found_for(source, symbol, parsed) for symbol in matches)
     return fit_to_budget(symbol_rungs(founds, parsed.notes), budget=budget).text
 
