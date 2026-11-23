@@ -35,13 +35,20 @@ def fill(template: str, *, path: str, name: str) -> str:
     )
 
 
-def cut_steps(full_path: str, name: str, *, deep: bool) -> Iterator[tuple[int, int]]:
+def cut_floor(full_path: str) -> int:
     file_name = PurePosixPath(full_path).name
-    floor = min(
-        len(full_path), max(MIN_SHOWN, min(len(file_name), FILE_NAME_FLOOR) + len(ELLIPSIS))
-    )
+    return min(len(full_path), max(MIN_SHOWN, min(len(file_name), FILE_NAME_FLOOR) + len(ELLIPSIS)))
+
+
+def cut_steps(full_path: str, name: str) -> Iterator[tuple[int, int]]:
+    floor = cut_floor(full_path)
     name_floor = min(len(name), MIN_SHOWN)
     yield from ((limit, len(name)) for limit in range(len(full_path), floor - 1, -1))
     yield from ((floor, limit) for limit in range(len(name), name_floor - 1, -1))
-    if deep:
-        yield from ((limit, name_floor) for limit in range(floor, MIN_SHOWN - 1, -1))
+
+
+def deep_cut_steps(full_path: str, name: str) -> Iterator[tuple[int, int]]:
+    yield from cut_steps(full_path, name)
+    floor = cut_floor(full_path)
+    name_floor = min(len(name), MIN_SHOWN)
+    yield from ((limit, name_floor) for limit in range(floor, MIN_SHOWN - 1, -1))

@@ -7,7 +7,7 @@ import pytest
 from red_thread_navigate.address import AddressError
 from red_thread_navigate.budget import estimate_tokens, fit_to_budget
 from red_thread_navigate.slice import WINDOW_LINES, SliceError, slice_address
-from red_thread_navigate.slice.services import OUTSIDE_ROOT_HINT, Refused, refusal_text
+from red_thread_navigate.slice.policy import OUTSIDE_ROOT_HINT, Refused, refusal_text
 from red_thread_navigate.slice.views import Found, symbol_rungs
 from red_thread_navigate.symbols import Symbol
 
