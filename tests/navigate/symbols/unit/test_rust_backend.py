@@ -88,3 +88,25 @@ class TestQuery:
         )
         assert 'Copyright (c) 2017 Maxim Sokolov' in text
         assert 'The MIT License (MIT)' in text
+
+
+TRAIT_USES_SAMPLE = """\
+pub trait Sink {}
+pub struct Pipe;
+impl Sink for Pipe {}
+fn bound<T: Sink>(item: T) {}
+fn clause<T>(item: T) where T: Sink {}
+fn boxed(item: Box<dyn Sink>) {}
+fn opaque(item: impl Sink) {}
+"""
+
+
+class TestTraitReferences:
+    def test_trait_uses_in_headers_bounds_and_types_are_references(self) -> None:
+        parsed = parse(TRAIT_USES_SAMPLE)
+
+        lines = sorted(
+            reference.line for reference in parsed.references if reference.name == 'Sink'
+        )
+
+        assert lines == [3, 4, 5, 6, 7]
