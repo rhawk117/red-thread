@@ -302,7 +302,7 @@ The strongest competitor is no tool. In the agentlens 0.2.0 evaluation (agentlen
 
 - `init` does not look for the tool, the board header does not show it and a lead's brief does not mention it. The case file's `navigation_tool` field is gone from new cases, and a `case.json` that still has it loads and renders.
 - `code-lens` runs only `scripts/navigate.sh` (named in the briefing as NAVIGATE) and `rg`, with a budget of 6,000 tokens of output a question. The primary or a lead, through `skills/investigate/SKILL.md`, sends it questions about the structure of code in the six languages. Questions about behavior still go to `code-sense`. The agent file quotes the read refusals and says what to do instead.
-- `map` prints each symbol's signature line and `find` prints none, and neither prints the text of a line a scout would cite, so the scout cites only lines it saw in `slice` or `rg -n` output.
+- `map` prints each symbol's signature line and `find` prints each definition's address, kind and span with no line text, so the scout cites only lines it saw in `slice` or `rg -n` output.
 
 ### Why not the other routes
 
