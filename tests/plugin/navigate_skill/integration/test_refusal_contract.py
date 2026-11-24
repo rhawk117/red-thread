@@ -61,7 +61,8 @@ class TestRefusalContract:
         prompt = repository_root.joinpath('skills', 'navigate', 'SKILL.md').read_text(
             encoding='utf-8'
         )
-        spans = re.findall(r'`([^`]*)`', prompt)
+        refusals_section = prompt.partition('\n## Refusals')[2]
+        spans = re.findall(r'`([^`]*)`', refusals_section)
         return tuple(marker for marker in MARKERS if any(marker in span for span in spans))
 
     @pytest.fixture
