@@ -166,3 +166,46 @@
   (scoped_type_identifier
     name: (type_identifier) @name)
 ] @reference.type
+
+; A type name nested inside a reference, pointer, array or tuple type.
+[
+  (reference_type
+    type: (type_identifier) @name)
+  (pointer_type
+    type: (type_identifier) @name)
+  (array_type
+    element: (type_identifier) @name)
+  (tuple_type
+    (type_identifier) @name)
+] @reference.type
+
+; The self type of an inherent impl. A trait impl's self type is already captured above.
+(impl_item
+  !trait
+  type: (type_identifier) @name) @reference.type
+
+; The head of a generic type in use position. The impl header's trait is captured separately.
+[
+  (parameter
+    type: (generic_type
+      type: (type_identifier) @name))
+  (function_item
+    return_type: (generic_type
+      type: (type_identifier) @name))
+  (let_declaration
+    type: (generic_type
+      type: (type_identifier) @name))
+  (field_declaration
+    type: (generic_type
+      type: (type_identifier) @name))
+  (type_arguments
+    (generic_type
+      type: (type_identifier) @name))
+  (reference_type
+    type: (generic_type
+      type: (type_identifier) @name))
+  (impl_item
+    !trait
+    type: (generic_type
+      type: (type_identifier) @name))
+] @reference.type

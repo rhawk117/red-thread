@@ -136,6 +136,20 @@ fn scoped(w: m::T) {}
 fn declares<T>(item: T) {}
 """
 
+NESTED_TYPE_USES_SAMPLE = """\
+pub struct T;
+pub struct W<X>(X);
+fn refs(a: &T, b: &mut T) {}
+fn pointer(p: *const T) {}
+fn array(xs: [T; 3]) {}
+fn tuple(pair: (T, u8)) {}
+fn option(o: Option<&T>) {}
+impl T { fn new() {} }
+fn param(w: W<u8>) {}
+fn ret() -> W<u8> { make() }
+pub struct Holder { field: W<u8> }
+"""
+
 
 class TestTypeReferences:
     def test_type_uses_in_every_position_are_references(self) -> None:
@@ -144,6 +158,20 @@ class TestTypeReferences:
         lines = sorted({reference.line for reference in parsed.references if reference.name == 'T'})
 
         assert lines == [5, 6, 7, 8, 9, 10, 11, 12]
+
+    def test_nested_type_uses_are_references(self) -> None:
+        parsed = parse(NESTED_TYPE_USES_SAMPLE)
+
+        lines = sorted({reference.line for reference in parsed.references if reference.name == 'T'})
+
+        assert lines == [3, 4, 5, 6, 7, 8]
+
+    def test_generic_heads_are_references(self) -> None:
+        parsed = parse(NESTED_TYPE_USES_SAMPLE)
+
+        lines = sorted({reference.line for reference in parsed.references if reference.name == 'W'})
+
+        assert lines == [9, 10, 11]
 
     def test_declarations_are_not_references(self) -> None:
         parsed = parse(TYPE_USES_SAMPLE)
