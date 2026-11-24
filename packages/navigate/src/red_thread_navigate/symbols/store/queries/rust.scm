@@ -179,9 +179,8 @@
     (type_identifier) @name)
 ] @reference.type
 
-; The self type of an inherent impl. A trait impl's self type is already captured above.
+; The self type of an impl, inherent or trait. The trait of a trait impl is captured separately.
 (impl_item
-  !trait
   type: (type_identifier) @name) @reference.type
 
 ; The head of a generic type in use position. The impl header's trait is captured separately.
@@ -205,7 +204,6 @@
     type: (generic_type
       type: (type_identifier) @name))
   (impl_item
-    !trait
     type: (generic_type
       type: (type_identifier) @name))
 ] @reference.type

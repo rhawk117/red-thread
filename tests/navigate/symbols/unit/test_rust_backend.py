@@ -173,6 +173,17 @@ class TestTypeReferences:
 
         assert lines == [9, 10, 11]
 
+    def test_trait_impl_self_types_are_references(self) -> None:
+        parsed = parse(
+            'struct S;\nimpl std::fmt::Display for S {}\nstruct W<X>(X);\nimpl Clone for W<S> {}\n'
+        )
+
+        s_lines = sorted({r.line for r in parsed.references if r.name == 'S'})
+        w_lines = sorted({r.line for r in parsed.references if r.name == 'W'})
+
+        assert s_lines == [2, 4]
+        assert w_lines == [4]
+
     def test_declarations_are_not_references(self) -> None:
         parsed = parse(TYPE_USES_SAMPLE)
 
