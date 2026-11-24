@@ -41,6 +41,7 @@ Then, in a session opened in the repository you want to investigate:
 | --- | --- |
 | `skills/investigate` | the investigation loop and its gate |
 | `skills/distill` | the four outputs, one reference file per output |
+| `skills/navigate` | how the scouts use the navigate script; preloaded into them, not a command you run |
 | `agents/` | `research-lead`, which runs one thread of a case, the scouts `code-sense`, `code-lens`, `web-head` and `research-cell`, and the skeptic `peer-review` |
 | `hooks/roster.py` | a hook that denies a red-thread agent's dispatch outside its roster |
 | `packages/casefile` | the only writer and renderer of a case file: `init`, `add`, `render`, `check`, `export` and `page` |

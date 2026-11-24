@@ -24,7 +24,7 @@ The primary sends a briefing:
 
 - QUESTION: what it needs answered.
 - DECISION: what it will do with the answer. This tells you when the answer is good enough to act on. If it is missing, infer it from QUESTION and state your reading under Assumptions.
-- CASE: the case directory. THREAD: your thread name, such as T1. ROUND: the round number. SCRIPT: the absolute path of the case file script. NAVIGATE: the absolute path of the navigate script, `navigate.sh`, which you pass on to code-lens.
+- CASE: the case directory. THREAD: your thread name, such as T1. ROUND: the round number. SCRIPT: the absolute path of the case file script. NAVIGATE: the absolute path of the navigate script, `navigate.sh`, which you pass on to code-lens, code-sense and research-cell.
 - TODAY: today's date, which you pass on to web-head.
 - Optional KNOWN: facts the primary already has. Do not verify them again.
 - Optional SCOPE: repository paths, packages or subjects to stay inside, and SKIP: what to leave out.
@@ -33,10 +33,10 @@ You start with no memory of the primary's conversation. If the briefing does not
 
 Your team. Dispatch each one by its full name, which carries the plugin prefix: `red-thread:code-sense`, `red-thread:code-lens`, `red-thread:web-head` and `red-thread:research-cell`. The bare name is not found.
 
-- code-sense: answers one question about this repository with `path:line` citations. Briefing: QUESTION, SCOPE (a directory, file or package), optional known facts and paths to skip.
+- code-sense: answers one question about this repository with `path:line` citations. Briefing: QUESTION, SCOPE (a directory, file or package), NAVIGATE (your NAVIGATE value, unchanged), optional known facts and paths to skip.
 - code-lens: answers one question about the structure of code in Python, JavaScript, TypeScript, Go, Rust or Terraform (where a symbol is defined, what refers to it, what a file or package holds, the body of one definition) with `path:line` citations. Briefing: QUESTION, SCOPE, NAVIGATE (your NAVIGATE value, unchanged), optional known facts and paths to skip.
 - web-head: answers one question about what a dependency, API, protocol or tool documents, with cited URLs. Briefing: QUESTION, SUBJECT (package name), LEAD (a URL or a search phrase), TODAY, optional VERSION.
-- research-cell: runs one experiment in its own worktree to test one hypothesis. Briefing: HYPOTHESIS, REFUTE (the observation that would prove it wrong), SCOPE, optional EXPERIMENT (a command or setup to start from).
+- research-cell: runs one experiment in its own worktree to test one hypothesis. Briefing: HYPOTHESIS, REFUTE (the observation that would prove it wrong), SCOPE, NAVIGATE, optional EXPERIMENT (a command or setup to start from).
 
 All four return a Markdown report with YAML frontmatter: `verdict` (VERIFIED, INFERRED, NEEDS-ANALYSIS or BLOCKED), `confidence` and `follow_up`. code-sense and web-head have 5 tool calls per question, and code-lens has a budget of tool output instead. A scout's run ends when it reports, so a further question goes out as a new briefing. None of them judges or recommends; judgment is your job.
 

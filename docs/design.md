@@ -169,7 +169,7 @@ It runs before every export. It also catches a citation a scout invented before 
 
 ## 5. The investigate skill
 
-**Decided:** two skills only, `investigate` and `distill`. Use cases are kinds and lenses, each a small reference file loaded on demand. There is no skill per use case and no pickup skill.
+**Decided:** two user-facing skills, `investigate` and `distill`, plus the preloaded `navigate` support skill (see section 8). Use cases are kinds and lenses, each a small reference file loaded on demand. There is no skill per use case and no pickup skill.
 
 ### Round zero
 
@@ -290,7 +290,7 @@ One symbol model sits behind a per-language backend, chosen by file suffix.
 - A missing PATH is a refusal that prints a message and exits 1, and an empty PATH is a usage error that exits 2.
 - In Go, a use of a type counts as a reference to it, so `find` and the `map` reference counts include type uses.
 - `find` matches a definition or a reference by its full address as well as by its last part, so `find aws_vpc.this` and `find this` both reach it.
-- A refused slice names the next command, so a scout does not guess. An unknown name, an address past the end of the file, a path outside the root and a directory each print `Next step: ...`. The read refusals (over 1 MiB, binary, not UTF-8, unreadable) print no hint, and `code-lens` quotes them with what to do instead. `code-lens` recognizes a refusal by its stable markers (`Next step:`, `cannot be sliced:`, `nearest names:`, `is not valid:`) and not by the wording around them.
+- A refused slice names the next command, so a scout does not guess. An unknown name, an address past the end of the file, a path outside the root and a directory each print `Next step: ...`. The read refusals (over 1 MiB, binary, not UTF-8, unreadable) print no hint, and the navigate skill says what to do instead. The navigate skill describes a refusal by its stable markers (`Next step:`, `cannot be sliced:`, `nearest names:`, `is not valid:`) and not by the wording around them.
 
 ### Evaluation
 
@@ -303,7 +303,8 @@ The strongest competitor is no tool. In the agentlens 0.2.0 evaluation (agentlen
 ### In red-thread
 
 - `init` does not look for the tool, the board header does not show it and a lead's brief does not mention it. The case file's `navigation_tool` field is gone from new cases, and a `case.json` that still has it loads and renders.
-- `code-lens` runs only `scripts/navigate.sh` (named in the briefing as NAVIGATE) and `rg`, with a budget of 6,000 tokens of output a question. The primary or a lead, through `skills/investigate/SKILL.md`, sends it questions about the structure of code in the six languages. Questions about behavior still go to `code-sense`. The agent file quotes the read refusals and says what to do instead.
+- `code-lens` runs only `scripts/navigate.sh` (named in the briefing as NAVIGATE) and `rg`, with a budget of 6,000 tokens of output a question. The primary or a lead, through `skills/investigate/SKILL.md`, sends it questions about the structure of code in the six languages. Questions about behavior still go to `code-sense`.
+- `skills/navigate` holds how to use navigate: the commands, addresses, output, recipes for common asks and every refusal with its next step. It is preloaded through the `skills` field into `code-lens`, `code-sense`, `research-cell` and `peer-review`, and each of them gets NAVIGATE in its brief. `code-lens` runs only navigate and `rg`; the other three use navigate first for structure in the six languages and keep their own tools for the rest.
 - `map` prints each symbol's signature line and `find` prints each definition's address, kind and span with no line text, so the scout cites only lines it saw in `slice` or `rg -n` output.
 
 ### Why not the other routes
@@ -545,7 +546,7 @@ All made by the owner on 2026-11-23.
 | Navigation-tool detection | removed from `init`, the board header and the lead's brief, because the tool is always there and a check that cannot fail only adds a field; `case.json` files that carry the old key still load |
 | Evaluation gate | kept as a measurement and no longer a condition for shipping, since the tool is part of the plugin |
 | 2026-11-23: refusal next steps | a refused slice names the next command (unknown name, past the end, outside the root, a directory), so a scout does not guess |
-| 2026-11-23: read refusals | not hinted by the launcher: `code-lens.md` quotes them (over 1 MiB, binary, not UTF-8, unreadable) and says what to do instead |
+| 2026-11-23: read refusals | not hinted by the launcher: the navigate skill (`skills/navigate/SKILL.md`, before it `code-lens.md`) names them (over 1 MiB, binary, not UTF-8, unreadable) and says what to do instead |
 | 2026-11-23: JS names | `app.init = function init() {}` is one symbol named `app.init`, and callbacks are not symbols, because the express evaluation showed duplicates |
 | 2026-11-23: `find` full address | `find` matches a reference by its full address as well as its last part, because the terraform evaluation found 0 references |
 | 2026-11-23: module constants | module-level Python and TypeScript constants and variables are symbols of kind `constant` or `variable`, because the excalidraw and django evaluations missed them |
@@ -553,4 +554,5 @@ All made by the owner on 2026-11-23.
 | 2026-11-23: launchers ignore uv config | both launchers run uv with `--no-config`, because the investigated repository's uv settings could change what a launcher installs |
 | 2026-11-23: missing PATH | a missing PATH is a refusal with exit 1, not an empty result, so a scout sees the mistake |
 | 2026-11-23: Go type uses | a use of a type counts as a reference in Go, because `find` found none for types |
-| 2026-11-23: refusal markers | `code-lens` describes refusals by their stable markers, so rewording a message does not break the agent |
+| 2026-11-23: refusal markers | the navigate skill describes refusals by their stable markers, so rewording a message does not break the agent |
+| 2026-11-23: navigate skill | one preloaded skill (`skills/navigate`, `user-invocable: false`) in place of usage text in each agent, so the reference lives in one file; `disable-model-invocation` cannot be used because it blocks preloading, so the skill keeps a one-line description in the listing. The Bash scouts other than `code-lens` use navigate first for structure, and keep `rg` for text, config and other languages |

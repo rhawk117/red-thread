@@ -8,6 +8,7 @@ description: >-
   briefing. Returns a Markdown report with YAML frontmatter. Does not edit, diagnose or
   recommend.
 tools: Read, Bash
+skills: [navigate]
 model: claude-haiku-5-5
 effort: medium
 maxTurns: 10
@@ -64,32 +65,7 @@ If the budget runs out without an answer, stop. Report what you have and put the
 </constraints>
 
 <tools_guidance>
-Below, NAV is the absolute navigate path from the briefing. Run every command from the repository root, in exactly these shapes:
-
-| To learn | Command | What it prints |
-| --- | --- | --- |
-| what a directory or file holds | `NAV --budget 600 map PATH` | files, most-referenced first, with symbol and reference counts; for one file, one line per symbol with its signature, its `L57-L66` range and its address |
-| where a name is defined and referenced | `NAV --budget 600 find NAME PATH` | `definitions` as `address  kind  Lstart-Lend`, then `references` as `file:line` |
-| the code one address names | `NAV --budget 1500 slice ADDRESS` | a header with the span and parent, then the numbered lines |
-| lines you know by number | `NAV --budget 300 slice PATH/file.py#L196` or `#L184-L190` | those lines, numbered |
-
-- An address is `PATH/file.py#name` for a function, a class or a constant, `PATH/file.py#Outer.inner` for a method and `PATH/file.py#L10-L20` for lines. The file may be any of the six languages.
-- A `slice` shows up to 100 lines of a definition. A longer one comes back as an outline: the signature, the docstring, one line per child with its span and address, and a last line `body: PATH#Lstart-Lend`. Slice a child, or slice the line range in `body:`, for the lines you need.
-- When several definitions share a name, `find` lists them all and `slice` prints each one under a heading `N definitions match`. Each is labelled with its parent (`in Class`, or `at the top level`), its span and, for a Rust method, its impl.
-- `slice` numbers every line, so cite those numbers. `map` and `find` give a range or a hit, not a quote.
-- `map` and `find` print addresses relative to PATH. A `find` over `src` prints `pkg/mod.py#name`, so the address to slice is `src/pkg/mod.py#name`.
-- When a call hits its budget it prints fewer lines and says so, such as `showing 75 of 131, raise --budget`. Raise the budget in the next call only if the total allows it.
-- The smallest `--budget` is 32.
-- A refusal is plain text on the launcher's output, not a crash. Read it by its markers, because the wording around them changes:
-  - A closing `Next step: ...` is an instruction. Do what it says. It follows a `find` with no match, a `slice` of an unknown name with no similar name, a `slice` of a path that is not a file, a `slice` of a line past the end and a `slice` of a path outside the root.
-  - `FILE cannot be sliced: REASON` means the launcher will not read that file. Act on the reason. No symbol backend for the suffix: slice lines, such as `FILE#L1-L20`, or use `rg -n`. Over 1 MiB or not UTF-8: use `rg -n NAME FILE` to find the lines. Binary: skip the file. It cannot be read: skip the file and say so in the report.
-  - `nearest names: ...` lists names similar to the one you asked for. Slice one of them.
-  - `address 'ADDRESS' is not valid: REASON` lists the valid forms. The reason changes with the fault. Use one of the forms.
-  - At a small budget the launcher shortens paths and names with `...` and may drop the `Next step:`. A path under the root is the fix for an outside-root refusal.
-- A NAME or ADDRESS that starts with `-` goes after `--`, as in `NAV --budget 600 find -- -x PATH`.
-- `find` skips comments and strings. For text inside a string or a comment, use `rg -n`.
-- `find` matches references by name. A call through an alias, a re-export or `getattr` is not listed, so "every caller" is INFERRED unless the name is unique.
-- navigate takes only the options shown here. `-n`, `-A`, `-g` or any other `rg` flag is an error.
+Use navigate as the preloaded navigate skill describes: its commands, addresses, output, recipes and refusals. NAV there is the NAVIGATE path from your briefing. Run every command from the repository root.
 </tools_guidance>
 
 <output_format>
