@@ -51,14 +51,6 @@ class TestFrameInGit:
         assert case.head is None
         assert case.capabilities.languages == ()
 
-    def test_navigation_tool_is_detected_on_the_path(
-        self, directory_harness: DirectoryHarness
-    ) -> None:
-        tree = directory_harness.git.tree
-
-        assert tree.has_tool('git')
-        assert not tree.has_tool('no-such-tool-for-red-thread')
-
     def test_case_directory_is_untracked_and_hidden_from_git_status(
         self, directory_harness: DirectoryHarness
     ) -> None:

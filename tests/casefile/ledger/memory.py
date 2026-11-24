@@ -56,7 +56,6 @@ class MemoryCaseRepository:
 class MemorySourceTree:
     files: dict[str, tuple[str, ...]] = field(default_factory=dict)
     heads: list[str | None] = field(default_factory=start_heads)
-    tools: frozenset[str] = frozenset()
     reads: list[str] = field(default_factory=list)
     exclusions: list[str] = field(default_factory=list)
 
@@ -69,9 +68,6 @@ class MemorySourceTree:
     def read_lines(self, path: str) -> tuple[str, ...] | None:
         self.reads.append(path)
         return self.files.get(path)
-
-    def has_tool(self, name: str) -> bool:
-        return name in self.tools
 
     def exclude(self, pattern: str) -> None:
         self.exclusions.append(pattern)

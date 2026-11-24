@@ -1,0 +1,322 @@
+{
+  "schema_version": 1,
+  "subject": {
+    "repository": "terraform-aws-modules/terraform-aws-vpc",
+    "tag": "v6.8.0",
+    "commit": "577ad620abe00da27a3a0f1e5acee041959fb3be"
+  },
+  "tasks": [
+    {
+      "id": "M01",
+      "type": "comprehension",
+      "prompt": "How many NAT gateways does the module create, and which settings decide that number?",
+      "required_addresses": [
+        {
+          "address": "main.tf#local.nat_gateway_count",
+          "start_line": 1203,
+          "end_line": 1203
+        },
+        {
+          "address": "main.tf#aws_nat_gateway.this",
+          "start_line": 1228,
+          "end_line": 1254
+        }
+      ],
+      "supporting_addresses": [
+        {
+          "address": "main.tf#local.max_subnet_length",
+          "start_line": 10,
+          "end_line": 16
+        },
+        {
+          "address": "variables.tf#var.single_nat_gateway",
+          "start_line": 1236,
+          "end_line": 1240
+        },
+        {
+          "address": "variables.tf#var.one_nat_gateway_per_az",
+          "start_line": 1242,
+          "end_line": 1246
+        }
+      ],
+      "required_facts": [
+        {
+          "id": "F1",
+          "any_of": [
+            "single_nat_gateway gives one NAT gateway",
+            "single_nat_gateway is true the count is 1",
+            "one nat gateway for the whole vpc"
+          ]
+        },
+        {
+          "id": "F2",
+          "any_of": [
+            "one_nat_gateway_per_az gives one per availability zone",
+            "one per az",
+            "length(var.azs)"
+          ]
+        },
+        {
+          "id": "F3",
+          "any_of": [
+            "otherwise local.max_subnet_length",
+            "otherwise one per subnet index",
+            "largest subnet list length"
+          ]
+        }
+      ],
+      "forbidden_claims": [
+        "a NAT gateway is created for every subnet type",
+        "nat_gateway_count counts intra subnets",
+        "one_nat_gateway_per_az takes precedence over single_nat_gateway"
+      ],
+      "source_of_truth": [
+        "main.tf#L1203-L1203",
+        "main.tf#L10-L16"
+      ]
+    },
+    {
+      "id": "M02",
+      "type": "comprehension",
+      "prompt": "What two inputs must both be true for the module to create any VPC resources, and where are they combined?",
+      "required_addresses": [
+        {
+          "address": "main.tf#local.create_vpc",
+          "start_line": 21,
+          "end_line": 21
+        }
+      ],
+      "supporting_addresses": [
+        {
+          "address": "variables.tf#var.create_vpc",
+          "start_line": 3,
+          "end_line": 7
+        },
+        {
+          "address": "variables.tf#var.putin_khuylo",
+          "start_line": 1687,
+          "end_line": 1691
+        }
+      ],
+      "required_facts": [
+        {
+          "id": "F1",
+          "any_of": [
+            "var.create_vpc and var.putin_khuylo",
+            "create_vpc and putin_khuylo"
+          ]
+        },
+        {
+          "id": "F2",
+          "any_of": [
+            "both must be true",
+            "logical and",
+            "&&"
+          ]
+        }
+      ],
+      "forbidden_claims": [
+        "putin_khuylo defaults to false",
+        "create_vpc alone controls resource creation"
+      ],
+      "source_of_truth": [
+        "main.tf#L21-L21",
+        "variables.tf#L1687-L1691"
+      ]
+    },
+    {
+      "id": "M03",
+      "type": "comprehension",
+      "prompt": "How do private subnets get a default route through a NAT gateway, and which NAT gateway does each private route use?",
+      "required_addresses": [
+        {
+          "address": "main.tf#aws_route.private_nat_gateway",
+          "start_line": 1256,
+          "end_line": 1268
+        },
+        {
+          "address": "main.tf#aws_route_table_association.private",
+          "start_line": 343,
+          "end_line": 353
+        }
+      ],
+      "supporting_addresses": [
+        {
+          "address": "main.tf#aws_route_table.private",
+          "start_line": 324,
+          "end_line": 341
+        },
+        {
+          "address": "main.tf#aws_nat_gateway.this",
+          "start_line": 1228,
+          "end_line": 1254
+        },
+        {
+          "address": "variables.tf#var.nat_gateway_destination_cidr_block",
+          "start_line": 1230,
+          "end_line": 1234
+        },
+        {
+          "address": "variables.tf#var.create_private_nat_gateway_route",
+          "start_line": 404,
+          "end_line": 408
+        }
+      ],
+      "required_facts": [
+        {
+          "id": "F1",
+          "any_of": [
+            "aws_route.private_nat_gateway",
+            "private_nat_gateway route"
+          ]
+        },
+        {
+          "id": "F2",
+          "any_of": [
+            "route table index matches nat gateway index",
+            "element(aws_nat_gateway.this[*].id, count.index)",
+            "paired by count.index"
+          ]
+        },
+        {
+          "id": "F3",
+          "any_of": [
+            "single_nat_gateway associates every private subnet with route table 0",
+            "var.single_nat_gateway ? 0 : count.index",
+            "all private subnets share one route table"
+          ]
+        },
+        {
+          "id": "F4",
+          "any_of": [
+            "requires enable_nat_gateway and create_private_nat_gateway_route",
+            "enable_nat_gateway and create_private_nat_gateway_route"
+          ]
+        }
+      ],
+      "forbidden_claims": [
+        "the route is created without enable_nat_gateway",
+        "each private subnet always has its own route table"
+      ],
+      "source_of_truth": [
+        "main.tf#L1256-L1268",
+        "main.tf#L343-L353"
+      ]
+    },
+    {
+      "id": "M04",
+      "type": "comprehension",
+      "prompt": "Where does a flow log send its records when the module creates the CloudWatch log group, and when does it use a caller-supplied destination instead?",
+      "required_addresses": [
+        {
+          "address": "vpc-flow-logs.tf#local.flow_log_destination_arn",
+          "start_line": 21,
+          "end_line": 21
+        },
+        {
+          "address": "vpc-flow-logs.tf#local.create_flow_log_cloudwatch_log_group",
+          "start_line": 19,
+          "end_line": 19
+        }
+      ],
+      "supporting_addresses": [
+        {
+          "address": "vpc-flow-logs.tf#aws_flow_log.this",
+          "start_line": 34,
+          "end_line": 59
+        },
+        {
+          "address": "vpc-flow-logs.tf#aws_cloudwatch_log_group.flow_log",
+          "start_line": 65,
+          "end_line": 77
+        }
+      ],
+      "required_facts": [
+        {
+          "id": "F1",
+          "any_of": [
+            "uses the arn of aws_cloudwatch_log_group.flow_log",
+            "module created log group arn",
+            "aws_cloudwatch_log_group.flow_log[0].arn"
+          ]
+        },
+        {
+          "id": "F2",
+          "any_of": [
+            "otherwise var.flow_log_destination_arn",
+            "caller-supplied destination arn",
+            "flow_log_destination_arn variable"
+          ]
+        },
+        {
+          "id": "F3",
+          "any_of": [
+            "log group is created only when destination type is not s3",
+            "flow_log_destination_type != \"s3\"",
+            "not created for s3"
+          ]
+        }
+      ],
+      "forbidden_claims": [
+        "the module always creates a CloudWatch log group",
+        "an s3 destination creates a log group"
+      ],
+      "source_of_truth": [
+        "vpc-flow-logs.tf#L19-L21"
+      ]
+    },
+    {
+      "id": "L01",
+      "type": "localization",
+      "prompt": "Where does the module expose the NAT gateway IDs and the NAT public IPs as outputs?",
+      "required_addresses": [
+        {
+          "address": "outputs.tf#output.natgw_ids",
+          "start_line": 522,
+          "end_line": 525
+        },
+        {
+          "address": "outputs.tf#output.nat_public_ips",
+          "start_line": 517,
+          "end_line": 520
+        }
+      ],
+      "supporting_addresses": [],
+      "required_facts": [],
+      "forbidden_claims": [],
+      "source_of_truth": [
+        "outputs.tf#L517-L525"
+      ]
+    },
+    {
+      "id": "L02",
+      "type": "localization",
+      "prompt": "Where is the local that stands for the VPC ID, and which resource holds the comment explaining why it must not be used there?",
+      "required_addresses": [
+        {
+          "address": "main.tf#local.vpc_id",
+          "start_line": 19,
+          "end_line": 19
+        },
+        {
+          "address": "main.tf#aws_vpc_ipv4_cidr_block_association.this",
+          "start_line": 55,
+          "end_line": 64
+        }
+      ],
+      "supporting_addresses": [
+        {
+          "address": "main.tf#aws_vpc.this",
+          "start_line": 28,
+          "end_line": 53
+        }
+      ],
+      "required_facts": [],
+      "forbidden_claims": [],
+      "source_of_truth": [
+        "main.tf#L18-L19",
+        "main.tf#L55-L64"
+      ]
+    }
+  ]
+}

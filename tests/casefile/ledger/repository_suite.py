@@ -57,7 +57,7 @@ class CaseRepositoryContract:
             create_case(),
             publish=True,
             page_url='https://claude.ai/artifact/retry-queue',
-            capabilities=Capabilities(languages=('Python', 'Go'), navigation_tool=True),
+            capabilities=Capabilities(languages=('Python', 'Go')),
         )
 
         def test_created_case_is_read_back_whole(self, harness: RepositoryHarness) -> None:

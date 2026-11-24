@@ -63,7 +63,6 @@ pooled_entries = st.builds(
 capabilities = st.builds(
     Capabilities,
     languages=st.builds(tuple, st.lists(free_text, max_size=4)),
-    navigation_tool=st.booleans(),
 )
 
 cases = st.builds(

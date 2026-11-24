@@ -14,7 +14,6 @@ from red_thread_casefile.services import Framing
 from red_thread_casefile.store import SystemClock
 
 from tests.casefile.framing.cases import case_id_params, language_params
-from tests.casefile.ledger.builders import create_case_harness
 from tests.casefile.ledger.memory import HEAD, MOMENT
 
 if TYPE_CHECKING:
@@ -119,13 +118,3 @@ class TestFrame:
         recorded = case_harness.casefile.frame(self.framing).capabilities
 
         assert recorded.languages == case.languages
-
-    def test_navigation_tool_is_recorded_when_installed(self) -> None:
-        harness = create_case_harness(tools=frozenset({'agentlens'}))
-
-        assert harness.casefile.frame(self.framing).capabilities.navigation_tool
-
-    def test_navigation_tool_is_recorded_as_missing_when_not_installed(
-        self, case_harness: CaseHarness
-    ) -> None:
-        assert not case_harness.casefile.frame(self.framing).capabilities.navigation_tool

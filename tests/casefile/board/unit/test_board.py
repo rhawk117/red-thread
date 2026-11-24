@@ -1,10 +1,11 @@
 """The board: its sections, its cap, its lead marker and what it leaves out."""
 
+import json
 from typing import TYPE_CHECKING
 
 import pytest
-from msgspec import structs
-from red_thread_casefile.domain import Capabilities, Ledger
+from red_thread_casefile.domain import Ledger
+from red_thread_casefile.schemas import case_from_text, case_to_text
 from red_thread_casefile.views import Board, BoardOptions
 
 from tests.casefile.board.cases import lead_marker_params, section_cap_params
@@ -17,6 +18,7 @@ if TYPE_CHECKING:
     from tests.casefile.board.cases import CapCase, LeadCase
     from tests.casefile.ledger.builders import CaseHarness
 
+RETIRED_FLAG = 'navigation_tool'
 SECTION_TITLES = ['Decided', 'Known', 'Hypotheses', 'Open', 'Ruled out', 'Next', 'Resources']
 
 
@@ -31,8 +33,10 @@ def create_board(
     )
 
 
-def create_equipped_board() -> Board:
-    case = structs.replace(create_case(), capabilities=Capabilities(navigation_tool=True))
+def create_board_of_retired_case() -> Board:
+    document = json.loads(case_to_text(create_case()))
+    document['capabilities'][RETIRED_FLAG] = True
+    case = case_from_text(json.dumps(document))
     return Board(case=case, ledger=Ledger(entries=()), head=HEAD, options=BoardOptions())
 
 
@@ -97,13 +101,8 @@ class TestSections:
         assert 'Kind: root-cause | Round: 3 | HEAD: 1111111' in text
         assert 'Threads: T1 (2)' in text
 
-    def test_header_says_when_the_navigation_tool_is_installed(self) -> None:
-        text = create_equipped_board().render()
-
-        assert 'Navigation tool: installed' in text.splitlines()
-
-    def test_header_leaves_the_navigation_tool_out_when_it_is_missing(self) -> None:
-        text = create_board(()).render()
+    def test_case_written_with_the_retired_flag_still_renders(self) -> None:
+        text = create_board_of_retired_case().render()
 
         assert 'Navigation tool' not in text
 

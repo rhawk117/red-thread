@@ -37,15 +37,15 @@ If that line is empty, take the target from the conversation.
 | Agent | Brief fields | Returns |
 | --- | --- | --- |
 | `code-sense` | QUESTION, SCOPE (a directory, file or package); optional known facts and paths to skip | `path:line` citations from this repository, its git history and its GitHub issues |
-| `code-lens` | the same fields as `code-sense` | experimental: `path:line` citations for the structure of Python code (where a symbol is defined, what calls it, what a file holds), found with the agentlens tool |
+| `code-lens` | QUESTION, SCOPE, NAVIGATE; optional known facts and paths to skip | `path:line` citations for the structure of code in Python, JavaScript, TypeScript, Go, Rust and Terraform (where a symbol is defined, what refers to it, what a file holds) |
 | `web-head` | QUESTION, SUBJECT (package name), LEAD (a URL or a search phrase), TODAY; optional VERSION | cited URLs from official docs, changelogs and upstream source |
 | `research-cell` | HYPOTHESIS, REFUTE (the observation that would prove it wrong), SCOPE; optional EXPERIMENT | one experiment run in its own worktree: the command, the deciding output, and whether the hypothesis survived |
-| `research-lead` | QUESTION, DECISION, CASE, THREAD, ROUND, SCRIPT, TODAY; optional KNOWN, SCOPE, SKIP, NAVIGATION | a short report that points at the entries it stored in its thread |
+| `research-lead` | QUESTION, DECISION, CASE, THREAD, ROUND, SCRIPT, NAVIGATE, TODAY; optional KNOWN, SCOPE, SKIP | a short report that points at the entries it stored in its thread |
 | `peer-review` | CASE, SCRIPT, CONCLUSION, TODAY; optional REFS | a verdict per claim, and whether the conclusion follows |
 
 The Agent tool lists them with the plugin prefix, as in `red-thread:code-sense`. Each one starts with no memory of this conversation, so a brief stands alone: use the field names above exactly, put one question in each brief, and say what to skip. TODAY is today's date; if you do not know it, run `date -u +%F`.
 
-`code-lens` is experimental and optional. Use it in place of `code-sense` only when `init` printed `navigation tool: installed`, which the board header repeats as `Navigation tool: installed`, and only for a question about the structure of Python code. In that case give a lead `NAVIGATION: installed`, so it can choose the same way. Every other code question goes to `code-sense`, and so does every code question when the tool is missing.
+Send a question about the structure of code in Python, JavaScript, TypeScript, Go, Rust or Terraform to `code-lens`, and give it NAVIGATE. Send every other code question, and every question about what the code does at run time, to `code-sense`.
 
 Depth follows the target:
 
@@ -60,7 +60,13 @@ Every read and write of the case goes through one script. In this file, SCRIPT m
 ${CLAUDE_PLUGIN_ROOT}/scripts/casefile.sh
 ```
 
-Run it from the repository root. Pass its absolute path as SCRIPT in every brief that has that field.
+NAVIGATE is the absolute path of the navigate script, which you derive the same way:
+
+```text
+${CLAUDE_PLUGIN_ROOT}/scripts/navigate.sh
+```
+
+Run it from the repository root. Pass its absolute path as SCRIPT, and the navigate script's as NAVIGATE, in every brief that has that field.
 
 | Command | Use |
 | --- | --- |
@@ -106,7 +112,7 @@ The script validates a batch whole. When it rejects one it stores nothing and pr
 ## Each round
 
 1. Choose two or three questions the board cannot answer, or the threads to advance. Start wide enough to find where the answer lives, then narrow.
-2. Dispatch. To a scout: its fields, with what is already known and what to skip. To a lead: the question, the decision it serves, CASE, THREAD, ROUND, SCRIPT, TODAY, and the knowns that bear on its thread.
+2. Dispatch. To a scout: its fields, with what is already known and what to skip. To a lead: the question, the decision it serves, CASE, THREAD, ROUND, SCRIPT, NAVIGATE, TODAY, and the knowns that bear on its thread.
 3. Fold each scout report into the ledger by its verdict, in one `add` batch for the round. A lead has already stored its own entries, so you add nothing for it.
 
    | Report | Entry |

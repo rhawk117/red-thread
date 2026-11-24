@@ -53,10 +53,8 @@ class InitCommand:
         )
         case = self.cases.bind(directory).frame(framing)
         languages = ', '.join(case.capabilities.languages) or 'none detected'
-        navigation = 'installed' if case.capabilities.navigation_tool else 'not installed'
         print(f'created {directory.resolve()}')
         print(f'languages: {languages}')
-        print(f'navigation tool: {navigation}')
         return 0
 
 

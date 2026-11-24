@@ -17,8 +17,6 @@ The case directory is added to the repository's local git exclude file, so it is
 - [uv](https://docs.astral.sh/uv/), which runs the case file script and fetches Python 3.14 for it
 - git
 
-The `code-lens` scout is experimental and is used only where the `agentlens` command is installed.
-
 ## Try it
 
 No marketplace lists the plugin yet, so load it from a clone:
@@ -47,6 +45,8 @@ Then, in a session opened in the repository you want to investigate:
 | `hooks/roster.py` | a hook that denies a red-thread agent's dispatch outside its roster |
 | `packages/casefile` | the only writer and renderer of a case file: `init`, `add`, `render`, `check`, `export` and `page` |
 | `scripts/casefile.sh` | how the skills and agents run that package, without installing anything into your project |
+| `packages/navigate` | code navigation for the `code-lens` scout: `map`, `find` and `slice` over six languages |
+| `scripts/navigate.sh` | how the agents run that package, without installing anything into your project |
 
 ## Development
 

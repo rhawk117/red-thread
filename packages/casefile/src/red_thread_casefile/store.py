@@ -40,8 +40,6 @@ class SourceTree(Protocol):
 
     def read_lines(self, path: str) -> tuple[str, ...] | None: ...
 
-    def has_tool(self, name: str) -> bool: ...
-
     def exclude(self, pattern: str) -> None: ...
 
 
@@ -169,9 +167,6 @@ class GitSourceTree:
         if not text:
             return ()
         return tuple(text.removesuffix('\n').split('\n'))
-
-    def has_tool(self, name: str) -> bool:
-        return shutil.which(name) is not None
 
     def exclude(self, pattern: str) -> None:
         located = self.run_git('rev-parse', '--git-path', 'info/exclude')
