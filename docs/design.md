@@ -169,7 +169,7 @@ It runs before every export. It also catches a citation a scout invented before 
 
 ## 5. The investigate skill
 
-**Decided:** two skills only, `investigate` and `distill`. Use cases are kinds and lenses, each a small reference file loaded on demand. There is no skill per use case and no pickup skill.
+**Decided:** two user-facing skills, `investigate` and `distill`, plus the preloaded `navigate` support skill (see section 8). Use cases are kinds and lenses, each a small reference file loaded on demand. There is no skill per use case and no pickup skill.
 
 ### Round zero
 

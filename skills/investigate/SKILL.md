@@ -156,7 +156,7 @@ A lead lives for two rounds. For its second, send the follow-up question and the
 Then:
 
 - Sufficient: tell the owner the case directory and that `/red-thread:distill` turns it into a brief, an issue, a handoff or a report. Stop.
-- Sufficient, verify first: brief `peer-review` with CASE, SCRIPT, CONCLUSION (the one or two sentences the owner is about to accept), TODAY, and nothing about how the case got there, because a reviewer who hears the argument checks the argument instead of the evidence. Show its verdict table to the owner and ask the gate question again. Retire a BROKEN or WEAKENED claim only after the owner agrees: add an `open` entry that states what the review found, with the claim's ref in `supersedes`.
+- Sufficient, verify first: brief `peer-review` with CASE, SCRIPT, CONCLUSION (the one or two sentences the owner is about to accept), TODAY, NAVIGATE, and nothing about how the case got there, because a reviewer who hears the argument checks the argument instead of the evidence. Show its verdict table to the owner and ask the gate question again. Retire a BROKEN or WEAKENED claim only after the owner agrees: add an `open` entry that states what the review found, with the claim's ref in `supersedes`.
 - Dig further: the next round.
 - Stop here: record what is left as `next` entries, one per step, so whoever resumes the case knows where to start. Stop.
 - Redirect: record the new target or bar as a `decision`, then carry on from the step it changes.
