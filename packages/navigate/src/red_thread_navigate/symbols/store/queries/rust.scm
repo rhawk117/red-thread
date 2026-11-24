@@ -147,3 +147,22 @@
     (scoped_type_identifier
       name: (type_identifier) @name)
   ]) @reference.type
+
+; A type name in use position. Each branch names its parent and field, so the name a
+; struct_item, enum_item, type_item, trait_item or type parameter declares never matches.
+[
+  (parameter
+    type: (type_identifier) @name)
+  (function_item
+    return_type: (type_identifier) @name)
+  (let_declaration
+    type: (type_identifier) @name)
+  (field_declaration
+    type: (type_identifier) @name)
+  (type_arguments
+    (type_identifier) @name)
+  (struct_expression
+    name: (type_identifier) @name)
+  (scoped_type_identifier
+    name: (type_identifier) @name)
+] @reference.type

@@ -119,3 +119,44 @@ class TestTraitReferences:
         )
 
         assert lines == [3, 4, 5, 6, 7]
+
+
+TYPE_USES_SAMPLE = """\
+pub struct T;
+pub enum E {}
+pub type A = u8;
+pub trait Tr {}
+fn param(x: T) {}
+fn ret() -> T { T }
+fn annotated() { let y: T = make(); }
+pub struct Holder { field: T }
+fn generic(v: Vec<T>) {}
+fn literal() { let z = T { a: 1 }; }
+fn scoped(w: m::T) {}
+fn declares<T>(item: T) {}
+"""
+
+
+class TestTypeReferences:
+    def test_type_uses_in_every_position_are_references(self) -> None:
+        parsed = parse(TYPE_USES_SAMPLE)
+
+        lines = sorted({reference.line for reference in parsed.references if reference.name == 'T'})
+
+        assert lines == [5, 6, 7, 8, 9, 10, 11, 12]
+
+    def test_declarations_are_not_references(self) -> None:
+        parsed = parse(TYPE_USES_SAMPLE)
+
+        names = {
+            (reference.name, reference.line)
+            for reference in parsed.references
+            if reference.name in {'T', 'E', 'A', 'Tr'}
+        }
+
+        assert not {name for name in names if name[1] <= 4}
+
+    def test_generic_parameter_declaration_is_not_a_reference(self) -> None:
+        parsed = parse('fn declares<T>() {}\n')
+
+        assert [r for r in parsed.references if r.name == 'T'] == []
