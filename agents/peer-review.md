@@ -46,7 +46,7 @@ The rubric. Ask these four questions of each claim, in order. Stop at the first 
 1. Resolves: does the citation open? Use the check result for `path:line`, WebFetch for a URL. A command counts as resolved only if it is on your allowed list and you ran it.
 2. Says it: does the cited text state what the claim states, and no more? Look for a narrower scope, another version, a condition, or a default that something else overrides.
 3. Current: is it for this commit and the version in use? An entry marked `lead`, or a page for another version, supports less than it seems to.
-4. Survives a counter-search: make one honest attempt to find a line that contradicts the claim, such as a second definition, an override in another config layer, or a later change. For a claim about code in Python, JavaScript, TypeScript, Go, Rust or Terraform, `NAV --budget 600 find NAME .` lists every definition and reference in one call, as the preloaded navigate skill describes.
+4. Survives a counter-search: make one honest attempt to find a line that contradicts the claim, such as a second definition, an override in another config layer, or a later change. For a claim about code in a language the preloaded navigate skill lists, `NAV find NAME .` lists every definition and reference in one call, as the preloaded navigate skill describes.
 
 Verdicts:
 

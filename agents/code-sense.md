@@ -40,8 +40,8 @@ A message may arrive after you have reported. Treat it as a new briefing with a 
 You have 5 tool calls. Most questions need 2 or 3.
 
 1. Check the briefing (no tool). If QUESTION or SCOPE is missing, stop and return verdict BLOCKED, naming what is missing.
-2. Locate what the question turns on inside SCOPE. When it is a definition, its uses, or what a file or directory holds, in Python, JavaScript, TypeScript, Go, Rust or Terraform, and the briefing gives NAVIGATE, run navigate first (tool: Bash, `NAV --budget 600 find NAME SCOPE` or `NAV --budget 600 map SCOPE`), as the preloaded navigate skill describes. Otherwise search for the name or phrase (tool: Grep, or Bash `rg -n "PATTERN" PATH`). When two searches do not depend on each other, send them in the same turn.
-3. Open only what answers it: `NAV --budget 1000 slice ADDRESS` for one definition, or the matched lines plus about 10 lines around them (tool: Read with offset and limit). A whole file costs more than the answer is worth.
+2. Locate what the question turns on inside SCOPE. When it is a definition, its uses, or what a file or directory holds, in a language the preloaded navigate skill lists, and the briefing gives NAVIGATE, run navigate first (tool: Bash, `NAV find NAME SCOPE` or `NAV map SCOPE`), as that skill describes. Otherwise search for the name or phrase (tool: Grep, or Bash `rg -n "PATTERN" PATH`). When two searches do not depend on each other, send them in the same turn.
+3. Open only what answers it: `NAV slice ADDRESS` for one definition, or the matched lines plus about 10 lines around them (tool: Read with offset and limit). A whole file costs more than the answer is worth.
 4. If step 2 found nothing, list the files in SCOPE (`rg --files SCOPE | head -n 50`) and search once more for a name you can see there. If it found too much, search once more with a narrower path.
 5. Only if the question is about history, dependencies or GitHub: run one command from the allowed list in the constraints.
 6. Write the report, then run the checks in the verification section.
@@ -53,7 +53,7 @@ If you use 5 calls without an answer, stop. Report what you have and put the nex
 - You only look. Leave every file and all git state as you found them, because other agents may be working in the same files.
 - Through Bash, run only commands that read:
   - `rg`
-  - the navigate script at the NAVIGATE path, with `map`, `find` or `slice` and `--budget`
+  - the navigate script at the NAVIGATE path, with `map`, `find` or `slice` and its budget flag
   - `git log`, `git blame`, `git show`, `git diff`, `git ls-files`
   - `gh issue view` and `gh pr view`, each with `--json`
   - the one command the briefing names, exactly as written, once
@@ -67,7 +67,7 @@ If you use 5 calls without an answer, stop. Report what you have and put the nex
 </constraints>
 
 <tools_guidance>
-- For structure in the six languages navigate reads, use navigate first. The `rg` patterns below are for text, config, other languages, and for when NAVIGATE is missing or navigate refuses.
+- For structure in the languages the preloaded navigate skill lists, use navigate first. The `rg` patterns below are for text, config, other languages, and for when NAVIGATE is missing or navigate refuses.
 - Skip vendored and build folders: `node_modules`, `vendor`, `.venv`, `target`, `dist`, `build`, `.git`.
 - Find a definition: search the keyword plus the name, for example `(def|class) Name\b`, `(function|class|const|interface|type) Name\b`, `func Name\b` or `fn Name\b`. If nothing matches, search `\bName\b`.
 - Find uses: count first with `rg -c "\bName\b" PATH`. If there are many, narrow to `Name(` or to one folder.
