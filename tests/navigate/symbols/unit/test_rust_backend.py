@@ -150,6 +150,20 @@ fn ret() -> W<u8> { make() }
 pub struct Holder { field: W<u8> }
 """
 
+VALUE_USES_SAMPLE = """\
+pub struct T;
+const LIMIT: u32 = 3;
+static COUNT: u32 = 1;
+pub enum E { Start, Stop = 2 }
+pub union U { a: u8 }
+pub struct Pair(u8);
+macro_rules! MACRO { () => {} }
+impl T { const ASSOC: u32 = 4; }
+fn locals(count: u32) -> u32 { let n = count + 1; n }
+fn unit() { let x: T = T; }
+fn limit() -> u32 { let m = LIMIT + 1; m }
+"""
+
 
 class TestTypeReferences:
     def test_type_uses_in_every_position_are_references(self) -> None:
@@ -199,3 +213,36 @@ class TestTypeReferences:
         parsed = parse('fn declares<T>() {}\n')
 
         assert [r for r in parsed.references if r.name == 'T'] == []
+
+
+class TestValueReferences:
+    def test_lowercase_locals_are_not_references(self) -> None:
+        parsed = parse(VALUE_USES_SAMPLE)
+
+        names = {reference.name for reference in parsed.references}
+
+        assert not names & {'count', 'n', 'm', 'x'}
+
+    def test_unit_struct_value_is_listed_once_per_line(self) -> None:
+        parsed = parse(VALUE_USES_SAMPLE)
+
+        lines = [reference.line for reference in parsed.references if reference.name == 'T']
+
+        assert lines.count(10) == 1
+
+    def test_constant_in_expression_is_a_reference(self) -> None:
+        parsed = parse(VALUE_USES_SAMPLE)
+
+        lines = sorted({
+            reference.line for reference in parsed.references if reference.name == 'LIMIT'
+        })
+
+        assert lines == [11]
+
+    def test_declaring_lines_are_not_references(self) -> None:
+        parsed = parse(VALUE_USES_SAMPLE)
+
+        declared = {'LIMIT', 'COUNT', 'Start', 'Stop', 'ASSOC', 'U', 'Pair', 'MACRO'}
+        lines = {reference.line for reference in parsed.references if reference.name in declared}
+
+        assert lines <= {11}

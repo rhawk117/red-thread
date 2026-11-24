@@ -207,3 +207,114 @@
     type: (generic_type
       type: (type_identifier) @name))
 ] @reference.type
+
+; A capitalized bare value, such as a unit struct or a constant, parses as an identifier, the
+; node every variable uses. The names const_item, static_item, enum_variant, const_parameter,
+; function_item, macro_definition and mod_item declare, and the let and parameter patterns,
+; sit under name and pattern fields, which no branch below names. Each branch carries its own
+; predicate, because a predicate after the alternation does not filter it.
+[
+  (_
+    value: (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (binary_expression
+    left: (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (binary_expression
+    right: (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (unary_expression
+    (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (assignment_expression
+    left: (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (assignment_expression
+    right: (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (compound_assignment_expr
+    left: (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (compound_assignment_expr
+    right: (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (type_cast_expression
+    value: (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (range_expression
+    (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (arguments
+    (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (array_expression
+    (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (tuple_expression
+    (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (parenthesized_expression
+    (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (block
+    (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (expression_statement
+    (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (return_expression
+    (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (break_expression
+    (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (try_expression
+    (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (await_expression
+    (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (index_expression
+    (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (reference_expression
+    (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (match_arm
+    value: (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (closure_expression
+    body: (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (if_expression
+    condition: (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (while_expression
+    condition: (identifier) @name
+    (#match? @name "^[A-Z]"))
+] @reference.value
