@@ -57,7 +57,7 @@ Use `rg -n` or Read with offset and limit instead for:
 - When several definitions share a name, `find` lists them all and `slice` prints each one under `N definitions match`, labelled with its parent (`in Class` or `at the top level`), its span and, for a Rust method, `(impl Trait)`.
 - A file with a syntax error: the tree-sitter languages keep what parsed and add a note; Python returns no symbols and a note, so use `rg -n` and Read there.
 - `find` matches references by name or by full address. A call through an alias, a re-export, `getattr` or a string is not listed, so "nothing else uses it" is an inference unless the name is unique.
-- Go type references are not recorded: `find Handler` lists the definition and no uses. Use `rg -n "\bHandler\b"` for those.
+- In Go, a use of a type (a parameter, field, composite literal, conversion and so on) is listed by `find` as a reference to it, and the type's own declaration is not. The alias and re-export caveat above is the only exception.
 
 ## Recipes for common asks
 
@@ -82,5 +82,5 @@ Read a refusal by its markers, because the wording around them changes. A refusa
 - A closing `Next step: ...` is an instruction. Do what it says. It follows a `find` with no match, a `slice` of an unknown name with no similar name, a `slice` of a path that is not a file, a `slice` of a line past the end and a `slice` of a path outside the root.
 - `FILE cannot be sliced: REASON` means the launcher will not read that file. Act on the reason. No symbol backend for the suffix: slice lines, such as `FILE#L1-L20`, or use `rg -n`. Over 1 MiB or not UTF-8: use `rg -n NAME FILE` to find the lines. Binary: skip the file. It cannot be read: skip the file and say so in your report.
 - `nearest names: ...` lists names similar to the one you asked for. Slice one of them.
-- `address 'ADDRESS' is not valid: REASON` lists the valid forms. The reason changes with the fault. Use one of the forms.
+- `address 'ADDRESS' is not valid: REASON` lists the valid forms. The reason changes with the fault, for example `there is no # between file and target`: rewrite the address in one of the Addresses forms.
 - At a small budget the launcher shortens paths and names with `...` and may drop the `Next step:`. A path under the root is the fix for an outside-root refusal.
