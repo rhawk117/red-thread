@@ -167,9 +167,18 @@ It runs before every export. It also catches a citation a scout invented before 
 - The colors are tokens in `assets/page.css`, one set per theme, and `assets/tailwind.css` maps them to Tailwind utilities, so a palette change is made in one file.
 - Facts: the Artifact tool publishes one `.html` or `.md` file. Remote Control keeps an AskUserQuestion dialog open until it is answered. The docs name an artifact as the route for a board that keeps updating.
 
-### The document model (Decided 2026-11-25)
+### The document model (Built 2026-11-25)
 
-**Decided 2026-11-25:** the board page and the Markdown lens output build from one typed tree, drawn by Python writers. The owner asked for the design that is easiest to maintain, gives the best page and needs the least code, and chose this one over Jinja and over a TypeScript page. The text board that `render` prints keeps its own path for now. Not built yet.
+**Decided 2026-11-25:** the board page and the Markdown lens output build from one typed tree, drawn by Python writers. The owner asked for the design that is easiest to maintain, gives the best page and needs the least code, and chose this one over Jinja and over a TypeScript page. The text board that `render` prints keeps its own path for now.
+
+**Built 2026-11-25**, with these differences from the design below:
+
+- The nodes are in `documents.py`: the inlines `Text`, `Code` and `Link`; the blocks `Paragraph`, `EntryList`, `PointList` (a list without refs, such as the pointers) and `Flowchart`; and `Section`, `Fact` and `Document`. A section carries its kind, note and fold, so no `Heading` or `Fold` node is needed. The board's map and retired list are sections in `Document.appendix`. A ref and a state badge are fields of `EntryNode` that each writer draws, not inline nodes.
+- Notes are typed `Note` values with a kind (`rests_on`, `refuted_by`, `retires`, `retired_by`, `urgency`, `source`), and a citation is a `Citation` holding its target, quote and finding.
+- Two Protocols, `InlineWriter` and `BlockWriter`, take the place of one `Writer`, because ruff allows ten public methods to a class. Each node's `write` calls its writer method, so ty fails a writer that lacks one.
+- The writers are in `writers/`: `markdown.py`, `markup.py` (entries and blocks as HTML, with the one escaping `render`) and `page.py` (the toolbar, the header and `page.html`). `pages.py` and the old `Item`, `Section`, `Fact`, `Document` and `MarkdownWriter` in `views.py` are gone.
+- The board page and every lens output were byte-identical before and after the port, checked on a sample case with every entry kind.
+- Size: the source grew by about 300 lines (745 added, 437 removed), not shrank. `documents.py` is 250 lines, not 80, because the typed notes, citation and entry builder live there. The writers together are about the size of `pages.py` and the old `MarkdownWriter`.
 
 What is wrong now:
 
@@ -606,6 +615,6 @@ Made by the owner on 2026-11-25.
 
 | Decision | Choice and reason |
 | --- | --- |
-| Output model | one typed tree of frozen dataclass nodes, one entry builder and a `Writer` Protocol with a method per node kind, so a new kind of content has one place to start and ty names every writer that lacks it (section 4, The document model) |
+| Output model | one typed tree of frozen dataclass nodes, one entry builder and two writer Protocols (`InlineWriter`, `BlockWriter`) with a method per node kind, so a new kind of content has one place to start and ty names every writer that lacks it (section 4, The document model) |
 | Who draws the page | Python, through the t-string `render`; no Jinja and no TypeScript, so no new dependency and no build step, and the page still carries every entry in its HTML |
 | Scope | the board page and the Markdown lens output; the text board keeps its own path for now |
