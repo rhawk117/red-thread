@@ -1,13 +1,13 @@
-"""HtmlWriter: escaping in every place a value lands, links, copy buttons, code and content."""
+"""HtmlPage: escaping in every place a value lands, links, copy buttons, code and content."""
 
+from dataclasses import replace
 from html import escape
 from typing import TYPE_CHECKING
 
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
-from red_thread_casefile.pages import HtmlWriter
-from red_thread_casefile.views import Document, Item, Section
+from red_thread_casefile.documents import Citation, Document, Note, Paragraph, Section, parse_line
 
 from tests.casefile.pages.builders import (
     DOCUMENT_FIELDS,
@@ -29,6 +29,8 @@ from tests.casefile.pages.html_reading import (
     list_tags,
 )
 from tests.casefile.pages.promises import assert_page_holds_only_its_own_markup
+from tests.casefile.writers.builders import create_entry_node
+from tests.casefile.writers.reading import render_page
 
 if TYPE_CHECKING:
     from tests.casefile.pages.builders import DocumentField
@@ -38,8 +40,13 @@ def create_url_cite(tail: str) -> str:
     return f'{PLAIN_URL}/{tail}'
 
 
-def render(document: Document) -> str:
-    return HtmlWriter(document=document).render()
+def create_cited_document(cite: str) -> Document:
+    entry = replace(create_entry_node('claim'), citation=Citation(target=cite))
+    return create_document(entry)
+
+
+def create_prose_section(title: str, text: str) -> Section:
+    return Section(title=title, blocks=(Paragraph(line=parse_line(text)),))
 
 
 def document_field_cases() -> pytest.MarkDecorator:
@@ -58,7 +65,7 @@ class TestEscaping:
     def test_markup_in_any_field_is_shown_as_text_and_never_as_an_element(
         self, field: DocumentField, payload: str
     ) -> None:
-        page = render(create_document_carrying(field, payload))
+        page = render_page(create_document_carrying(field, payload))
 
         assert_page_holds_only_its_own_markup(page)
         assert page.lower().count('<script') == 3
@@ -66,7 +73,7 @@ class TestEscaping:
 
     @document_field_cases()
     def test_an_ampersand_is_written_as_an_entity(self, field: DocumentField) -> None:
-        page = render(create_document_carrying(field, 'fish & chips'))
+        page = render_page(create_document_carrying(field, 'fish & chips'))
 
         assert 'fish &amp; chips' in page
         assert 'fish & chips' not in page
@@ -75,7 +82,7 @@ class TestEscaping:
     def test_a_ref_lands_in_the_copy_attribute_and_the_button_text_as_text(
         self, payload: str
     ) -> None:
-        page = render(create_document_carrying('item-ref', payload))
+        page = render_page(create_document_carrying('item-ref', payload))
 
         (button, _) = find_buttons(page, 'ref')
         assert button['data-copy'] == payload
@@ -83,14 +90,14 @@ class TestEscaping:
 
     @payload_cases()
     def test_a_cite_lands_in_its_copy_attribute_as_text(self, payload: str) -> None:
-        page = render(create_document_carrying('item-cite', payload))
+        page = render_page(create_document_carrying('item-cite', payload))
 
         (button,) = find_buttons(page, 'copy')
         assert button['data-copy'] == payload
 
     @payload_cases()
     def test_a_thread_lands_in_the_entry_mark_and_the_chip_as_text(self, payload: str) -> None:
-        page = render(create_document_carrying('item-thread', payload))
+        page = render_page(create_document_carrying('item-thread', payload))
 
         (marked, _) = find_entries(page)
         assert marked['data-thread'] == payload
@@ -102,21 +109,21 @@ class TestEscaping:
 
     @payload_cases()
     def test_a_kind_lands_in_the_entry_mark_as_text(self, payload: str) -> None:
-        page = render(create_document_carrying('item-kind', payload))
+        page = render_page(create_document_carrying('item-kind', payload))
 
         (marked, _) = find_entries(page)
         assert marked['data-kind'] == payload
 
     @payload_cases()
     def test_a_diagram_lands_in_its_pre_element_as_text(self, payload: str) -> None:
-        page = render(create_document_carrying('item-diagram', payload))
+        page = render_page(create_document_carrying('item-diagram', payload))
 
         assert list_mermaid(page) == [payload]
         assert find_tags(page, 'pre') == [{'class': 'mermaid'}]
 
     @payload_cases()
     def test_a_map_line_lands_in_the_map_pre_element_as_text(self, payload: str) -> None:
-        page = render(create_document_carrying('map-line', payload))
+        page = render_page(create_document_carrying('map-line', payload))
 
         (source,) = list_mermaid(page)
         assert source.splitlines()[-1] == payload
@@ -125,7 +132,7 @@ class TestEscaping:
     def test_a_quote_in_a_url_cite_cannot_break_out_of_the_href(self) -> None:
         cite = f'{PLAIN_URL}/x" onmouseover="alert(1)" data-x="'
 
-        page = render(create_document(Item(text='claim', cite=cite)))
+        page = render_page(create_cited_document(cite))
 
         (link,) = find_tags(page, 'a')
         assert link['href'] == cite
@@ -134,7 +141,7 @@ class TestEscaping:
     def test_a_single_quote_and_angle_bracket_in_a_url_cite_stay_inside_the_href(self) -> None:
         cite = f"{PLAIN_URL}/it's<b>"
 
-        page = render(create_document(Item(text='claim', cite=cite)))
+        page = render_page(create_cited_document(cite))
 
         (link,) = find_tags(page, 'a')
         assert link['href'] == cite
@@ -149,14 +156,14 @@ class TestPropertyPageShape:
     def test_no_text_in_any_field_adds_an_element_an_attribute_or_a_script(
         self, field: DocumentField, text: str
     ) -> None:
-        page = render(create_document_carrying(field, text))
+        page = render_page(create_document_carrying(field, text))
 
         assert_page_holds_only_its_own_markup(page)
         assert page.lower().count('<script') == 3
 
     @given(cite=st.text().map(create_url_cite))
     def test_a_url_cite_of_any_text_stays_one_link_whose_href_is_the_cite(self, cite: str) -> None:
-        page = render(create_document(Item(text='claim', cite=cite)))
+        page = render_page(create_cited_document(cite))
 
         (link,) = find_tags(page, 'a')
         assert link['href'] == cite
@@ -165,33 +172,33 @@ class TestPropertyPageShape:
 
 class TestContent:
     def test_title_is_the_page_title_and_the_heading(self) -> None:
-        page = render(create_document(title='Why jobs wait'))
+        page = render_page(create_document(title='Why jobs wait'))
 
         assert page.count('Why jobs wait') == 2
 
     def test_each_item_shows_its_ref_and_its_text(self) -> None:
         document = create_document(
-            Item(text='first claim', ref='e1'), Item(text='second claim', ref='T1.e2')
+            create_entry_node('first claim', 'e1'), create_entry_node('second claim', 'T1.e2')
         )
 
-        page = render(document)
+        page = render_page(document)
 
         assert list_item_refs(page) == ['e1', 'T1.e2']
         assert 'first claim' in page
         assert 'second claim' in page
 
     def test_flags_and_notes_are_shown_as_text(self) -> None:
-        item = Item(
-            text='claim', ref='e1', notes=('rests on: a page',), flags=('citation changed',)
+        entry = replace(
+            create_entry_node(), notes=(Note(kind='rests_on', value='a page'),), lead='1111111'
         )
 
-        page = render(create_document(item))
+        page = render_page(create_document(entry))
 
-        assert list_flags(page) == ['citation changed']
+        assert list_flags(page) == ['lead, recorded at 1111111']
         assert 'rests on: a page' in page
 
     def test_an_item_with_no_flag_and_no_note_has_no_flag_element(self) -> None:
-        page = render(create_document(Item(text='claim', ref='e1')))
+        page = render_page(create_document(create_entry_node()))
 
         assert list_flags(page) == []
 
@@ -199,17 +206,17 @@ class TestContent:
         document = Document(
             title='t',
             sections=(
-                Section(title='Second thing', prose=('b',)),
-                Section(title='First thing', prose=('a',)),
+                create_prose_section('Second thing', 'b'),
+                create_prose_section('First thing', 'a'),
             ),
         )
 
-        page = render(document)
+        page = render_page(document)
 
         assert page.index('Second thing') < page.index('First thing')
 
     def test_the_page_names_every_element_it_used(self) -> None:
-        page = render(create_document(Item(text='claim', ref='e1', cite=PLAIN_URL)))
+        page = render_page(create_cited_document(PLAIN_URL))
 
         used = {name for name, _ in list_tags(page)}
         assert used >= {'html', 'body', 'h1', 'h2', 'li', 'a', 'details', 'summary', 'button'}

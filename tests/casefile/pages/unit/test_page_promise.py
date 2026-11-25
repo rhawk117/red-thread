@@ -1,11 +1,24 @@
 """The rendered page's promise: two pinned CDN scripts, its own inline script and styles."""
 
 import re
+from dataclasses import replace
 from typing import TYPE_CHECKING
 
 import pytest
-from red_thread_casefile.pages import HtmlWriter
-from red_thread_casefile.views import Document, Item, Section
+from red_thread_casefile.assets import read_asset
+from red_thread_casefile.boards import MAP_NOTE
+from red_thread_casefile.documents import (
+    Citation,
+    Document,
+    EntryList,
+    EntryNode,
+    Flowchart,
+    Note,
+    Paragraph,
+    Section,
+    parse_line,
+)
+from red_thread_casefile.policy import Finding
 
 from tests.casefile.pages.html_reading import (
     MERMAID_URL,
@@ -15,6 +28,8 @@ from tests.casefile.pages.html_reading import (
     list_tag_names,
 )
 from tests.casefile.pages.promises import TAILWIND_STYLE, assert_page_holds_only_its_own_markup
+from tests.casefile.writers.builders import create_entry_node
+from tests.casefile.writers.reading import render_page
 
 if TYPE_CHECKING:
     from tests.casefile.pages.html_reading import Element
@@ -28,30 +43,39 @@ PLACEHOLDER = re.compile(r'\$\w+')
 
 
 def create_rich_document() -> Document:
-    item = Item(
-        text='a claim with `code`',
+    entry = EntryNode(
         ref='e1',
-        cite='src/queue.py:3',
-        notes=('rests on: a page',),
-        flags=('citation changed',),
         kind='known',
+        claim=parse_line('a claim with `code`'),
+        round=1,
+        at='2026-11-21T10:00:00Z',
         thread='T1',
+        citation=Citation(
+            target='src/queue.py:3',
+            finding=Finding(ref='e1', cite='src/queue.py:3', state='changed'),
+        ),
+        notes=(Note(kind='rests_on', value='a page'),),
+        lead='1111111',
         diagram='flowchart TD\n  A --> B',
     )
-    other = Item(text='a question', ref='e2', kind='open')
-    section = Section(title='Findings', items=(item, other), prose=('a line of prose',))
+    other = replace(create_entry_node('a question', 'e2'), kind='open')
+    blocks = (Paragraph(line=parse_line('a line of prose')), EntryList(entries=(entry, other)))
     map_lines = ('  subgraph main["main ledger"]', '    n0["e1 known: a claim"]:::k_known', '  end')
+    chart = Flowchart(lines=(read_asset('map.mmd').rstrip(), *map_lines))
     return Document(
-        title='A case', summary=('Case line',), sections=(section,), map_lines=map_lines
+        title='A case',
+        summary=(parse_line('Case line'),),
+        sections=(Section(title='Findings', blocks=blocks),),
+        appendix=(Section(title='Map', blocks=(chart,), note=MAP_NOTE),),
     )
 
 
 def render_rich_page() -> str:
-    return HtmlWriter(document=create_rich_document()).render()
+    return render_page(create_rich_document())
 
 
 def render_empty_page() -> str:
-    return HtmlWriter(document=Document(title='Nothing yet')).render()
+    return render_page(Document(title='Nothing yet'))
 
 
 def page_cases() -> pytest.MarkDecorator:

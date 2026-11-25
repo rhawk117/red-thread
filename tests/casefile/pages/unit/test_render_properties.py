@@ -8,8 +8,8 @@ import pytest
 from hypothesis import example, given
 from hypothesis import strategies as st
 from red_thread_casefile.assets import read_asset
-from red_thread_casefile.pages import mark_up
-from red_thread_casefile.writers.markup import render, render_value
+from red_thread_casefile.documents import parse_line
+from red_thread_casefile.writers.markup import HtmlInlines, render, render_value
 
 from tests.casefile.pages.asset_names import ASSET_NAMES
 
@@ -21,6 +21,10 @@ METACHARACTERS = '<>"\''
 plain = st.text(
     alphabet=st.characters(blacklist_categories=('Cs',), blacklist_characters='`'), max_size=30
 )
+
+
+def render_marked_up(text: str) -> str:
+    return render_value(HtmlInlines().write_line(parse_line(text)))
 
 
 def asset_cases() -> pytest.MarkDecorator:
@@ -72,7 +76,7 @@ def test_a_conversion_is_applied_before_the_text_is_escaped(text: str) -> None:
 
 @given(text=plain)
 def test_text_without_a_backtick_marks_up_as_itself(text: str) -> None:
-    assert render_value(mark_up(text)) == escape(text)
+    assert render_marked_up(text) == escape(text)
 
 
 @given(before=plain, code=plain.filter(bool), after=plain)
@@ -80,7 +84,7 @@ def test_text_without_a_backtick_marks_up_as_itself(text: str) -> None:
 def test_a_code_span_becomes_a_code_element_around_its_escaped_text(
     before: str, code: str, after: str
 ) -> None:
-    rendered = render_value(mark_up(f'{before}`{code}`{after}'))
+    rendered = render_marked_up(f'{before}`{code}`{after}')
 
     assert rendered == f'{escape(before)}<code>{escape(code)}</code>{escape(after)}'
 
@@ -89,7 +93,7 @@ def test_a_code_span_becomes_a_code_element_around_its_escaped_text(
 def test_a_lone_backtick_stays_literal_text(before: str, after: str) -> None:
     text = f'{before}`{after}'
 
-    assert render_value(mark_up(text)) == escape(text)
+    assert render_marked_up(text) == escape(text)
 
 
 @asset_cases()

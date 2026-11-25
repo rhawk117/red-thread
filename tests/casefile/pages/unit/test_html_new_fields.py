@@ -1,4 +1,4 @@
-"""HtmlWriter: where verdict, state, stamps, quote, section data and facts land, for any text."""
+"""HtmlPage: where verdict, state, stamps, quote, section data and facts land, for any text."""
 
 from datetime import datetime
 from typing import TYPE_CHECKING
@@ -6,13 +6,31 @@ from typing import TYPE_CHECKING
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
+from red_thread_casefile.boards import RETIRED_NOTE
+from red_thread_casefile.documents import (
+    Citation,
+    Document,
+    EntryList,
+    EntryNode,
+    Fact,
+    Note,
+    Section,
+    list_entries_block,
+    parse_line,
+    parse_value,
+)
 from red_thread_casefile.domain import ENTRY_KINDS, VERDICTS
-from red_thread_casefile.pages import HtmlWriter
 from red_thread_casefile.policy import CITE_STATES, Finding
-from red_thread_casefile.views import Document, Fact, Item, Section
 
+from tests.casefile.documents.builders import MOMENT
+from tests.casefile.documents.reading import join_line
 from tests.casefile.entries.strategies import optional
-from tests.casefile.pages.builders import STAMP_DAY, create_document_carrying, payload_params
+from tests.casefile.pages.builders import (
+    CITED_PATH,
+    STAMP_DAY,
+    create_document_carrying,
+    payload_params,
+)
 from tests.casefile.pages.html_reading import (
     find_tags,
     list_cited_quotes,
@@ -23,16 +41,12 @@ from tests.casefile.pages.html_reading import (
     list_spans,
 )
 from tests.casefile.pages.strategies import many, texts
+from tests.casefile.writers.reading import render_page
 
 if TYPE_CHECKING:
     from tests.casefile.pages.builders import DocumentField
 
 URL_PREFIX = ('http://', 'https://')
-CITED_PATH = 'src/queue.py:3'
-
-
-def render(document: Document) -> str:
-    return HtmlWriter(document=document).render()
 
 
 def is_not_url(text: str) -> bool:
@@ -45,9 +59,28 @@ def label_state(finding: Finding) -> str:
     return finding.state
 
 
-def list_all_items(document: Document) -> list[Item]:
-    shown = [item for section in document.sections for item in section.items]
-    return [*shown, *document.retired]
+def create_retired(entries: tuple[EntryNode, ...]) -> tuple[Section, ...]:
+    if not entries:
+        return ()
+    blocks = (EntryList(entries=entries),)
+    return (Section(title='Retired', blocks=blocks, note=RETIRED_NOTE, folded=True),)
+
+
+def list_all_entries(document: Document) -> list[EntryNode]:
+    retired = [entry for section in document.appendix for entry in section.entries]
+    return [*document.entries, *retired]
+
+
+def find_finding(entry: EntryNode) -> Finding | None:
+    if entry.citation is None:
+        return None
+    return entry.citation.finding
+
+
+def find_quote(entry: EntryNode) -> str | None:
+    if entry.citation is None:
+        return None
+    return entry.citation.quote
 
 
 def payload_cases() -> pytest.MarkDecorator:
@@ -56,7 +89,7 @@ def payload_cases() -> pytest.MarkDecorator:
 
 class TestNewFieldsLandAsText:
     def read(self, field: DocumentField, payload: str) -> str:
-        return render(create_document_carrying(field, payload))
+        return render_page(create_document_carrying(field, payload))
 
     @payload_cases()
     def test_a_verdict_is_the_badge_text_and_its_data_attribute(self, payload: str) -> None:
@@ -76,7 +109,10 @@ class TestNewFieldsLandAsText:
     ) -> None:
         page = self.read('item-at', payload)
 
-        assert find_tags(page, 'time') == [{'datetime': f'{STAMP_DAY}{payload}'}]
+        assert find_tags(page, 'time') == [
+            {'datetime': f'{STAMP_DAY}{payload}'},
+            {'datetime': MOMENT},
+        ]
         assert ('stamp', STAMP_DAY) in list_note_rows(page)[0]
 
     @payload_cases()
@@ -132,33 +168,39 @@ class TestNewFieldsRoundTrip:
         state=st.sampled_from(CITE_STATES),
         moved_to=optional(st.integers(min_value=1, max_value=999)),
     )
-    items = st.builds(
-        Item,
-        text=texts,
+    citations = st.builds(
+        Citation, target=st.just(CITED_PATH), quote=optional(texts), finding=optional(findings)
+    )
+    entries = st.builds(
+        EntryNode,
         ref=st.just('e1'),
-        cite=st.just(CITED_PATH),
-        notes=many(texts, 2),
         kind=st.sampled_from(ENTRY_KINDS),
+        claim=st.builds(parse_line, texts),
         verdict=optional(st.sampled_from(VERDICTS)),
-        round=optional(st.integers(min_value=0, max_value=999)),
-        at=optional(st.datetimes().map(datetime.isoformat)),
-        quote=optional(texts),
-        finding=optional(findings),
+        round=st.integers(min_value=0, max_value=999),
+        at=st.datetimes().map(datetime.isoformat),
+        citation=citations,
+        notes=many(st.builds(Note, kind=st.just('source'), value=texts), 2),
     )
     sections = st.builds(
         Section,
         title=texts,
-        items=many(items, 3),
+        blocks=st.builds(list_entries_block, many(entries, 3)),
         kind=optional(st.sampled_from(ENTRY_KINDS)),
         note=texts,
     )
-    facts = st.builds(Fact, label=texts, value=texts.filter(is_not_url), wide=st.booleans())
+    facts = st.builds(
+        Fact,
+        label=texts,
+        value=st.builds(parse_value, texts.filter(is_not_url)),
+        wide=st.booleans(),
+    )
     documents = st.builds(
         Document,
         title=texts,
         sections=many(sections, 3),
         facts=many(facts, 4),
-        retired=many(items, 3),
+        appendix=st.builds(create_retired, many(entries, 3)),
     )
 
     @given(document=documents)
@@ -166,42 +208,46 @@ class TestNewFieldsRoundTrip:
         self, document: Document
     ) -> None:
         read = [
-            (fact.label, fact.value, fact.wide, fact.link) for fact in list_facts(render(document))
+            (fact.label, fact.value, fact.wide, fact.link)
+            for fact in list_facts(render_page(document))
         ]
 
-        assert read == [(fact.label, fact.value, fact.wide, None) for fact in document.facts]
+        assert read == [
+            (fact.label, join_line(fact.value), fact.wide, None) for fact in document.facts
+        ]
 
     @given(document=documents)
     def test_every_verdict_and_state_comes_back_in_page_order(self, document: Document) -> None:
-        page = render(document)
+        page = render_page(document)
 
-        items = list_all_items(document)
+        entries = list_all_entries(document)
         assert [span.body for span in list_spans(page, 'verdict')] == [
-            item.verdict for item in items if item.verdict
+            entry.verdict for entry in entries if entry.verdict
         ]
         assert [span.body for span in list_spans(page, 'state')] == [
-            label_state(item.finding) for item in items if item.finding
+            label_state(finding) for finding in map(find_finding, entries) if finding
         ]
 
     @given(document=documents)
     def test_every_quote_round_and_timestamp_comes_back_in_page_order(
         self, document: Document
     ) -> None:
-        page = render(document)
+        page = render_page(document)
 
-        items = list_all_items(document)
+        entries = list_all_entries(document)
         stamps = [text for row in list_note_rows(page) for role, text in row if role == 'stamp']
-        assert list_cited_quotes(page) == [item.quote for item in items if item.quote is not None]
+        quotes = [quote for quote in map(find_quote, entries) if quote is not None]
+        assert list_cited_quotes(page) == quotes
         assert [stamp for stamp in stamps if stamp.startswith('round ')] == [
-            f'round {item.round}' for item in items if item.round is not None
+            f'round {entry.round}' for entry in entries
         ]
         assert [tag['datetime'] for tag in find_tags(page, 'time')] == [
-            item.at for item in items if item.at is not None
+            entry.at for entry in entries
         ]
 
     @given(document=documents)
     def test_every_section_title_and_note_comes_back_in_order(self, document: Document) -> None:
-        shown = list_sections(render(document))[: len(document.sections)]
+        shown = list_sections(render_page(document))[: len(document.sections)]
 
         assert [(section.title, section.note or '') for section in shown] == [
             (section.title, section.note) for section in document.sections
