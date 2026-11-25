@@ -156,6 +156,15 @@
     type: (type_identifier) @name)
   (function_item
     return_type: (type_identifier) @name)
+  (function_signature_item
+    return_type: (type_identifier) @name)
+  (ordered_field_declaration_list
+    type: (type_identifier) @name)
+  (function_type
+    parameters: (parameters
+      (type_identifier) @name))
+  (where_predicate
+    left: (type_identifier) @name)
   (let_declaration
     type: (type_identifier) @name)
   (field_declaration
@@ -286,6 +295,10 @@
 
   (scoped_identifier
     name: (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (scoped_identifier
+    path: (identifier) @name
     (#match? @name "^[A-Z]"))
 
   (shorthand_field_initializer

@@ -58,7 +58,7 @@ Use `rg -n` or Read with offset and limit instead for:
 - A file with a syntax error: the tree-sitter languages keep what parsed and add a note; Python returns no symbols and a note, so use `rg -n` and Read there.
 - `find` matches references by name or by full address. A call through an alias, a re-export, `getattr` or a string is not listed, so "nothing else uses it" is an inference unless the name is unique.
 - In Go, a use of a type (a parameter, field, composite literal, conversion and so on) is listed by `find` as a reference to it, and the type's own declaration is not. The alias and re-export caveat above is the only exception.
-- In Rust, `find` lists a type name as a reference wherever it is used as a type: parameter, return, `let`, field, generic argument, struct literal, scoped path, `&T`, `*const T`, `[T; N]`, tuples and the self type of an impl. A bare capitalized value (a unit struct, a constant) is a reference too, and a generic parameter matches by name. The declaration is not a reference.
+- In Rust, `find` lists a type name as a reference in these positions: parameter, return (including a trait method signature), `let`, `const`, `static` and `type` right-hand sides, struct and tuple-struct fields, `fn(T)` pointer parameters, the left side of a `where` predicate, generic arguments and heads, struct literals, scoped types, `&T`, `*const T`, `[T; N]`, tuples and the self type of an impl. A bare capitalized value (a unit struct, a constant) is a reference too, and so is a capitalized path segment such as `T` in `T::new()` or `E` in `E::Start`. A generic parameter matches by name. The declaration is not a reference. A lowercase path segment (`std`, `fmt`, `m`).
 
 ## Recipes for common asks
 

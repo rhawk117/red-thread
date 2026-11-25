@@ -212,6 +212,17 @@ def value_position_cases() -> pytest.MarkDecorator:
     )
 
 
+SIGNATURE_USES_SAMPLE = """\
+pub struct T;
+pub enum E { Start }
+pub trait Tr { fn sig(&self) -> T; }
+pub struct Tuple(T);
+fn f(g: fn(T) -> u8) {}
+fn c<U>(u: U) where T: Copy {}
+fn build() { let a = T::new(); let b = E::Start; }
+fn lower() { std::fmt::format(); m::f(); }
+"""
+
 TRAIT_IMPL_SELF_SAMPLE = """\
 struct S;
 impl std::fmt::Display for S {}
@@ -263,6 +274,10 @@ class TestNestedTypeReferences:
         return parse(ITEM_TYPE_USES_SAMPLE)
 
     @pytest.fixture
+    def signature_uses(self) -> FileSymbols:
+        return parse(SIGNATURE_USES_SAMPLE)
+
+    @pytest.fixture
     def trait_impl_self(self) -> FileSymbols:
         return parse(TRAIT_IMPL_SELF_SAMPLE)
 
@@ -277,6 +292,15 @@ class TestNestedTypeReferences:
     ) -> None:
         assert reference_lines(item_type_uses, 'T') == [3, 4, 5]
         assert reference_lines(item_type_uses, 'W') == [6, 7, 8]
+
+    def test_signature_and_path_positions_are_references(self, signature_uses: FileSymbols) -> None:
+        assert reference_lines(signature_uses, 'T') == [3, 4, 5, 6, 7]
+        assert reference_lines(signature_uses, 'E') == [7]
+
+    def test_lowercase_path_segments_are_not_references(self, signature_uses: FileSymbols) -> None:
+        names = {reference.name for reference in signature_uses.references}
+
+        assert not names & {'std', 'fmt', 'm'}
 
     def test_trait_impl_self_types_are_references(self, trait_impl_self: FileSymbols) -> None:
         assert reference_lines(trait_impl_self, 'S') == [2, 4]
