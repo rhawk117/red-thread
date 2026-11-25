@@ -2,12 +2,13 @@
 
 import sys
 from dataclasses import dataclass
+from operator import attrgetter
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
 
 from cyclopts import App, CycloptsError, Parameter
 
-from red_thread_casefile.domain import CaseKind, build_case_id
+from red_thread_casefile.domain import PROGRAM, STATE_DIRECTORY, CaseKind, build_case_id
 from red_thread_casefile.errors import CaseFileError, MalformedPlanError, UnreadableInputError
 from red_thread_casefile.factory import CaseFiles
 from red_thread_casefile.lenses import LensName
@@ -18,8 +19,6 @@ from red_thread_casefile.views import BoardOptions, CheckReport
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-PROGRAM = 'casefile'
-COMMAND_NAMES = 'init, add, render, check, export or page'
 EXIT_OK = 0
 EXIT_FAILED = 1
 EXIT_USAGE = 2
@@ -112,10 +111,12 @@ def read_input(path: str | None) -> str:
 @dataclass(slots=True, kw_only=True, frozen=True)
 class InitCommand:
     cases: CaseFiles
+    name: str = 'init'
+    summary: str = 'create a case and record what the tree offers'
 
     def run(self, arguments: InitArguments) -> int:
         case_id = build_case_id(self.cases.clock.now(), arguments.slug or arguments.target)
-        directory = Path(arguments.root).joinpath('.red-thread', case_id)
+        directory = Path(arguments.root).joinpath(STATE_DIRECTORY, case_id)
         framing = Framing(
             id=case_id,
             target=arguments.target,
@@ -127,12 +128,14 @@ class InitCommand:
         languages = ', '.join(case.capabilities.languages) or 'none detected'
         print(f'created {directory.resolve()}')
         print(f'languages: {languages}')
-        return 0
+        return EXIT_OK
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class AddCommand:
     cases: CaseFiles
+    name: str = 'add'
+    summary: str = 'validate a JSON batch whole, then append it'
 
     def run(self, arguments: AddArguments) -> int:
         parsed = parse_batch(read_input(arguments.file))
@@ -143,16 +146,18 @@ class AddCommand:
             thread=arguments.thread,
         )
         added = self.cases.bind(arguments.case).add(batch)
-        refs = ' '.join(entry.ref for entry in added.entries)
+        refs = ' '.join(map(attrgetter('ref'), added.entries))
         print(f'stored {refs}')
         if added.redactions:
             print(f'redacted {added.redactions} secrets before storing')
-        return 0
+        return EXIT_OK
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class RenderCommand:
     cases: CaseFiles
+    name: str = 'render'
+    summary: str = 'print the board, with its citations checked'
 
     def run(self, arguments: RenderArguments) -> int:
         directory = arguments.case
@@ -160,12 +165,14 @@ class RenderCommand:
         print(self.cases.bind(directory).show(options))
         if arguments.html:
             print(f'wrote {self.cases.open_press(directory).draw()}')
-        return 0
+        return EXIT_OK
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class CheckCommand:
     cases: CaseFiles
+    name: str = 'check'
+    summary: str = 'resolve every live citation again'
 
     def run(self, arguments: CaseArguments) -> int:
         report = CheckReport(findings=self.cases.bind(arguments.case).check())
@@ -176,6 +183,8 @@ class CheckCommand:
 @dataclass(slots=True, kw_only=True, frozen=True)
 class ExportCommand:
     cases: CaseFiles
+    name: str = 'export'
+    summary: str = 'write a lens output from the ledger'
 
     def run(self, arguments: ExportArguments) -> int:
         unplanned = arguments.plan is None and sys.stdin.isatty()
@@ -191,27 +200,46 @@ class ExportCommand:
         written = '\n'.join(f'wrote {path}' for path in exported.paths)
         print(written)
         print(f'{exported.lines} of {exported.budget} lines')
-        return 0
+        return EXIT_OK
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class PageCommand:
     cases: CaseFiles
+    name: str = 'page'
+    summary: str = 'record the link of the published board'
 
     def run(self, arguments: PageArguments) -> int:
         case = self.cases.open_press(arguments.case).record_page(arguments.url)
         print(f'recorded {case.page_url}')
-        return 0
+        return EXIT_OK
 
 
-def report_command_problem(*tokens: StrayTokens) -> int:
-    problem = f'unknown command "{tokens[0]}"' if tokens else 'a command is required'
-    print(f'{PROGRAM}: {problem}; choose from {COMMAND_NAMES}', file=sys.stderr)
-    return EXIT_USAGE
+@dataclass(slots=True, kw_only=True, frozen=True)
+class CommandMenu:
+    names: tuple[str, ...]
+
+    @property
+    def choices(self) -> str:
+        *rest, last = self.names
+        return f'{", ".join(rest)} or {last}'
+
+    def report_problem(self, *tokens: StrayTokens) -> int:
+        problem = f'unknown command "{tokens[0]}"' if tokens else 'a command is required'
+        print(f'{PROGRAM}: {problem}; choose from {self.choices}', file=sys.stderr)
+        return EXIT_USAGE
 
 
 def create_app(cases: CaseFiles | None = None) -> App:
     cases = cases or CaseFiles()
+    commands = (
+        InitCommand(cases=cases),
+        AddCommand(cases=cases),
+        RenderCommand(cases=cases),
+        CheckCommand(cases=cases),
+        ExportCommand(cases=cases),
+        PageCommand(cases=cases),
+    )
     app = App(
         name=PROGRAM,
         help='The red-thread case file.',
@@ -221,29 +249,9 @@ def create_app(cases: CaseFiles | None = None) -> App:
         print_error=False,
         result_action='return_value',
     )
-    app.default(report_command_problem)
-    app.command(
-        InitCommand(cases=cases).run,
-        name='init',
-        help='create a case and record what the tree offers',
-    )
-    app.command(
-        AddCommand(cases=cases).run, name='add', help='validate a JSON batch whole, then append it'
-    )
-    app.command(
-        RenderCommand(cases=cases).run,
-        name='render',
-        help='print the board, with its citations checked',
-    )
-    app.command(
-        CheckCommand(cases=cases).run, name='check', help='resolve every live citation again'
-    )
-    app.command(
-        ExportCommand(cases=cases).run, name='export', help='write a lens output from the ledger'
-    )
-    app.command(
-        PageCommand(cases=cases).run, name='page', help='record the link of the published board'
-    )
+    app.default(CommandMenu(names=tuple(map(attrgetter('name'), commands))).report_problem)
+    for command in commands:
+        app.command(command.run, name=command.name, help=command.summary)
     return app
 
 

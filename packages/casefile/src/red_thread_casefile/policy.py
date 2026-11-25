@@ -1,9 +1,11 @@
 """What makes a draft storable and a citation still trustworthy."""
 
+from collections import Counter
 from dataclasses import dataclass
+from operator import attrgetter
 from typing import TYPE_CHECKING, Literal
 
-from red_thread_casefile.domain import OWNER
+from red_thread_casefile.domain import OWNER, PAGE_URL_SCHEME
 from red_thread_casefile.errors import (
     DecisionInThreadError,
     DecisionSourceError,
@@ -20,6 +22,8 @@ from red_thread_casefile.errors import (
 from red_thread_casefile.util import squeeze
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from red_thread_casefile.domain import Draft
 
 type CiteState = Literal['ok', 'moved', 'changed', 'missing', 'unchecked']
@@ -30,6 +34,8 @@ type DraftProblem = ClaimProblem | AuthorityProblem | KindProblem
 type SupersedeProblem = UnknownSupersededError | ForeignSupersededError
 
 CITE_STATES: tuple[CiteState, ...] = ('ok', 'moved', 'changed', 'missing', 'unchecked')
+FAILING_STATES: tuple[CiteState, ...] = ('changed', 'missing')
+QUIET_STATES: tuple[CiteState, ...] = ('ok', 'unchecked')
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -133,6 +139,10 @@ class Finding:
     moved_to: int | None = None
 
 
+def tally_states(findings: Iterable[Finding]) -> Counter[CiteState]:
+    return Counter(map(attrgetter('state'), findings))
+
+
 @dataclass(slots=True, kw_only=True, frozen=True)
 class CiteCheck:
     quote: str
@@ -184,6 +194,6 @@ class CiteCheck:
 
 
 def get_page_problem(url: str) -> InvalidPageUrlError | None:
-    if url.startswith('https://') and not any(character.isspace() for character in url):
+    if url.startswith(PAGE_URL_SCHEME) and not any(map(str.isspace, url)):
         return None
     return InvalidPageUrlError(url=url)

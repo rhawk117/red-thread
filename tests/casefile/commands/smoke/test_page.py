@@ -4,6 +4,7 @@ import json
 from typing import TYPE_CHECKING
 
 import pytest
+from red_thread_casefile.domain import PROGRAM
 
 from tests.casefile.lenses.reading import list_section_lines
 
@@ -83,7 +84,7 @@ class TestPage:
 
         assert result.code == 1
         assert result.out == ''
-        assert result.err.startswith('casefile: ')
+        assert result.err.startswith(f'{PROGRAM}: ')
         assert 'not an https link' in result.err
         assert case.joinpath('case.json').read_bytes() == before
 
@@ -91,4 +92,4 @@ class TestPage:
         result = cli.page(cli.git.root.joinpath('.red-thread', 'nothing-here'), URL)
 
         assert result.code == 1
-        assert result.err.startswith('casefile: ')
+        assert result.err.startswith(f'{PROGRAM}: ')

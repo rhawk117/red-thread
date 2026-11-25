@@ -7,7 +7,7 @@ from hypothesis import given
 from hypothesis import strategies as st
 from red_thread_casefile.domain import ENTRY_KINDS
 from red_thread_casefile.pages import HtmlWriter
-from red_thread_casefile.views import SECTIONS, Document, Item, Section
+from red_thread_casefile.views import HEADINGS, Document, Item, Section
 
 from tests.casefile.entries.strategies import optional, thread_names
 from tests.casefile.pages.html_reading import (
@@ -54,9 +54,14 @@ def list_entries(document: Document) -> list[Item]:
 def expect_kind_chips(document: Document) -> list[ChipReading]:
     counted = Counter(item.kind for item in list_entries(document))
     return [
-        ChipReading(group='kind', value=kind, label=title, count=counted[kind])
-        for kind, title in SECTIONS
-        if counted[kind]
+        ChipReading(
+            group='kind',
+            value=heading.kind,
+            label=heading.title,
+            count=counted[heading.kind],
+        )
+        for heading in HEADINGS
+        if counted[heading.kind]
     ]
 
 

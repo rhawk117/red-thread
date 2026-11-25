@@ -66,6 +66,9 @@ class SecretPatterns:
             hits += replaced
         return Redaction(text=text, hits=hits)
 
+    def scrub_text(self, text: str) -> str:
+        return self.scrub(text).text
+
 
 def create_secret_patterns() -> SecretPatterns:
     return SecretPatterns(by_name=MappingProxyType(dict(SECRET_PATTERNS)))

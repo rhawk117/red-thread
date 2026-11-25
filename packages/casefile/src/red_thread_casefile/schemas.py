@@ -1,11 +1,11 @@
 """Translation between ledger lines, submitted batches and the domain values."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from typing import TYPE_CHECKING, Any
 
 import msgspec
 
-from red_thread_casefile.domain import ENTRY_KINDS, VERDICTS, Case, Draft, Entry
+from red_thread_casefile.domain import ENTRY_KINDS, VERDICTS, Case, Draft, Entry, find_member
 from red_thread_casefile.errors import (
     InvalidFieldError,
     MalformedBatchError,
@@ -15,22 +15,22 @@ from red_thread_casefile.errors import (
 from red_thread_casefile.lenses import Plan
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Iterable, Mapping
 
-    from red_thread_casefile.domain import EntryKind, Verdict
 
 type ShapeProblem = UnknownFieldError | InvalidFieldError
 
 OPTIONAL_TEXT_FIELDS = ('cite', 'quote', 'addr', 'rests_on', 'refute', 'diagram')
-DRAFT_FIELDS = ('kind', 'text', 'source', 'verdict', *OPTIONAL_TEXT_FIELDS, 'supersedes')
+TEXT_FIELDS = ('text', *OPTIONAL_TEXT_FIELDS)
+DRAFT_FIELDS = tuple(field.name for field in fields(Draft) if field.name != 'position')
 
 
-def find_kind(value: object) -> EntryKind | None:
-    return next((kind for kind in ENTRY_KINDS if kind == value), None)
+def find_unknown_field(record: Mapping[str, object], allowed: tuple[str, ...]) -> str | None:
+    return next((name for name in record if name not in allowed), None)
 
 
-def find_verdict(value: object) -> Verdict | None:
-    return next((verdict for verdict in VERDICTS if verdict == value), None)
+def find_non_string(record: Mapping[str, object], names: Iterable[str]) -> str | None:
+    return next((name for name in names if not isinstance(record[name], str)), None)
 
 
 def read_text(record: Mapping[str, object], name: str) -> str | None:
@@ -47,12 +47,12 @@ class DraftRecord:
 
     @property
     def unknown_field(self) -> str | None:
-        return next((name for name in self.record if name not in DRAFT_FIELDS), None)
+        return find_unknown_field(self.record, DRAFT_FIELDS)
 
     @property
     def malformed_text_field(self) -> str | None:
         present = (name for name in OPTIONAL_TEXT_FIELDS if self.record.get(name) is not None)
-        return next((name for name in present if not isinstance(self.record[name], str)), None)
+        return find_non_string(self.record, present)
 
     @property
     def supersedes(self) -> tuple[str, ...] | None:
@@ -72,7 +72,7 @@ class DraftRecord:
             return UnknownFieldError(position=self.position, field=unknown, allowed=DRAFT_FIELDS)
 
         verdict = self.record.get('verdict')
-        if verdict is not None and not find_verdict(verdict):
+        if verdict is not None and not find_member(verdict, VERDICTS):
             return self.reject('verdict', 'left out, or one of ' + ', '.join(VERDICTS))
 
         if (malformed := self.malformed_text_field) is not None:
@@ -81,7 +81,7 @@ class DraftRecord:
         return None
 
     def parse(self) -> Draft | ShapeProblem:
-        kind = find_kind(self.record.get('kind'))
+        kind = find_member(self.record.get('kind'), ENTRY_KINDS)
         if not kind:
             return self.reject('kind', 'one of ' + ', '.join(ENTRY_KINDS))
 
@@ -103,7 +103,7 @@ class DraftRecord:
             text=text,
             source=source,
             supersedes=supersedes,
-            verdict=find_verdict(self.record.get('verdict')),
+            verdict=find_member(self.record.get('verdict'), VERDICTS),
             cite=read_text(self.record, 'cite'),
             quote=read_text(self.record, 'quote'),
             addr=read_text(self.record, 'addr'),
@@ -173,13 +173,12 @@ class PlanRecord:
 
     @property
     def unknown_field(self) -> str | None:
-        allowed = (*PLAN_TEXT_FIELDS, *PLAN_REF_FIELDS)
-        return next((name for name in self.record if name not in allowed), None)
+        return find_unknown_field(self.record, (*PLAN_TEXT_FIELDS, *PLAN_REF_FIELDS))
 
     @property
     def malformed_text_field(self) -> str | None:
         present = (name for name in PLAN_TEXT_FIELDS if name in self.record)
-        return next((name for name in present if not isinstance(self.record[name], str)), None)
+        return find_non_string(self.record, present)
 
     @property
     def malformed_ref_field(self) -> str | None:

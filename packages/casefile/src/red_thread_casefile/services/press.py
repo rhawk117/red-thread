@@ -52,7 +52,7 @@ class Press:
     def scrub(self, text: str | None) -> str | None:
         if text is None:
             return None
-        return self.record.patterns.scrub(text).text
+        return self.record.patterns.scrub_text(text)
 
     def draw(self) -> Path:
         edition = self.gather()

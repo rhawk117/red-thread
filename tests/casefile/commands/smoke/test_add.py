@@ -4,6 +4,7 @@ import json
 from typing import TYPE_CHECKING
 
 import pytest
+from red_thread_casefile.domain import PROGRAM
 
 from tests.casefile.batches.cases import invalid_thread_params
 
@@ -67,7 +68,7 @@ class TestAddValidation:
 
         assert result.code == 1
         assert result.out == ''
-        assert result.err.startswith('casefile: ')
+        assert result.err.startswith(f'{PROGRAM}: ')
         assert 'is not a thread name' in result.err
         assert not case.joinpath('ledger.jsonl').exists()
         assert list(case.joinpath('threads').iterdir()) == []
@@ -83,7 +84,7 @@ class TestAddValidation:
 
         assert result.code == 1
         assert result.out == ''
-        assert result.err.startswith('casefile: nothing was stored')
+        assert result.err.startswith(f'{PROGRAM}: nothing was stored')
         assert all(f'entry {position}:' in result.err for position in (2, 3, 4))
         assert 'entry 1:' not in result.err
         assert not case.joinpath('ledger.jsonl').exists()
@@ -95,7 +96,7 @@ class TestAddValidation:
 
         assert result.code == 1
         assert result.out == ''
-        assert result.err.startswith('casefile: the batch is not usable')
+        assert result.err.startswith(f'{PROGRAM}: the batch is not usable')
 
     def test_batch_file_that_does_not_exist_is_an_error_with_the_casefile_prefix(
         self, cli: CliHarness, case: Path
@@ -105,7 +106,7 @@ class TestAddValidation:
         )
 
         assert result.code == 1
-        assert result.err.startswith('casefile: ')
+        assert result.err.startswith(f'{PROGRAM}: ')
 
     def test_secret_is_redacted_before_it_is_stored_and_the_count_is_printed(
         self, cli: CliHarness, case: Path
@@ -148,5 +149,5 @@ class TestAddValidation:
         result = cli.add(elsewhere, OPEN)
 
         assert result.code == 1
-        assert result.err.startswith('casefile: ')
+        assert result.err.startswith(f'{PROGRAM}: ')
         assert 'no case.json' in result.err

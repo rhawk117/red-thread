@@ -5,8 +5,9 @@ from typing import TYPE_CHECKING
 import pytest
 from hypothesis import example, given
 from hypothesis import strategies as st
+from red_thread_casefile.domain import SHORT_HEAD
 from red_thread_casefile.policy import Finding
-from red_thread_casefile.views import SHORT_HEAD, Annotator
+from red_thread_casefile.views import NO_COMMIT, Annotator
 
 from tests.casefile.entries.strategies import optional
 from tests.casefile.services.fakes import create_entry
@@ -42,7 +43,7 @@ class TestListFlags:
         self, heads: tuple[str | None, str | None]
     ) -> None:
         entry_head, head = heads
-        recorded = 'no commit' if entry_head is None else entry_head[:SHORT_HEAD]
+        recorded = NO_COMMIT if entry_head is None else entry_head[:SHORT_HEAD]
 
         flags = self.list_flags(head, entry_head)
 

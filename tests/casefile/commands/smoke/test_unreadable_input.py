@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
+from red_thread_casefile.domain import PROGRAM
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -59,7 +60,7 @@ class TestUnreadableInput:
 
         assert result.code == 1
         assert result.out == ''
-        assert result.err.startswith('casefile: ')
+        assert result.err.startswith(f'{PROGRAM}: ')
         assert 'cannot be read' in result.err
         assert str(path) in result.err
 

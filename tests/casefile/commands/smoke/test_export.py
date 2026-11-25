@@ -4,6 +4,7 @@ import json
 from typing import TYPE_CHECKING
 
 import pytest
+from red_thread_casefile.domain import PROGRAM
 
 from tests.casefile.lenses.reading import list_headings, list_refs
 
@@ -143,7 +144,7 @@ class TestExportRefusals:
 
         assert result.code == 1
         assert result.out == ''
-        assert result.err.startswith('casefile: ')
+        assert result.err.startswith(f'{PROGRAM}: ')
         assert not case.joinpath('out').exists()
         return result.err
 
@@ -209,4 +210,4 @@ class TestExportRefusals:
         result = cli.export(cli.git.root.joinpath('.red-thread', 'nothing-here'), 'brief')
 
         assert result.code == 1
-        assert result.err.startswith('casefile: ')
+        assert result.err.startswith(f'{PROGRAM}: ')

@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
+from red_thread_casefile.domain import PROGRAM
 
 from tests.casefile.ledger.cases import corrupt_case_params
 
@@ -86,7 +87,7 @@ class TestCorruptCaseFile:
 
         assert result.code == 1
         assert result.out == ''
-        assert result.err.startswith(f'casefile: {case_file} is not a case record (')
+        assert result.err.startswith(f'{PROGRAM}: {case_file} is not a case record (')
         assert 'Traceback' not in result.err
         assert result.err.count('\n') == 1
 
@@ -119,7 +120,7 @@ class TestCorruptLedgerLine:
 
         assert result.code == 1
         assert result.out == ''
-        assert result.err.startswith(f'casefile: {ledger} line 1 is not a ledger entry')
+        assert result.err.startswith(f'{PROGRAM}: {ledger} line 1 is not a ledger entry')
         assert 'Traceback' not in result.err
 
     @ledger_command_cases()

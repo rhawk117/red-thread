@@ -25,6 +25,13 @@ ENTRY_KINDS: tuple[EntryKind, ...] = (
 VERDICTS: tuple[Verdict, ...] = ('VERIFIED', 'INFERRED', 'NEEDS-ANALYSIS', 'BLOCKED')
 CASE_KINDS: tuple[CaseKind, ...] = ('root-cause', 'claim', 'research', 'survey')
 OWNER = 'user'
+STATE_DIRECTORY = '.red-thread'
+CITE_URL_SCHEMES = ('http://', 'https://')
+PAGE_URL_SCHEME = 'https://'
+DATE_WIDTH = 10
+SHORT_HEAD = 7
+NO_HEAD = 'none'
+PROGRAM = 'redthread-casefile'
 SLUG_WORDS = 5
 PATH_CITE = re.compile(r'(?P<path>[^\s:#]+):(?P<line>[1-9]\d*)(?:-\d+)?')
 THREAD_NAME = re.compile(r'T[1-9]\d*')
@@ -35,8 +42,22 @@ def order_thread(name: str) -> int:
     return int(name[1:])
 
 
+def date_of(timestamp: str) -> str:
+    return timestamp[:DATE_WIDTH]
+
+
+def shorten_head(head: str | None, missing: str = NO_HEAD) -> str:
+    if head is None:
+        return missing
+    return head[:SHORT_HEAD]
+
+
+def find_member[T](value: object, members: tuple[T, ...]) -> T | None:
+    return next((member for member in members if member == value), None)
+
+
 def build_case_id(created: str, label: str) -> str:
-    day = created[:10].replace('-', '')
+    day = date_of(created).replace('-', '')
     words = SLUG_BREAK.sub(' ', label.lower()).split()[:SLUG_WORDS]
     return '-'.join((day, *words))
 
@@ -47,7 +68,7 @@ class Cite:
 
     @property
     def is_url(self) -> bool:
-        return self.raw.startswith(('http://', 'https://'))
+        return self.raw.startswith(CITE_URL_SCHEMES)
 
     @property
     def located(self) -> re.Match[str] | None:
@@ -175,3 +196,6 @@ class Ledger:
 
     def count_in(self, thread: str | None) -> int:
         return sum(1 for entry in self.entries if entry.thread == thread)
+
+    def describe_threads(self) -> str:
+        return ', '.join(f'{name} ({self.count_in(name)})' for name in self.threads)

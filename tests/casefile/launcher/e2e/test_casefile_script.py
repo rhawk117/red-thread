@@ -4,6 +4,7 @@ import json
 from typing import TYPE_CHECKING
 
 import pytest
+from red_thread_casefile.domain import PROGRAM
 
 from tests.casefile.launcher.launcher import hostile_uv_config_params, list_tree, snapshot
 
@@ -61,7 +62,7 @@ class TestCasefileScript:
         rejected = launcher.add(case, 'not a batch')
 
         assert (rejected.code, rejected.out) == (1, '')
-        assert 'casefile: the batch is not usable' in rejected.err
+        assert f'{PROGRAM}: the batch is not usable' in rejected.err
 
     def test_a_second_run_prints_nothing_on_standard_error(self, launcher: Launcher) -> None:
         case = launcher.init()

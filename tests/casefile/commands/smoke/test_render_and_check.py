@@ -3,6 +3,7 @@
 from typing import TYPE_CHECKING
 
 import pytest
+from red_thread_casefile.domain import PROGRAM
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -84,14 +85,14 @@ class TestRender:
 
         assert result.code == 1
         assert result.out == ''
-        assert result.err.startswith('casefile: ')
+        assert result.err.startswith(f'{PROGRAM}: ')
         assert f'{ledger.resolve()} line 2' in result.err
 
     def test_directory_that_is_not_a_case_is_an_error(self, cli: CliHarness) -> None:
         result = cli.render(cli.git.root.joinpath('.red-thread', 'nothing-here'))
 
         assert result.code == 1
-        assert result.err.startswith('casefile: ')
+        assert result.err.startswith(f'{PROGRAM}: ')
 
 
 class TestCheck:
@@ -179,5 +180,5 @@ class TestCheck:
         result = cli.check(cited)
 
         assert result.code == 1
-        assert result.err.startswith('casefile: ')
+        assert result.err.startswith(f'{PROGRAM}: ')
         assert f'{ledger.resolve()} line 1' in result.err

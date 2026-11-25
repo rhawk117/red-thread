@@ -1,44 +1,69 @@
 """The board, the documents and the check report: rendered from the ledger, never from memory."""
 
 import sys
-from collections import Counter
 from dataclasses import dataclass, field
 from itertools import chain
 from typing import TYPE_CHECKING, Self
 
-from red_thread_casefile.domain import Cite
-from red_thread_casefile.policy import CITE_STATES
+from red_thread_casefile.domain import Cite, shorten_head
+from red_thread_casefile.policy import CITE_STATES, FAILING_STATES, QUIET_STATES, tally_states
 from red_thread_casefile.util import squeeze
 
 if TYPE_CHECKING:
     from red_thread_casefile.domain import Case, Entry, EntryKind, Ledger, Verdict
     from red_thread_casefile.policy import Finding
 
-SHORT_HEAD = 7
-FAILING_STATES = ('changed', 'missing')
-QUIET_STATES = ('ok', 'unchecked')
-SECTIONS: tuple[tuple[EntryKind, str], ...] = (
-    ('decision', 'Decided'),
-    ('known', 'Known'),
-    ('hypothesis', 'Hypotheses'),
-    ('open', 'Open'),
-    ('ruled_out', 'Ruled out'),
-    ('next', 'Next'),
-    ('resource', 'Resources'),
-)
-SECTION_NOTES: tuple[tuple[EntryKind, str], ...] = (
-    ('decision', 'What the owner decided or wants taken as given.'),
-    ('known', 'Claims with a citation that was opened and checked.'),
-    ('hypothesis', 'Explanations still to test, each with what would refute it.'),
-    ('open', 'Questions and claims that are not established yet.'),
-    ('ruled_out', 'Dead ends, each closed by a citation or by the owner.'),
-    ('next', 'Steps left for whoever picks the case up.'),
-    ('resource', 'Sources and references the case points to.'),
+NO_COMMIT = 'no commit'
+
+
+@dataclass(slots=True, kw_only=True, frozen=True)
+class Heading:
+    kind: EntryKind
+    title: str
+    note: str
+
+
+HEADINGS = (
+    Heading(
+        kind='decision',
+        title='Decided',
+        note='What the owner decided or wants taken as given.',
+    ),
+    Heading(
+        kind='known',
+        title='Known',
+        note='Claims with a citation that was opened and checked.',
+    ),
+    Heading(
+        kind='hypothesis',
+        title='Hypotheses',
+        note='Explanations still to test, each with what would refute it.',
+    ),
+    Heading(
+        kind='open',
+        title='Open',
+        note='Questions and claims that are not established yet.',
+    ),
+    Heading(
+        kind='ruled_out',
+        title='Ruled out',
+        note='Dead ends, each closed by a citation or by the owner.',
+    ),
+    Heading(
+        kind='next',
+        title='Next',
+        note='Steps left for whoever picks the case up.',
+    ),
+    Heading(
+        kind='resource',
+        title='Resources',
+        note='Sources and references the case points to.',
+    ),
 )
 
 
 def describe_kind(kind: EntryKind) -> str:
-    return dict(SECTION_NOTES)[kind]
+    return next(heading.note for heading in HEADINGS if heading.kind == kind)
 
 
 def list_caveats(entry: Entry) -> list[str]:
@@ -119,7 +144,7 @@ class Annotator:
     def list_lead_flags(self, entry: Entry) -> list[str]:
         if entry.head == self.head:
             return []
-        recorded = entry.head[:SHORT_HEAD] if entry.head is not None else 'no commit'
+        recorded = shorten_head(entry.head, NO_COMMIT)
         return [f'lead, recorded at {recorded}']
 
     def list_flags(self, entry: Entry) -> list[str]:
@@ -161,13 +186,13 @@ class Board:
         notes = '; '.join(self.list_notes(entry))
         return f'- [{entry.ref}] {label_entry(entry)} ({notes})'
 
-    def render_section(self, kind: EntryKind, title: str) -> list[str]:
-        entries = self.ledger.select(kind)
+    def render_section(self, heading: Heading) -> list[str]:
+        entries = self.ledger.select(heading.kind)
         if not entries:
             return []
         shown = entries[-self.options.per_section :]
         hidden = len(entries) - len(shown)
-        lines = ['', f'## {title} ({len(entries)})']
+        lines = ['', f'## {heading.title} ({len(entries)})']
         if hidden:
             lines.append(f'(+{hidden} earlier, shown by render --full)')
         lines.extend(map(self.describe, shown))
@@ -176,7 +201,7 @@ class Board:
     def render_header(self) -> list[str]:
         live = len(self.ledger.live)
         retired = len(self.ledger.entries) - live
-        head = (self.head or 'none')[:SHORT_HEAD]
+        head = shorten_head(self.head)
         lines = [
             f'# {self.case.id}',
             f'Target: {self.case.target}',
@@ -184,15 +209,14 @@ class Board:
             f'Kind: {self.case.kind} | Round: {self.ledger.last_round} | HEAD: {head}',
             f'Entries: {live} live, {retired} retired',
         ]
-        threads = (f'{name} ({self.ledger.count_in(name)})' for name in self.ledger.threads)
-        if listed := ', '.join(threads):
+        if listed := self.ledger.describe_threads():
             lines.append(f'Threads: {listed}')
         if self.case.page_url is not None:
             lines.append(f'Page: {self.case.page_url}')
         return lines
 
     def render(self) -> str:
-        sections = (self.render_section(kind, title) for kind, title in SECTIONS)
+        sections = map(self.render_section, HEADINGS)
         return '\n'.join((*self.render_header(), *chain.from_iterable(sections)))
 
 
@@ -232,7 +256,7 @@ class CheckReport:
 
     @property
     def summary(self) -> str:
-        counted = Counter(finding.state for finding in self.findings)
+        counted = tally_states(self.findings)
         return ', '.join(f'{counted[state]} {state}' for state in CITE_STATES)
 
     def describe(self, finding: Finding) -> str:
