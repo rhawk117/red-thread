@@ -1,12 +1,14 @@
 """Documents for the page and Markdown writers, with one field carrying the text under test."""
 
 from dataclasses import replace
-from typing import TYPE_CHECKING, Literal, cast
+from typing import TYPE_CHECKING, Literal, cast, get_args
 
+import pytest
 from red_thread_casefile.policy import Finding
 from red_thread_casefile.views import Document, Fact, Item, Section
 
 if TYPE_CHECKING:
+    from _pytest.mark import ParameterSet
     from red_thread_casefile.domain import EntryKind, Verdict
     from red_thread_casefile.policy import CiteState
 
@@ -38,35 +40,10 @@ type DocumentField = Literal[
     'retired-note',
 ]
 
-DOCUMENT_FIELDS: tuple[DocumentField, ...] = (
-    'title',
-    'summary',
-    'section-title',
-    'prose',
-    'item-text',
-    'item-cite',
-    'item-url-cite',
-    'item-ref',
-    'item-note',
-    'item-flag',
-    'item-kind',
-    'item-thread',
-    'item-diagram',
-    'map-line',
-    'item-verdict',
-    'item-at',
-    'item-quote',
-    'item-state',
-    'section-note',
-    'section-kind',
-    'fact-label',
-    'fact-value',
-    'fact-url-value',
-    'retired-text',
-    'retired-note',
-)
+DOCUMENT_FIELDS: tuple[DocumentField, ...] = get_args(DocumentField.__value__)
 PLAIN_URL = 'https://example.invalid/docs'
 SCRIPT = '<script>alert(1)</script>'
+DIAGRAM = 'flowchart TD\n  A["one"] --> B["two"]\n  B --> C'
 PAYLOADS = (
     SCRIPT,
     '</title><script>alert(1)</script>',
@@ -78,6 +55,12 @@ PAYLOADS = (
     '</pre><script>alert(1)</script>',
     '</button><script>alert(1)</script>',
 )
+
+
+def payload_params() -> list[ParameterSet]:
+    return [
+        pytest.param(payload, id=f'payload-{number}') for number, payload in enumerate(PAYLOADS)
+    ]
 
 
 def create_marked_item(

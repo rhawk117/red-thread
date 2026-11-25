@@ -7,6 +7,8 @@ from hypothesis import example, given
 from hypothesis import strategies as st
 from red_thread_casefile.domain import build_case_id
 
+from tests.casefile.ledger.memory import MOMENT
+
 SHAPE = re.compile(r'\d{8}(?:-[a-z0-9]+){0,5}')
 WORDS = re.compile(r'[a-z0-9]+')
 
@@ -23,8 +25,8 @@ class TestBuildCaseId:
     plain_labels = st.text(alphabet='AbCdEf012 -_.,:!', max_size=60)
 
     @given(created=created, label=st.text(max_size=80))
-    @example(created='2026-11-21T09:30:00+00:00', label='')
-    @example(created='2026-11-21T09:30:00+00:00', label='--  !!  ')
+    @example(created=MOMENT, label='')
+    @example(created=MOMENT, label='--  !!  ')
     def test_the_id_is_a_day_then_at_most_five_lowercase_alphanumeric_words(
         self, created: str, label: str
     ) -> None:
@@ -37,7 +39,7 @@ class TestBuildCaseId:
         assert build_case_id(created, label).startswith(created[:10].replace('-', ''))
 
     @given(created=created, label=plain_labels)
-    @example(created='2026-11-21T09:30:00+00:00', label='Why the Retry queue stalls on Monday x y')
+    @example(created=MOMENT, label='Why the Retry queue stalls on Monday x y')
     def test_the_words_are_the_first_five_of_the_label_lowercased(
         self, created: str, label: str
     ) -> None:

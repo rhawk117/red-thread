@@ -5,8 +5,9 @@ from typing import TYPE_CHECKING
 
 from hypothesis import given
 from hypothesis import strategies as st
+from red_thread_casefile.charts import MAIN_LEDGER
 from red_thread_casefile.domain import ENTRY_KINDS
-from red_thread_casefile.pages import HtmlWriter
+from red_thread_casefile.pages import HtmlWriter, order_name
 from red_thread_casefile.views import HEADINGS, Document, Item, Section
 
 from tests.casefile.entries.strategies import optional, thread_names
@@ -22,12 +23,7 @@ if TYPE_CHECKING:
 
     from red_thread_casefile.pages import Chip
 
-MAIN_LEDGER_LABEL = 'main ledger'
 TWO_CHIPS = 2
-
-
-def order_name(name: str) -> tuple[int, str]:
-    return (len(name), name)
 
 
 def name_group(group: list[ChipReading]) -> str:
@@ -70,9 +66,7 @@ def expect_thread_chips(document: Document) -> list[ChipReading]:
     main = [''] * ('' in counted)
     named = sorted((name for name in counted if name), key=order_name)
     return [
-        ChipReading(
-            group='thread', value=name, label=name or MAIN_LEDGER_LABEL, count=counted[name]
-        )
+        ChipReading(group='thread', value=name, label=name or MAIN_LEDGER, count=counted[name])
         for name in (*main, *named)
     ]
 

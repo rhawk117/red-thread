@@ -15,6 +15,7 @@ from tests.casefile.pages.builders import (
     PLAIN_URL,
     create_document,
     create_document_carrying,
+    payload_params,
 )
 from tests.casefile.pages.html_reading import (
     find_buttons,
@@ -48,10 +49,7 @@ def document_field_cases() -> pytest.MarkDecorator:
 
 
 def payload_cases() -> pytest.MarkDecorator:
-    return pytest.mark.parametrize(
-        'payload',
-        [pytest.param(payload, id=f'payload-{number}') for number, payload in enumerate(PAYLOADS)],
-    )
+    return pytest.mark.parametrize('payload', payload_params())
 
 
 class TestEscaping:

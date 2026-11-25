@@ -9,12 +9,11 @@ from red_thread_casefile.errors import BatchRejectedError
 
 from tests.casefile.ledger.builders import create_draft, create_valid_draft
 from tests.casefile.ledger.directory import create_framed_directory_harness
+from tests.casefile.redaction.cases import LEAKED
 
 if TYPE_CHECKING:
     from tests.casefile.ledger.directory import DirectoryHarness
     from tests.casefile.ledger.git_repository import GitRepository
-
-LEAKED = 'AKIAIOSFODNN7EXAMPLE'
 
 
 class TestAddToDirectory:

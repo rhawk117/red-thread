@@ -8,6 +8,7 @@ from red_thread_casefile.pages import HtmlWriter
 from red_thread_casefile.policy import CITE_STATES, Finding
 from red_thread_casefile.views import Item
 
+from tests.casefile.ledger.memory import MOMENT
 from tests.casefile.pages.builders import PLAIN_URL, create_document
 from tests.casefile.pages.html_reading import (
     find_tags,
@@ -25,7 +26,6 @@ if TYPE_CHECKING:
     from red_thread_casefile.policy import CiteState
 
 PATH = 'src/queue.py:3'
-MOMENT = '2026-11-21T09:30:00+00:00'
 TWO_LINES = '    time.sleep(job.delay)\n    return job.run()'
 
 

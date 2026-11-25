@@ -19,6 +19,7 @@ from tests.casefile.ledger.builders import (
     create_entry,
     create_valid_draft,
 )
+from tests.casefile.redaction.cases import LEAKED
 
 if TYPE_CHECKING:
     from tests.casefile.citations.cases import CheckCase
@@ -27,7 +28,6 @@ if TYPE_CHECKING:
 CONFIG_PATH = 'src/config.py'
 LEAK_LINE = 'AWS_KEY = "AKIAIOSFODNN7EXAMPLE"'
 LEAK_MARK = '[REDACTED:aws-key]'
-LEAKED = 'AKIAIOSFODNN7EXAMPLE'
 
 
 def check_state_cases() -> pytest.MarkDecorator:

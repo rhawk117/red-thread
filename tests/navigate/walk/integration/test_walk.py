@@ -9,6 +9,7 @@ from red_thread_navigate.walk import walk
 from red_thread_navigate.walk.domain import tally_skips
 
 from tests.casefile.launcher.children import ChildRunner
+from tests.git import GIT_SETTINGS
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -16,16 +17,6 @@ if TYPE_CHECKING:
 
     from red_thread_navigate.walk import Walk
 
-GIT_SETTINGS = (
-    '-c',
-    'user.name=test',
-    '-c',
-    'user.email=test@example.invalid',
-    '-c',
-    'commit.gpgsign=false',
-    '-c',
-    'core.hooksPath=/dev/null',
-)
 OVER_LIMIT = 1024 * 1024 + 1
 
 

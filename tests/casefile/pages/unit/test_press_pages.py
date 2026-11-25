@@ -7,9 +7,10 @@ from red_thread_casefile.lenses import Plan
 from red_thread_casefile.views import describe_kind
 
 from tests.casefile.ledger.builders import create_entry
-from tests.casefile.lenses.builders import create_numbered_entries, seed_flag_scenario
+from tests.casefile.lenses.builders import create_numbered_entries, export, seed_flag_scenario
 from tests.casefile.lenses.cases import QUEUE_CITE, QUEUE_QUOTE, flag_params, lens_name_params
 from tests.casefile.lenses.reading import list_all_refs
+from tests.casefile.pages.builders import DIAGRAM, SCRIPT
 from tests.casefile.pages.html_reading import (
     find_tags,
     list_item_refs,
@@ -28,9 +29,6 @@ if TYPE_CHECKING:
     from tests.casefile.lenses.builders import PressHarness
     from tests.casefile.lenses.cases import FlagScenario
 
-SCRIPT = '<script>alert(1)</script>'
-DIAGRAM = 'flowchart TD\n  A["one"] --> B["two"]\n  B --> C'
-
 
 def lens_name_cases() -> pytest.MarkDecorator:
     return pytest.mark.parametrize('lens', lens_name_params())
@@ -45,13 +43,13 @@ class TestLensPage:
     def test_the_page_is_written_beside_the_markdown_when_asked_for(
         self, press_harness: PressHarness, lens: LensName
     ) -> None:
-        exported = press_harness.export(lens, html=True)
+        exported = export(press_harness, lens, html=True)
 
         assert [path.name for path in exported.paths] == [f'{lens}.md', f'{lens}.html']
         assert set(press_harness.snapshot()) == {f'out/{lens}.md', f'out/{lens}.html'}
 
     def test_no_page_is_written_unless_asked_for(self, press_harness: PressHarness) -> None:
-        exported = press_harness.export('brief')
+        exported = export(press_harness, 'brief')
 
         assert [path.name for path in exported.paths] == ['brief.md']
         assert set(press_harness.snapshot()) == {'out/brief.md'}
@@ -62,7 +60,7 @@ class TestLensPage:
             *create_numbered_entries('open', 2, start=4),
         )
 
-        press_harness.export('brief', Plan(include=('e3', 'e1', 'e5')), html=True)
+        export(press_harness, 'brief', Plan(include=('e3', 'e1', 'e5')), html=True)
 
         markdown_refs = list_all_refs(press_harness.read_markdown('brief'))
         assert list_item_refs(press_harness.read_page('brief')) == markdown_refs
@@ -74,14 +72,14 @@ class TestLensPage:
     ) -> None:
         seed_flag_scenario(press_harness, scenario)
 
-        press_harness.export('brief', html=True)
+        export(press_harness, 'brief', html=True)
 
         assert_page_shows_flags(press_harness.read_page('brief'), scenario.flags)
 
     def test_the_urgency_label_is_shown_on_the_page(self, press_harness: PressHarness) -> None:
         press_harness.seed(*create_numbered_entries('open', 2))
 
-        press_harness.export('brief', Plan(blocking=('e2',)), html=True)
+        export(press_harness, 'brief', Plan(blocking=('e2',)), html=True)
 
         page = press_harness.read_page('brief')
         assert 'not blocking' in page
@@ -94,7 +92,7 @@ class TestLensPage:
             create_entry(seq=1, kind='open', text=SCRIPT, rests_on=SCRIPT, cite=SCRIPT)
         )
 
-        press_harness.export('brief', Plan(title=SCRIPT, goal=SCRIPT), html=True)
+        export(press_harness, 'brief', Plan(title=SCRIPT, goal=SCRIPT), html=True)
 
         page = press_harness.read_page('brief')
         assert_page_holds_only_its_own_markup(page)
@@ -105,7 +103,7 @@ class TestLensPage:
     ) -> None:
         press_harness.seed(create_entry(seq=1, kind='open', text='a question', diagram=DIAGRAM))
 
-        press_harness.export('brief', html=True)
+        export(press_harness, 'brief', html=True)
 
         page = press_harness.read_page('brief')
         assert list_mermaid(page) == [DIAGRAM]
@@ -114,7 +112,7 @@ class TestLensPage:
     def test_a_diagram_is_not_in_the_markdown_output(self, press_harness: PressHarness) -> None:
         press_harness.seed(create_entry(seq=1, kind='open', text='a question', diagram=DIAGRAM))
 
-        press_harness.export('brief', html=True)
+        export(press_harness, 'brief', html=True)
 
         assert 'flowchart' not in press_harness.read_markdown('brief')
         assert 'a question' in press_harness.read_markdown('brief')
@@ -125,7 +123,7 @@ class TestLensPage:
             create_entry(seq=2, kind='known', text='b', cite=QUEUE_CITE, quote=QUEUE_QUOTE),
         )
 
-        press_harness.export('brief', html=True)
+        export(press_harness, 'brief', html=True)
 
         links = find_tags(press_harness.read_page('brief'), 'a')
         assert [link['href'] for link in links] == ['https://example.invalid/a']
@@ -136,7 +134,7 @@ class TestLensPage:
         cite = 'https://example.invalid/x" onmouseover="alert(1)'
         press_harness.seed(create_entry(seq=1, kind='known', text='a', cite=cite))
 
-        press_harness.export('brief', html=True)
+        export(press_harness, 'brief', html=True)
 
         (link,) = find_tags(press_harness.read_page('brief'), 'a')
         assert link['href'] == cite
@@ -149,7 +147,7 @@ class TestLensSections:
     ) -> None:
         press_harness.seed(*create_numbered_entries('known', 2))
 
-        press_harness.export('brief', Plan(include=('e1', 'e2')), html=True)
+        export(press_harness, 'brief', Plan(include=('e1', 'e2')), html=True)
 
         sections = {
             section.title: section for section in list_sections(press_harness.read_page('brief'))
@@ -160,7 +158,7 @@ class TestLensSections:
     def test_a_fixed_part_carries_no_kind_and_no_note(self, press_harness: PressHarness) -> None:
         press_harness.seed(*create_numbered_entries('known', 2))
 
-        press_harness.export('brief', Plan(include=('e1', 'e2')), html=True)
+        export(press_harness, 'brief', Plan(include=('e1', 'e2')), html=True)
 
         sections = {
             section.title: section for section in list_sections(press_harness.read_page('brief'))

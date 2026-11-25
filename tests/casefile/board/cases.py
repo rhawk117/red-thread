@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from tests.params import as_params
+
 if TYPE_CHECKING:
     from _pytest.mark import ParameterSet
     from red_thread_casefile.policy import CiteState
@@ -29,7 +31,7 @@ def section_cap_params() -> list[ParameterSet]:
         CapCase(name='one-over-the-cap', total=7, shown_seqs=(2, 3, 4, 5, 6, 7), hidden=1),
         CapCase(name='two-over-the-cap', total=8, shown_seqs=(3, 4, 5, 6, 7, 8), hidden=2),
     ]
-    return [case.param for case in cases]
+    return as_params(cases)
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -73,7 +75,7 @@ def lead_marker_params() -> list[ParameterSet]:
         ),
         LeadCase(name='no-commit-then-or-now', entry_head=None, board_head=None, is_lead=False),
     ]
-    return [case.param for case in cases]
+    return as_params(cases)
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -104,4 +106,4 @@ def state_count_params() -> list[ParameterSet]:
         ),
         StateCount(name='a-state-with-none-is-left-out', states=('changed',), written='1 changed'),
     ]
-    return [case.param for case in cases]
+    return as_params(cases)

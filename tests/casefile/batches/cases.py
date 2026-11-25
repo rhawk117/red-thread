@@ -16,6 +16,7 @@ from red_thread_casefile.errors import (
 )
 
 from tests.casefile.ledger.builders import URL_CITE, create_draft, create_valid_draft
+from tests.params import as_labelled_params, as_params
 
 if TYPE_CHECKING:
     from _pytest.mark import ParameterSet
@@ -110,7 +111,7 @@ def status_rule_params() -> list[ParameterSet]:
             error_type=None,
         ),
     ]
-    return [case.param for case in cases]
+    return as_params(cases)
 
 
 def authority_rule_params() -> list[ParameterSet]:
@@ -158,7 +159,7 @@ def authority_rule_params() -> list[ParameterSet]:
             error_type=None,
         ),
     ]
-    return [case.param for case in cases]
+    return as_params(cases)
 
 
 def kind_rule_params() -> list[ParameterSet]:
@@ -193,7 +194,7 @@ def kind_rule_params() -> list[ParameterSet]:
             error_type=None,
         ),
     ]
-    return [case.param for case in cases]
+    return as_params(cases)
 
 
 def invalid_thread_params() -> list[ParameterSet]:
@@ -208,4 +209,4 @@ def invalid_thread_params() -> list[ParameterSet]:
         'dotted': 'T1.e1',
         'word': 'lead',
     }
-    return [pytest.param(name, id=label) for label, name in names.items()]
+    return as_labelled_params(names)

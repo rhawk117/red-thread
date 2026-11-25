@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING
 import pytest
 from red_thread_casefile.errors import InvalidFieldError, UnknownFieldError
 
+from tests.params import as_labelled_params, as_params
+
 if TYPE_CHECKING:
     from _pytest.mark import ParameterSet
     from red_thread_casefile.errors import CaseFileError
@@ -155,7 +157,7 @@ def shape_problem_params() -> list[ParameterSet]:
             field_name='supersedes',
         ),
     ]
-    return [case.param for case in cases]
+    return as_params(cases)
 
 
 def malformed_batch_params() -> list[ParameterSet]:
@@ -170,4 +172,4 @@ def malformed_batch_params() -> list[ParameterSet]:
         'object-beside-a-number': '[{"kind": "open", "text": "a", "source": "s"}, 3]',
         'empty-input': '',
     }
-    return [pytest.param(text, id=name) for name, text in texts.items()]
+    return as_labelled_params(texts)

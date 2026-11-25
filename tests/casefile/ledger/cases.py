@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from tests.params import as_params
+
 if TYPE_CHECKING:
     from _pytest.mark import ParameterSet
 
@@ -75,4 +77,4 @@ def line_separator_params() -> list[ParameterSet]:
         SeparatorCase(name='paragraph-separator', separator=chr(0x2029)),
         SeparatorCase(name='carriage-return', separator='\r'),
     ]
-    return [case.param for case in cases]
+    return as_params(cases)

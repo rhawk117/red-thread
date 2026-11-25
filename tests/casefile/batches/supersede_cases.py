@@ -9,6 +9,8 @@ from red_thread_casefile.errors import (
     UnknownSupersededError,
 )
 
+from tests.params import as_params
+
 if TYPE_CHECKING:
     from _pytest.mark import ParameterSet
     from red_thread_casefile.errors import CaseFileError
@@ -101,7 +103,7 @@ def supersede_params() -> list[ParameterSet]:
             error_type=UnknownSupersededError,
         ),
     ]
-    return [case.param for case in cases]
+    return as_params(cases)
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -131,4 +133,4 @@ def seq_params() -> list[ParameterSet]:
         SeqCase(name='new-thread-starts-at-one', thread='T2', count=2, refs=('T2.e1', 'T2.e2')),
         SeqCase(name='thread-ten-starts-at-one', thread='T10', count=1, refs=('T10.e1',)),
     ]
-    return [case.param for case in cases]
+    return as_params(cases)

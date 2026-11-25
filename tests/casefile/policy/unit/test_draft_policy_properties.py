@@ -20,6 +20,7 @@ from red_thread_casefile.errors import (
 from red_thread_casefile.policy import DraftPolicy
 
 from tests.casefile.entries.strategies import optional, words
+from tests.params import as_params
 
 if TYPE_CHECKING:
     from _pytest.mark import ParameterSet
@@ -151,7 +152,7 @@ def draft_rule_cases() -> pytest.MarkDecorator:
             error=None,
         ),
     ]
-    return pytest.mark.parametrize('rule', [rule.param for rule in rules])
+    return pytest.mark.parametrize('rule', as_params(rules))
 
 
 class TestDraftPolicyProperties:

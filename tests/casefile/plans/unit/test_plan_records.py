@@ -8,6 +8,8 @@ from red_thread_casefile.errors import MalformedPlanError
 from red_thread_casefile.lenses import Plan
 from red_thread_casefile.schemas import PlanRecord, load_plan
 
+from tests.params import as_params
+
 if TYPE_CHECKING:
     from _pytest.mark import ParameterSet
 
@@ -52,7 +54,7 @@ def malformed_plan_cases() -> pytest.MarkDecorator:
             name='blocking-holds-null', text='{"blocking": [null]}', reason_names='blocking'
         ),
     ]
-    return pytest.mark.parametrize('scenario', [scenario.param for scenario in scenarios])
+    return pytest.mark.parametrize('scenario', as_params(scenarios))
 
 
 def find_plan_problem(text: str) -> MalformedPlanError | None:

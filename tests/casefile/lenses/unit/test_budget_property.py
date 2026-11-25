@@ -8,7 +8,7 @@ from red_thread_casefile.errors import LensOverBudgetError
 from red_thread_casefile.lenses import count_lines
 
 from tests.casefile.ledger.builders import create_entry
-from tests.casefile.lenses.builders import create_press_harness
+from tests.casefile.lenses.builders import create_press_harness, export
 from tests.casefile.lenses.cases import lens_shapes
 
 if TYPE_CHECKING:
@@ -30,7 +30,7 @@ class TestBudgetProperty:
 
     def attempt(self, harness: PressHarness, shape: LensShape) -> Outcome:
         try:
-            return harness.export(shape.name)
+            return export(harness, shape.name)
         except LensOverBudgetError as error:
             return error
 

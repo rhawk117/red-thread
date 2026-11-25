@@ -2,17 +2,19 @@
 
 import re
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, get_args
+from typing import TYPE_CHECKING
 
 import pytest
-from red_thread_casefile.assets import AssetName, read_asset
+from red_thread_casefile.assets import read_asset
 from red_thread_casefile.domain import ENTRY_KINDS
 
 from tests.casefile.pages.asset_names import ASSET_NAMES
 from tests.casefile.pages.html_reading import MERMAID_URL, TAILWIND_URL
+from tests.params import as_params
 
 if TYPE_CHECKING:
     from _pytest.mark import ParameterSet
+    from red_thread_casefile.assets import AssetName
 
 OUTSIDE_URL = re.compile(r'https?://[^\s"\'<>)]+')
 STYLE_NAMES: tuple[AssetName, ...] = ('page.css', 'tailwind.css')
@@ -41,13 +43,10 @@ def asset_url_cases() -> pytest.MarkDecorator:
     urls = [
         AssetUrls(name=name, urls=pinned if name == 'page.html' else ()) for name in ASSET_NAMES
     ]
-    return pytest.mark.parametrize('scenario', [scenario.param for scenario in urls])
+    return pytest.mark.parametrize('scenario', as_params(urls))
 
 
 class TestAssetPromises:
-    def test_the_asset_names_here_are_the_names_the_reader_takes(self) -> None:
-        assert set(get_args(AssetName.__value__)) == set(ASSET_NAMES)
-
     @asset_cases()
     def test_an_asset_is_read_as_text(self, name: AssetName) -> None:
         assert read_asset(name).strip()

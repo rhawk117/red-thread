@@ -7,6 +7,8 @@ import pytest
 from red_thread_casefile.domain import PROGRAM
 
 from tests.casefile.batches.cases import invalid_thread_params
+from tests.casefile.ledger.builders import KNOWN
+from tests.casefile.redaction.cases import LEAKED
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -14,13 +16,6 @@ if TYPE_CHECKING:
     from tests.casefile.commands.cli import CliHarness
 
 OPEN = {'kind': 'open', 'text': 'what stalls the queue', 'source': 'scout'}
-KNOWN = {
-    'kind': 'known',
-    'text': 'the sleep blocks the queue',
-    'source': 'scout',
-    'cite': 'src/queue.py:3',
-}
-LEAKED = 'AKIAIOSFODNN7EXAMPLE'
 
 
 def invalid_thread_cases() -> pytest.MarkDecorator:

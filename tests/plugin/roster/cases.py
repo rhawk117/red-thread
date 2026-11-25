@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from tests.params import as_params
+
 if TYPE_CHECKING:
     from _pytest.mark import ParameterSet
 
@@ -50,7 +52,7 @@ def allowed_pairing_params() -> list[ParameterSet]:
         ),
     ]
     pairings = (*by_the_lead, *by_the_primary, *untouched)
-    return [pairing.param for pairing in pairings]
+    return as_params(pairings)
 
 
 def refused_pairing_params() -> list[ParameterSet]:
@@ -65,7 +67,7 @@ def refused_pairing_params() -> list[ParameterSet]:
         for agent in SILENT
     ]
     pairings = (*by_the_lead, *by_the_silent)
-    return [pairing.param for pairing in pairings]
+    return as_params(pairings)
 
 
 def unreadable_input_params() -> list[ParameterSet]:

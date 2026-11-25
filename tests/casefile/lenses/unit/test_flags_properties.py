@@ -10,7 +10,7 @@ from red_thread_casefile.policy import Finding
 from red_thread_casefile.views import NO_COMMIT, Annotator
 
 from tests.casefile.entries.strategies import optional
-from tests.casefile.services.fakes import create_entry
+from tests.casefile.ledger.builders import create_entry
 
 if TYPE_CHECKING:
     from red_thread_casefile.policy import CiteState

@@ -7,21 +7,13 @@ import pytest
 
 from tests.casefile.ledger.builders import QUEUE_LINES, URL_CITE
 from tests.casefile.ledger.memory import HEAD, NEXT_HEAD
+from tests.params import as_params
 
 if TYPE_CHECKING:
     from _pytest.mark import ParameterSet
     from red_thread_casefile.domain import EntryKind
     from red_thread_casefile.lenses import LensName
 
-ALL_KINDS: tuple[EntryKind, ...] = (
-    'known',
-    'open',
-    'decision',
-    'hypothesis',
-    'ruled_out',
-    'resource',
-    'next',
-)
 QUEUE_CITE = 'src/queue.py:3'
 QUEUE_QUOTE = 'time.sleep(job.delay)'
 EDITED_LINES = (*QUEUE_LINES[:2], '    pass', QUEUE_LINES[3])
@@ -106,7 +98,7 @@ def lens_shapes() -> list[LensShape]:
 
 
 def lens_shape_params() -> list[ParameterSet]:
-    return [shape.param for shape in lens_shapes()]
+    return as_params(lens_shapes())
 
 
 def lens_name_params() -> list[ParameterSet]:
@@ -173,7 +165,7 @@ def flag_scenarios() -> list[FlagScenario]:
 
 
 def flag_params() -> list[ParameterSet]:
-    return [scenario.param for scenario in flag_scenarios()]
+    return as_params(flag_scenarios())
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -197,4 +189,4 @@ def cite_shape_params() -> list[ParameterSet]:
             written='<http://example.invalid/docs>',
         ),
     ]
-    return [shape.param for shape in shapes]
+    return as_params(shapes)

@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 import pytest
 from red_thread_casefile.domain import PROGRAM
 
+from tests.casefile.ledger.builders import KNOWN
 from tests.casefile.lenses.reading import list_headings, list_refs
 
 if TYPE_CHECKING:
@@ -13,12 +14,6 @@ if TYPE_CHECKING:
 
     from tests.casefile.commands.cli import CliHarness
 
-KNOWN = {
-    'kind': 'known',
-    'text': 'the sleep blocks the queue',
-    'source': 'scout',
-    'cite': 'src/queue.py:3',
-}
 DECISION = {'kind': 'decision', 'text': 'keep the retries', 'source': 'user'}
 
 

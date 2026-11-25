@@ -17,6 +17,8 @@ from red_thread_navigate.address import (
     parse_address,
 )
 
+from tests.params import as_params
+
 if TYPE_CHECKING:
     from _pytest.mark import ParameterSet
     from red_thread_navigate.address import Target
@@ -81,7 +83,7 @@ def address_form_cases() -> pytest.MarkDecorator:
             target=SymbolTarget(parts=('run',)),
         ),
     ]
-    return pytest.mark.parametrize('case', [case.param for case in cases])
+    return pytest.mark.parametrize('case', as_params(cases))
 
 
 def malformed_address_cases() -> pytest.MarkDecorator:

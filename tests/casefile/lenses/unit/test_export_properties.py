@@ -12,7 +12,8 @@ from red_thread_casefile.lenses import LENS_NAMES, Plan, count_lines, get_lens
 from red_thread_casefile.services import ExportRequest
 
 from tests.casefile.entries.strategies import entry_kinds
-from tests.casefile.services.fakes import create_entry, create_service_harness
+from tests.casefile.ledger.builders import create_entry
+from tests.casefile.services.fakes import create_service_harness
 
 if TYPE_CHECKING:
     from red_thread_casefile.domain import EntryKind

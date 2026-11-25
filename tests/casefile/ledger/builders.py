@@ -25,6 +25,13 @@ if TYPE_CHECKING:
 CASE_ID = '20261121-retry-queue-slowdown'
 URL_CITE = 'https://example.invalid/docs/retries#backoff'
 QUEUE_PATH = 'src/queue.py'
+PAGE_URL = 'https://claude.ai/artifact/retry-queue'
+KNOWN = {
+    'kind': 'known',
+    'text': 'the sleep blocks the queue',
+    'source': 'scout',
+    'cite': 'src/queue.py:3',
+}
 QUEUE_LINES = (
     'import time',
     'def retry(job):',

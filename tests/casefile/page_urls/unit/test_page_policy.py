@@ -9,6 +9,8 @@ from hypothesis import strategies as st
 from red_thread_casefile.errors import InvalidPageUrlError
 from red_thread_casefile.policy import get_page_problem
 
+from tests.params import as_params
+
 if TYPE_CHECKING:
     from _pytest.mark import ParameterSet
 
@@ -58,7 +60,7 @@ def page_url_cases() -> pytest.MarkDecorator:
         UrlScenario(name='leading-space', url=' https://example.invalid/a', accepted=False),
         UrlScenario(name='trailing-space', url='https://example.invalid/a ', accepted=False),
     ]
-    return pytest.mark.parametrize('scenario', [scenario.param for scenario in scenarios])
+    return pytest.mark.parametrize('scenario', as_params(scenarios))
 
 
 class TestPageUrlPolicy:

@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING
 
 from hypothesis import example, given
 from hypothesis import strategies as st
-from red_thread_casefile.charts import create_case_map, label_node
-from red_thread_casefile.domain import ENTRY_KINDS, Ledger
+from red_thread_casefile.charts import MAIN_LEDGER, create_case_map, label_node
+from red_thread_casefile.domain import ENTRY_KINDS, Ledger, order_thread
 
 from tests.casefile.charts.builders import DANGLING_REF, EntrySpec, create_threaded_ledger
 from tests.casefile.charts.reading import LABEL_CHARACTERS, read_map
@@ -16,17 +16,12 @@ from tests.casefile.ledger.builders import create_entry
 if TYPE_CHECKING:
     from red_thread_casefile.domain import Entry, EntryKind
 
-MAIN_LEDGER = 'main ledger'
 SAFE_CHARACTERS = string.ascii_letters + string.digits + ".,:/()+='-_"
 HOSTILE = '"] --> x["y\n  end\n  subgraph z["w'
 
 
 def thread_title(thread: str | None) -> str:
     return thread or MAIN_LEDGER
-
-
-def order_thread(thread: str | None) -> int:
-    return int((thread or 'T0')[1:])
 
 
 def list_names(ledger: Ledger) -> dict[str, str]:

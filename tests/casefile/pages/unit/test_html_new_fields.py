@@ -12,7 +12,7 @@ from red_thread_casefile.policy import CITE_STATES, Finding
 from red_thread_casefile.views import Document, Fact, Item, Section
 
 from tests.casefile.entries.strategies import optional
-from tests.casefile.pages.builders import PAYLOADS, create_document_carrying
+from tests.casefile.pages.builders import create_document_carrying, payload_params
 from tests.casefile.pages.html_reading import (
     find_tags,
     list_cited_quotes,
@@ -36,13 +36,6 @@ def render(document: Document) -> str:
     return HtmlWriter(document=document).render()
 
 
-def payload_cases() -> pytest.MarkDecorator:
-    return pytest.mark.parametrize(
-        'payload',
-        [pytest.param(payload, id=f'payload-{number}') for number, payload in enumerate(PAYLOADS)],
-    )
-
-
 def is_not_url(text: str) -> bool:
     return not text.startswith(URL_PREFIX)
 
@@ -56,6 +49,10 @@ def label_state(finding: Finding) -> str:
 def list_all_items(document: Document) -> list[Item]:
     shown = [item for section in document.sections for item in section.items]
     return [*shown, *document.retired]
+
+
+def payload_cases() -> pytest.MarkDecorator:
+    return pytest.mark.parametrize('payload', payload_params())
 
 
 class TestNewFieldsLandAsText:

@@ -3,12 +3,12 @@
 from typing import TYPE_CHECKING
 
 import pytest
+from red_thread_casefile.domain import ENTRY_KINDS
 from red_thread_casefile.lenses import Plan
 
 from tests.casefile.ledger.builders import CASE_ID, URL_CITE, create_entry
 from tests.casefile.lenses.builders import create_numbered_entries
 from tests.casefile.lenses.cases import (
-    ALL_KINDS,
     QUEUE_CITE,
     QUEUE_QUOTE,
     cite_shape_params,
@@ -41,7 +41,7 @@ class TestPartOrder:
     def stocked(self, press_harness: PressHarness) -> PressHarness:
         entries = (
             create_entry(seq=seq, kind=kind, text=f'a {kind} entry', cite=URL_CITE, source='user')
-            for seq, kind in enumerate(ALL_KINDS, 1)
+            for seq, kind in enumerate(ENTRY_KINDS, 1)
         )
         press_harness.seed(*entries)
         return press_harness

@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING
 import pytest
 from red_thread_casefile.domain import PROGRAM
 
+from tests.params import as_params
+
 if TYPE_CHECKING:
     from pathlib import Path
 
@@ -32,7 +34,7 @@ def unreadable_file_cases() -> pytest.MarkDecorator:
         UnreadableFile(name='export-missing-plan', command='export', path_kind='missing'),
         UnreadableFile(name='export-directory-as-plan', command='export', path_kind='directory'),
     ]
-    return pytest.mark.parametrize('scenario', [scenario.param for scenario in scenarios])
+    return pytest.mark.parametrize('scenario', as_params(scenarios))
 
 
 class TestUnreadableInput:

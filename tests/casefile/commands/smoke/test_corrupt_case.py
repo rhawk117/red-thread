@@ -6,7 +6,9 @@ from typing import TYPE_CHECKING
 import pytest
 from red_thread_casefile.domain import PROGRAM
 
+from tests.casefile.ledger.builders import PAGE_URL
 from tests.casefile.ledger.cases import corrupt_case_params
+from tests.params import as_params
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -15,7 +17,6 @@ if TYPE_CHECKING:
 
     from tests.casefile.commands.cli import CliHarness, CliRun
 
-URL = 'https://claude.ai/artifact/retry-queue'
 BATCH = '[{"kind": "open", "text": "who owns the queue", "source": "scout"}]'
 BROKEN_LINE = 'this is not a ledger entry'
 
@@ -52,19 +53,23 @@ def create_calls() -> list[CommandCall]:
             reads_ledger=True,
         ),
         CommandCall(
-            name='page', argv=('page', '--url', URL), stdin='', reads_case=True, reads_ledger=False
+            name='page',
+            argv=('page', '--url', PAGE_URL),
+            stdin='',
+            reads_case=True,
+            reads_ledger=False,
         ),
     ]
 
 
 def case_command_cases() -> pytest.MarkDecorator:
     calls = [call for call in create_calls() if call.reads_case]
-    return pytest.mark.parametrize('call', [call.param for call in calls])
+    return pytest.mark.parametrize('call', as_params(calls))
 
 
 def ledger_command_cases() -> pytest.MarkDecorator:
     calls = [call for call in create_calls() if call.reads_ledger]
-    return pytest.mark.parametrize('call', [call.param for call in calls])
+    return pytest.mark.parametrize('call', as_params(calls))
 
 
 def corrupt_case_cases() -> pytest.MarkDecorator:

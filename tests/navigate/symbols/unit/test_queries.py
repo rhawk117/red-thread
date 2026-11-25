@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from tests.params import as_params
+
 if TYPE_CHECKING:
     from _pytest.mark import ParameterSet
 
@@ -30,7 +32,7 @@ def query_notice_cases() -> pytest.MarkDecorator:
         UpstreamNotice(name='rust', copyright='Copyright (c) 2017 Maxim Sokolov'),
         UpstreamNotice(name='typescript', copyright='Copyright (c) 2017 Max Brunsfeld'),
     )
-    return pytest.mark.parametrize('notice', [notice.param for notice in notices])
+    return pytest.mark.parametrize('notice', as_params(notices))
 
 
 class TestQueryNotice:

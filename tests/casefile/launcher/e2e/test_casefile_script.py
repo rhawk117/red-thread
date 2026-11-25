@@ -7,6 +7,7 @@ import pytest
 from red_thread_casefile.domain import PROGRAM
 
 from tests.casefile.launcher.launcher import hostile_uv_config_params, list_tree, snapshot
+from tests.casefile.ledger.builders import KNOWN
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -14,12 +15,6 @@ if TYPE_CHECKING:
     from tests.casefile.launcher.launcher import Launcher
 
 OPEN = {'kind': 'open', 'text': 'what stalls the queue', 'source': 'scout'}
-KNOWN = {
-    'kind': 'known',
-    'text': 'the sleep blocks the queue',
-    'source': 'scout',
-    'cite': 'src/queue.py:3',
-}
 BATCH = json.dumps([OPEN, KNOWN])
 CASE_HOME = '.red-thread'
 
