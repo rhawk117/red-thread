@@ -1,25 +1,102 @@
 """The command line that skills and agents call: init, add, render, check, export and page."""
 
 import sys
-from argparse import ArgumentParser
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, Protocol, Self, runtime_checkable
+from typing import TYPE_CHECKING, Annotated
 
-from red_thread_casefile.domain import CASE_KINDS, build_case_id
+from cyclopts import App, CycloptsError, Parameter
+
+from red_thread_casefile.domain import CaseKind, build_case_id
 from red_thread_casefile.errors import CaseFileError, MalformedPlanError, UnreadableInputError
 from red_thread_casefile.factory import CaseFiles
-from red_thread_casefile.lenses import LENS_NAMES
+from red_thread_casefile.lenses import LensName
 from red_thread_casefile.schemas import load_plan, parse_batch
 from red_thread_casefile.services import Batch, ExportRequest, Framing
 from red_thread_casefile.views import BoardOptions, CheckReport
 
 if TYPE_CHECKING:
-    from argparse import Namespace
     from collections.abc import Sequence
 
-type CommandName = Literal['init', 'add', 'render', 'check', 'export', 'page']
-type Commands = dict[CommandName, Command]
+PROGRAM = 'casefile'
+COMMAND_NAMES = 'init, add, render, check, export or page'
+EXIT_OK = 0
+EXIT_FAILED = 1
+EXIT_USAGE = 2
+
+type StrayTokens = Annotated[str, Parameter(show=False)]
+type CaseOption = Annotated[Path, Parameter(help='the case directory that init printed')]
+type RootOption = Annotated[str, Parameter(help='the repository root, by default this directory')]
+type TargetOption = Annotated[str, Parameter(help='the question, as one line')]
+type KindOption = Annotated[CaseKind, Parameter(help='the kind of case')]
+type BarOption = Annotated[str, Parameter(help='what the answer must establish')]
+type SlugOption = Annotated[
+    str | None, Parameter(help='words for the case id, by default taken from the target')
+]
+type PublishFlag = Annotated[bool, Parameter(help='the owner chose a published page')]
+type RoundOption = Annotated[int, Parameter(name='--round', help='0 for framing, then the round')]
+type ThreadOption = Annotated[str | None, Parameter(help='the thread a lead writes to, such as T1')]
+type BatchFileOption = Annotated[
+    str | None, Parameter(help='read the batch from this file instead of standard input')
+]
+type FullFlag = Annotated[bool, Parameter(help='show every live entry')]
+type BoardFlag = Annotated[bool, Parameter(help='also write board.html in the case')]
+type LensOption = Annotated[LensName, Parameter(help='the output to write')]
+type PlanOption = Annotated[
+    str | None, Parameter(help='read the plan from this file instead of standard input')
+]
+type PageFlag = Annotated[bool, Parameter(help='also write the output as a page')]
+type UrlOption = Annotated[str, Parameter(help='the https link that publishing returned')]
+
+
+@Parameter(name='*')
+@dataclass(slots=True, kw_only=True, frozen=True)
+class InitArguments:
+    target: TargetOption
+    kind: KindOption
+    bar: BarOption
+    root: RootOption = '.'
+    slug: SlugOption = None
+    publish: PublishFlag = False
+
+
+@Parameter(name='*')
+@dataclass(slots=True, kw_only=True, frozen=True)
+class CaseArguments:
+    case: CaseOption
+
+
+@Parameter(name='*')
+@dataclass(slots=True, kw_only=True, frozen=True)
+class AddArguments:
+    case: CaseOption
+    round_number: RoundOption
+    thread: ThreadOption = None
+    file: BatchFileOption = None
+
+
+@Parameter(name='*')
+@dataclass(slots=True, kw_only=True, frozen=True)
+class RenderArguments:
+    case: CaseOption
+    full: FullFlag = False
+    html: BoardFlag = False
+
+
+@Parameter(name='*')
+@dataclass(slots=True, kw_only=True, frozen=True)
+class ExportArguments:
+    case: CaseOption
+    lens: LensOption
+    plan: PlanOption = None
+    html: PageFlag = False
+
+
+@Parameter(name='*')
+@dataclass(slots=True, kw_only=True, frozen=True)
+class PageArguments:
+    case: CaseOption
+    url: UrlOption
 
 
 def read_input(path: str | None) -> str:
@@ -32,16 +109,11 @@ def read_input(path: str | None) -> str:
         raise UnreadableInputError(path=path, reason=reason) from error
 
 
-@runtime_checkable
-class Command(Protocol):
-    def run(self, arguments: Namespace) -> int: ...
-
-
 @dataclass(slots=True, kw_only=True, frozen=True)
 class InitCommand:
     cases: CaseFiles
 
-    def run(self, arguments: Namespace) -> int:
+    def run(self, arguments: InitArguments) -> int:
         case_id = build_case_id(self.cases.clock.now(), arguments.slug or arguments.target)
         directory = Path(arguments.root).joinpath('.red-thread', case_id)
         framing = Framing(
@@ -62,15 +134,15 @@ class InitCommand:
 class AddCommand:
     cases: CaseFiles
 
-    def run(self, arguments: Namespace) -> int:
+    def run(self, arguments: AddArguments) -> int:
         parsed = parse_batch(read_input(arguments.file))
         batch = Batch(
             drafts=parsed.drafts,
             problems=parsed.problems,
-            round=arguments.round,
+            round=arguments.round_number,
             thread=arguments.thread,
         )
-        added = self.cases.bind(Path(arguments.case)).add(batch)
+        added = self.cases.bind(arguments.case).add(batch)
         refs = ' '.join(entry.ref for entry in added.entries)
         print(f'stored {refs}')
         if added.redactions:
@@ -82,8 +154,8 @@ class AddCommand:
 class RenderCommand:
     cases: CaseFiles
 
-    def run(self, arguments: Namespace) -> int:
-        directory = Path(arguments.case)
+    def run(self, arguments: RenderArguments) -> int:
+        directory = arguments.case
         options = BoardOptions.full() if arguments.full else BoardOptions()
         print(self.cases.bind(directory).show(options))
         if arguments.html:
@@ -95,8 +167,8 @@ class RenderCommand:
 class CheckCommand:
     cases: CaseFiles
 
-    def run(self, arguments: Namespace) -> int:
-        report = CheckReport(findings=self.cases.bind(Path(arguments.case)).check())
+    def run(self, arguments: CaseArguments) -> int:
+        report = CheckReport(findings=self.cases.bind(arguments.case).check())
         print(report.render())
         return int(report.has_failures)
 
@@ -105,7 +177,7 @@ class CheckCommand:
 class ExportCommand:
     cases: CaseFiles
 
-    def run(self, arguments: Namespace) -> int:
+    def run(self, arguments: ExportArguments) -> int:
         unplanned = arguments.plan is None and sys.stdin.isatty()
         loaded = load_plan('' if unplanned else read_input(arguments.plan))
         if isinstance(loaded, MalformedPlanError):
@@ -115,7 +187,7 @@ class ExportCommand:
             raise problem
 
         request = ExportRequest(lens=arguments.lens, plan=loaded.parse(), html=arguments.html)
-        exported = self.cases.open_press(Path(arguments.case)).export(request)
+        exported = self.cases.open_press(arguments.case).export(request)
         written = '\n'.join(f'wrote {path}' for path in exported.paths)
         print(written)
         print(f'{exported.lines} of {exported.budget} lines')
@@ -126,94 +198,62 @@ class ExportCommand:
 class PageCommand:
     cases: CaseFiles
 
-    def run(self, arguments: Namespace) -> int:
-        case = self.cases.open_press(Path(arguments.case)).record_page(arguments.url)
+    def run(self, arguments: PageArguments) -> int:
+        case = self.cases.open_press(arguments.case).record_page(arguments.url)
         print(f'recorded {case.page_url}')
         return 0
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class CommandRouter:
-    commands: Commands = field(default_factory=dict)
-
-    def mount(self, commands: Commands) -> Self:
-        self.commands.update(commands)
-        return self
-
-    def dispatch(self, name: CommandName, arguments: Namespace) -> int:
-        return self.commands[name].run(arguments)
+def report_command_problem(*tokens: StrayTokens) -> int:
+    problem = f'unknown command "{tokens[0]}"' if tokens else 'a command is required'
+    print(f'{PROGRAM}: {problem}; choose from {COMMAND_NAMES}', file=sys.stderr)
+    return EXIT_USAGE
 
 
-def create_command_router(cases: CaseFiles | None = None) -> CommandRouter:
+def create_app(cases: CaseFiles | None = None) -> App:
     cases = cases or CaseFiles()
-    return CommandRouter().mount({
-        'init': InitCommand(cases=cases),
-        'add': AddCommand(cases=cases),
-        'render': RenderCommand(cases=cases),
-        'check': CheckCommand(cases=cases),
-        'export': ExportCommand(cases=cases),
-        'page': PageCommand(cases=cases),
-    })
-
-
-def add_case_argument(parser: ArgumentParser) -> None:
-    parser.add_argument('--case', required=True, help='the case directory that init printed')
-
-
-def describe_init(parser: ArgumentParser) -> None:
-    parser.add_argument(
-        '--root', default='.', help='the repository root, by default this directory'
+    app = App(
+        name=PROGRAM,
+        help='The red-thread case file.',
+        version_flags=(),
+        default_parameter=Parameter(negative=()),
+        exit_on_error=False,
+        print_error=False,
+        result_action='return_value',
     )
-    parser.add_argument('--target', required=True, help='the question, as one line')
-    parser.add_argument('--kind', required=True, choices=CASE_KINDS, help='the kind of case')
-    parser.add_argument('--bar', required=True, help='what the answer must establish')
-    parser.add_argument('--slug', help='words for the case id, by default taken from the target')
-    parser.add_argument('--publish', action='store_true', help='the owner chose a published page')
-
-
-def describe_add(parser: ArgumentParser) -> None:
-    add_case_argument(parser)
-    parser.add_argument('--round', required=True, type=int, help='0 for framing, then the round')
-    parser.add_argument('--thread', help='the thread a lead writes to, such as T1')
-    parser.add_argument('--file', help='read the batch from this file instead of standard input')
-
-
-def describe_render(parser: ArgumentParser) -> None:
-    add_case_argument(parser)
-    parser.add_argument('--full', action='store_true', help='show every live entry')
-    parser.add_argument('--html', action='store_true', help='also write board.html in the case')
-
-
-def describe_export(parser: ArgumentParser) -> None:
-    add_case_argument(parser)
-    parser.add_argument('--lens', required=True, choices=LENS_NAMES, help='the output to write')
-    parser.add_argument('--plan', help='read the plan from this file instead of standard input')
-    parser.add_argument('--html', action='store_true', help='also write the output as a page')
-
-
-def describe_page(parser: ArgumentParser) -> None:
-    add_case_argument(parser)
-    parser.add_argument('--url', required=True, help='the https link that publishing returned')
-
-
-def create_parser() -> ArgumentParser:
-    parser = ArgumentParser(prog='casefile', description='The red-thread case file.')
-    commands = parser.add_subparsers(dest='command', required=True)
-    describe_init(commands.add_parser('init', help='create a case and record what the tree offers'))
-    describe_add(commands.add_parser('add', help='validate a JSON batch whole, then append it'))
-    describe_render(
-        commands.add_parser('render', help='print the board, with its citations checked')
+    app.default(report_command_problem)
+    app.command(
+        InitCommand(cases=cases).run,
+        name='init',
+        help='create a case and record what the tree offers',
     )
-    add_case_argument(commands.add_parser('check', help='resolve every live citation again'))
-    describe_export(commands.add_parser('export', help='write a lens output from the ledger'))
-    describe_page(commands.add_parser('page', help='record the link of the published board'))
-    return parser
+    app.command(
+        AddCommand(cases=cases).run, name='add', help='validate a JSON batch whole, then append it'
+    )
+    app.command(
+        RenderCommand(cases=cases).run,
+        name='render',
+        help='print the board, with its citations checked',
+    )
+    app.command(
+        CheckCommand(cases=cases).run, name='check', help='resolve every live citation again'
+    )
+    app.command(
+        ExportCommand(cases=cases).run, name='export', help='write a lens output from the ledger'
+    )
+    app.command(
+        PageCommand(cases=cases).run, name='page', help='record the link of the published board'
+    )
+    return app
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    arguments = create_parser().parse_args(argv)
     try:
-        return create_command_router().dispatch(arguments.command, arguments)
+        code = create_app()(argv)
+    except CycloptsError as error:
+        print(f'{PROGRAM}: {error}', file=sys.stderr)
+        return EXIT_USAGE
     except CaseFileError as error:
-        print(f'casefile: {error}', file=sys.stderr)
-        return 1
+        print(f'{PROGRAM}: {error}', file=sys.stderr)
+        return EXIT_FAILED
+    return code if isinstance(code, int) else EXIT_OK
