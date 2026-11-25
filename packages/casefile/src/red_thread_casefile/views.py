@@ -73,6 +73,10 @@ def list_caveats(entry: Entry) -> list[str]:
     return [f'{label}: {value}' for label, value in labelled if value is not None]
 
 
+def describe_lead(recorded: str) -> str:
+    return f'{LEAD_FLAG_PREFIX}recorded at {recorded}'
+
+
 def get_shown_verdict(entry: Entry) -> Verdict | None:
     return entry.verdict if entry.kind != 'known' else None
 
@@ -109,7 +113,7 @@ class Annotator:
         recorded = self.get_recorded_head(entry)
         if recorded is None:
             return []
-        return [f'{LEAD_FLAG_PREFIX}recorded at {recorded}']
+        return [describe_lead(recorded)]
 
     def list_flags(self, entry: Entry) -> list[str]:
         return [*self.list_lead_flags(entry), *list_cite_flags(self.find(entry))]

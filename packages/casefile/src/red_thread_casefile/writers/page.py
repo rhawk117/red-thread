@@ -2,7 +2,6 @@
 
 from collections import Counter
 from dataclasses import dataclass, field
-from html import escape
 from string import Template as PageTemplate
 from typing import TYPE_CHECKING, Literal
 
@@ -97,7 +96,7 @@ class HtmlPage:
         sections = (*document.sections, *document.appendix)
         written = tuple(map(self.writer.write_section, sections))
         return PageTemplate(read_asset('page.html')).substitute(
-            title=escape(document.title),
+            title=render(t'{document.title}'),
             style=read_asset('page.css'),
             theme=read_asset('tailwind.css'),
             script=read_asset('page.js'),

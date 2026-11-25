@@ -8,10 +8,10 @@ import pytest
 from hypothesis import example, given
 from hypothesis import strategies as st
 from red_thread_casefile.assets import read_asset
-from red_thread_casefile.documents import parse_line
-from red_thread_casefile.writers.markup import HtmlInlines, render, render_value
+from red_thread_casefile.writers.markup import render, render_value
 
 from tests.casefile.pages.asset_names import ASSET_NAMES
+from tests.casefile.writers.reading import render_marked_up
 
 if TYPE_CHECKING:
     from red_thread_casefile.assets import AssetName
@@ -21,10 +21,6 @@ METACHARACTERS = '<>"\''
 plain = st.text(
     alphabet=st.characters(blacklist_categories=('Cs',), blacklist_characters='`'), max_size=30
 )
-
-
-def render_marked_up(text: str) -> str:
-    return render_value(HtmlInlines().write_line(parse_line(text)))
 
 
 def asset_cases() -> pytest.MarkDecorator:

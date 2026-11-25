@@ -65,6 +65,9 @@ class TestCitation:
     def test_an_entry_without_a_cite_has_no_citation(self) -> None:
         assert self.builder.build(create_entry(head=BOARD_HEAD)).citation is None
 
+    def test_a_quote_without_a_cite_gives_no_citation(self) -> None:
+        assert self.builder.build(create_entry(quote='sleep(5)', head=BOARD_HEAD)).citation is None
+
     def test_a_citation_carries_its_quote_and_its_finding(self) -> None:
         entry = create_entry(seq=1, cite=self.cite, quote='sleep(5)', head=BOARD_HEAD)
 

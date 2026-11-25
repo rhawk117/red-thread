@@ -7,10 +7,10 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 from red_thread_casefile.assets import read_asset
-from red_thread_casefile.documents import parse_line
-from red_thread_casefile.writers.markup import HtmlInlines, render, render_part, render_value
+from red_thread_casefile.writers.markup import render, render_part, render_value
 
 from tests.casefile.pages.asset_names import ASSET_NAMES
+from tests.casefile.writers.reading import render_marked_up
 
 if TYPE_CHECKING:
     from red_thread_casefile.assets import AssetName
@@ -23,10 +23,6 @@ code_text = st.text(text_characters, min_size=1)
 
 def create_marked_up(plain: str, code: str) -> str:
     return f'{plain}`{code}`'
-
-
-def render_marked_up(text: str) -> str:
-    return render_value(HtmlInlines().write_line(parse_line(text)))
 
 
 def asset_cases() -> pytest.MarkDecorator:
@@ -104,7 +100,7 @@ class TestRender:
         assert render_part(closing) == '>'
 
 
-class TestMarkUp:
+class TestInlineMarkup:
     plain_runs = st.lists(st.tuples(plain_text, code_text), max_size=4)
 
     def test_a_code_span_becomes_a_code_element(self) -> None:

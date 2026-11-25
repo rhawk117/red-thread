@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 from red_thread_casefile.domain import Cite
 from red_thread_casefile.util import squeeze
-from red_thread_casefile.views import LEAD_FLAG_PREFIX, get_shown_verdict
+from red_thread_casefile.views import describe_lead, get_shown_verdict
 
 if TYPE_CHECKING:
     from red_thread_casefile.domain import Entry, EntryKind, Verdict
@@ -17,7 +17,6 @@ if TYPE_CHECKING:
 type NoteKind = Literal['rests_on', 'refuted_by', 'retires', 'retired_by', 'urgency', 'source']
 
 CODE_SPAN = re.compile(r'`([^`]+)`')
-LEAD_PREFIX = f'{LEAD_FLAG_PREFIX}recorded at '
 
 
 @runtime_checkable
@@ -141,7 +140,7 @@ class EntryNode:
     def flags(self) -> tuple[str, ...]:
         if self.lead is None:
             return ()
-        return (f'{LEAD_PREFIX}{self.lead}',)
+        return (describe_lead(self.lead),)
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
