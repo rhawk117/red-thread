@@ -23,6 +23,36 @@ Suggested order: section 1 (bugs hide there), then 3.1, 3.2 and 2.1 (largest lin
 
 ______________________________________________________________________
 
+## Fix status (2026-11-25)
+
+Fixed on `feat/package-docs` in commits 6e51953 (casefile), fbd6227 (navigate), 2b3848d (CI), 914b9b6 (tests), 901995e (4.2) and d61c76a (console scripts).
+
+| Items | Status |
+| --- | --- |
+| 1.1, 1.3, 1.4, 1.5, 1.8, 1.10, 1.11, 1.12 | Done. Both CLIs, and their `[project.scripts]` entries, are named after the bin launchers: `redthread-casefile` and `redthread-navigate`. |
+| 1.2 | Changed. Casefile keeps its hand-written tuples, and `tests/casefile/entries/unit/test_literal_tuples.py` checks that each tuple equals `get_args` on its alias. Navigate `KINDS` is built from `get_args`, with the left-out kinds named in `UNCAPTURED_KINDS`. See the correction under 1.2. |
+| 1.6 | Done in part. One `shorten_head(head, missing)` helper owns the slice. The two placeholders, `none` in the case header and `no commit` in the lead flag, keep their wording. |
+| 1.7 | Done. The `'moved'` comparison in `pages.py` stays, because ty checks it against the `CiteState` Literal. |
+| 1.9 | Done for casefile, which builds its command table once. In navigate, the verb table is built once, but `VALID_OPTIONS` stays hand-written: deriving it would mean reading cyclopts internals. |
+| 2.1, 2.3, 2.4, 2.5, 2.7 | Done. |
+| 2.2 | Done in part. The two records share `find_unknown_field` and `find_non_string`. The decode blocks stay separate, because one raises its error and the other returns it. |
+| 2.6 | Done in part. An `append_text` helper is added. There is no `require_case()` guard: python.md bans functions that exist only to raise, and returning the error saves no lines. |
+| 2.8, 2.9 | Done in part. `symbol_address`, `fit_text` and `keep_prefix` are added. No `rung()` helper was added, and the `shorten_*` merge was skipped, because both made the code longer. |
+| 2.10 | Done in part. The command table and the command names now come from one place. The argument classes are not merged, because that would need inheritance. |
+| 3.1 to 3.7 | Done, except two items. The flag prefixes have no production constant to import. `SCOUTS` stays a copy, because the hook script cannot be imported. |
+| 4.1a | Done: `tests/params.py` holds `as_params`. 4.1b is not done, because it needs a rule change. |
+| 4.2 | Done: `errors.entry_prefix`. |
+| 5.1 | Done, except for the corrections below. |
+| 5.2 | Not done, and out of scope. |
+
+Corrections found while fixing:
+
+- 1.2 and 4.3: `get_args` returns `tuple[Any, ...]`. Assigning that to `tuple[EntryKind, ...]` in production code triggers ty's `unsound-assignment`, which `error-on-warning` turns into an error. Production code keeps the tuples, and a test guards them.
+- 5.1, `store.py:177`: `str.splitlines()` is not a drop-in. It also splits on `\x1e` and other separators, which a Hypothesis property caught. The `split('\n')` stays.
+- 5.1, the `methodcaller` swap and the `attrgetter` swaps whose result is returned: ty infers `Any` and reports `unsound-return`. The comprehensions stay wherever the value is returned with a declared type.
+
+______________________________________________________________________
+
 ## 1. Conflicting sources of truth
 
 ### 1.1 The CLI program name has three spellings (values disagree)
@@ -49,7 +79,7 @@ Fix: pick the name agents type, which is the `bin/` launcher (`redthread-casefil
 
 Every pair agrees today (`get_args(EntryKind.__value__) == ENTRY_KINDS` and the same check for `Verdict` both print `True`). Nothing keeps them in sync, though.
 
-Fix: `ENTRY_KINDS: tuple[EntryKind, ...] = typing.get_args(EntryKind.__value__)`, and the same for each pair. Replace `KINDS` with a frozenset built the same way, minus `'property'`, and name that exclusion.
+Fix (corrected, see Fix status): keep the tuples in production and assert `tuple == get_args(Alias.__value__)` in a test, because ty rejects the `get_args` assignment in production. Replace `KINDS` with a frozenset built the same way, minus `'property'`, and name that exclusion.
 
 ### 1.3 The Draft field list is defined in four places
 
