@@ -289,7 +289,7 @@ One symbol model sits behind a per-language backend, chosen by file suffix.
 - A symbol's span starts at its `def` or `class` line, and a decorator above it is not part of the span. The tree-sitter languages differ: a TypeScript or JavaScript class decorator is inside the span, but Rust attributes (`#[derive(...)]`, `#[inline]`) and TypeScript or JavaScript member decorators sit outside it, so a slice of a Rust item does not show its `#[cfg]` or `#[test]` gate. This matches the gold spans of the Python evaluation cases.
 - A missing PATH is a refusal that prints a message and exits 1, and an empty PATH is a usage error that exits 2.
 - In Go, a use of a type counts as a reference to it, so `find` and the `map` reference counts include type uses.
-- In Rust, a type name counts as a reference in these positions: parameter, return (including a trait method signature), `let` annotation, `const`, `static` and `type` right-hand sides, struct and tuple-struct fields, `fn(T)` pointer parameters, the left side of a `where` predicate, generic argument and generic head, struct literal, scoped type, types nested in `&T`, `*const T`, `[T; N]` and tuples, and the self type of an impl. A bare value that starts with an uppercase letter counts too, such as a unit struct or a constant, and so does a capitalized path segment such as `T` in `T::new()` or `E` in `E::Start`. Generic parameters match by name, as in Go. A declaring name is never its own reference. A lowercase path segment.
+- In Rust, a type name counts as a reference in these positions: parameter, return (including a trait method signature), `let` annotation, `const`, `static` and `type` right-hand sides, struct and tuple-struct fields, `fn(T)` pointer parameters, the left side of a `where` predicate, generic argument and generic head, struct literal, scoped type, types nested in `&T`, `*const T`, `[T; N]` and tuples, and the self type of an impl. A bare value that starts with an uppercase letter counts too, such as a unit struct or a constant, and so does a capitalized path segment such as `T` in `T::new()` or `E` in `E::Start`. Generic parameters match by name, as in Go. A declaring name is never its own reference. A lowercase path segment such as `std`, `fmt` or `m` is not listed as a reference.
 - `find` matches a definition or a reference by its full address as well as by its last part, so `find aws_vpc.this` and `find this` both reach it.
 - A refused slice names the next command, so a scout does not guess. An unknown name, an address past the end of the file, a path outside the root and a directory each print `Next step: ...`. The read refusals (over 1 MiB, binary, not UTF-8, unreadable) print no hint, and the navigate skill says what to do instead. The navigate skill describes a refusal by its stable markers (`Next step:`, `cannot be sliced:`, `nearest names:`, `is not valid:`) and not by the wording around them.
 
@@ -531,7 +531,7 @@ All made by the owner on 2026-11-21.
 
 ### 2026-11-23: in-repo navigation
 
-All made by the owner on 2026-11-23.
+Made by the owner from 2026-11-23; each row begins with its own date.
 
 | Decision | Choice and reason |
 | --- | --- |
