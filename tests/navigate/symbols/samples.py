@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from red_thread_navigate.symbols.domain import FileSymbols
+
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class SourceDir:
@@ -16,6 +18,11 @@ class SourceDir:
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(text, encoding='utf-8')
         return target
+
+
+def spans_of(parsed: FileSymbols, qualified_name: str) -> list[tuple[str, int, int]]:
+    named = (symbol for symbol in parsed.symbols if symbol.qualified_name == qualified_name)
+    return sorted((symbol.kind, symbol.start_line, symbol.end_line) for symbol in named)
 
 
 SAMPLE = '''\

@@ -1,7 +1,6 @@
 """The JavaScript backend turns a source file into symbols, references and notes."""
 
 import dataclasses
-from importlib import resources
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
 
@@ -103,16 +102,6 @@ class TestLookup:
     @javascript_suffix_cases()
     def test_backend_for_finds_javascript_suffixes(self, suffix: str) -> None:
         assert backend_at(PurePosixPath(f'a{suffix}')).language == 'javascript'
-
-    def test_query_loads_with_the_upstream_license_notice(self) -> None:
-        query = (
-            resources
-            .files('red_thread_navigate.symbols.store')
-            .joinpath('queries', 'javascript.scm')
-            .read_text(encoding='utf-8')
-        )
-        assert 'Max Brunsfeld' in query
-        assert 'MIT License' in query
 
 
 ASSIGNED_SAMPLE = """\

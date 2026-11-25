@@ -43,7 +43,7 @@ def list_tracked(root: Path) -> TrackedFiles:
     if finished.returncode != 0:
         return TrackedFiles(names=None, failed=not is_outside_work_tree(git, root))
     names = finished.stdout.decode('utf-8', errors='surrogateescape').split('\0')
-    return TrackedFiles(names=tuple(name for name in names if name))
+    return TrackedFiles(names=tuple(filter(None, names)))
 
 
 def is_inside(root: Path, path: Path) -> bool:

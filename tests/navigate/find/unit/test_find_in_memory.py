@@ -5,9 +5,9 @@ from red_thread_navigate.services import Navigator
 from red_thread_navigate.symbols.store import RegistryBackends
 from red_thread_navigate.walk import PathMissingError, SourceTree
 
+from tests.navigate.samples import BIG_BUDGET
 from tests.navigate.walk.memory import MemoryTree
 
-BUDGET = 10_000
 CORE = 'def helper():\n    return 1\n'
 CLIENT = 'from core import helper\n\n\ndef run():\n    helper()\n'
 
@@ -27,7 +27,7 @@ class TestFindInMemory:
     def test_a_definition_and_its_reference_are_found_without_disk(
         self, navigator: Navigator, tree: MemoryTree
     ) -> None:
-        text = navigator.find('helper', tree.root, budget=BUDGET)
+        text = navigator.find('helper', tree.root, budget=BIG_BUDGET)
 
         assert 'core.py' in text
         assert 'client.py' in text
@@ -35,7 +35,7 @@ class TestFindInMemory:
     def test_a_name_nothing_defines_reports_no_match(
         self, navigator: Navigator, tree: MemoryTree
     ) -> None:
-        text = navigator.find('missing', tree.root, budget=BUDGET)
+        text = navigator.find('missing', tree.root, budget=BIG_BUDGET)
 
         assert 'missing' in text
         assert 'core.py' not in text
@@ -44,4 +44,4 @@ class TestFindInMemory:
         self, navigator: Navigator, tree: MemoryTree
     ) -> None:
         with pytest.raises(PathMissingError):
-            navigator.find('helper', tree.root / 'elsewhere', budget=BUDGET)
+            navigator.find('helper', tree.root / 'elsewhere', budget=BIG_BUDGET)

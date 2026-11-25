@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
+from red_thread_navigate.budget import MIN_BUDGET
 
 from tests.casefile.launcher.children import ChildRunner
 from tests.casefile.launcher.launcher import (
@@ -13,21 +14,13 @@ from tests.casefile.launcher.launcher import (
     read_outside_environment,
     snapshot,
 )
+from tests.navigate.samples import CORE
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from tests.casefile.launcher.children import Finished
 
-CORE = """\
-def helper():
-    return 1
-
-
-class Widget:
-    def render(self):
-        return helper()
-"""
 CLIENT = """\
 from core import helper
 
@@ -120,7 +113,7 @@ class TestNavigateScript:
         finished = navigator.run('--budget', '5', 'map', '.')
 
         assert (finished.code, finished.out) == (2, '')
-        assert 'minimum of 32' in finished.err
+        assert f'minimum of {MIN_BUDGET}' in finished.err
 
     def test_a_refusal_exits_one_on_standard_error(self, navigator: Navigator) -> None:
         finished = navigator.run('slice', 'core.py#Missing')

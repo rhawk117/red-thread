@@ -1,6 +1,7 @@
 """The navigate command line: parse the arguments, run one verb and print its output."""
 
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 from importlib.metadata import version
 from pathlib import Path
@@ -15,7 +16,8 @@ from red_thread_navigate.slice import SliceError
 from red_thread_navigate.symbols.store import RegistryBackends
 from red_thread_navigate.walk import DiskTree, PathMissingError
 
-PROGRAM = 'red-thread-navigate'
+PROGRAM = 'redthread-navigate'
+DISTRIBUTION = 'red-thread-navigate'
 DEFAULT_BUDGET = 2000
 VALID_OPTIONS = '--budget N, --version, --help'
 EXIT_OK = 0
@@ -36,8 +38,8 @@ class UsageError(ValueError):
 
 
 class MissingVerbError(UsageError):
-    def __init__(self) -> None:
-        super().__init__(problem='a verb is required: map, find or slice')
+    def __init__(self, *, verbs: str) -> None:
+        super().__init__(problem=f'a verb is required: {verbs}')
 
 
 class EmptyPathError(UsageError):
@@ -84,7 +86,7 @@ def request_slice(address: str, /) -> Request:
 
 
 def describe_version() -> str:
-    return f'{PROGRAM} {version("red-thread-navigate")}'
+    return f'{PROGRAM} {version(DISTRIBUTION)}'
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -93,7 +95,7 @@ class Launcher:
 
     def launch(self, *tokens: Tokens, budget: Budget = DEFAULT_BUDGET) -> Request | None:
         if not tokens:
-            raise MissingVerbError
+            raise MissingVerbError(verbs=describe_verbs())
 
         request = self.verbs(tokens)
         if not isinstance(request, Request):
@@ -114,11 +116,8 @@ def build_app() -> App:
         print_error=False,
         result_action='return_value',
     )
-    verbs.command(request_map, name='map', help='list the files and symbols under PATH')
-    verbs.command(
-        request_find, name='find', help='list the definitions and references of NAME under PATH'
-    )
-    verbs.command(request_slice, name='slice', help='print the code ADDRESS names')
+    for name, verb in create_verbs().items():
+        verbs.command(verb.parse, name=name, help=verb.help)
     verbs.meta.default(Launcher(verbs=verbs).launch)
     return verbs
 
@@ -153,14 +152,45 @@ class VerbRunner:
         )
 
 
+type RequestParser = Callable[..., Request]
+type VerbRun = Callable[[VerbRunner], str]
+
+
+@dataclass(slots=True, kw_only=True, frozen=True)
+class Verb:
+    help: str
+    parse: RequestParser
+    run: VerbRun
+
+
+def create_verbs() -> dict[VerbName, Verb]:
+    return {
+        'map': Verb(
+            help='list the files and symbols under PATH',
+            parse=request_map,
+            run=VerbRunner.map_target,
+        ),
+        'find': Verb(
+            help='list the definitions and references of NAME under PATH',
+            parse=request_find,
+            run=VerbRunner.find_name,
+        ),
+        'slice': Verb(
+            help='print the code ADDRESS names',
+            parse=request_slice,
+            run=VerbRunner.slice_address,
+        ),
+    }
+
+
+def describe_verbs() -> str:
+    *first, last = create_verbs()
+    return f'{", ".join(first)} or {last}'
+
+
 def run_verb(navigator: Navigator, request: Request) -> str:
     runner = VerbRunner(navigator=navigator, request=request)
-    verbs = {
-        'map': runner.map_target,
-        'find': runner.find_name,
-        'slice': runner.slice_address,
-    }
-    return verbs[request.verb]()
+    return create_verbs()[request.verb].run(runner)
 
 
 def navigate(navigator: Navigator, request: Request) -> int:

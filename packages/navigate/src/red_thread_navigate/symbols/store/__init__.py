@@ -22,63 +22,41 @@ if TYPE_CHECKING:
 
 @cache
 def create_backends() -> tuple[Backend, ...]:
-    return (
-        PythonBackend(),
-        create_tree_sitter_backend(
-            TreeSitterSpec(
-                language='javascript',
-                suffixes=frozenset({'.js', '.mjs', '.cjs', '.jsx'}),
-                grammar=tree_sitter.Language(tree_sitter_javascript.language()),
-                query_name='javascript',
-                aliases={},
-            )
+    specs = (
+        TreeSitterSpec(
+            language='javascript',
+            suffixes=frozenset({'.js', '.mjs', '.cjs', '.jsx'}),
+            grammar=tree_sitter.Language(tree_sitter_javascript.language()),
         ),
-        create_tree_sitter_backend(
-            TreeSitterSpec(
-                language='typescript',
-                suffixes=frozenset({'.ts', '.mts', '.cts'}),
-                grammar=tree_sitter.Language(tree_sitter_typescript.language_typescript()),
-                query_name='typescript',
-                aliases={},
-            )
+        TreeSitterSpec(
+            language='typescript',
+            suffixes=frozenset({'.ts', '.mts', '.cts'}),
+            grammar=tree_sitter.Language(tree_sitter_typescript.language_typescript()),
         ),
-        create_tree_sitter_backend(
-            TreeSitterSpec(
-                language='tsx',
-                suffixes=frozenset({'.tsx'}),
-                grammar=tree_sitter.Language(tree_sitter_typescript.language_tsx()),
-                query_name='typescript',
-                aliases={},
-            )
+        TreeSitterSpec(
+            language='tsx',
+            suffixes=frozenset({'.tsx'}),
+            grammar=tree_sitter.Language(tree_sitter_typescript.language_tsx()),
+            query_name='typescript',
         ),
-        create_tree_sitter_backend(
-            TreeSitterSpec(
-                language='go',
-                suffixes=frozenset({'.go'}),
-                grammar=tree_sitter.Language(tree_sitter_go.language()),
-                query_name='go',
-                aliases={},
-            )
+        TreeSitterSpec(
+            language='go',
+            suffixes=frozenset({'.go'}),
+            grammar=tree_sitter.Language(tree_sitter_go.language()),
         ),
-        create_tree_sitter_backend(
-            TreeSitterSpec(
-                language='terraform',
-                suffixes=frozenset({'.tf'}),
-                grammar=tree_sitter.Language(tree_sitter_hcl.language()),
-                query_name='terraform',
-                aliases={'variable': 'var', 'locals': 'local'},
-            )
+        TreeSitterSpec(
+            language='terraform',
+            suffixes=frozenset({'.tf'}),
+            grammar=tree_sitter.Language(tree_sitter_hcl.language()),
+            aliases={'variable': 'var', 'locals': 'local'},
         ),
-        create_tree_sitter_backend(
-            TreeSitterSpec(
-                language='rust',
-                suffixes=frozenset({'.rs'}),
-                grammar=tree_sitter.Language(tree_sitter_rust.language()),
-                query_name='rust',
-                aliases={},
-            )
+        TreeSitterSpec(
+            language='rust',
+            suffixes=frozenset({'.rs'}),
+            grammar=tree_sitter.Language(tree_sitter_rust.language()),
         ),
     )
+    return (PythonBackend(), *map(create_tree_sitter_backend, specs))
 
 
 def backend_for(path: PurePosixPath) -> Backend | None:

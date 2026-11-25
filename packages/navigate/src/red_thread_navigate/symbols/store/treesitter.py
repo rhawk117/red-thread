@@ -1,42 +1,26 @@
-import re
 import time
 from dataclasses import dataclass, field
 from importlib import resources
 from types import MappingProxyType
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, get_args
 
 import tree_sitter
 
-from red_thread_navigate.symbols.domain import FileSymbols, Reference, Symbol
+from red_thread_navigate.symbols.domain import FileSymbols, Reference, Symbol, SymbolKind
+from red_thread_navigate.util import split_lines
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
     from pathlib import PurePosixPath
 
-    from red_thread_navigate.symbols.domain import SymbolKind
     from red_thread_navigate.walk import SourceFile
 
 DEFINITION_PREFIX = 'definition.'
 REFERENCE_PREFIX = 'reference.'
 READ_CHUNK_BYTES = 65536
-LINE_BREAK = re.compile(r'\r\n|\r|\n')
-
+UNCAPTURED_KINDS: frozenset[SymbolKind] = frozenset({'property'})
 KINDS: Mapping[str, SymbolKind] = MappingProxyType({
-    'class': 'class',
-    'function': 'function',
-    'method': 'method',
-    'interface': 'interface',
-    'type': 'type',
-    'enum': 'enum',
-    'struct': 'struct',
-    'trait': 'trait',
-    'constant': 'constant',
-    'module': 'module',
-    'variable': 'variable',
-    'resource': 'resource',
-    'data': 'data',
-    'output': 'output',
-    'local': 'local',
+    kind: kind for kind in get_args(SymbolKind.__value__) if kind not in UNCAPTURED_KINDS
 })
 
 
@@ -141,7 +125,7 @@ def by_position(definition: Definition) -> tuple[int, int]:
     return (definition.node.start_byte, -definition.node.end_byte)
 
 
-def build_symbols(definitions: list[Definition], lines: list[str]) -> list[Symbol]:
+def build_symbols(definitions: list[Definition], lines: tuple[str, ...]) -> list[Symbol]:
     symbols: list[Symbol] = []
     open_scopes: list[Definition] = []
     names: list[str] = []
@@ -219,7 +203,7 @@ class TreeSitterBackend:
         return FileSymbols(
             path=source.path,
             language=self.language,
-            symbols=tuple(build_symbols(definitions, LINE_BREAK.split(source.text))),
+            symbols=tuple(build_symbols(definitions, split_lines(source.text))),
             references=collect_references(matches, self.aliases),
             notes=notes,
         )
@@ -230,12 +214,16 @@ class TreeSitterSpec:
     language: str
     suffixes: frozenset[str]
     grammar: tree_sitter.Language
-    query_name: str
+    query_name: str | None = None
     aliases: Mapping[str, str] = field(default_factory=dict)
+
+    @property
+    def query_stem(self) -> str:
+        return self.query_name or self.language
 
 
 def create_tree_sitter_backend(spec: TreeSitterSpec) -> TreeSitterBackend:
-    query = tree_sitter.Query(spec.grammar, load_query_source(spec.query_name))
+    query = tree_sitter.Query(spec.grammar, load_query_source(spec.query_stem))
     return TreeSitterBackend(
         language=spec.language,
         suffixes=spec.suffixes,

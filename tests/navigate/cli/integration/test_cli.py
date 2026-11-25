@@ -10,22 +10,15 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 from red_thread_navigate import main
 from red_thread_navigate.budget import MIN_BUDGET, estimate_tokens
+from red_thread_navigate.cli import PROGRAM
+
+from tests.navigate.samples import CORE
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-CORE = """\
-def helper():
-    return 1
-
-
-class Widget:
-    def render(self):
-        return helper()
-"""
 IDENTIFIER = r'[A-Za-z_][A-Za-z0-9_]{0,40}'
 SUFFIXES = ('.py', '.js', '.go', '.rs', '.tf', '.txt')
-BIG_BUDGET = 10_000
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -90,7 +83,7 @@ class TestVerbs:
     def test_version_prints_the_package_version(self, repository: Path) -> None:
         printed = run_in(repository, '--version')
 
-        assert (printed.code, printed.out.startswith('red-thread-navigate ')) == (0, True)
+        assert (printed.code, printed.out.startswith(f'{PROGRAM} ')) == (0, True)
 
 
 class TestRefusals:

@@ -4,7 +4,7 @@ from collections import Counter
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from red_thread_navigate.util import plural, span
+from red_thread_navigate.util import plural, span, symbol_address
 
 if TYPE_CHECKING:
     from pathlib import PurePosixPath
@@ -26,7 +26,7 @@ class Occurrence:
 
 def definition_line(definition: Definition) -> str:
     symbol = definition.symbol
-    address = f'{definition.path}#{symbol.qualified_name}'
+    address = symbol_address(definition.path, symbol)
     return f'  {address}  {symbol.kind_label}  {span(symbol)}'
 
 
@@ -43,8 +43,8 @@ def full_rung(
 ) -> tuple[str, ...]:
     return (
         header_line(definitions, references),
-        *(definition_line(definition) for definition in definitions),
-        *(reference_line(occurrence) for occurrence in references),
+        *map(definition_line, definitions),
+        *map(reference_line, references),
     )
 
 
@@ -60,7 +60,7 @@ def counted_rung(
 ) -> tuple[str, ...]:
     return (
         header_line(definitions, references),
-        *(definition_line(definition) for definition in definitions),
+        *map(definition_line, definitions),
         *count_lines(references),
     )
 

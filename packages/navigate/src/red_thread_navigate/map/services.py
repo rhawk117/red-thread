@@ -2,9 +2,10 @@
 
 from collections import Counter
 from collections.abc import Callable
+from operator import attrgetter
 from typing import TYPE_CHECKING
 
-from red_thread_navigate.budget import fit_notes, fit_to_budget
+from red_thread_navigate.budget import fit_notes, fit_text
 from red_thread_navigate.map.views import RankedFile, RankedSymbol, empty_lines, map_rungs
 
 if TYPE_CHECKING:
@@ -16,10 +17,6 @@ type SymbolKey = Callable[[RankedSymbol], tuple[int, int] | int]
 
 def by_references(item: RankedSymbol) -> tuple[int, int]:
     return (-item.references, item.symbol.start_line)
-
-
-def by_source(item: RankedSymbol) -> int:
-    return item.symbol.start_line
 
 
 def by_file_rank(item: RankedFile) -> tuple[int, str]:
@@ -43,8 +40,8 @@ def map_path(index: Index, backends: Backends, *, budget: int) -> str:
     notes = fit_notes(index.notes, budget=budget)
     if not index.files:
         rung = (*notes, *empty_lines(str(index.path), backends))
-        return fit_to_budget((rung,), budget=budget).text
-    key = by_source if index.single_file else by_references
+        return fit_text((rung,), budget=budget)
+    key = attrgetter('symbol.start_line') if index.single_file else by_references
     ranked = rank_files(index.files, key=key)
     rungs = tuple((*notes, *rung) for rung in map_rungs(ranked))
-    return fit_to_budget(rungs, budget=budget).text
+    return fit_text(rungs, budget=budget)

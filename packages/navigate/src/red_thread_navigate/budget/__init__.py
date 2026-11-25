@@ -8,6 +8,7 @@ from red_thread_navigate.budget.policy import (
     cut_to_budget,
     estimate_tokens,
     fit_notes,
+    fit_text,
     fit_to_budget,
 )
 
@@ -21,5 +22,6 @@ __all__ = [
     'cut_to_budget',
     'estimate_tokens',
     'fit_notes',
+    'fit_text',
     'fit_to_budget',
 ]

@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from red_thread_navigate.budget import fit_notes
-from red_thread_navigate.util import span
+from red_thread_navigate.util import span, symbol_address
 
 if TYPE_CHECKING:
     from pathlib import PurePosixPath
@@ -32,7 +32,8 @@ def line_address(path: PurePosixPath, start: int, end: int) -> str:
 def label(found: Found) -> str:
     symbol = found.symbol
     parent = f'in {symbol.parent}' if symbol.parent is not None else 'at the top level'
-    return f'{found.path}#{symbol.qualified_name}  {symbol.kind_label}  {span(symbol)}  {parent}'
+    address = symbol_address(found.path, symbol)
+    return f'{address}  {symbol.kind_label}  {span(symbol)}  {parent}'
 
 
 def body_line(found: Found) -> str:
@@ -42,7 +43,7 @@ def body_line(found: Found) -> str:
 
 def child_line(found: Found, child: Symbol) -> str:
     signature = child.signature.splitlines()[0] if child.signature else child.name
-    return f'  {child.kind_label} {signature}  {span(child)}  {found.path}#{child.qualified_name}'
+    return f'  {child.kind_label} {signature}  {span(child)}  {symbol_address(found.path, child)}'
 
 
 def indented(text: str) -> tuple[str, ...]:

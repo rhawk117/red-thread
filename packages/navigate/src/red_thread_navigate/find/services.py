@@ -2,7 +2,7 @@
 
 from typing import TYPE_CHECKING
 
-from red_thread_navigate.budget import fit_notes, fit_to_budget
+from red_thread_navigate.budget import fit_notes, fit_text
 from red_thread_navigate.find.views import Definition, Occurrence, find_rungs, none_lines
 
 if TYPE_CHECKING:
@@ -44,4 +44,4 @@ def find_name(index: Index, name: str, *, budget: int) -> str:
     if definitions or references:
         rungs = find_rungs(definitions, references)
     notes = fit_notes(index.notes, budget=budget)
-    return fit_to_budget(tuple((*notes, *rung) for rung in rungs), budget=budget).text
+    return fit_text(tuple((*notes, *rung) for rung in rungs), budget=budget)

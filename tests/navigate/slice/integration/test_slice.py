@@ -4,23 +4,13 @@ from typing import TYPE_CHECKING
 
 import pytest
 from red_thread_navigate.budget import estimate_tokens
-from red_thread_navigate.cli import create_navigator
-from red_thread_navigate.slice import WINDOW_LINES
 
+from tests.navigate.samples import BIG_BUDGET, CORE, NAVIGATOR, long_class
 from tests.navigate.symbols.samples import SourceDir
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-SHORT = """\
-def helper():
-    return 1
-
-
-class Widget:
-    def render(self):
-        return helper()
-"""
 TWICE = 'def go():\n    return 1\n\n\ndef go():\n    return 2\n'
 ASSIGNED = """\
 app.init = function init() {
@@ -32,21 +22,6 @@ View.prototype.lookup = function lookup(name) {
 };
 """
 NOTES = '\n'.join(f'line {number}' for number in range(1, 400))
-BIG_BUDGET = 10_000
-NAVIGATOR = create_navigator()
-
-
-def long_class() -> str:
-    body = '\n'.join(f'        total += {number}' for number in range(WINDOW_LINES))
-    return (
-        'class Big:\n'
-        '    """A long class."""\n\n'
-        '    def first(self):\n'
-        f'        total = 0\n{body}\n'
-        '        return total\n\n'
-        '    def second(self):\n'
-        '        return 2\n'
-    )
 
 
 def dotted_address_cases() -> pytest.MarkDecorator:
@@ -77,7 +52,7 @@ def source(tmp_path: Path) -> SourceDir:
 class TestWholeSymbols:
     @pytest.fixture
     def short(self, source: SourceDir) -> SourceDir:
-        source.write('core.py', SHORT)
+        source.write('core.py', CORE)
         return source
 
     @pytest.fixture

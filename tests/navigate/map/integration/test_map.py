@@ -4,8 +4,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 from red_thread_navigate.budget import estimate_tokens
-from red_thread_navigate.cli import create_navigator
 
+from tests.navigate.samples import BIG_BUDGET, CLIENT, NAVIGATOR
 from tests.navigate.symbols.samples import SourceDir
 
 if TYPE_CHECKING:
@@ -24,17 +24,7 @@ class Widget:
     def render(self):
         return helper()
 """
-CLIENT = """\
-from core import helper
-
-
-def run():
-    helper()
-    helper()
-"""
 HOT = 'def hot():\n    pass\n\n\ndef use():\n    hot()\n    hot()\n'
-BIG_BUDGET = 10_000
-NAVIGATOR = create_navigator()
 
 
 @pytest.fixture

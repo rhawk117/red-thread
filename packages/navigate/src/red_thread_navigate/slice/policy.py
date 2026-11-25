@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from pathlib import PurePosixPath
 
 OUTSIDE_ROOT_HINT = 'use a path under the root'
+MAP_HINT = 'map <path> to see the names there'
 
 type CutSteps = Callable[[str, str], Iterator[tuple[int, int]]]
 
@@ -70,7 +71,7 @@ def unknown_template(nearest: tuple[str, ...]) -> str:
 
 
 def unknown_template_with_map_hint(nearest: tuple[str, ...]) -> str:
-    return f'{unknown_template(nearest)}. Next step: map <path> to see the names there.'
+    return f'{unknown_template(nearest)}. Next step: {MAP_HINT}.'
 
 
 def hinted_template(plain: str, hint: str, *, refused: Refused) -> str:

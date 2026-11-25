@@ -1,10 +1,11 @@
 import ast
-import re
 from dataclasses import dataclass
+from itertools import chain
 from operator import attrgetter
 from typing import TYPE_CHECKING
 
 from red_thread_navigate.symbols.domain import FileSymbols, Reference, Symbol
+from red_thread_navigate.util import split_lines
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -14,7 +15,6 @@ if TYPE_CHECKING:
 
 type Definition = ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef
 
-LINE_BREAK = re.compile(r'\r\n|\r|\n')
 PROPERTY_ACCESSORS = frozenset({'setter', 'getter', 'deleter'})
 
 
@@ -42,7 +42,7 @@ def kind_of(node: Definition, scope: Scope) -> SymbolKind:
     return 'method'
 
 
-def build_symbol(node: Definition, scope: Scope, lines: list[str]) -> Symbol:
+def build_symbol(node: Definition, scope: Scope, lines: tuple[str, ...]) -> Symbol:
     qualified_name = (
         node.name if scope.qualified_name is None else f'{scope.qualified_name}.{node.name}'
     )
@@ -64,16 +64,16 @@ def target_names(target: ast.expr) -> list[str]:
     if isinstance(target, ast.Starred):
         return target_names(target.value)
     if isinstance(target, ast.Tuple | ast.List):
-        return [name for element in target.elts for name in target_names(element)]
+        return list(chain.from_iterable(map(target_names, target.elts)))
     return []
 
 
 def assigned_names(node: ast.Assign | ast.AnnAssign) -> list[str]:
     targets = node.targets if isinstance(node, ast.Assign) else [node.target]
-    return [name for target in targets for name in target_names(target)]
+    return list(chain.from_iterable(map(target_names, targets)))
 
 
-def build_variable(node: ast.Assign | ast.AnnAssign, name: str, lines: list[str]) -> Symbol:
+def build_variable(node: ast.Assign | ast.AnnAssign, name: str, lines: tuple[str, ...]) -> Symbol:
     return Symbol(
         name=name,
         qualified_name=name,
@@ -86,14 +86,14 @@ def build_variable(node: ast.Assign | ast.AnnAssign, name: str, lines: list[str]
     )
 
 
-def collect_symbols(nodes: Sequence[ast.AST], scope: Scope, lines: list[str]) -> list[Symbol]:
+def collect_symbols(nodes: Sequence[ast.AST], scope: Scope, lines: tuple[str, ...]) -> list[Symbol]:
     symbols: list[Symbol] = []
     for node in nodes:
         symbols.extend(symbols_of(node, scope, lines))
     return symbols
 
 
-def symbols_of(node: ast.AST, scope: Scope, lines: list[str]) -> list[Symbol]:
+def symbols_of(node: ast.AST, scope: Scope, lines: tuple[str, ...]) -> list[Symbol]:
     if isinstance(node, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef):
         symbol = build_symbol(node, scope, lines)
         inner = Scope(qualified_name=symbol.qualified_name, in_class=isinstance(node, ast.ClassDef))
@@ -139,7 +139,7 @@ class PythonBackend:
                 path=source.path, language=self.language, symbols=(), references=(), notes=(note,)
             )
         scope = Scope(qualified_name=None, in_class=False)
-        symbols = collect_symbols(tree.body, scope, LINE_BREAK.split(source.text))
+        symbols = collect_symbols(tree.body, scope, split_lines(source.text))
         return FileSymbols(
             path=source.path,
             language=self.language,

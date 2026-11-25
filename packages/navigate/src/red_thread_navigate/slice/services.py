@@ -1,6 +1,5 @@
 """Slicing an address: read the one file, find the target and fit the result to a budget."""
 
-import re
 from dataclasses import dataclass
 from difflib import get_close_matches
 from pathlib import PurePosixPath
@@ -13,7 +12,7 @@ from red_thread_navigate.address import (
     OutsideRootError,
     parse_address,
 )
-from red_thread_navigate.budget import estimate_tokens, fit_to_budget
+from red_thread_navigate.budget import estimate_tokens, fit_text
 from red_thread_navigate.slice.errors import (
     FileRefusedError,
     HintedOutsideRootError,
@@ -21,6 +20,7 @@ from red_thread_navigate.slice.errors import (
     UnknownSymbolError,
 )
 from red_thread_navigate.slice.policy import (
+    MAP_HINT,
     OUTSIDE_ROOT_HINT,
     Refused,
     file_refused_text,
@@ -31,6 +31,7 @@ from red_thread_navigate.slice.policy import (
 )
 from red_thread_navigate.slice.util import MIN_SHOWN, shorten_name
 from red_thread_navigate.slice.views import Found, line_rungs, symbol_rungs
+from red_thread_navigate.util import split_lines
 from red_thread_navigate.walk import SKIP_LABELS, SourceFile
 
 if TYPE_CHECKING:
@@ -44,19 +45,11 @@ if TYPE_CHECKING:
 
 WINDOW_LINES = 100
 NEAREST_NAMES = 5
-LINE_BREAK = re.compile(r'\r\n|\r|\n')
 
 
 def refuse_file(*, refused: Refused, reason: str, hint: str = '') -> FileRefusedError:
     message = file_refused_text(refused=refused, reason=reason, hint=hint)
     return FileRefusedError(path=refused.path, reason=reason, message=message)
-
-
-def split_lines(text: str) -> tuple[str, ...]:
-    lines = [str(line) for line in LINE_BREAK.split(text)]
-    if lines and not lines[-1]:
-        lines.pop()
-    return tuple(lines)
 
 
 def slice_lines(source: SourceFile, target: LineTarget, *, budget: int) -> str:
@@ -67,7 +60,7 @@ def slice_lines(source: SourceFile, target: LineTarget, *, budget: int) -> str:
         raise LinesOutOfRangeError(start=target.start, total=len(lines), message=message)
     chosen = lines[target.start - 1 : target.end]
     rungs = line_rungs(source.path, start=target.start, lines=chosen)
-    return fit_to_budget(rungs, budget=budget).text
+    return fit_text(rungs, budget=budget)
 
 
 def found_for(source: SourceFile, symbol: Symbol, parsed: FileSymbols) -> Found:
@@ -119,7 +112,7 @@ class Slicer:
         if isinstance(source, SourceFile):
             return source
         hints: dict[SkipKind, str] = {
-            'not_a_file': 'map <path> to see what it holds',
+            'not_a_file': MAP_HINT,
             'outside_root': OUTSIDE_ROOT_HINT,
         }
         refused = Refused(path=path, budget=budget)
@@ -141,7 +134,7 @@ class Slicer:
         if not matches:
             raise unknown_symbol(parsed, name, budget=budget)
         founds = tuple(found_for(source, symbol, parsed) for symbol in matches)
-        return fit_to_budget(symbol_rungs(founds, parsed.notes, budget=budget), budget=budget).text
+        return fit_text(symbol_rungs(founds, parsed.notes, budget=budget), budget=budget)
 
     def slice_address(self, text: str, *, root: Path, budget: int) -> str:
         resolved = root.resolve()

@@ -4,29 +4,17 @@ from typing import TYPE_CHECKING
 
 import pytest
 from red_thread_navigate.address import AddressError
-from red_thread_navigate.budget import estimate_tokens
-from red_thread_navigate.cli import create_navigator
+from red_thread_navigate.budget import MIN_BUDGET, estimate_tokens
 from red_thread_navigate.slice import SliceError
 from red_thread_navigate.slice.policy import OUTSIDE_ROOT_HINT
 
+from tests.navigate.samples import BIG_BUDGET, CORE, NAVIGATOR
 from tests.navigate.symbols.samples import SourceDir
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-SHORT = """\
-def helper():
-    return 1
-
-
-class Widget:
-    def render(self):
-        return helper()
-"""
-BIG_BUDGET = 10_000
-MIN_BUDGET = 32
 LONG_DIRS = '/'.join(f'directory{number}' for number in range(14))
-NAVIGATOR = create_navigator()
 
 
 def hint_cases() -> list[tuple[str, str]]:
@@ -34,7 +22,7 @@ def hint_cases() -> list[tuple[str, str]]:
         ('a.py#zzzzzz', 'Next step: map a.py to see the names there.'),
         ('a.py#L50', 'Next step: slice a.py#L1-L7.'),
         ('link.py#L1', f'Next step: {OUTSIDE_ROOT_HINT}.'),
-        ('pkg#L1', 'Next step: map pkg to see what it holds.'),
+        ('pkg#L1', 'Next step: map pkg to see the names there.'),
         ('../x.py#L1', f'Next step: {OUTSIDE_ROOT_HINT}.'),
     ]
 
@@ -65,7 +53,7 @@ def refusal_message(address: str, *, root: Path, budget: int) -> str:
 class TestRefusalContent:
     @pytest.fixture
     def short(self, source: SourceDir) -> SourceDir:
-        source.write('core.py', SHORT)
+        source.write('core.py', CORE)
         return source
 
     @pytest.fixture
@@ -77,7 +65,7 @@ class TestRefusalContent:
     def linked(self, tmp_path: Path) -> SourceDir:
         root = SourceDir(root=tmp_path / 'root')
         root.write('placeholder.py', '')
-        outside = SourceDir(root=tmp_path).write('secret.py', SHORT)
+        outside = SourceDir(root=tmp_path).write('secret.py', CORE)
         root.root.joinpath('link.py').symlink_to(outside)
         return root
 
@@ -114,9 +102,9 @@ class TestNextStep:
     @pytest.fixture
     def hinted(self, tmp_path: Path) -> Path:
         root = SourceDir(root=tmp_path / 'r')
-        root.write('a.py', SHORT)
-        root.write('pkg/inner.py', SHORT)
-        outside = SourceDir(root=tmp_path).write('secret.py', SHORT)
+        root.write('a.py', CORE)
+        root.write('pkg/inner.py', CORE)
+        outside = SourceDir(root=tmp_path).write('secret.py', CORE)
         root.root.joinpath('link.py').symlink_to(outside)
         return root.root
 

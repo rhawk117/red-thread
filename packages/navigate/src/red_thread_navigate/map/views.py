@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from red_thread_navigate.util import plural, span
+from red_thread_navigate.util import plural, span, symbol_address
 
 if TYPE_CHECKING:
     from red_thread_navigate.symbols.domain import Backends, FileSymbols, Symbol
@@ -34,7 +34,7 @@ def file_line(ranked: RankedFile) -> str:
 
 def symbol_line(ranked_file: RankedFile, ranked: RankedSymbol) -> str:
     symbol = ranked.symbol
-    address = f'{ranked_file.file.path}#{symbol.qualified_name}'
+    address = symbol_address(ranked_file.file.path, symbol)
     label = f'{symbol.kind_label} {symbol.signature}'
     return f'  {label}  {span(symbol)}  {address}  {ranked.references} refs'
 
@@ -60,11 +60,11 @@ def summary_line(ranked_file: RankedFile) -> str:
 
 
 def summary_rung(files: tuple[RankedFile, ...]) -> tuple[str, ...]:
-    return (header_line(files), *(summary_line(ranked_file) for ranked_file in files))
+    return (header_line(files), *map(summary_line, files))
 
 
 def counts_rung(files: tuple[RankedFile, ...]) -> tuple[str, ...]:
-    return (header_line(files), *(file_line(ranked_file) for ranked_file in files))
+    return (header_line(files), *map(file_line, files))
 
 
 def map_rungs(files: tuple[RankedFile, ...]) -> tuple[tuple[str, ...], ...]:
