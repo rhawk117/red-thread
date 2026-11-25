@@ -144,10 +144,15 @@ class Annotator:
     def find(self, entry: Entry) -> Finding | None:
         return next((finding for finding in self.findings if finding.ref == entry.ref), None)
 
-    def list_lead_flags(self, entry: Entry) -> list[str]:
+    def get_recorded_head(self, entry: Entry) -> str | None:
         if entry.head == self.head:
+            return None
+        return shorten_head(entry.head, NO_COMMIT)
+
+    def list_lead_flags(self, entry: Entry) -> list[str]:
+        recorded = self.get_recorded_head(entry)
+        if recorded is None:
             return []
-        recorded = shorten_head(entry.head, NO_COMMIT)
         return [f'{LEAD_FLAG_PREFIX}recorded at {recorded}']
 
     def list_flags(self, entry: Entry) -> list[str]:

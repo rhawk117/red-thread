@@ -6,15 +6,18 @@ from itertools import chain
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 from red_thread_casefile.domain import Cite
+from red_thread_casefile.util import squeeze
+from red_thread_casefile.views import LEAD_FLAG_PREFIX, get_shown_verdict
 
 if TYPE_CHECKING:
-    from red_thread_casefile.domain import EntryKind, Verdict
+    from red_thread_casefile.domain import Entry, EntryKind, Verdict
     from red_thread_casefile.policy import Finding
+    from red_thread_casefile.views import Annotator
 
 type NoteKind = Literal['rests_on', 'refuted_by', 'retires', 'retired_by', 'urgency', 'source']
 
 CODE_SPAN = re.compile(r'`([^`]+)`')
-LEAD_PREFIX = 'lead, recorded at '
+LEAD_PREFIX = f'{LEAD_FLAG_PREFIX}recorded at '
 
 
 @runtime_checkable
@@ -127,11 +130,11 @@ class EntryNode:
     claim: Line
     thread: str | None = None
     verdict: Verdict | None = None
+    round: int
+    at: str
     citation: Citation | None = None
     notes: tuple[Note, ...] = ()
     lead: str | None = None
-    round: int | None = None
-    at: str | None = None
     diagram: str | None = None
 
     @property
@@ -208,3 +211,34 @@ class Document:
     @property
     def entries(self) -> tuple[EntryNode, ...]:
         return tuple(chain.from_iterable(section.entries for section in self.sections))
+
+
+def list_caveat_notes(entry: Entry) -> tuple[Note, ...]:
+    rests_on = (Note(kind='rests_on', value=entry.rests_on),) if entry.rests_on is not None else ()
+    refuted = (Note(kind='refuted_by', value=entry.refute),) if entry.refute is not None else ()
+    return (*rests_on, *refuted)
+
+
+@dataclass(slots=True, kw_only=True, frozen=True)
+class EntryBuilder:
+    annotator: Annotator
+
+    def create_citation(self, entry: Entry) -> Citation | None:
+        if entry.cite is None:
+            return None
+        return Citation(target=entry.cite, quote=entry.quote, finding=self.annotator.find(entry))
+
+    def build(self, entry: Entry, notes: tuple[Note, ...] = ()) -> EntryNode:
+        return EntryNode(
+            ref=entry.ref,
+            kind=entry.kind,
+            claim=parse_line(squeeze(entry.text)),
+            round=entry.round,
+            at=entry.at,
+            thread=entry.thread,
+            verdict=get_shown_verdict(entry),
+            citation=self.create_citation(entry),
+            notes=notes,
+            lead=self.annotator.get_recorded_head(entry),
+            diagram=entry.diagram,
+        )
