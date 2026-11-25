@@ -243,6 +243,15 @@ class LensOverBudgetError(CaseFileError):
         )
 
 
+class InvalidTimestampError(CaseFileError):
+    def __init__(self, *, timestamp: str) -> None:
+        self.timestamp = timestamp
+        super().__init__(
+            f'{timestamp!r} does not start with a YYYY-MM-DD date. Restore the entry from git, '
+            'or record the claim again with add.'
+        )
+
+
 class InvalidPageUrlError(CaseFileError):
     def __init__(self, *, url: str) -> None:
         self.url = url

@@ -2,11 +2,14 @@
 
 import re
 from dataclasses import dataclass
+from datetime import date
 from itertools import chain
 from pathlib import PurePosixPath
 from typing import Literal
 
 import msgspec
+
+from red_thread_casefile.errors import InvalidTimestampError
 
 type EntryKind = Literal['known', 'open', 'decision', 'hypothesis', 'ruled_out', 'resource', 'next']
 type Verdict = Literal['VERIFIED', 'INFERRED', 'NEEDS-ANALYSIS', 'BLOCKED']
@@ -43,7 +46,10 @@ def order_thread(name: str) -> int:
 
 
 def date_of(timestamp: str) -> str:
-    return timestamp[:DATE_WIDTH]
+    try:
+        return date.fromisoformat(timestamp[:DATE_WIDTH]).isoformat()
+    except ValueError as error:
+        raise InvalidTimestampError(timestamp=timestamp) from error
 
 
 def shorten_head(head: str | None, missing: str = NO_HEAD) -> str:

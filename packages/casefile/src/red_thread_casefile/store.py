@@ -122,9 +122,14 @@ class DirectoryCaseRepository:
         self.directory.joinpath('threads').mkdir(parents=True, exist_ok=True)
         self.write_case(case)
 
+    def get_case_problem(self) -> CaseNotFoundError | None:
+        if self.exists():
+            return None
+        return CaseNotFoundError(path=self.directory)
+
     def read_case(self) -> Case:
-        if not self.exists():
-            raise CaseNotFoundError(path=self.directory)
+        if problem := self.get_case_problem():
+            raise problem
         try:
             return case_from_text(self.case_file.read_text(encoding='utf-8'))
         except ValueError as error:
@@ -134,8 +139,8 @@ class DirectoryCaseRepository:
         self.case_file.write_text(case_to_text(case), encoding='utf-8')
 
     def read_ledger(self) -> Ledger:
-        if not self.exists():
-            raise CaseNotFoundError(path=self.directory)
+        if problem := self.get_case_problem():
+            raise problem
         return self.ledgers.read_all()
 
     def append(self, thread: str | None, entries: tuple[Entry, ...]) -> None:

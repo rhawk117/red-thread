@@ -14,6 +14,8 @@ if TYPE_CHECKING:
     from red_thread_casefile.policy import Finding
 
 NO_COMMIT = 'no commit'
+LEAD_FLAG_PREFIX = 'lead, '
+CITE_FLAG_PREFIX = 'citation '
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -84,8 +86,9 @@ def label_entry(entry: Entry) -> str:
 def list_cite_flags(finding: Finding | None) -> list[str]:
     if not finding:
         return []
-    failing = [f'citation {finding.state}'] if finding.state in FAILING_STATES else []
-    moved = [f'citation moved to line {finding.moved_to}'] if finding.moved_to is not None else []
+    failing = [f'{CITE_FLAG_PREFIX}{finding.state}'] if finding.state in FAILING_STATES else []
+    moved_to = finding.moved_to
+    moved = [f'{CITE_FLAG_PREFIX}moved to line {moved_to}'] if moved_to is not None else []
     return [*failing, *moved]
 
 
@@ -145,7 +148,7 @@ class Annotator:
         if entry.head == self.head:
             return []
         recorded = shorten_head(entry.head, NO_COMMIT)
-        return [f'lead, recorded at {recorded}']
+        return [f'{LEAD_FLAG_PREFIX}recorded at {recorded}']
 
     def list_flags(self, entry: Entry) -> list[str]:
         return [*self.list_lead_flags(entry), *list_cite_flags(self.find(entry))]

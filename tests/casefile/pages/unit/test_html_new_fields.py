@@ -12,7 +12,7 @@ from red_thread_casefile.policy import CITE_STATES, Finding
 from red_thread_casefile.views import Document, Fact, Item, Section
 
 from tests.casefile.entries.strategies import optional
-from tests.casefile.pages.builders import create_document_carrying, payload_params
+from tests.casefile.pages.builders import STAMP_DAY, create_document_carrying, payload_params
 from tests.casefile.pages.html_reading import (
     find_tags,
     list_cited_quotes,
@@ -29,7 +29,6 @@ if TYPE_CHECKING:
 
 URL_PREFIX = ('http://', 'https://')
 CITED_PATH = 'src/queue.py:3'
-DAY_WIDTH = 10
 
 
 def render(document: Document) -> str:
@@ -77,8 +76,8 @@ class TestNewFieldsLandAsText:
     ) -> None:
         page = self.read('item-at', payload)
 
-        assert find_tags(page, 'time') == [{'datetime': payload}]
-        assert ('stamp', payload[:DAY_WIDTH]) in list_note_rows(page)[0]
+        assert find_tags(page, 'time') == [{'datetime': f'{STAMP_DAY}{payload}'}]
+        assert ('stamp', STAMP_DAY) in list_note_rows(page)[0]
 
     @payload_cases()
     def test_a_quote_is_the_text_of_one_pre_element_after_the_cite(self, payload: str) -> None:

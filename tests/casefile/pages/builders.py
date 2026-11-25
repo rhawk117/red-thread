@@ -41,6 +41,7 @@ type DocumentField = Literal[
 ]
 
 DOCUMENT_FIELDS: tuple[DocumentField, ...] = get_args(DocumentField.__value__)
+STAMP_DAY = '2026-11-21'
 PLAIN_URL = 'https://example.invalid/docs'
 SCRIPT = '<script>alert(1)</script>'
 DIAGRAM = 'flowchart TD\n  A["one"] --> B["two"]\n  B --> C'
@@ -108,7 +109,7 @@ def create_document_carrying(field: DocumentField, text: str) -> Document:
         'item-diagram': create_document(replace(item, diagram=text), other),
         'map-line': replace(base, map_lines=(text,)),
         'item-verdict': create_document(replace(item, verdict=cast('Verdict', text)), other),
-        'item-at': create_document(replace(item, at=text), other),
+        'item-at': create_document(replace(item, at=f'{STAMP_DAY}{text}'), other),
         'item-quote': create_document(replace(item, quote=text), other),
         'item-state': create_document(replace(item, finding=create_finding(text)), other),
         'section-note': replace(base, sections=(replace(section, note=text),)),
