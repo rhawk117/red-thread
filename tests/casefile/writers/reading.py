@@ -3,6 +3,7 @@
 from typing import TYPE_CHECKING
 
 from red_thread_casefile.writers.markdown import MarkdownWriter
+from red_thread_casefile.writers.page import HtmlPage
 
 if TYPE_CHECKING:
     from red_thread_casefile.documents import Document
@@ -10,6 +11,10 @@ if TYPE_CHECKING:
 
 def render_markdown(document: Document) -> str:
     return MarkdownWriter(document=document).render()
+
+
+def render_page(document: Document) -> str:
+    return HtmlPage(document=document).render()
 
 
 def list_item_lines(document: Document) -> list[str]:

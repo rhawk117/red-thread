@@ -6,15 +6,17 @@ from dataclasses import dataclass
 from html import escape
 from itertools import chain, zip_longest
 from string import Template as PageTemplate
-from string.templatelib import Interpolation, Template, convert
 from typing import TYPE_CHECKING, Literal
 
 from red_thread_casefile.assets import read_asset
 from red_thread_casefile.charts import MAIN_LEDGER
 from red_thread_casefile.domain import Cite, date_of
 from red_thread_casefile.views import HEADINGS, Section
+from red_thread_casefile.writers.markup import render
 
 if TYPE_CHECKING:
+    from string.templatelib import Template
+
     from red_thread_casefile.policy import Finding
     from red_thread_casefile.views import Document, Fact, Item
 
@@ -29,24 +31,6 @@ MAP_NOTE = (
 RETIRED_NOTE = (
     'Entries a later entry replaced. The ledger keeps them and the sections leave them out.'
 )
-
-
-def render_value(value: object) -> str:
-    if isinstance(value, Template):
-        return render(value)
-    if isinstance(value, tuple):
-        return ''.join(map(render_value, value))
-    return escape(str(value))
-
-
-def render_part(part: str | Interpolation[object]) -> str:
-    if isinstance(part, Interpolation):
-        return render_value(convert(part.value, part.conversion))
-    return part
-
-
-def render(template: Template) -> str:
-    return ''.join(map(render_part, template))
 
 
 def mark_up(text: str) -> tuple[Template, ...]:

@@ -8,7 +8,8 @@ import pytest
 from hypothesis import example, given
 from hypothesis import strategies as st
 from red_thread_casefile.assets import read_asset
-from red_thread_casefile.pages import mark_up, render, render_value
+from red_thread_casefile.pages import mark_up
+from red_thread_casefile.writers.markup import render, render_value
 
 from tests.casefile.pages.asset_names import ASSET_NAMES
 
