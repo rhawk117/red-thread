@@ -167,6 +167,36 @@ It runs before every export. It also catches a citation a scout invented before 
 - The colors are tokens in `assets/page.css`, one set per theme, and `assets/tailwind.css` maps them to Tailwind utilities, so a palette change is made in one file.
 - Facts: the Artifact tool publishes one `.html` or `.md` file. Remote Control keeps an AskUserQuestion dialog open until it is answered. The docs name an artifact as the route for a board that keeps updating.
 
+### The document model (Decided 2026-11-25)
+
+**Decided 2026-11-25:** the board page and the Markdown lens output build from one typed tree, drawn by Python writers. The owner asked for the design that is easiest to maintain, gives the best page and needs the least code, and chose this one over Jinja and over a TypeScript page. The text board that `render` prints keeps its own path for now. Not built yet.
+
+What is wrong now:
+
+- `Item` in `views.py` is one record with thirteen optional fields. It carries a ledger entry, a pointer line and a reading line, and a writer tells them apart by which fields are empty.
+- Meaning becomes strings before a writer sees it: notes such as `rests on: X` and `retired by E3`, citations wrapped in backticks, flags with a prefix. `pages.py` parses the backticks back out with a regex, and the page cannot style a caveat apart from a flag.
+- Special content has its own field on `Document` (`facts`, `map_lines`, `retired`) and its own code in each writer.
+- Three paths build entries: `Board` (the text board, straight from the ledger), `BoardPage` and the lens `Composer`. Each has its own `list_notes`, and the last two each fill the thirteen fields in a `create_item`. The citation flag that the text board left out (the 2026-11-21 case, section 11) is the kind of gap this split allows.
+- A new kind of content has no single place to start.
+
+The design: one typed tree between the ledger and the page and Markdown outputs.
+
+- The nodes are frozen dataclasses in one module: blocks (`Heading`, `Paragraph`, `EntryList`, `Facts`, `Diagram`, `Fold`) and inlines (`Text`, `Code`, `Link`, `Ref`, `Badge`). An entry node keeps its parts typed: claim, verdict, citation and its state, caveats, retirers, round, day and source. No writer parses text back.
+- One builder turns a ledger `Entry` and its finding into an entry node. The text board, the board page and every lens call it and add only what is theirs, such as a lens's blocking mark.
+- A `Writer` Protocol has one method per node kind, and the HTML, Markdown and text outputs are three writers. A new node kind adds a method to the Protocol, and ty names every writer that lacks it.
+- The HTML writer keeps the t-string `render` and its one escaping function for leaf markup. `page.html`, `page.js` and the styles stay, so an offline page still reads top to bottom with every entry in the HTML.
+- Tests assert on the tree for content and on one writer method at a time for format, in place of whole rendered strings.
+- Size, estimated from reading the code: the duplicated entry building in `views.py`, `boards.py` and `lenses.py` and the backtick regex in `pages.py` go away, each writer becomes one short method per node, and the node module adds about 80 lines. No new dependency.
+
+Routes not chosen:
+
+| Route | Why not now |
+| --- | --- |
+| Jinja templates | Moves the same strings into template files without a model. Adds a third dependency, about 164 ms of import on every command, templates ty cannot check, and two escaping modes (on for HTML, off for Markdown). Estimated net saving about 120 lines. |
+| Markdown as the only source, converted for the page | One renderer, but the page loses its data attributes, filter chips, folds and state badges. |
+| TypeScript behavior on Python-drawn HTML (`page.ts` in place of `page.js`) | Typed browser code, but it adds a `package.json`, a build whose output is committed to `assets/` and a CI check that it matches. Not needed while the script stays short. |
+| TypeScript drawing the page from the tree as JSON | Most room for search or sorting, and `pages.py` goes away, but with scripts off the page is empty, which reverses part of the 2026-11-21 page decision, and it brings the same build. |
+
 ## 5. The investigate skill
 
 **Decided:** two user-facing skills, `investigate` and `distill`, plus the preloaded `navigate` support skill (see section 8). Use cases are kinds and lenses, each a small reference file loaded on demand. There is no skill per use case and no pickup skill.
@@ -569,3 +599,13 @@ Made by the owner on 2026-11-25.
 | Launcher names | prefixed `redthread-`, because Claude Code puts `bin/` on PATH and bare names such as `navigate` could shadow other tools |
 | Shared launcher code | `bin/redthread-lib`, sourced and not executable; every function is prefixed `redthread::`. `redthread::run_package NAME` runs `packages/NAME` as `red_thread_NAME`, so a launcher passes only the package name |
 | Launcher shape | bash, with `setup_environment` and `main` functions and no global state |
+
+### 2026-11-25: document model
+
+Made by the owner on 2026-11-25.
+
+| Decision | Choice and reason |
+| --- | --- |
+| Output model | one typed tree of frozen dataclass nodes, one entry builder and a `Writer` Protocol with a method per node kind, so a new kind of content has one place to start and ty names every writer that lacks it (section 4, The document model) |
+| Who draws the page | Python, through the t-string `render`; no Jinja and no TypeScript, so no new dependency and no build step, and the page still carries every entry in its HTML |
+| Scope | the board page and the Markdown lens output; the text board keeps its own path for now |
