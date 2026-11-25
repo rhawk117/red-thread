@@ -1,5 +1,6 @@
 """In-memory stand-ins for the case file's three ports, behaving like their real adapters."""
 
+from collections import defaultdict
 from dataclasses import dataclass, field
 from itertools import chain
 from pathlib import Path
@@ -21,10 +22,14 @@ def start_heads() -> list[str | None]:
     return [HEAD]
 
 
+def start_thread_files() -> defaultdict[str | None, list[Entry]]:
+    return defaultdict(list)
+
+
 @dataclass(slots=True, kw_only=True, frozen=True)
 class MemoryCaseRepository:
     cases: list[Case] = field(default_factory=list)
-    files: dict[str | None, list[Entry]] = field(default_factory=dict)
+    files: defaultdict[str | None, list[Entry]] = field(default_factory=start_thread_files)
 
     def exists(self) -> bool:
         return bool(self.cases)
@@ -48,8 +53,7 @@ class MemoryCaseRepository:
         return Ledger(entries=tuple(chain.from_iterable(held)))
 
     def append(self, thread: str | None, entries: tuple[Entry, ...]) -> None:
-        kept = self.files.setdefault(thread, [])
-        kept.extend(replace(entry, thread=thread) for entry in entries)
+        self.files[thread].extend(replace(entry, thread=thread) for entry in entries)
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)

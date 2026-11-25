@@ -20,7 +20,6 @@ from red_thread_navigate.address import (
 from tests.params import as_params
 
 if TYPE_CHECKING:
-    from _pytest.mark import ParameterSet
     from red_thread_navigate.address import Target
 
 ROOT = Path('/work/repo')
@@ -32,10 +31,7 @@ class FormCase:
     text: str
     path: str
     target: Target
-
-    @property
-    def param(self) -> ParameterSet:
-        return pytest.param(self, id=self.name)
+    marks: tuple[pytest.MarkDecorator, ...] = ()
 
 
 def address_form_cases() -> pytest.MarkDecorator:

@@ -1,7 +1,6 @@
 """get_page_problem: which links the board's page may be recorded as."""
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
 import pytest
 from hypothesis import given
@@ -10,9 +9,6 @@ from red_thread_casefile.errors import InvalidPageUrlError
 from red_thread_casefile.policy import get_page_problem
 
 from tests.params import as_params
-
-if TYPE_CHECKING:
-    from _pytest.mark import ParameterSet
 
 WHITESPACE = (
     ' ',
@@ -32,10 +28,7 @@ class UrlScenario:
     name: str
     url: str
     accepted: bool
-
-    @property
-    def param(self) -> ParameterSet:
-        return pytest.param(self, id=self.name)
+    marks: tuple[pytest.MarkDecorator, ...] = ()
 
 
 def page_url_cases() -> pytest.MarkDecorator:

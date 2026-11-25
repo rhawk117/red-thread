@@ -61,10 +61,7 @@ def corrupt_case_params() -> list[ParameterSet]:
 class SeparatorCase:
     name: str
     separator: str
-
-    @property
-    def param(self) -> ParameterSet:
-        return pytest.param(self, id=self.name)
+    marks: tuple[pytest.MarkDecorator, ...] = ()
 
 
 def line_separator_params() -> list[ParameterSet]:

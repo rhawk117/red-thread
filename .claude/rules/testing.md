@@ -82,8 +82,8 @@ class TestStoreUpload:
 - Test classes never inherit from each other, with one exception: a suite. To run the same tests over several inputs, parametrize over scenarios.
 - A contract that several tiers or implementations share is one suite class in a helper file. Its name does not start with `Test`, so pytest does not collect it, and it nests the `Test*` groups. Each tier module holds a bare subclass of the suite. Each tier `conftest.py` defines only the suite's fixtures (`harness`, plus `open_harness` when the suite holds a property, see "Hypothesis or pytest.param"), and every other fixture is defined once, in the concept `conftest.py`. Any other inheritance between test classes stays banned.
 - Every parametrize set lives in a module-level `<subject>_<kind>_cases()` function that builds its cases and returns the `pytest.mark.parametrize` decorator. When the cases derive from options the class holds, the function takes them as an argument (`@upload_policy_size_boundary_cases(options)`), so the coupling is visible.
-- A case with more than one value is a Scenario class: a frozen dataclass with a `name`, the case's inputs and expected outcome, a `marks` tuple, and a `param` property returning `pytest.param(self, id=self.name, marks=self.marks)`. A single-value case stays a plain `pytest.param`.
-- Annotate `param` as `ParameterSet`, imported from `_pytest.mark` under `TYPE_CHECKING`; pytest exposes no public name for it.
+- A case with more than one value is a Scenario class: a frozen dataclass with a `name`, the case's inputs and expected outcome, and a `marks` tuple. It has no `param` property: `to_param(case)` in `tests/params.py` builds its parameter set and `as_params(cases)` builds the list. A single-value case stays a plain `pytest.param`.
+- `to_param` returns a `ParameterSet`, imported from `_pytest.mark` under `TYPE_CHECKING` because pytest exposes no public name for it. Annotate any other function that returns parameter sets the same way.
 
 ```python
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -92,10 +92,6 @@ class SizeBoundary:
     upload: Upload
     issue_type: type[object]
     marks: tuple[pytest.MarkDecorator, ...] = ()
-
-    @property
-    def param(self) -> ParameterSet:
-        return pytest.param(self, id=self.name, marks=self.marks)
 
 
 def upload_policy_size_boundary_cases(options: UploadOptions) -> pytest.MarkDecorator:
@@ -114,7 +110,7 @@ def upload_policy_size_boundary_cases(options: UploadOptions) -> pytest.MarkDeco
         upload=Upload(filename='scan.png', size=options.max_bytes + 1),
         issue_type=UploadTooLargeError,
     )
-    return pytest.mark.parametrize('boundary', [empty.param, at_limit.param, one_over_limit.param])
+    return pytest.mark.parametrize('boundary', as_params((empty, at_limit, one_over_limit)))
 ```
 
 ## Hypothesis or pytest.param

@@ -27,10 +27,7 @@ class LensShape:
     headings: tuple[str, ...]
     budget: int
     fill_kind: EntryKind
-
-    @property
-    def param(self) -> ParameterSet:
-        return pytest.param(self, id=self.name)
+    marks: tuple[pytest.MarkDecorator, ...] = ()
 
 
 def lens_shapes() -> list[LensShape]:
@@ -117,10 +114,7 @@ class FlagScenario:
     tree_head: str | None = HEAD
     tree_lines: tuple[str, ...] | None = QUEUE_LINES
     flags: tuple[str, ...] = ()
-
-    @property
-    def param(self) -> ParameterSet:
-        return pytest.param(self, id=self.name)
+    marks: tuple[pytest.MarkDecorator, ...] = ()
 
 
 def flag_scenarios() -> list[FlagScenario]:
@@ -173,10 +167,7 @@ class CiteShape:
     name: str
     cite: str
     written: str
-
-    @property
-    def param(self) -> ParameterSet:
-        return pytest.param(self, id=self.name)
+    marks: tuple[pytest.MarkDecorator, ...] = ()
 
 
 def cite_shape_params() -> list[ParameterSet]:

@@ -3,11 +3,10 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-import pytest
-
 from tests.params import as_params
 
 if TYPE_CHECKING:
+    import pytest
     from _pytest.mark import ParameterSet
     from red_thread_casefile.policy import CiteState
 
@@ -18,10 +17,7 @@ class CapCase:
     total: int
     shown_seqs: tuple[int, ...]
     hidden: int
-
-    @property
-    def param(self) -> ParameterSet:
-        return pytest.param(self, id=self.name)
+    marks: tuple[pytest.MarkDecorator, ...] = ()
 
 
 def section_cap_params() -> list[ParameterSet]:
@@ -41,10 +37,7 @@ class LeadCase:
     board_head: str | None
     is_lead: bool
     recorded: str | None = None
-
-    @property
-    def param(self) -> ParameterSet:
-        return pytest.param(self, id=self.name)
+    marks: tuple[pytest.MarkDecorator, ...] = ()
 
 
 def lead_marker_params() -> list[ParameterSet]:
@@ -83,10 +76,7 @@ class StateCount:
     name: str
     states: tuple[CiteState, ...]
     written: str
-
-    @property
-    def param(self) -> ParameterSet:
-        return pytest.param(self, id=self.name)
+    marks: tuple[pytest.MarkDecorator, ...] = ()
 
 
 def state_count_params() -> list[ParameterSet]:

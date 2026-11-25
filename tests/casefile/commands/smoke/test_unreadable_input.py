@@ -11,8 +11,6 @@ from tests.params import as_params
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from _pytest.mark import ParameterSet
-
     from tests.casefile.commands.cli import CliHarness, CliRun
 
 
@@ -21,10 +19,7 @@ class UnreadableFile:
     name: str
     command: str
     path_kind: str
-
-    @property
-    def param(self) -> ParameterSet:
-        return pytest.param(self, id=self.name)
+    marks: tuple[pytest.MarkDecorator, ...] = ()
 
 
 def unreadable_file_cases() -> pytest.MarkDecorator:

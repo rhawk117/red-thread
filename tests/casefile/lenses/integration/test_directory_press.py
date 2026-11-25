@@ -23,7 +23,6 @@ from tests.casefile.pages.promises import (
 from tests.params import as_params
 
 if TYPE_CHECKING:
-    from _pytest.mark import ParameterSet
     from red_thread_casefile.domain import Draft
 
     from tests.casefile.ledger.git_repository import GitRepository
@@ -46,10 +45,7 @@ class DiskChange:
     queue_lines: tuple[str, ...] | None = QUEUE_LINES
     advance_head: bool = False
     flags: tuple[str, ...] = ()
-
-    @property
-    def param(self) -> ParameterSet:
-        return pytest.param(self, id=self.name)
+    marks: tuple[pytest.MarkDecorator, ...] = ()
 
     def apply(self, git: GitRepository) -> tuple[str, ...]:
         recorded = git.head[:7]

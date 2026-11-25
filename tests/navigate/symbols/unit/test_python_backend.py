@@ -1,5 +1,6 @@
 """The Python backend turns a source file into symbols, references and notes."""
 
+from collections import defaultdict
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
 
@@ -96,10 +97,10 @@ class TestSymbols:
 class TestReferences:
     @pytest.fixture
     def lines_by_name(self) -> dict[str, list[int]]:
-        grouped: dict[str, list[int]] = {}
+        grouped: defaultdict[str, list[int]] = defaultdict(list)
         for reference in parse(SAMPLE).references:
-            grouped.setdefault(reference.name, []).append(reference.line)
-        return grouped
+            grouped[reference.name].append(reference.line)
+        return dict(grouped)
 
     def test_calls_attribute_reads_and_bare_names_are_references(
         self, lines_by_name: dict[str, list[int]]

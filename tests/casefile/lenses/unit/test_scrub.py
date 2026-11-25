@@ -14,7 +14,6 @@ from tests.casefile.lenses.reading import list_section_lines
 from tests.params import as_params
 
 if TYPE_CHECKING:
-    from _pytest.mark import ParameterSet
     from red_thread_casefile.lenses import LensName
 
     from tests.casefile.lenses.builders import PressHarness
@@ -32,10 +31,7 @@ class SecretScenario:
     name: str
     secret: str
     marker: str
-
-    @property
-    def param(self) -> ParameterSet:
-        return pytest.param(self, id=self.name)
+    marks: tuple[pytest.MarkDecorator, ...] = ()
 
 
 def secret_cases() -> pytest.MarkDecorator:

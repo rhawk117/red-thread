@@ -12,8 +12,6 @@ from tests.casefile.lenses.builders import create_numbered_entries, export
 from tests.params import as_params
 
 if TYPE_CHECKING:
-    from _pytest.mark import ParameterSet
-
     from tests.casefile.lenses.builders import PressHarness
 
 PREVIOUS = 'a brief written by an earlier export\n'
@@ -24,10 +22,7 @@ class RefScenario:
     name: str
     plan: Plan
     unknown: str
-
-    @property
-    def param(self) -> ParameterSet:
-        return pytest.param(self, id=self.name)
+    marks: tuple[pytest.MarkDecorator, ...] = ()
 
 
 def plan_ref_cases() -> pytest.MarkDecorator:

@@ -3,7 +3,6 @@
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
-import pytest
 from red_thread_casefile.errors import (
     DecisionInThreadError,
     DecisionSourceError,
@@ -19,6 +18,7 @@ from tests.casefile.ledger.builders import URL_CITE, create_draft, create_valid_
 from tests.params import as_labelled_params, as_params
 
 if TYPE_CHECKING:
+    import pytest
     from _pytest.mark import ParameterSet
     from red_thread_casefile.domain import Draft
     from red_thread_casefile.errors import CaseFileError
@@ -31,10 +31,6 @@ class RuleCase:
     error_type: type[CaseFileError] | None
     thread: str | None = None
     marks: tuple[pytest.MarkDecorator, ...] = ()
-
-    @property
-    def param(self) -> ParameterSet:
-        return pytest.param(self, id=self.name, marks=self.marks)
 
 
 def status_rule_params() -> list[ParameterSet]:

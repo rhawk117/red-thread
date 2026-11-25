@@ -1,7 +1,6 @@
 """The page's structure: sections, entry marks, diagrams, the map and the toolbar."""
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
 import pytest
 from red_thread_casefile.assets import read_asset
@@ -19,9 +18,6 @@ from tests.casefile.pages.html_reading import (
 )
 from tests.params import as_params
 
-if TYPE_CHECKING:
-    from _pytest.mark import ParameterSet
-
 MAP_LINES = ('  subgraph main["main ledger"]', '    n0["e1 known: a claim"]:::k_known', '  end')
 
 
@@ -34,10 +30,7 @@ class ChipRule:
     name: str
     items: tuple[Item, ...]
     groups: tuple[str, ...]
-
-    @property
-    def param(self) -> ParameterSet:
-        return pytest.param(self, id=self.name)
+    marks: tuple[pytest.MarkDecorator, ...] = ()
 
 
 def chip_rule_cases() -> pytest.MarkDecorator:

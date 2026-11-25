@@ -13,7 +13,6 @@ from tests.casefile.pages.html_reading import MERMAID_URL, TAILWIND_URL
 from tests.params import as_params
 
 if TYPE_CHECKING:
-    from _pytest.mark import ParameterSet
     from red_thread_casefile.assets import AssetName
 
 OUTSIDE_URL = re.compile(r'https?://[^\s"\'<>)]+')
@@ -24,10 +23,7 @@ STYLE_NAMES: tuple[AssetName, ...] = ('page.css', 'tailwind.css')
 class AssetUrls:
     name: AssetName
     urls: tuple[str, ...]
-
-    @property
-    def param(self) -> ParameterSet:
-        return pytest.param(self, id=self.name)
+    marks: tuple[pytest.MarkDecorator, ...] = ()
 
 
 def asset_cases() -> pytest.MarkDecorator:

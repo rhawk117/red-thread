@@ -20,8 +20,6 @@ from tests.params import as_params
 if TYPE_CHECKING:
     from typing import TypeAliasType
 
-    from _pytest.mark import ParameterSet
-
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class LiteralTuple:
@@ -29,10 +27,6 @@ class LiteralTuple:
     names: tuple[str, ...]
     alias: TypeAliasType
     marks: tuple[pytest.MarkDecorator, ...] = ()
-
-    @property
-    def param(self) -> ParameterSet:
-        return pytest.param(self, id=self.name, marks=self.marks)
 
 
 def literal_tuple_cases() -> pytest.MarkDecorator:

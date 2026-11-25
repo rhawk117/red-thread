@@ -1,7 +1,6 @@
 """load_plan and PlanRecord: what a plan file may hold and what it becomes."""
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
 import pytest
 from red_thread_casefile.errors import MalformedPlanError
@@ -10,19 +9,13 @@ from red_thread_casefile.schemas import PlanRecord, load_plan
 
 from tests.params import as_params
 
-if TYPE_CHECKING:
-    from _pytest.mark import ParameterSet
-
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class MalformedPlan:
     name: str
     text: str
     reason_names: str
-
-    @property
-    def param(self) -> ParameterSet:
-        return pytest.param(self, id=self.name)
+    marks: tuple[pytest.MarkDecorator, ...] = ()
 
 
 def malformed_plan_cases() -> pytest.MarkDecorator:

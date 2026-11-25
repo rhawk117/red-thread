@@ -13,8 +13,6 @@ from tests.params import as_params
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from _pytest.mark import ParameterSet
-
     from tests.casefile.commands.cli import CliHarness, CliRun
 
 BATCH = '[{"kind": "open", "text": "who owns the queue", "source": "scout"}]'
@@ -28,10 +26,7 @@ class CommandCall:
     stdin: str
     reads_case: bool
     reads_ledger: bool
-
-    @property
-    def param(self) -> ParameterSet:
-        return pytest.param(self, id=self.name)
+    marks: tuple[pytest.MarkDecorator, ...] = ()
 
 
 def create_calls() -> list[CommandCall]:

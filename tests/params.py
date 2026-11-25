@@ -1,6 +1,5 @@
 """Turns scenarios and labelled values into the parameter sets pytest.mark.parametrize takes."""
 
-from operator import attrgetter
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 import pytest
@@ -12,13 +11,20 @@ if TYPE_CHECKING:
 
 
 @runtime_checkable
-class HasParam(Protocol):
+class Scenario(Protocol):
     @property
-    def param(self) -> ParameterSet: ...
+    def name(self) -> str: ...
+
+    @property
+    def marks(self) -> tuple[pytest.MarkDecorator, ...]: ...
 
 
-def as_params(cases: Iterable[HasParam]) -> list[ParameterSet]:
-    return list(map(attrgetter('param'), cases))
+def to_param(case: Scenario) -> ParameterSet:
+    return pytest.param(case, id=case.name, marks=case.marks)
+
+
+def as_params(cases: Iterable[Scenario]) -> list[ParameterSet]:
+    return list(map(to_param, cases))
 
 
 def as_labelled_params(values: Mapping[str, object]) -> list[ParameterSet]:

@@ -1,7 +1,7 @@
 """DraftPolicy: each storage rule rejects its drafts with its own error, and the rules rank."""
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import pytest
 from hypothesis import given
@@ -21,9 +21,6 @@ from red_thread_casefile.policy import DraftPolicy
 
 from tests.casefile.entries.strategies import optional, words
 from tests.params import as_params
-
-if TYPE_CHECKING:
-    from _pytest.mark import ParameterSet
 
 type Fields = st.SearchStrategy[Any]
 
@@ -46,10 +43,7 @@ class Rule:
     drafts: st.SearchStrategy[Draft]
     threads: st.SearchStrategy[str | None]
     error: type[Exception] | None
-
-    @property
-    def param(self) -> ParameterSet:
-        return pytest.param(self, id=self.name)
+    marks: tuple[pytest.MarkDecorator, ...] = ()
 
 
 def draft_rule_cases() -> pytest.MarkDecorator:

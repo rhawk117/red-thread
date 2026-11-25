@@ -3,12 +3,11 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-import pytest
-
 from tests.casefile.ledger.memory import MOMENT
 from tests.params import as_params
 
 if TYPE_CHECKING:
+    import pytest
     from _pytest.mark import ParameterSet
 
 
@@ -18,10 +17,7 @@ class CaseIdCase:
     created: str
     label: str
     expected: str
-
-    @property
-    def param(self) -> ParameterSet:
-        return pytest.param(self, id=self.name)
+    marks: tuple[pytest.MarkDecorator, ...] = ()
 
 
 def case_id_params() -> list[ParameterSet]:
@@ -77,10 +73,7 @@ class LanguageCase:
     name: str
     files: tuple[str, ...]
     languages: tuple[str, ...]
-
-    @property
-    def param(self) -> ParameterSet:
-        return pytest.param(self, id=self.name)
+    marks: tuple[pytest.MarkDecorator, ...] = ()
 
 
 def count_files(**counts: int) -> tuple[str, ...]:

@@ -176,7 +176,7 @@ class TestRefusalPaths:
     def test_a_twenty_character_file_name_survives_whole_under_a_long_directory(
         self, twenty: SourceDir, address: str
     ) -> None:
-        file_name = address.split('#', maxsplit=1)[0].rsplit('/', 1)[-1]
+        file_name = PurePosixPath(address.split('#', maxsplit=1)[0]).name
         assert len(file_name) == 20
 
         message = refuse(twenty, address)

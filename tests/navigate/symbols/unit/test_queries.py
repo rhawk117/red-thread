@@ -2,14 +2,10 @@
 
 from dataclasses import dataclass
 from importlib import resources
-from typing import TYPE_CHECKING
 
 import pytest
 
 from tests.params import as_params
-
-if TYPE_CHECKING:
-    from _pytest.mark import ParameterSet
 
 MIT_NOTICE = 'The MIT License (MIT)'
 
@@ -19,10 +15,6 @@ class UpstreamNotice:
     name: str
     copyright: str
     marks: tuple[pytest.MarkDecorator, ...] = ()
-
-    @property
-    def param(self) -> ParameterSet:
-        return pytest.param(self, id=self.name, marks=self.marks)
 
 
 def query_notice_cases() -> pytest.MarkDecorator:

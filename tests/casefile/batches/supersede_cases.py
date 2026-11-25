@@ -3,7 +3,6 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-import pytest
 from red_thread_casefile.errors import (
     ForeignSupersededError,
     UnknownSupersededError,
@@ -12,6 +11,7 @@ from red_thread_casefile.errors import (
 from tests.params import as_params
 
 if TYPE_CHECKING:
+    import pytest
     from _pytest.mark import ParameterSet
     from red_thread_casefile.errors import CaseFileError
 
@@ -22,10 +22,7 @@ class SupersedeCase:
     thread: str | None
     refs: tuple[str, ...]
     error_type: type[CaseFileError] | None
-
-    @property
-    def param(self) -> ParameterSet:
-        return pytest.param(self, id=self.name)
+    marks: tuple[pytest.MarkDecorator, ...] = ()
 
 
 def supersede_params() -> list[ParameterSet]:
@@ -112,10 +109,7 @@ class SeqCase:
     thread: str | None
     count: int
     refs: tuple[str, ...]
-
-    @property
-    def param(self) -> ParameterSet:
-        return pytest.param(self, id=self.name)
+    marks: tuple[pytest.MarkDecorator, ...] = ()
 
 
 def seq_params() -> list[ParameterSet]:

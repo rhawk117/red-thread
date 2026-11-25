@@ -24,10 +24,7 @@ class SecretCase:
     text: str
     leaked: str
     pattern: PatternName
-
-    @property
-    def param(self) -> ParameterSet:
-        return pytest.param(self, id=self.name)
+    marks: tuple[pytest.MarkDecorator, ...] = ()
 
 
 def secret_params() -> list[ParameterSet]:
