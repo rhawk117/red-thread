@@ -213,6 +213,12 @@ class Document:
         return tuple(chain.from_iterable(section.entries for section in self.sections))
 
 
+def list_entries_block(entries: tuple[EntryNode, ...]) -> tuple[Block, ...]:
+    if not entries:
+        return ()
+    return (EntryList(entries=entries),)
+
+
 def list_caveat_notes(entry: Entry) -> tuple[Note, ...]:
     rests_on = (Note(kind='rests_on', value=entry.rests_on),) if entry.rests_on is not None else ()
     refuted = (Note(kind='refuted_by', value=entry.refute),) if entry.refute is not None else ()

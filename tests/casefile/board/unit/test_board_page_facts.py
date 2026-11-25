@@ -7,11 +7,13 @@ from red_thread_casefile.boards import BoardPage
 
 from tests.casefile.board.builders import create_case_with, create_finding, create_page_board
 from tests.casefile.board.cases import state_count_params
+from tests.casefile.documents.reading import join_line
 from tests.casefile.ledger.builders import MOMENT, create_case, create_entry
 from tests.casefile.ledger.memory import HEAD
 
 if TYPE_CHECKING:
-    from red_thread_casefile.views import Board, Fact
+    from red_thread_casefile.documents import Fact
+    from red_thread_casefile.views import Board
 
     from tests.casefile.board.cases import StateCount
 
@@ -34,7 +36,7 @@ def state_count_cases() -> pytest.MarkDecorator:
 
 
 def read_facts(board: Board) -> dict[str, str]:
-    return {fact.label: fact.value for fact in BoardPage(board=board).list_facts()}
+    return {fact.label: join_line(fact.value) for fact in BoardPage(board=board).list_facts()}
 
 
 def find_fact(board: Board, label: str) -> Fact:
@@ -60,7 +62,7 @@ class TestBoardPageFacts:
         *others, page = BoardPage(board=board).list_facts()
 
         assert [fact.label for fact in others] == LABELS
-        assert (page.label, page.value, page.wide) == ('Page', PAGE_URL, True)
+        assert (page.label, join_line(page.value), page.wide) == ('Page', PAGE_URL, True)
 
     def test_the_case_fields_are_shown_as_they_are_written(self) -> None:
         facts = read_facts(create_page_board(create_entry(round_number=3)))
@@ -116,5 +118,5 @@ class TestBoardPageCitationCount:
 
         board = create_page_board(create_entry(), findings=findings)
 
-        assert find_fact(board, 'Citations').value == scenario.written
+        assert join_line(find_fact(board, 'Citations').value) == scenario.written
         assert BoardPage(board=board).count_states() == scenario.written

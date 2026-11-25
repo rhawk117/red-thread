@@ -7,9 +7,10 @@ import msgspec
 
 from red_thread_casefile.boards import BoardPage
 from red_thread_casefile.lenses import Composer, Edition, Plan, count_lines, get_lens
-from red_thread_casefile.pages import HtmlWriter
 from red_thread_casefile.policy import get_page_problem
-from red_thread_casefile.views import Board, MarkdownWriter
+from red_thread_casefile.views import Board
+from red_thread_casefile.writers.markdown import MarkdownWriter
+from red_thread_casefile.writers.page import HtmlPage
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -63,7 +64,7 @@ class Press:
             findings=edition.findings,
         )
         document = BoardPage(board=board).compose()
-        return self.pages.write(BOARD_PAGE, HtmlWriter(document=document).render())
+        return self.pages.write(BOARD_PAGE, HtmlPage(document=document).render())
 
     def export(self, request: ExportRequest) -> Exported:
         lens = get_lens(request.lens)
@@ -80,7 +81,7 @@ class Press:
 
         paths = [self.pages.write(f'out/{lens.name}.md', text)]
         if request.html:
-            page = HtmlWriter(document=document).render()
+            page = HtmlPage(document=document).render()
             paths.append(self.pages.write(f'out/{lens.name}.html', page))
 
         return Exported(paths=tuple(paths), lines=count_lines(text), budget=lens.budget)
