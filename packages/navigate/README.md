@@ -27,9 +27,9 @@ It replaces agentlens, an external tool the plugin used to depend on, so the plu
 ## Commands
 
 ```text
-red-thread-navigate [--budget N] map PATH
-red-thread-navigate [--budget N] find NAME PATH
-red-thread-navigate [--budget N] slice ADDRESS
+redthread-navigate [--budget N] map PATH
+redthread-navigate [--budget N] find NAME PATH
+redthread-navigate [--budget N] slice ADDRESS
 ```
 
 | Verb | Output |
