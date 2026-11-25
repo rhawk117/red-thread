@@ -119,3 +119,226 @@ class TestTraitReferences:
         )
 
         assert lines == [3, 4, 5, 6, 7]
+
+
+TYPE_USES_SAMPLE = """\
+pub struct T;
+pub enum E {}
+pub type A = u8;
+pub trait Tr {}
+fn param(x: T) {}
+fn ret() -> T { make() }
+fn annotated() { let y: T = make(); }
+pub struct Holder { field: T }
+fn generic(v: Vec<T>) {}
+fn literal() { let z = T { a: 1 }; }
+fn scoped(w: m::T) {}
+fn declares<T>(item: T) {}
+"""
+
+NESTED_TYPE_USES_SAMPLE = """\
+pub struct T;
+pub struct W<X>(X);
+fn refs(a: &T, b: &mut T) {}
+fn pointer(p: *const T) {}
+fn array(xs: [T; 3]) {}
+fn tuple(pair: (T, u8)) {}
+fn option(o: Option<&T>) {}
+impl T { fn new() {} }
+fn param(w: W<u8>) {}
+fn ret() -> W<u8> { make() }
+pub struct Holder { field: W<u8> }
+"""
+
+ITEM_TYPE_USES_SAMPLE = """\
+pub struct T;
+pub struct W<X>(X);
+const C: T = make();
+static S: T = make();
+type A = T;
+type P = *const W<u8>;
+type R = [W<u8>; 2];
+type U = (W<u8>, u8);
+"""
+
+VALUE_USES_SAMPLE = """\
+pub struct T;
+const LIMIT: u32 = 3;
+static COUNT: u32 = 1;
+pub enum E { Start, Stop = 2 }
+pub union U { a: u8 }
+pub struct Pair(u8);
+macro_rules! MACRO { () => {} }
+impl T { const ASSOC: u32 = 4; }
+fn locals(count: u32) -> u32 { let n = count + 1; n }
+fn unit() { let x: T = T; }
+fn limit() -> u32 { let m = LIMIT + 1; m }
+"""
+
+
+def value_position_cases() -> pytest.MarkDecorator:
+    return pytest.mark.parametrize(
+        'statement',
+        [
+            pytest.param('let a = NAME;', id='let-value'),
+            pytest.param('let a = NAME + 1;', id='binary-left'),
+            pytest.param('let a = 1 + NAME;', id='binary-right'),
+            pytest.param('let a = -NAME;', id='unary'),
+            pytest.param('NAME = 1;', id='assignment-left'),
+            pytest.param('a = NAME;', id='assignment-right'),
+            pytest.param('NAME += 1;', id='compound-left'),
+            pytest.param('a += NAME;', id='compound-right'),
+            pytest.param('let a = NAME as u8;', id='type-cast'),
+            pytest.param('let a = 0..NAME;', id='range'),
+            pytest.param('g(NAME);', id='arguments'),
+            pytest.param('let a = [NAME];', id='array'),
+            pytest.param('let a = (NAME, 1);', id='tuple'),
+            pytest.param('let a = (NAME);', id='parenthesized'),
+            pytest.param('{ NAME }', id='block'),
+            pytest.param('NAME;', id='expression-statement'),
+            pytest.param('return NAME;', id='return'),
+            pytest.param('loop { break NAME; }', id='break'),
+            pytest.param('let a = NAME?;', id='try'),
+            pytest.param('let a = NAME.await;', id='await'),
+            pytest.param('let a = NAME[0];', id='index'),
+            pytest.param('let a = &NAME;', id='reference'),
+            pytest.param('match a { _ => NAME }', id='match-arm'),
+            pytest.param('let a = || NAME;', id='closure'),
+            pytest.param('if NAME {}', id='if'),
+            pytest.param('while NAME {}', id='while'),
+            pytest.param('let a = m::NAME;', id='scoped'),
+            pytest.param('let a = S { NAME };', id='shorthand-field'),
+        ],
+    )
+
+
+SIGNATURE_USES_SAMPLE = """\
+pub struct T;
+pub enum E { Start }
+pub trait Tr { fn sig(&self) -> T; }
+pub struct Tuple(T);
+fn f(g: fn(T) -> u8) {}
+fn c<U>(u: U) where T: Copy {}
+fn build() { let a = T::new(); let b = E::Start; }
+fn lower() { std::fmt::format(); m::f(); }
+"""
+
+TRAIT_IMPL_SELF_SAMPLE = """\
+struct S;
+impl std::fmt::Display for S {}
+struct W<X>(X);
+impl Clone for W<S> {}
+"""
+
+GENERIC_DECLARATION_SAMPLE = 'fn declares<T>() {}\n'
+
+
+def reference_lines(parsed: FileSymbols, name: str) -> list[int]:
+    return sorted(reference.line for reference in parsed.references if reference.name == name)
+
+
+class TestTypeReferences:
+    @pytest.fixture
+    def type_uses(self) -> FileSymbols:
+        return parse(TYPE_USES_SAMPLE)
+
+    @pytest.fixture
+    def generic_declaration(self) -> FileSymbols:
+        return parse(GENERIC_DECLARATION_SAMPLE)
+
+    def test_type_uses_in_every_position_are_references(self, type_uses: FileSymbols) -> None:
+        assert reference_lines(type_uses, 'T') == [5, 6, 7, 8, 9, 10, 11, 12]
+
+    def test_declarations_are_not_references(self, type_uses: FileSymbols) -> None:
+        declaring = {
+            reference.line
+            for reference in type_uses.references
+            if reference.name in {'T', 'E', 'A', 'Tr'} and reference.line <= 4
+        }
+
+        assert declaring == set()
+
+    def test_generic_parameter_declaration_is_not_a_reference(
+        self, generic_declaration: FileSymbols
+    ) -> None:
+        assert reference_lines(generic_declaration, 'T') == []
+
+
+class TestNestedTypeReferences:
+    @pytest.fixture
+    def nested_type_uses(self) -> FileSymbols:
+        return parse(NESTED_TYPE_USES_SAMPLE)
+
+    @pytest.fixture
+    def item_type_uses(self) -> FileSymbols:
+        return parse(ITEM_TYPE_USES_SAMPLE)
+
+    @pytest.fixture
+    def signature_uses(self) -> FileSymbols:
+        return parse(SIGNATURE_USES_SAMPLE)
+
+    @pytest.fixture
+    def trait_impl_self(self) -> FileSymbols:
+        return parse(TRAIT_IMPL_SELF_SAMPLE)
+
+    def test_nested_type_uses_are_references(self, nested_type_uses: FileSymbols) -> None:
+        assert reference_lines(nested_type_uses, 'T') == [3, 4, 5, 6, 7, 8]
+
+    def test_generic_heads_are_references(self, nested_type_uses: FileSymbols) -> None:
+        assert reference_lines(nested_type_uses, 'W') == [9, 10, 11]
+
+    def test_item_and_nested_type_positions_are_references(
+        self, item_type_uses: FileSymbols
+    ) -> None:
+        assert reference_lines(item_type_uses, 'T') == [3, 4, 5]
+        assert reference_lines(item_type_uses, 'W') == [6, 7, 8]
+
+    def test_signature_and_path_positions_are_references(self, signature_uses: FileSymbols) -> None:
+        assert reference_lines(signature_uses, 'T') == [3, 4, 5, 6, 7]
+        assert reference_lines(signature_uses, 'E') == [7]
+
+    def test_lowercase_path_segments_are_not_references(self, signature_uses: FileSymbols) -> None:
+        names = {reference.name for reference in signature_uses.references}
+
+        assert not names & {'std', 'fmt', 'm'}
+
+    def test_trait_impl_self_types_are_references(self, trait_impl_self: FileSymbols) -> None:
+        assert reference_lines(trait_impl_self, 'S') == [2, 4]
+        assert reference_lines(trait_impl_self, 'W') == [4]
+
+
+class TestValueReferences:
+    @pytest.fixture
+    def value_uses(self) -> FileSymbols:
+        return parse(VALUE_USES_SAMPLE)
+
+    def test_lowercase_locals_are_not_references(self, value_uses: FileSymbols) -> None:
+        names = {reference.name for reference in value_uses.references}
+
+        assert not names & {'count', 'n', 'm', 'x'}
+
+    def test_unit_struct_value_is_listed_once_per_line(self, value_uses: FileSymbols) -> None:
+        assert reference_lines(value_uses, 'T').count(10) == 1
+
+    def test_constant_in_expression_is_a_reference(self, value_uses: FileSymbols) -> None:
+        assert reference_lines(value_uses, 'LIMIT') == [11]
+
+    def test_declaring_lines_are_not_references(self, value_uses: FileSymbols) -> None:
+        declared = {'LIMIT', 'COUNT', 'Start', 'Stop', 'ASSOC', 'U', 'Pair', 'MACRO'}
+        lines = {r.line for r in value_uses.references if r.name in declared}
+
+        assert lines <= {11}
+
+    def statement_reference_lines(self, statement: str, name: str) -> list[int]:
+        text = f'const LIMIT: u32 = 1;\nfn f() {{ {statement.replace("NAME", name)} }}\n'
+        return reference_lines(parse(text), name)
+
+    @value_position_cases()
+    def test_a_capitalized_name_in_each_value_position_is_a_reference(self, statement: str) -> None:
+        assert self.statement_reference_lines(statement, 'LIMIT') == [2]
+
+    @value_position_cases()
+    def test_a_lowercase_name_in_each_value_position_is_not_a_reference(
+        self, statement: str
+    ) -> None:
+        assert self.statement_reference_lines(statement, 'limit') == []

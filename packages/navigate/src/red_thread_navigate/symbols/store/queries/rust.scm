@@ -113,37 +113,171 @@
   macro: (identifier) @name) @reference.call
 
 (impl_item
-  trait: [
-    (type_identifier) @name
-    (generic_type
-      type: (type_identifier) @name)
-    (scoped_type_identifier
-      name: (type_identifier) @name)
-  ]) @reference.implementation
+  trait: (type_identifier) @name) @reference.implementation
 
 (trait_bounds
-  [
-    (type_identifier) @name
-    (generic_type
-      type: (type_identifier) @name)
-    (scoped_type_identifier
-      name: (type_identifier) @name)
-  ]) @reference.type
+  (type_identifier) @name) @reference.type
 
 (dynamic_type
-  trait: [
-    (type_identifier) @name
-    (generic_type
-      type: (type_identifier) @name)
-    (scoped_type_identifier
-      name: (type_identifier) @name)
-  ]) @reference.type
+  trait: (type_identifier) @name) @reference.type
 
 (abstract_type
-  trait: [
-    (type_identifier) @name
-    (generic_type
-      type: (type_identifier) @name)
-    (scoped_type_identifier
-      name: (type_identifier) @name)
-  ]) @reference.type
+  trait: (type_identifier) @name) @reference.type
+
+; A type name in use position. Each branch names its parent and type field, so the name a
+; struct_item, enum_item, trait_item or type parameter declares never matches. Adding a position
+; is one branch.
+[
+  (parameter
+    type: (type_identifier) @name)
+  (function_item
+    return_type: (type_identifier) @name)
+  (function_signature_item
+    return_type: (type_identifier) @name)
+  (ordered_field_declaration_list
+    type: (type_identifier) @name)
+  (function_type
+    parameters: (parameters
+      (type_identifier) @name))
+  (where_predicate
+    left: (type_identifier) @name)
+  (let_declaration
+    type: (type_identifier) @name)
+  (field_declaration
+    type: (type_identifier) @name)
+  (const_item
+    type: (type_identifier) @name)
+  (static_item
+    type: (type_identifier) @name)
+  (type_item
+    type: (type_identifier) @name)
+  (reference_type
+    type: (type_identifier) @name)
+  (pointer_type
+    type: (type_identifier) @name)
+  (array_type
+    element: (type_identifier) @name)
+  (impl_item
+    type: (type_identifier) @name)
+  (type_arguments
+    (type_identifier) @name)
+  (tuple_type
+    (type_identifier) @name)
+  (struct_expression
+    name: (type_identifier) @name)
+  (scoped_type_identifier
+    name: (type_identifier) @name)
+  (generic_type
+    type: (type_identifier) @name)
+] @reference.type
+
+; A capitalized bare value, such as a unit struct or a constant, parses as an identifier, the
+; node every variable uses. The names const_item, static_item, enum_variant, const_parameter,
+; function_item, macro_definition and mod_item declare, and the let and parameter patterns,
+; sit under name and pattern fields, which no branch below names. Each branch carries its own
+; predicate, because a predicate after the alternation does not filter it.
+[
+  (_
+    value: (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (binary_expression
+    left: (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (binary_expression
+    right: (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (unary_expression
+    (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (assignment_expression
+    left: (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (assignment_expression
+    right: (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (compound_assignment_expr
+    left: (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (compound_assignment_expr
+    right: (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (range_expression
+    (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (arguments
+    (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (array_expression
+    (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (tuple_expression
+    (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (parenthesized_expression
+    (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (block
+    (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (expression_statement
+    (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (return_expression
+    (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (break_expression
+    (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (try_expression
+    (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (await_expression
+    (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (index_expression
+    (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (closure_expression
+    body: (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (if_expression
+    condition: (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (while_expression
+    condition: (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (scoped_identifier
+    name: (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (scoped_identifier
+    path: (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (shorthand_field_initializer
+    (identifier) @name
+    (#match? @name "^[A-Z]"))
+] @reference.value
