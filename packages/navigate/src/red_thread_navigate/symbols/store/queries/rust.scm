@@ -224,10 +224,6 @@
     right: (identifier) @name
     (#match? @name "^[A-Z]"))
 
-  (type_cast_expression
-    value: (identifier) @name
-    (#match? @name "^[A-Z]"))
-
   (range_expression
     (identifier) @name
     (#match? @name "^[A-Z]"))
@@ -276,14 +272,6 @@
     (identifier) @name
     (#match? @name "^[A-Z]"))
 
-  (reference_expression
-    (identifier) @name
-    (#match? @name "^[A-Z]"))
-
-  (match_arm
-    value: (identifier) @name
-    (#match? @name "^[A-Z]"))
-
   (closure_expression
     body: (identifier) @name
     (#match? @name "^[A-Z]"))
@@ -294,5 +282,13 @@
 
   (while_expression
     condition: (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (scoped_identifier
+    name: (identifier) @name
+    (#match? @name "^[A-Z]"))
+
+  (shorthand_field_initializer
+    (identifier) @name
     (#match? @name "^[A-Z]"))
 ] @reference.value
