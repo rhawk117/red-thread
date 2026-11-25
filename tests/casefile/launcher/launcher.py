@@ -1,4 +1,4 @@
-"""scripts/casefile.sh as a caller outside the plugin runs it: a child process in a repository."""
+"""bin/redthread-casefile as an outside caller runs it: a child process in a repository."""
 
 import os
 import shutil
@@ -52,15 +52,17 @@ class PluginCopy:
 
     @property
     def script(self) -> Path:
-        return self.root.joinpath('scripts', 'casefile.sh')
+        return self.root.joinpath('bin', 'redthread-casefile')
 
 
 def copy_plugin(source: Path, target: Path) -> PluginCopy:
     skipped = shutil.ignore_patterns('__pycache__', '*.pyc', '*.egg-info', '.venv')
     package = target.joinpath('packages', 'casefile')
     shutil.copytree(source.joinpath('packages', 'casefile'), package, ignore=skipped)
-    target.joinpath('scripts').mkdir()
-    shutil.copy2(source.joinpath('scripts', 'casefile.sh'), target.joinpath('scripts'))
+    bin_dir = target.joinpath('bin')
+    bin_dir.mkdir()
+    shutil.copy2(source.joinpath('bin', 'redthread-lib'), bin_dir)
+    shutil.copy2(source.joinpath('bin', 'redthread-casefile'), bin_dir)
     return PluginCopy(root=target, files=tuple(list_tree(target)))
 
 
@@ -72,12 +74,12 @@ class Launcher:
 
     def run(self, *arguments: str, stdin: str = '') -> Finished:
         runner = ChildRunner(cwd=self.git.root, env=self.environment)
-        return runner.run('sh', str(self.plugin.script), *arguments, stdin=stdin)
+        return runner.run('bash', str(self.plugin.script), *arguments, stdin=stdin)
 
     def run_rooted_at(self, root: Path, *arguments: str) -> Finished:
         environment = {**self.environment, PLUGIN_ROOT: str(root)}
         runner = ChildRunner(cwd=self.git.root, env=environment)
-        return runner.run('sh', str(self.plugin.script), *arguments)
+        return runner.run('bash', str(self.plugin.script), *arguments)
 
     def init(self) -> Path:
         finished = self.run('init', '--target', TARGET, '--kind', 'root-cause', '--bar', 'a line')

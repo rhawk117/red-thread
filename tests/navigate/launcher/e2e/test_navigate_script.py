@@ -1,4 +1,4 @@
-"""scripts/navigate.sh from outside the plugin: a child process in a fixture repository."""
+"""bin/redthread-navigate from outside the plugin: a child process in a fixture repository."""
 
 import shutil
 from dataclasses import dataclass
@@ -44,7 +44,7 @@ class Navigator:
 
     def run(self, *arguments: str) -> Finished:
         runner = ChildRunner(cwd=self.repository, env=read_outside_environment())
-        return runner.run('sh', str(self.script), *arguments)
+        return runner.run('bash', str(self.script), *arguments)
 
 
 @pytest.fixture(scope='session')
@@ -57,8 +57,8 @@ def navigate_script(pytestconfig: pytest.Config, tmp_path_factory: pytest.TempPa
         copy.root.joinpath('packages', 'navigate'),
         ignore=skipped,
     )
-    shutil.copy2(source.joinpath('scripts', 'navigate.sh'), copy.root.joinpath('scripts'))
-    return copy.root.joinpath('scripts', 'navigate.sh')
+    shutil.copy2(source.joinpath('bin', 'redthread-navigate'), copy.root.joinpath('bin'))
+    return copy.root.joinpath('bin', 'redthread-navigate')
 
 
 @pytest.fixture

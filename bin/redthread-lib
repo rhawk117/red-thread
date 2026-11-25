@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Shared functions for the red-thread launchers in this directory. Source it; do not run it.
+# Every function is prefixed redthread:: and keeps its state in locals.
+
+redthread::plugin_root() {
+  local lib_dir
+  lib_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
+  printf '%s\n' "${CLAUDE_PLUGIN_ROOT:-${lib_dir%/*}}"
+}
+
+# Runs packages/<name> as the module red_thread_<name> with Python 3.14 from uv.
+# uv installs the package from this plugin, editable, with the dependencies its pyproject.toml
+# declares. The environment lives in uv's cache, so nothing is installed into the project under
+# investigation and nothing is written into the plugin. --no-config keeps a uv setting in the
+# investigated repository from changing what gets installed.
+redthread::run_package() {
+  local name=$1 root
+  shift
+  root=$(redthread::plugin_root)
+  exec env PYTHONDONTWRITEBYTECODE=1 uv run --no-config --no-project --python 3.14 \
+    --with-editable "${root}/packages/${name}" -- python -m "red_thread_${name}" "$@"
+}

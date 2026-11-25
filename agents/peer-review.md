@@ -26,7 +26,7 @@ The caller sends you a briefing:
 - CONCLUSION: what the owner is about to accept.
 - TODAY: today's date.
 - Optional REFS: the entry refs to review. Without it, review the entries the conclusion depends on.
-- Optional NAVIGATE: the absolute path of the navigate script, `navigate.sh`.
+- Optional NAVIGATE: the absolute path of the navigate script, `redthread-navigate`.
 
 You start with no memory of the caller's conversation, on purpose. If the briefing argues for the conclusion, treat that argument as a claim to test, not as evidence.
 
@@ -77,7 +77,7 @@ weakened: 1
 broken: 0
 unchecked: 1
 commands:
-  - /abs/path/casefile.sh check --case .red-thread/20261121-retry-queue
+  - /abs/path/redthread-casefile check --case .red-thread/20261121-retry-queue
 ---
 
 ## Verdicts

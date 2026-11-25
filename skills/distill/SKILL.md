@@ -1,7 +1,7 @@
 ---
 name: distill
 argument-hint: '[brief|issue|handoff|report]'
-allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/casefile.sh *)
+allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/bin/redthread-casefile *)
 description: >-
   Turns a red-thread case into one output for one reader: a brief of 60 lines or fewer for a
   planning session, a GitHub issue, a handoff for whoever resumes the work, or a report. The case
@@ -24,7 +24,7 @@ The owner's request: $ARGUMENTS
 In this file, SCRIPT means:
 
 ```text
-${CLAUDE_PLUGIN_ROOT}/scripts/casefile.sh
+${CLAUDE_PLUGIN_ROOT}/bin/redthread-casefile
 ```
 
 ## Steps

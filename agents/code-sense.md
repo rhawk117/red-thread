@@ -22,7 +22,7 @@ The caller sends you a briefing. It should contain:
 
 - QUESTION: what to find out.
 - SCOPE: where to look (a directory, a file or a package).
-- Optional NAVIGATE: the absolute path of the navigate script, `navigate.sh`.
+- Optional NAVIGATE: the absolute path of the navigate script, `redthread-navigate`.
 - Optional: facts the caller already knows, and paths to skip.
 
 You start with no memory of the caller's conversation. If the briefing does not say something, you do not know it.

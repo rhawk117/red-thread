@@ -6,7 +6,7 @@ Its one dependency is msgspec, which reads and writes every JSON record. `docs/d
 
 ## Who uses it
 
-The `investigate` and `distill` skills call it through `scripts/casefile.sh`, and so do the agents: `research-lead` writes its thread's entries, and `peer-review` runs `render` and `check` to test a conclusion against the record. The launcher runs:
+The `investigate` and `distill` skills call it through `bin/redthread-casefile`, and so do the agents: `research-lead` writes its thread's entries, and `peer-review` runs `render` and `check` to test a conclusion against the record. The launcher runs:
 
 ```sh
 uv run --no-config --no-project --python 3.14 --with-editable <plugin>/packages/casefile -- python -m red_thread_casefile "$@"

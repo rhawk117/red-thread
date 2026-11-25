@@ -10,7 +10,7 @@ description: >-
   Read-only lookup of code structure through the navigate command, for Python, JavaScript,
   TypeScript and TSX, Go, Rust and Terraform. Use when you need file:line citations for a
   question about code structure: where a symbol is defined, what refers to it, what a file or
-  package holds, or the body of one definition. Needs the absolute path of navigate.sh in the
+  package holds, or the body of one definition. Needs the absolute path of redthread-navigate in the
   briefing. Returns a Markdown report with YAML frontmatter. Does not edit, diagnose or
   recommend.
 ---
@@ -24,7 +24,7 @@ The caller sends you a briefing. It should contain:
 
 - QUESTION: what to find out.
 - SCOPE: where to look (a directory, a file or a package).
-- NAVIGATE: the absolute path of the navigate script, `navigate.sh`.
+- NAVIGATE: the absolute path of the navigate script, `redthread-navigate`.
 - Optional: facts the caller already knows, and paths to skip.
 
 You start with no memory of the caller's conversation. If the briefing does not say something, you do not know it.
@@ -76,8 +76,8 @@ Return only this Markdown document, starting with `---` on the first line. No te
 verdict: VERIFIED
 confidence: high
 commands:
-  - /abs/path/navigate.sh --budget 600 find RateLimiter src/api
-  - /abs/path/navigate.sh --budget 1500 slice src/api/limits.py#RateLimiter
+  - /abs/path/redthread-navigate --budget 600 find RateLimiter src/api
+  - /abs/path/redthread-navigate --budget 1500 slice src/api/limits.py#RateLimiter
 follow_up: none
 ---
 
@@ -120,16 +120,16 @@ The caller checks your report by opening each `path:line` and rerunning the comm
 </verification>
 
 <examples>
-Briefing: QUESTION: where is the retry delay computed, and what refers to it? SCOPE: src/queue/. NAVIGATE: /plugin/scripts/navigate.sh
+Briefing: QUESTION: where is the retry delay computed, and what refers to it? SCOPE: src/queue/. NAVIGATE: /plugin/bin/redthread-navigate
 
 ```markdown
 ---
 verdict: VERIFIED
 confidence: high
 commands:
-  - /plugin/scripts/navigate.sh --budget 600 find get_retry_delay src/queue
-  - /plugin/scripts/navigate.sh --budget 1000 slice src/queue/backoff.py#get_retry_delay
-  - /plugin/scripts/navigate.sh --budget 300 slice src/queue/worker.py#L88
+  - /plugin/bin/redthread-navigate --budget 600 find get_retry_delay src/queue
+  - /plugin/bin/redthread-navigate --budget 1000 slice src/queue/backoff.py#get_retry_delay
+  - /plugin/bin/redthread-navigate --budget 300 slice src/queue/worker.py#L88
 follow_up: none
 ---
 
@@ -143,15 +143,15 @@ get_retry_delay is defined in src/queue/backoff.py. Its one reference by name in
 - `src/queue/worker.py:88`: `delay = get_retry_delay(job.attempt, self.options)`
 ```
 
-Briefing: QUESTION: which Go files hold a Handler type, and what does the first one declare? SCOPE: cmd/api/. NAVIGATE: /plugin/scripts/navigate.sh
+Briefing: QUESTION: which Go files hold a Handler type, and what does the first one declare? SCOPE: cmd/api/. NAVIGATE: /plugin/bin/redthread-navigate
 
 ```markdown
 ---
 verdict: VERIFIED
 confidence: high
 commands:
-  - /plugin/scripts/navigate.sh --budget 600 find Handler cmd/api
-  - /plugin/scripts/navigate.sh --budget 1200 slice cmd/api/server/handler.go#Handler
+  - /plugin/bin/redthread-navigate --budget 600 find Handler cmd/api
+  - /plugin/bin/redthread-navigate --budget 1200 slice cmd/api/server/handler.go#Handler
 follow_up: none
 ---
 
@@ -164,15 +164,15 @@ Handler is declared once, in cmd/api/server/handler.go. It is a struct with a ro
 - `cmd/api/server/handler.go:12`: `type Handler struct {`
 ```
 
-Briefing: QUESTION: what does Pipeline.run do? SCOPE: src/etl/pipeline.py. NAVIGATE: /plugin/scripts/navigate.sh
+Briefing: QUESTION: what does Pipeline.run do? SCOPE: src/etl/pipeline.py. NAVIGATE: /plugin/bin/redthread-navigate
 
 ```markdown
 ---
 verdict: INFERRED
 confidence: medium
 commands:
-  - /plugin/scripts/navigate.sh --budget 1200 map src/etl/pipeline.py
-  - /plugin/scripts/navigate.sh --budget 1500 slice src/etl/pipeline.py#Pipeline.run
+  - /plugin/bin/redthread-navigate --budget 1200 map src/etl/pipeline.py
+  - /plugin/bin/redthread-navigate --budget 1500 slice src/etl/pipeline.py#Pipeline.run
 follow_up: slice the body range src/etl/pipeline.py#L140-L230 to see the loop
 ---
 
@@ -185,7 +185,7 @@ Pipeline.run is longer than 100 lines, so slice returned an outline. It lists th
 - `src/etl/pipeline.py:112`: `def run(self, source: Source) -> Result:`
 ```
 
-Briefing: QUESTION: when did the pool size default change? SCOPE: src/pool.py. NAVIGATE: /plugin/scripts/navigate.sh
+Briefing: QUESTION: when did the pool size default change? SCOPE: src/pool.py. NAVIGATE: /plugin/bin/redthread-navigate
 
 ```markdown
 ---

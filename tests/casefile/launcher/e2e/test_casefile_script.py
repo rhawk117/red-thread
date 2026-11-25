@@ -1,4 +1,4 @@
-"""scripts/casefile.sh from outside the plugin: a child process in a temporary git repository."""
+"""bin/redthread-casefile from outside the plugin: a child process in a temporary git repository."""
 
 import json
 from typing import TYPE_CHECKING

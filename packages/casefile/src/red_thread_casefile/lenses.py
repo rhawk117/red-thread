@@ -214,7 +214,7 @@ class Composer:
         pointers = [
             f'Ledger: `{location}/ledger.jsonl`, with one file per thread under `threads/`.',
             f'Citations checked at commit {self.edition.short_head}: {checked}.',
-            f'Check again with the red-thread plugin: `casefile.sh check --case {location}`',
+            f'Check again with the red-thread plugin: `redthread-casefile check --case {location}`',
         ]
         if case.page_url is not None:
             pointers.append(f'Board: {case.page_url}')

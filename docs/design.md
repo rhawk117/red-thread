@@ -91,7 +91,7 @@ Platform facts checked on 2026-11-21 against the Claude Code docs and one live p
 
 **Decided:** one Python script is the only writer and renderer of the case file. It replaces the MCP server, the database and the recorder hooks. Its one dependency is msgspec, which reads and writes every JSON record. That reverses the earlier choice of the standard library alone. The launcher asks uv for msgspec with `--with`, so nothing is installed into the project under investigation, and the first run on a machine downloads it.
 
-The code is the workspace package `packages/casefile`. The stored records (`Entry`, `Case` and `Capabilities`) are frozen msgspec Structs, so a ledger line or a `case.json` that does not match its type is refused with the file and the fault named. Batches and export plans keep their own validation, so `add` still reports every fault in a batch with its fix. The page's skeleton, styles, script and map header sit in `packages/casefile/assets/`, beside `src/`, where they are easy to find, and `assets.py` reads them by path from the module file. The package therefore runs from the source tree, which is how `scripts/casefile.sh` and an editable install run it; a built wheel would not carry the assets. The HTML fragments are Python 3.14 t-strings rendered through one escaping function. Imports inside the package are absolute.
+The code is the workspace package `packages/casefile`. The stored records (`Entry`, `Case` and `Capabilities`) are frozen msgspec Structs, so a ledger line or a `case.json` that does not match its type is refused with the file and the fault named. Batches and export plans keep their own validation, so `add` still reports every fault in a batch with its fix. The page's skeleton, styles, script and map header sit in `packages/casefile/assets/`, beside `src/`, where they are easy to find, and `assets.py` reads them by path from the module file. The package therefore runs from the source tree, which is how `bin/redthread-casefile` and an editable install run it; a built wheel would not carry the assets. The HTML fragments are Python 3.14 t-strings rendered through one escaping function. Imports inside the package are absolute.
 
 | Command | What it does | Status |
 | --- | --- | --- |
@@ -102,7 +102,7 @@ The code is the workspace package `packages/casefile`. The stored records (`Entr
 | `export` | assembles a lens output from the ledger and fails when it is over its line budget | Built |
 | `page` | records the link of the published board in `case.json` | Built |
 
-**Decided:** the script is the workspace package `packages/casefile`, run through `scripts/casefile.sh`, which starts it with `uv run --no-project --python 3.14 --with-editable` on the package. uv takes the dependencies from the package's own `pyproject.toml` and keeps the environment in its cache, so nothing is installed into the project under investigation and the launcher repeats no requirement. The primary passes the launcher's absolute path in each brief as `SCRIPT`, since a brief already carries everything a worker needs.
+**Decided:** the script is the workspace package `packages/casefile`, run through `bin/redthread-casefile`, which starts it with `uv run --no-project --python 3.14 --with-editable` on the package. uv takes the dependencies from the package's own `pyproject.toml` and keeps the environment in its cache, so nothing is installed into the project under investigation and the launcher repeats no requirement. The primary passes the launcher's absolute path in each brief as `SCRIPT`, since a brief already carries everything a worker needs.
 
 ### Entries
 
@@ -255,7 +255,7 @@ Every agent file is rewritten against section 10 before it ships.
 
 ## 8. Navigation tool
 
-**Decided 2026-11-23:** red-thread ships its own code navigation, the workspace package `packages/navigate` (`red_thread_navigate`), run through `scripts/navigate.sh`. It replaces the external agentlens tool, which the first version of this section planned to gut and distribute as wheels. agentlens 0.2.0 (`/home/rhawk/dev/agentlens`) stays the source of the command surface and the evaluation harness, and nothing in the plugin depends on it. The launcher starts the package the way `scripts/casefile.sh` starts the case file script, so nothing is installed into the project under investigation. Both launchers run uv with `--no-config`, so a `uv.toml` or `pyproject.toml` uv setting in the investigated repository cannot change what they install.
+**Decided 2026-11-23:** red-thread ships its own code navigation, the workspace package `packages/navigate` (`red_thread_navigate`), run through `bin/redthread-navigate`. It replaces the external agentlens tool, which the first version of this section planned to gut and distribute as wheels. agentlens 0.2.0 (`/home/rhawk/dev/agentlens`) stays the source of the command surface and the evaluation harness, and nothing in the plugin depends on it. The launcher starts the package the way `bin/redthread-casefile` starts the case file script, so nothing is installed into the project under investigation. Both launchers run uv with `--no-config`, so a `uv.toml` or `pyproject.toml` uv setting in the investigated repository cannot change what they install.
 
 ### What it is
 
@@ -304,13 +304,13 @@ The strongest competitor is no tool. In the agentlens 0.2.0 evaluation (agentlen
 ### In red-thread
 
 - `init` does not look for the tool, the board header does not show it and a lead's brief does not mention it. The case file's `navigation_tool` field is gone from new cases, and a `case.json` that still has it loads and renders.
-- `code-lens` runs only `scripts/navigate.sh` (named in the briefing as NAVIGATE) and `rg`, with a budget of 6,000 tokens of output a question. The primary or a lead, through `skills/investigate/SKILL.md`, sends it questions about the structure of code in the six languages. Questions about behavior still go to `code-sense`.
+- `code-lens` runs only `bin/redthread-navigate` (named in the briefing as NAVIGATE) and `rg`, with a budget of 6,000 tokens of output a question. The primary or a lead, through `skills/investigate/SKILL.md`, sends it questions about the structure of code in the six languages. Questions about behavior still go to `code-sense`.
 - `skills/navigate` holds how to use navigate: the commands, addresses, output, recipes for common asks and every refusal with its next step. It is preloaded through the `skills` field into `code-lens`, `code-sense`, `research-cell` and `peer-review`, and each of them gets NAVIGATE in its brief. `code-lens` runs only navigate and `rg`; the other three use navigate first for structure in the six languages and keep their own tools for the rest.
 - `map` prints each symbol's signature line and `find` prints each definition's address, kind and span with no line text, so the scout cites only lines it saw in `slice` or `rg -n` output.
 
 ### Why not the other routes
 
-- Porting agentlens's Rust (the external tool that navigate replaced), or shipping it as wheels, puts a binary in the plugin or makes every user compile Rust. Binaries in `bin/` cost about 6.4 MB per platform per version in git history, plugin clones never fetch Git LFS content, and claude.ai and organisation-synced installs reject a plugin with a top-level `bin/`.
+- Porting agentlens's Rust (the external tool that navigate replaced), or shipping it as wheels, puts a binary in the plugin or makes every user compile Rust. Binaries in `bin/` cost about 6.4 MB per platform per version in git history, plugin clones never fetch Git LFS content, and claude.ai and organisation-synced installs reject a plugin with a top-level `bin/`. The launchers moved to `bin/` on 2026-11-25 regardless; see that day's decisions.
 - A language server as the foundation needs a server per language, and the one study of it found it usually adds tokens.
 - The upstream `tags.scm` queries differ by grammar and some grammars ship none, so a language would change when a wheel does.
 
@@ -433,7 +433,7 @@ Open:
 
 - Step 6 has run once. On 2026-11-21 each agent ran headless on a canned brief, and then one real case went from framing to a brief on this repository (both below). The owner has not driven a case by hand, and nothing has been published or commented on. The scouts' budgets are reported below and not changed: `code-sense` passed five calls in one run of five, and `code-lens` passed 6,000 tokens in two runs of nine.
 - `research-cell` worked outside its worktree in the real case (below). Its prompt now says to run plain `git` from the worktree and to keep every scratch file under it. No run has tested the change.
-- Both skills pre-approve `scripts/casefile.sh` through `allowed-tools`. The docs say `${CLAUDE_PLUGIN_ROOT}` is substituted in Bash rules there, and that the grant lasts for the invoking turn only. Whether it reaches a subagent is not documented, so step 6 must confirm it. The real case could not: it ran in `auto` permission mode, where sandboxed Bash never asks. It needs a session where Bash asks.
+- Both skills pre-approve `bin/redthread-casefile` through `allowed-tools`. The docs say `${CLAUDE_PLUGIN_ROOT}` is substituted in Bash rules there, and that the grant lasts for the invoking turn only. Whether it reaches a subagent is not documented, so step 6 must confirm it. The real case could not: it ran in `auto` permission mode, where sandboxed Bash never asks. It needs a session where Bash asks.
 - Owner comments are read at the gate (section 4). No published page has carried a comment through that step yet, so the shape of what the Artifact tool returns for a thread is untested.
 - The restyled page has not been looked at in a browser from this machine, which has none, and its Tailwind block has not been compiled outside a browser. The owner checks a sample board. Since 2026-11-21 the tests run the page's script under Node (`tests/casefile/pages/integration`), against a small fake DOM and a stand-in for mermaid in `tests/casefile/pages/dom_harness.js`: the filters, the fold button, copying, and drawing and redrawing diagrams. That checks the script's logic and not what a browser or the real mermaid does with it.
 
@@ -441,7 +441,7 @@ Build order:
 
 | Step | Status |
 | --- | --- |
-| 1. The script and its tests | built: `init`, `add`, `render`, `check`, `export` and `page`. `tests/casefile/launcher/e2e` runs `scripts/casefile.sh` as a child process from a copy of the plugin |
+| 1. The script and its tests | built: `init`, `add`, `render`, `check`, `export` and `page`. `tests/casefile/launcher/e2e` runs `bin/redthread-casefile` as a child process from a copy of the plugin |
 | 2. The agent files | written, validated, and each run once headless on its model |
 | 3. `investigate`, with one file per case kind under `references/` | written |
 | 4. `distill`, with one file per lens under `references/` | written |
@@ -511,7 +511,7 @@ All made by the owner on 2026-11-21.
 | Order of work | document, then build red-thread; the tool was a separate track until 2026-11-23 |
 | Agent prompts | written per model from Anthropic's guidance |
 | Proposed items | all accepted as written |
-| Case-file code | the workspace package `packages/casefile`, run through `scripts/casefile.sh` |
+| Case-file code | the workspace package `packages/casefile`, run through `bin/redthread-casefile` |
 | Agent names | `code-sense`, `web-head`, `research-cell` and `peer-review`; `research-lead` unchanged |
 | Lab scout and skeptic models | Sonnet 5.5 for both: `research-cell` at medium effort, `peer-review` at high |
 | Skill pre-approval | both skills pre-approve the case file script through `allowed-tools` |
@@ -558,3 +558,14 @@ Made by the owner from 2026-11-23; each row begins with its own date.
 | 2026-11-24: Rust type and value uses | a Rust type use and a capitalized bare value (a unit struct, a constant) count as references, generics match by name, and declarations are excluded, following the Go decision of 2026-11-23 |
 | 2026-11-23: refusal markers | the navigate skill describes refusals by their stable markers, so rewording a message does not break the agent |
 | 2026-11-23: navigate skill | one preloaded skill (`skills/navigate`, `user-invocable: false`) in place of usage text in each agent, so the reference lives in one file; `disable-model-invocation` cannot be used because it blocks preloading, so the skill keeps a one-line description in the listing. The Bash scouts other than `code-lens` use navigate first for structure, and keep `rg` for text, config and other languages |
+
+### 2026-11-25: launchers in bin/
+
+Made by the owner on 2026-11-25.
+
+| Decision | Choice and reason |
+| --- | --- |
+| Launcher location | what ships with the plugin lives in `bin/` with no file extension (`bin/redthread-casefile`, `bin/redthread-navigate`); `scripts/` keeps repository tooling only. Section 8 notes that claude.ai and organisation-synced installs reject a plugin with a top-level `bin/`; the owner accepted that cost |
+| Launcher names | prefixed `redthread-`, because Claude Code puts `bin/` on PATH and bare names such as `navigate` could shadow other tools |
+| Shared launcher code | `bin/redthread-lib`, sourced and not executable; every function is prefixed `redthread::`. `redthread::run_package NAME` runs `packages/NAME` as `red_thread_NAME`, so a launcher passes only the package name |
+| Launcher shape | bash, with `setup_environment` and `main` functions and no global state |

@@ -1,7 +1,7 @@
 ---
 name: investigate
 argument-hint: '[what to investigate]'
-allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/casefile.sh *)
+allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/bin/redthread-casefile *)
 description: >-
   Runs a human-gated investigation before any work is done. Frames a target with the owner,
   dispatches read-only scouts for cited facts, keeps every claim in a case file under .red-thread/,
@@ -57,13 +57,13 @@ Depth follows the target:
 Every read and write of the case goes through one script. In this file, SCRIPT means:
 
 ```text
-${CLAUDE_PLUGIN_ROOT}/scripts/casefile.sh
+${CLAUDE_PLUGIN_ROOT}/bin/redthread-casefile
 ```
 
 NAVIGATE is the absolute path of the navigate script, which you derive the same way:
 
 ```text
-${CLAUDE_PLUGIN_ROOT}/scripts/navigate.sh
+${CLAUDE_PLUGIN_ROOT}/bin/redthread-navigate
 ```
 
 Run it from the repository root. Pass its absolute path as SCRIPT, and the navigate script's as NAVIGATE, in every brief that has that field.

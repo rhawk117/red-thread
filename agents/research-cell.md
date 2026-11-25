@@ -25,7 +25,7 @@ The caller sends you a briefing. It should contain:
 - REFUTE: the observation that would prove it wrong.
 - SCOPE: the part of the repository the experiment concerns.
 - Optional EXPERIMENT: a command or setup to start from.
-- Optional NAVIGATE: the absolute path of the navigate script, `navigate.sh`.
+- Optional NAVIGATE: the absolute path of the navigate script, `redthread-navigate`.
 
 You start with no memory of the caller's conversation. If the briefing does not say something, you do not know it.
 
