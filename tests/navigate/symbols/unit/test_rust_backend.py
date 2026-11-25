@@ -150,6 +150,17 @@ fn ret() -> W<u8> { make() }
 pub struct Holder { field: W<u8> }
 """
 
+ITEM_TYPE_USES_SAMPLE = """\
+pub struct T;
+pub struct W<X>(X);
+const C: T = T;
+static S: T = T;
+type A = T;
+type P = *const W<u8>;
+type R = [W<u8>; 2];
+type U = (W<u8>, u8);
+"""
+
 VALUE_USES_SAMPLE = """\
 pub struct T;
 const LIMIT: u32 = 3;
@@ -186,6 +197,15 @@ class TestTypeReferences:
         lines = sorted({reference.line for reference in parsed.references if reference.name == 'W'})
 
         assert lines == [9, 10, 11]
+
+    def test_item_and_nested_type_positions_are_references(self) -> None:
+        parsed = parse(ITEM_TYPE_USES_SAMPLE)
+
+        t_lines = sorted({r.line for r in parsed.references if r.name == 'T'})
+        w_lines = sorted({r.line for r in parsed.references if r.name == 'W'})
+
+        assert t_lines == [3, 4, 5]
+        assert w_lines == [6, 7, 8]
 
     def test_trait_impl_self_types_are_references(self) -> None:
         parsed = parse(

@@ -148,8 +148,9 @@
       name: (type_identifier) @name)
   ]) @reference.type
 
-; A type name in use position. Each branch names its parent and field, so the name a
-; struct_item, enum_item, type_item, trait_item or type parameter declares never matches.
+; A type name in use position. Each branch names its parent and type field, so the name a
+; struct_item, enum_item, trait_item or type parameter declares never matches. Adding a position
+; is one branch.
 [
   (parameter
     type: (type_identifier) @name)
@@ -159,53 +160,30 @@
     type: (type_identifier) @name)
   (field_declaration
     type: (type_identifier) @name)
-  (type_arguments
-    (type_identifier) @name)
-  (struct_expression
-    name: (type_identifier) @name)
-  (scoped_type_identifier
-    name: (type_identifier) @name)
-] @reference.type
-
-; A type name nested inside a reference, pointer, array or tuple type.
-[
+  (const_item
+    type: (type_identifier) @name)
+  (static_item
+    type: (type_identifier) @name)
+  (type_item
+    type: (type_identifier) @name)
   (reference_type
     type: (type_identifier) @name)
   (pointer_type
     type: (type_identifier) @name)
   (array_type
     element: (type_identifier) @name)
+  (impl_item
+    type: (type_identifier) @name)
+  (type_arguments
+    (type_identifier) @name)
   (tuple_type
     (type_identifier) @name)
-] @reference.type
-
-; The self type of an impl, inherent or trait. The trait of a trait impl is captured separately.
-(impl_item
-  type: (type_identifier) @name) @reference.type
-
-; The head of a generic type in use position. The impl header's trait is captured separately.
-[
-  (parameter
-    type: (generic_type
-      type: (type_identifier) @name))
-  (function_item
-    return_type: (generic_type
-      type: (type_identifier) @name))
-  (let_declaration
-    type: (generic_type
-      type: (type_identifier) @name))
-  (field_declaration
-    type: (generic_type
-      type: (type_identifier) @name))
-  (type_arguments
-    (generic_type
-      type: (type_identifier) @name))
-  (reference_type
-    type: (generic_type
-      type: (type_identifier) @name))
-  (impl_item
-    type: (generic_type
-      type: (type_identifier) @name))
+  (struct_expression
+    name: (type_identifier) @name)
+  (scoped_type_identifier
+    name: (type_identifier) @name)
+  (generic_type
+    type: (type_identifier) @name)
 ] @reference.type
 
 ; A capitalized bare value, such as a unit struct or a constant, parses as an identifier, the
