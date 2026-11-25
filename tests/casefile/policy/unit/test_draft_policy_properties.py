@@ -166,7 +166,7 @@ class TestDraftPolicyProperties:
         problem = DraftPolicy(draft=draft, thread=thread).get_storage_problem()
 
         if rule.error is None:
-            assert problem is None
+            assert not problem
             return
 
         assert type(problem) is rule.error

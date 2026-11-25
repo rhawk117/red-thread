@@ -23,7 +23,7 @@ def index_path(path: Path, *, tree: SourceTree, backends: Backends) -> Index:
     parsed = tuple(
         backend.parse(source)
         for source in walked.files
-        if (backend := backends.for_path(source.path)) is not None
+        if (backend := backends.for_path(source.path))
     )
     notes = tuple(note for file in parsed for note in file.notes)
     leading = () if walked.note is None else (walked.note,)

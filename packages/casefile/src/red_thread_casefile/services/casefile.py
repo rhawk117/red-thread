@@ -93,7 +93,7 @@ class Intake:
 
     def get_cite_problem(self, draft: Draft) -> CiteProblem | None:
         probe = self.probe(draft)
-        if probe is None:
+        if not probe:
             return None
 
         if probe.cited_line is None:
@@ -118,11 +118,11 @@ class Intake:
 
     def find_problems(self) -> tuple[CaseFileError, ...]:
         found = map(self.find_problem, self.batch.drafts)
-        return tuple(problem for problem in found if problem is not None)
+        return tuple(problem for problem in found if problem)
 
     def quote(self, draft: Draft) -> Draft:
         probe = self.probe(draft)
-        if probe is None or draft.quote is not None:
+        if not probe or draft.quote is not None:
             return draft
         return replace(draft, quote=probe.cited_line)
 
@@ -161,7 +161,7 @@ class CaseFile:
         return case
 
     def add(self, batch: Batch) -> Added:
-        if batch.thread is not None and THREAD_NAME.fullmatch(batch.thread) is None:
+        if batch.thread is not None and not THREAD_NAME.fullmatch(batch.thread):
             raise InvalidThreadError(thread=batch.thread)
 
         ledger = self.repository.read_ledger()

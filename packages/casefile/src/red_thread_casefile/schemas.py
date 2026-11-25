@@ -72,7 +72,7 @@ class DraftRecord:
             return UnknownFieldError(position=self.position, field=unknown, allowed=DRAFT_FIELDS)
 
         verdict = self.record.get('verdict')
-        if verdict is not None and find_verdict(verdict) is None:
+        if verdict is not None and not find_verdict(verdict):
             return self.reject('verdict', 'left out, or one of ' + ', '.join(VERDICTS))
 
         if (malformed := self.malformed_text_field) is not None:
@@ -82,7 +82,7 @@ class DraftRecord:
 
     def parse(self) -> Draft | ShapeProblem:
         kind = find_kind(self.record.get('kind'))
-        if kind is None:
+        if not kind:
             return self.reject('kind', 'one of ' + ', '.join(ENTRY_KINDS))
 
         text = read_text(self.record, 'text')

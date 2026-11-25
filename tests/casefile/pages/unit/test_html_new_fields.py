@@ -181,10 +181,10 @@ class TestNewFieldsRoundTrip:
 
         items = list_all_items(document)
         assert [span.body for span in list_spans(page, 'verdict')] == [
-            item.verdict for item in items if item.verdict is not None
+            item.verdict for item in items if item.verdict
         ]
         assert [span.body for span in list_spans(page, 'state')] == [
-            label_state(item.finding) for item in items if item.finding is not None
+            label_state(item.finding) for item in items if item.finding
         ]
 
     @given(document=documents)

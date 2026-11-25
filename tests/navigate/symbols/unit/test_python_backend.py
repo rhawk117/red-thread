@@ -24,7 +24,7 @@ PATH = PurePosixPath('pkg/sample.py')
 
 def backend_at(path: PurePosixPath) -> Backend:
     backend = backend_for(path)
-    assert backend is not None
+    assert backend
     return backend
 
 
@@ -238,7 +238,7 @@ class TestBackendFor:
         assert backend_at(PATH).language == 'python'
 
     def test_unknown_suffix_selects_nothing(self) -> None:
-        assert backend_for(PurePosixPath('notes.txt')) is None
+        assert not backend_for(PurePosixPath('notes.txt'))
 
 
 def unpacking_cases() -> pytest.MarkDecorator:

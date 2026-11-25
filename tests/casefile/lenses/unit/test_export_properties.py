@@ -36,7 +36,7 @@ def retiring(index: int, retires: bool) -> tuple[str, ...]:
 def list_named_refs(markdown: str) -> list[str]:
     items = (line for line in markdown.split('\n') if line.startswith('- '))
     found = (NAMED_REF.search(line) for line in items)
-    return [match[1] for match in found if match is not None]
+    return [match[1] for match in found if match]
 
 
 class TestExportProperties:

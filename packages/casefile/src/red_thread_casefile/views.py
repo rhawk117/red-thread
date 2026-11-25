@@ -52,12 +52,12 @@ def get_shown_verdict(entry: Entry) -> Verdict | None:
 
 def label_entry(entry: Entry) -> str:
     shown = get_shown_verdict(entry)
-    verdict = f'{shown}: ' if shown is not None else ''
+    verdict = f'{shown}: ' if shown else ''
     return f'{verdict}{squeeze(entry.text)}'
 
 
 def list_cite_flags(finding: Finding | None) -> list[str]:
-    if finding is None:
+    if not finding:
         return []
     failing = [f'citation {finding.state}'] if finding.state in FAILING_STATES else []
     moved = [f'citation moved to line {finding.moved_to}'] if finding.moved_to is not None else []

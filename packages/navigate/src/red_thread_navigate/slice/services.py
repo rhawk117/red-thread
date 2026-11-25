@@ -128,7 +128,7 @@ class Slicer:
 
     def parse_file(self, source: SourceFile, *, budget: int) -> FileSymbols:
         backend = self.backends.for_path(source.path)
-        if backend is None:
+        if not backend:
             suffix = shorten_name(source.path.suffix, MIN_SHOWN) or 'this'
             reason = f'no symbol backend reads {suffix} files, use lines like #L1-L20'
             raise refuse_file(refused=Refused(path=source.path, budget=budget), reason=reason)

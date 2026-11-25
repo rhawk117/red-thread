@@ -22,7 +22,7 @@ class TestGetPageProblem:
 
     @given(rest=solid)
     def test_an_https_link_without_whitespace_is_a_page_url(self, rest: str) -> None:
-        assert get_page_problem(f'https://{rest}') is None
+        assert not get_page_problem(f'https://{rest}')
 
     @given(url=other_schemes)
     def test_a_link_that_is_not_https_is_rejected_with_the_url(self, url: str) -> None:

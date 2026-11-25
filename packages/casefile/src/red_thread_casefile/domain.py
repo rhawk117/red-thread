@@ -57,7 +57,7 @@ class Cite:
 
     @property
     def path(self) -> str | None:
-        if (located := self.located) is None:
+        if not (located := self.located):
             return None
         path = PurePosixPath(located['path'])
         if path.is_absolute() or '..' in path.parts:
@@ -67,7 +67,7 @@ class Cite:
     @property
     def line(self) -> int | None:
         located = self.located
-        if located is None or self.path is None:
+        if not located or self.path is None:
             return None
         return int(located['line'])
 

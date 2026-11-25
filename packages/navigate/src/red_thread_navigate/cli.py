@@ -180,7 +180,7 @@ def run(argv: list[str]) -> int:
         print(f'{PROGRAM}: {error}', file=sys.stderr)
         return EXIT_USAGE
 
-    if request is None:
+    if not request:
         return EXIT_OK
 
     return navigate(create_navigator(), request)

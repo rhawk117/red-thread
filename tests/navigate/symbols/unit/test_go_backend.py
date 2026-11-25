@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 def backend_at(path: PurePosixPath) -> Backend:
     backend = backend_for(path)
-    assert backend is not None
+    assert backend
     return backend
 
 

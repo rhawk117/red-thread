@@ -87,7 +87,7 @@ def fit_to_budget(rungs: Sequence[tuple[str, ...]], *, budget: int) -> Fitted:
         ),
         None,
     )
-    if whole is not None:
+    if whole:
         return whole
 
     last = len(rungs) - 1

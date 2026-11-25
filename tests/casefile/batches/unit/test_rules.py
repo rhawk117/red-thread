@@ -160,7 +160,7 @@ class TestDraftRules:
         return framed_harness
 
     def assert_case_outcome(self, harness: CaseHarness, case: RuleCase) -> None:
-        if case.error_type is None:
+        if not case.error_type:
             added = harness.add(case.draft, thread=case.thread)
             assert harness.entries == added.entries
             assert len(added.entries) == 1
@@ -272,7 +272,7 @@ class TestSupersedes:
         draft = replace(create_draft(), supersedes=case.refs)
         refs_before = harness.repository.read_ledger().refs
 
-        if case.error_type is not None:
+        if case.error_type:
             rejection = reject_batch(harness, draft, thread=case.thread)
             assert [type(problem) for problem in rejection.problems] == [case.error_type]
             assert harness.repository.read_ledger().live == harness.entries

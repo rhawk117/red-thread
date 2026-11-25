@@ -93,7 +93,7 @@ class TestUsablePlans:
         ],
     )
     def test_plan_has_no_problem(self, text: str) -> None:
-        assert find_plan_problem(text) is None
+        assert not find_plan_problem(text)
 
     def test_empty_or_blank_text_is_the_empty_plan(self) -> None:
         assert read_plan('') == Plan()

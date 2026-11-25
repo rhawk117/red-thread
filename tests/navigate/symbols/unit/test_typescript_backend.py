@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 def backend_at(suffix: str) -> Backend:
     backend = backend_for(PurePosixPath(f'web/sample{suffix}'))
-    assert backend is not None
+    assert backend
     return backend
 
 

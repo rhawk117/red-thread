@@ -70,13 +70,13 @@ class TestPageUrlPolicy:
         problem = get_page_problem(scenario.url)
 
         assert (problem is None) is scenario.accepted
-        if problem is not None:
+        if problem:
             assert isinstance(problem, InvalidPageUrlError)
             assert problem.url == scenario.url
 
     @given(tail=visible)
     def test_any_https_link_without_whitespace_is_accepted(self, tail: str) -> None:
-        assert get_page_problem(f'https://{tail}') is None
+        assert not get_page_problem(f'https://{tail}')
 
     @given(head=visible, gap=whitespace, tail=visible)
     def test_whitespace_anywhere_after_the_scheme_is_rejected(

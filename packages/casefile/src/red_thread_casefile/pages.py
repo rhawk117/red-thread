@@ -107,7 +107,7 @@ def label_state(finding: Finding) -> str:
 
 
 def write_state(finding: Finding | None) -> Template:
-    if finding is None:
+    if not finding:
         return t''
     marks = t'class="state" data-state="{finding.state}" title="{STATE_TITLE}"'
     return t'<span {marks}>{label_state(finding)}</span>'
@@ -146,7 +146,7 @@ def write_notes(item: Item) -> Template:
 
 
 def write_claim(item: Item) -> Template:
-    if item.verdict is None:
+    if not item.verdict:
         return t'<p class="claim">{mark_up(item.text)}</p>'
     badge = t'<span class="verdict" data-verdict="{item.verdict}">{item.verdict}</span>'
     return t'<p class="claim">{badge} {mark_up(item.text)}</p>'
@@ -184,7 +184,7 @@ def write_listing(section: Section) -> Template:
 def write_fold(section: Section, body: Template) -> Template:
     count = t'<span class="count">{len(section.items)}</span>' if is_threaded(section) else t''
     note = t'<span class="about">{section.note}</span>' if section.note else t''
-    kind = t' data-kind="{section.kind}"' if section.kind is not None else t''
+    kind = t' data-kind="{section.kind}"' if section.kind else t''
     state = t'' if section.folded else t' open'
     heading = t'<summary><h2>{section.title}</h2>{count}{note}</summary>'
     return t'<details class="section"{kind}{state}>\n{heading}\n{body}\n</details>\n'

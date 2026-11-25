@@ -227,7 +227,7 @@ class Composer:
         return (f'{case.target} The bar for an answer: {case.bar}',)
 
     def compose_part(self, part: Part) -> Section:
-        if part.kind is not None:
+        if part.kind:
             items = tuple(map(self.create_item, self.select(part.kind)))
             return Section(
                 title=part.title, items=items, kind=part.kind, note=describe_kind(part.kind)
