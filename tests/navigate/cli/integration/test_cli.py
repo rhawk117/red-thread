@@ -179,13 +179,28 @@ def contents() -> st.SearchStrategy[str]:
     return st.one_of(st.text(max_size=400), names.map(definitions))
 
 
+@dataclass(slots=True, kw_only=True, frozen=True)
+class AddressForms:
+    file_name: str
+
+    def name_symbol(self, symbol: str) -> str:
+        return f'{self.file_name}#{symbol}'
+
+    def name_lines(self, line: int) -> str:
+        return f'{self.file_name}#L{line}-L{line + 20}'
+
+    def nest_under(self, path: str) -> str:
+        return f'{path}/{self.file_name}#x'
+
+
 def addresses(file_name: str) -> st.SearchStrategy[str]:
     name = st.from_regex(IDENTIFIER, fullmatch=True)
+    forms = AddressForms(file_name=file_name)
     return st.one_of(
-        name.map(lambda symbol: f'{file_name}#{symbol}'),
-        st.integers(1, 40).map(lambda line: f'{file_name}#L{line}-L{line + 20}'),
+        name.map(forms.name_symbol),
+        st.integers(1, 40).map(forms.name_lines),
         st.text(max_size=120),
-        st.text(alphabet='abcd/.', max_size=150).map(lambda path: f'{path}/{file_name}#x'),
+        st.text(alphabet='abcd/.', max_size=150).map(forms.nest_under),
     )
 
 

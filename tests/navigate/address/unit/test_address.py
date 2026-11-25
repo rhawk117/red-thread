@@ -130,13 +130,17 @@ def under_root(steps: list[str]) -> bool:
     return parts[: len(root_parts)] == root_parts and len(parts) > len(root_parts)
 
 
+def outside_root(steps: list[str]) -> bool:
+    return not under_root(steps)
+
+
 class TestParseAddress:
     segments = st.sampled_from(('a', 'b', 'src', 'x.py'))
     escaping_depths = st.integers(min_value=0, max_value=4)
     outside_roots = st.sampled_from(('/etc', '/work/repo2', '/work', '/'))
     steps = st.lists(st.sampled_from(('a', 'b', '..', '.')), max_size=8)
     inside_steps = steps.filter(under_root)
-    other_steps = steps.filter(lambda chosen: not under_root(chosen))
+    other_steps = steps.filter(outside_root)
 
     @address_form_cases()
     def test_each_form_parses_to_its_parts(self, case: FormCase) -> None:

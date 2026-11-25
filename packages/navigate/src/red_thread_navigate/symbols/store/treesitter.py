@@ -134,7 +134,11 @@ def collect_definitions(
             impl=first_text_of(captures, 'impl'),
         )
         found.setdefault((node.start_byte, node.end_byte), definition)
-    return sorted(found.values(), key=lambda item: (item.node.start_byte, -item.node.end_byte))
+    return sorted(found.values(), key=by_position)
+
+
+def by_position(definition: Definition) -> tuple[int, int]:
+    return (definition.node.start_byte, -definition.node.end_byte)
 
 
 def build_symbols(definitions: list[Definition], lines: list[str]) -> list[Symbol]:

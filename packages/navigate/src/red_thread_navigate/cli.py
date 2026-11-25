@@ -97,14 +97,34 @@ def create_navigator() -> Navigator:
     return Navigator(tree=DiskTree(), backends=RegistryBackends())
 
 
+@dataclass(slots=True, kw_only=True, frozen=True)
+class VerbRunner:
+    navigator: Navigator
+    request: Request
+
+    def show_version(self) -> str:
+        return f'{PROGRAM} {version("red-thread-navigate")}'
+
+    def map_target(self) -> str:
+        return self.navigator.map(Path(self.request.target), budget=self.request.budget)
+
+    def find_name(self) -> str:
+        path = Path(self.request.path or '')
+        return self.navigator.find(self.request.target, path, budget=self.request.budget)
+
+    def slice_address(self) -> str:
+        return self.navigator.slice(
+            self.request.target, root=Path.cwd(), budget=self.request.budget
+        )
+
+
 def run_verb(navigator: Navigator, request: Request) -> str:
+    runner = VerbRunner(navigator=navigator, request=request)
     verbs = {
-        'version': lambda: f'{PROGRAM} {version("red-thread-navigate")}',
-        'map': lambda: navigator.map(Path(request.target), budget=request.budget),
-        'find': lambda: navigator.find(
-            request.target, Path(request.path or ''), budget=request.budget
-        ),
-        'slice': lambda: navigator.slice(request.target, root=Path.cwd(), budget=request.budget),
+        'version': runner.show_version,
+        'map': runner.map_target,
+        'find': runner.find_name,
+        'slice': runner.slice_address,
     }
     return verbs[request.verb]()
 

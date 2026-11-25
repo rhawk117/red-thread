@@ -10,6 +10,10 @@ if TYPE_CHECKING:
     from red_thread_navigate.symbols.services import Index
 
 
+def by_path(file: FileSymbols) -> str:
+    return str(file.path)
+
+
 def is_match(qualified_name: str, name: str) -> bool:
     return qualified_name == name or qualified_name.endswith(f'.{name}')
 
@@ -17,7 +21,7 @@ def is_match(qualified_name: str, name: str) -> bool:
 def definitions_of(files: tuple[FileSymbols, ...], name: str) -> tuple[Definition, ...]:
     return tuple(
         Definition(path=file.path, symbol=symbol)
-        for file in sorted(files, key=lambda item: str(item.path))
+        for file in sorted(files, key=by_path)
         for symbol in file.symbols
         if is_match(symbol.qualified_name, name)
     )
@@ -27,7 +31,7 @@ def references_to(files: tuple[FileSymbols, ...], name: str) -> tuple[Occurrence
     last = name.rsplit('.', 1)[-1]
     return tuple(
         Occurrence(path=file.path, line=reference.line)
-        for file in sorted(files, key=lambda item: str(item.path))
+        for file in sorted(files, key=by_path)
         for reference in file.references
         if reference.name in {name, last}
     )

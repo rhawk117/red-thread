@@ -1,6 +1,7 @@
 import ast
 import re
 from dataclasses import dataclass
+from operator import attrgetter
 from typing import TYPE_CHECKING
 
 from red_thread_navigate.symbols.domain import FileSymbols, Reference, Symbol
@@ -121,7 +122,7 @@ def collect_references(tree: ast.Module) -> tuple[Reference, ...]:
             isinstance(node.ctx, ast.Load) or id(node) in augmented
         ):
             references.append(Reference(name=node.attr, line=node.end_lineno or node.lineno))
-    return tuple(sorted(references, key=lambda reference: (reference.line, reference.name)))
+    return tuple(sorted(references, key=attrgetter('line', 'name')))
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)

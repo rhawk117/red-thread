@@ -22,6 +22,10 @@ def by_source(item: RankedSymbol) -> int:
     return item.symbol.start_line
 
 
+def by_file_rank(item: RankedFile) -> tuple[int, str]:
+    return (-item.references, str(item.file.path))
+
+
 def rank_file(file: FileSymbols, counts: Counter[str], *, key: SymbolKey) -> RankedFile:
     symbols = (
         RankedSymbol(symbol=symbol, references=counts[symbol.name]) for symbol in file.symbols
@@ -32,7 +36,7 @@ def rank_file(file: FileSymbols, counts: Counter[str], *, key: SymbolKey) -> Ran
 def rank_files(files: tuple[FileSymbols, ...], *, key: SymbolKey) -> tuple[RankedFile, ...]:
     counts = Counter(reference.name for file in files for reference in file.references)
     ranked = (rank_file(file, counts, key=key) for file in files)
-    return tuple(sorted(ranked, key=lambda item: (-item.references, str(item.file.path))))
+    return tuple(sorted(ranked, key=by_file_rank))
 
 
 def map_path(index: Index, backends: Backends, *, budget: int) -> str:

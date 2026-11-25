@@ -14,7 +14,12 @@ from red_thread_navigate.budget import (
     fit_to_budget,
 )
 
-lines_strategy = st.lists(st.text(max_size=2000).filter(lambda s: '\n' not in s), max_size=40)
+
+def is_one_line(text: str) -> bool:
+    return '\n' not in text
+
+
+lines_strategy = st.lists(st.text(max_size=2000).filter(is_one_line), max_size=40)
 rungs_strategy = st.lists(lines_strategy.map(tuple), min_size=1, max_size=3)
 
 
