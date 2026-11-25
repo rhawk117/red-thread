@@ -25,25 +25,25 @@ ______________________________________________________________________
 
 ## Fix status (2026-11-25)
 
-Fixed on `feat/package-docs` in commits 6e51953 (casefile), fbd6227 (navigate), 2b3848d (CI), 914b9b6 (tests), 901995e (4.2) and d61c76a (console scripts).
+Fixed on `feat/package-docs` in commits 6e51953 (casefile), fbd6227 (navigate), 2b3848d (CI), 914b9b6 (tests), 901995e (4.2) and d61c76a (console scripts), then f4cba5d, 0e4adc4 and 3fb9f54 for the follow-ups the owner approved.
 
 | Items | Status |
 | --- | --- |
 | 1.1, 1.3, 1.4, 1.5, 1.8, 1.10, 1.11, 1.12 | Done. Both CLIs, and their `[project.scripts]` entries, are named after the bin launchers: `redthread-casefile` and `redthread-navigate`. |
 | 1.2 | Changed. Casefile keeps its hand-written tuples, and `tests/casefile/entries/unit/test_literal_tuples.py` checks that each tuple equals `get_args` on its alias. Navigate `KINDS` is built from `get_args`, with the left-out kinds named in `UNCAPTURED_KINDS`. See the correction under 1.2. |
-| 1.6 | Done in part. One `shorten_head(head, missing)` helper owns the slice. The two placeholders, `none` in the case header and `no commit` in the lead flag, keep their wording. |
+| 1.6 | Done. One `shorten_head(head, missing)` helper owns the slice. The owner chose to keep both placeholders: `none` in the case header and `no commit` in the lead flag. |
 | 1.7 | Done. The `'moved'` comparison in `pages.py` stays, because ty checks it against the `CiteState` Literal. |
-| 1.9 | Done for casefile, which builds its command table once. In navigate, the verb table is built once, but `VALID_OPTIONS` stays hand-written: deriving it would mean reading cyclopts internals. |
+| 1.9 | Done. Casefile builds its command table once. Navigate builds its verb table once and lists the valid options from the cyclopts app's public API, so the message now also shows `-h`. |
 | 2.1, 2.3, 2.4, 2.5, 2.7 | Done. |
 | 2.2 | Done in part. The two records share `find_unknown_field` and `find_non_string`. The decode blocks stay separate, because one raises its error and the other returns it. |
-| 2.6 | Done in part. An `append_text` helper is added. There is no `require_case()` guard: python.md bans functions that exist only to raise, and returning the error saves no lines. |
-| 2.8, 2.9 | Done in part. `symbol_address`, `fit_text` and `keep_prefix` are added. No `rung()` helper was added, and the `shorten_*` merge was skipped, because both made the code longer. |
+| 2.6 | Done. `append_text` is added, and `get_case_problem()` returns the missing-case error for the call site to raise. |
+| 2.8, 2.9 | Done. `symbol_address`, `rung`, `fit_text`, `keep_prefix` (now built on `takewhile`) and a single `shorten(text, limit, keep=...)` are added. |
 | 2.10 | Done in part. The command table and the command names now come from one place. The argument classes are not merged, because that would need inheritance. |
-| 3.1 to 3.7 | Done, except two items. The flag prefixes have no production constant to import. `SCOUTS` stays a copy, because the hook script cannot be imported. |
-| 4.1a | Done: `tests/params.py` holds `as_params`. 4.1b is not done, because it needs a rule change. |
+| 3.1 to 3.7 | Done. The flag prefixes are now production constants that the tests import. `SCOUTS` stays a copy, because the hook script cannot be imported. |
+| 4.1a, 4.1b | Done. The owner approved the rule change: scenarios no longer have a `param` property, and `tests/params.py` provides `to_param` and `as_params`. testing.md is updated to match. |
 | 4.2 | Done: `errors.entry_prefix`. |
 | 5.1 | Done, except for the corrections below. |
-| 5.2 | Not done, and out of scope. |
+| 5.2 | Done: `Path.walk`, `takewhile`, `textwrap.indent` (the output is identical), `date_of` now validates through `date.fromisoformat` and raises `InvalidTimestampError`, plus the test-only swaps. Not done: the `LINE_BREAK` row (see 1.4), `importlib.resources` (the assets would have to move into the package) and the two-pass sort (not recommended). In `test_python_backend.py`, the `defaultdict` is converted back to a plain `dict` before tests read it, so a missing name still raises. |
 
 Corrections found while fixing:
 
