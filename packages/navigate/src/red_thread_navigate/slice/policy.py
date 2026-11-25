@@ -10,8 +10,7 @@ from red_thread_navigate.slice.util import (
     cut_steps,
     deep_cut_steps,
     fill,
-    shorten_name,
-    shorten_path,
+    shorten,
 )
 
 if TYPE_CHECKING:
@@ -43,8 +42,8 @@ class Wording:
         texts = (
             fill(
                 self.template,
-                path=shorten_path(full_path, path_limit),
-                name=shorten_name(self.name, name_limit),
+                path=shorten(full_path, path_limit, keep='tail'),
+                name=shorten(self.name, name_limit, keep='head'),
             )
             for path_limit, name_limit in steps(full_path, self.name)
         )
@@ -55,8 +54,8 @@ class Wording:
             return fitted
         shown = fill(
             self.template,
-            path=shorten_path(str(self.refused.path), MIN_SHOWN),
-            name=shorten_name(self.name, MIN_SHOWN),
+            path=shorten(str(self.refused.path), MIN_SHOWN, keep='tail'),
+            name=shorten(self.name, MIN_SHOWN, keep='head'),
         )
         return cut_to_budget(shown, self.refused.budget or 0)
 
@@ -114,7 +113,7 @@ def nearest_candidates(nearest: tuple[str, ...]) -> Iterator[tuple[str, ...]]:
     longest = max(map(len, nearest), default=0)
     for count in counts:
         yield from (
-            tuple(shorten_name(item, limit) for item in nearest[:count])
+            tuple(shorten(item, limit, keep='head') for item in nearest[:count])
             for limit in range(longest, MIN_SHOWN - 1, -1)
         )
 

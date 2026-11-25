@@ -1,6 +1,7 @@
 """Fitting output to a token budget by stepping down rungs and cutting at a line boundary."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from itertools import takewhile
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from red_thread_navigate.budget.errors import BudgetBelowMinimumError, NoRungsError
@@ -47,10 +48,18 @@ class PrefixCheck(Protocol):
     def fits(self, kept: tuple[str, ...]) -> bool: ...
 
 
+@dataclass(slots=True, kw_only=True, frozen=True)
+class PrefixGate:
+    check: PrefixCheck
+    seen: list[str] = field(default_factory=list)
+
+    def admits(self, item: str) -> bool:
+        self.seen.append(item)
+        return self.check.fits(tuple(self.seen))
+
+
 def keep_prefix(items: tuple[str, ...], check: PrefixCheck) -> tuple[str, ...]:
-    sizes = range(1, len(items) + 1)
-    misfit = next((size for size in sizes if not check.fits(items[:size])), len(items) + 1)
-    return items[: misfit - 1]
+    return tuple(takewhile(PrefixGate(check=check).admits, items))
 
 
 def more_notes(count: int) -> str:

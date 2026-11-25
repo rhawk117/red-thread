@@ -29,7 +29,7 @@ from red_thread_navigate.slice.policy import (
     outside_root_text,
     unknown_symbol_text,
 )
-from red_thread_navigate.slice.util import MIN_SHOWN, shorten_name
+from red_thread_navigate.slice.util import MIN_SHOWN, shorten
 from red_thread_navigate.slice.views import Found, line_rungs, symbol_rungs
 from red_thread_navigate.util import split_lines
 from red_thread_navigate.walk import SKIP_LABELS, SourceFile
@@ -122,7 +122,7 @@ class Slicer:
     def parse_file(self, source: SourceFile, *, budget: int) -> FileSymbols:
         backend = self.backends.for_path(source.path)
         if not backend:
-            suffix = shorten_name(source.path.suffix, MIN_SHOWN) or 'this'
+            suffix = shorten(source.path.suffix, MIN_SHOWN, keep='head') or 'this'
             reason = f'no symbol backend reads {suffix} files, use lines like #L1-L20'
             raise refuse_file(refused=Refused(path=source.path, budget=budget), reason=reason)
         return backend.parse(source)

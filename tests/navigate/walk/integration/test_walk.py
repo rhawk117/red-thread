@@ -184,6 +184,22 @@ class TestSymlinksOutsideTheRoot:
         assert result.skipped == tally_skips(('outside_root', 'outside_root'))
 
 
+class TestSymlinksInsideTheRoot:
+    @pytest.fixture
+    def looped(self, tree: Tree) -> Tree:
+        tree.write('pkg/a.py')
+        tree.root.joinpath('pkg_link').symlink_to(
+            tree.root.joinpath('pkg'), target_is_directory=True
+        )
+        return tree
+
+    def test_a_directory_walk_does_not_follow_a_linked_directory(self, looped: Tree) -> None:
+        result = walk(looped.root)
+
+        assert paths_of(result) == ['pkg/a.py']
+        assert result.note is None
+
+
 class TestUnreadableEntries:
     @pytest.fixture
     def locked(self, tree: Tree) -> Iterator[Tree]:

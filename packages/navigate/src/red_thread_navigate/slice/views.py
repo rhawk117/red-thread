@@ -1,10 +1,11 @@
 """The rungs of a slice: whole code or an outline, then labels, with notes last."""
 
 from dataclasses import dataclass
+from textwrap import indent
 from typing import TYPE_CHECKING
 
 from red_thread_navigate.budget import fit_notes
-from red_thread_navigate.util import span, symbol_address
+from red_thread_navigate.util import rung, span, symbol_address
 
 if TYPE_CHECKING:
     from pathlib import PurePosixPath
@@ -46,8 +47,12 @@ def child_line(found: Found, child: Symbol) -> str:
     return f'  {child.kind_label} {signature}  {span(child)}  {symbol_address(found.path, child)}'
 
 
+def every_line(_line: str) -> bool:
+    return True
+
+
 def indented(text: str) -> tuple[str, ...]:
-    return tuple(f'  {line}' for line in text.splitlines())
+    return tuple(indent(text, '  ', every_line).splitlines())
 
 
 def outline_lines(found: Found) -> tuple[str, ...]:
@@ -83,4 +88,4 @@ def line_rungs(
     path: PurePosixPath, *, start: int, lines: tuple[str, ...]
 ) -> tuple[tuple[str, ...], ...]:
     header = line_address(path, start, start + len(lines) - 1)
-    return ((header, *numbered(lines, start)),)
+    return (rung(header, numbered(lines, start)),)

@@ -2,7 +2,7 @@
 
 import re
 from pathlib import PurePosixPath
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from red_thread_navigate.budget import ELLIPSIS
 
@@ -13,16 +13,16 @@ MIN_SHOWN = 8
 FILE_NAME_FLOOR = 20
 PLACEHOLDER = re.compile(r'<path>|<name>')
 
+type KeptEnd = Literal['head', 'tail']
 
-def shorten_path(text: str, limit: int) -> str:
+
+def shorten(text: str, limit: int, *, keep: KeptEnd) -> str:
     if len(text) <= limit:
         return text
-    return f'{ELLIPSIS}{text[len(ELLIPSIS) - limit :]}'
 
+    if keep == 'tail':
+        return f'{ELLIPSIS}{text[len(ELLIPSIS) - limit :]}'
 
-def shorten_name(text: str, limit: int) -> str:
-    if len(text) <= limit:
-        return text
     return f'{text[: limit - len(ELLIPSIS)]}{ELLIPSIS}'
 
 

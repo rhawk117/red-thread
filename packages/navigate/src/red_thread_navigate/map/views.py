@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from red_thread_navigate.util import plural, span, symbol_address
+from red_thread_navigate.util import plural, rung, span, symbol_address
 
 if TYPE_CHECKING:
     from red_thread_navigate.symbols.domain import Backends, FileSymbols, Symbol
@@ -44,12 +44,13 @@ def header_line(files: tuple[RankedFile, ...]) -> str:
     return f'{plural(len(files), "file")}  {plural(symbols, "symbol")}'
 
 
+def outline_lines(ranked_file: RankedFile) -> tuple[str, ...]:
+    symbols = (symbol_line(ranked_file, ranked) for ranked in ranked_file.symbols)
+    return (file_line(ranked_file), *symbols)
+
+
 def full_rung(files: tuple[RankedFile, ...]) -> tuple[str, ...]:
-    lines = [header_line(files)]
-    for ranked_file in files:
-        lines.append(file_line(ranked_file))
-        lines.extend(symbol_line(ranked_file, ranked) for ranked in ranked_file.symbols)
-    return tuple(lines)
+    return rung(header_line(files), *map(outline_lines, files))
 
 
 def summary_line(ranked_file: RankedFile) -> str:
@@ -60,11 +61,11 @@ def summary_line(ranked_file: RankedFile) -> str:
 
 
 def summary_rung(files: tuple[RankedFile, ...]) -> tuple[str, ...]:
-    return (header_line(files), *map(summary_line, files))
+    return rung(header_line(files), map(summary_line, files))
 
 
 def counts_rung(files: tuple[RankedFile, ...]) -> tuple[str, ...]:
-    return (header_line(files), *map(file_line, files))
+    return rung(header_line(files), map(file_line, files))
 
 
 def map_rungs(files: tuple[RankedFile, ...]) -> tuple[tuple[str, ...], ...]:

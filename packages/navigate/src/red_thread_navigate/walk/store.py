@@ -4,7 +4,7 @@ import os
 import shutil
 import subprocess
 from dataclasses import dataclass
-from pathlib import Path, PurePosixPath
+from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
 
 from red_thread_navigate.walk.domain import (
@@ -19,6 +19,8 @@ from red_thread_navigate.walk.domain import (
 from red_thread_navigate.walk.errors import PathMissingError
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from red_thread_navigate.walk.domain import SkipKind
 
 
@@ -46,27 +48,17 @@ def list_tracked(root: Path) -> TrackedFiles:
     return TrackedFiles(names=tuple(filter(None, names)))
 
 
-def is_inside(root: Path, path: Path) -> bool:
-    return path.resolve().is_relative_to(root)
-
-
 def keeps_directory(name: str) -> bool:
     return not name.startswith('.') and name not in SKIPPED_DIRECTORIES
 
 
-def list_directory(root: Path) -> tuple[tuple[str, ...], int, int]:
+def list_directory(root: Path) -> tuple[tuple[str, ...], int]:
     names: list[str] = []
-    escaped = 0
     errors: list[OSError] = []
-    for current, directories, files in os.walk(root, followlinks=False, onerror=errors.append):
-        base = Path(current)
-        linked = [name for name in directories if base.joinpath(name).is_symlink()]
-        escaped += sum(not is_inside(root, base.joinpath(name)) for name in linked)
-        directories[:] = [
-            name for name in directories if name not in linked and keeps_directory(name)
-        ]
-        names.extend(base.joinpath(name).relative_to(root).as_posix() for name in files)
-    return tuple(names), escaped, len(errors)
+    for current, directories, files in root.walk(on_error=errors.append):
+        directories[:] = filter(keeps_directory, directories)
+        names.extend(current.joinpath(name).relative_to(root).as_posix() for name in files)
+    return tuple(names), len(errors)
 
 
 def read_limited(target: Path) -> bytes | SkipKind:
@@ -95,26 +87,26 @@ def read_source(root: Path, path: Path, name: PurePosixPath) -> SourceFile | Ski
         return 'not_utf8'
 
 
-def list_names(base: Path) -> tuple[tuple[str, ...], int, int, bool]:
+def list_names(base: Path) -> tuple[tuple[str, ...], int, bool]:
     if base.is_file():
-        return (base.name,), 0, 0, False
+        return (base.name,), 0, False
     tracked = list_tracked(base)
     if tracked.names is not None:
-        return tracked.names, 0, 0, tracked.failed
-    names, escaped, unreadable = list_directory(base)
-    return names, escaped, unreadable, tracked.failed
+        return tracked.names, 0, tracked.failed
+    names, unreadable = list_directory(base)
+    return names, unreadable, tracked.failed
 
 
 def walk(root: Path) -> Walk:
     if not root.exists():
         raise PathMissingError(path=root)
     resolved = root.resolve()
-    names, escaped, unreadable, git_failed = list_names(resolved)
+    names, unreadable, git_failed = list_names(resolved)
     base = resolved.parent if resolved.is_file() else resolved
     reads = [read_source(base, base.joinpath(name), PurePosixPath(name)) for name in sorted(names)]
     files = tuple(read for read in reads if isinstance(read, SourceFile))
     kinds = tuple(read for read in reads if isinstance(read, str) and read != 'not_a_file')
-    skipped = tally_skips((*kinds, *('outside_root',) * escaped, *('unreadable',) * unreadable))
+    skipped = tally_skips((*kinds, *('unreadable',) * unreadable))
     return Walk(files=files, skipped=skipped, git_failed=git_failed, single_file=resolved.is_file())
 
 

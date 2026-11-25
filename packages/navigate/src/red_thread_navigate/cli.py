@@ -19,7 +19,6 @@ from red_thread_navigate.walk import DiskTree, PathMissingError
 PROGRAM = 'redthread-navigate'
 DISTRIBUTION = 'red-thread-navigate'
 DEFAULT_BUDGET = 2000
-VALID_OPTIONS = '--budget N, --version, --help'
 EXIT_OK = 0
 EXIT_REFUSED = 1
 EXIT_USAGE = 2
@@ -34,7 +33,7 @@ type Budget = Annotated[
 
 class UsageError(ValueError):
     def __init__(self, *, problem: str) -> None:
-        super().__init__(f'{problem}; valid options are {VALID_OPTIONS}')
+        super().__init__(problem)
 
 
 class MissingVerbError(UsageError):
@@ -122,9 +121,15 @@ def build_app() -> App:
     return verbs
 
 
-def parse_request(argv: list[str]) -> Request | None:
+def describe_options(verbs: App) -> str:
+    arguments = verbs.meta.assemble_argument_collection()
+    shown = (name for argument in arguments if argument.show for name in argument.names)
+    return ', '.join((*shown, *verbs.version_flags, *verbs.help_flags))
+
+
+def parse_request(verbs: App, argv: list[str]) -> Request | None:
     try:
-        parsed = build_app().meta(argv)
+        parsed = verbs.meta(argv)
     except CycloptsError as error:
         raise UsageError(problem=str(error).rstrip('.')) from error
     return parsed if isinstance(parsed, Request) else None
@@ -204,10 +209,11 @@ def navigate(navigator: Navigator, request: Request) -> int:
 
 
 def run(argv: list[str]) -> int:
+    verbs = build_app()
     try:
-        request = parse_request(argv)
+        request = parse_request(verbs, argv)
     except UsageError as error:
-        print(f'{PROGRAM}: {error}', file=sys.stderr)
+        print(f'{PROGRAM}: {error}; valid options are {describe_options(verbs)}', file=sys.stderr)
         return EXIT_USAGE
 
     if not request:

@@ -138,8 +138,7 @@ class TestUsage:
 
         assert (printed.code, printed.out) == (2, '')
         assert flag in printed.err
-        assert '--budget' in printed.err
-        assert '--version' in printed.err
+        assert 'valid options are --budget, --version, --help, -h' in printed.err
 
     @empty_path_cases()
     def test_an_empty_path_exits_two(self, repository: Path, argv: tuple[str, ...]) -> None:

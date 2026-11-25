@@ -1,9 +1,11 @@
 """Formatting helpers shared by the verb views."""
 
 import re
+from itertools import chain
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
     from pathlib import PurePosixPath
 
     from red_thread_navigate.symbols.domain import Symbol
@@ -23,6 +25,10 @@ def plural(count: int, noun: str) -> str:
 
 def symbol_address(path: PurePosixPath, symbol: Symbol) -> str:
     return f'{path}#{symbol.qualified_name}'
+
+
+def rung(header: str, *sections: Iterable[str]) -> tuple[str, ...]:
+    return (header, *chain.from_iterable(sections))
 
 
 def split_lines(text: str) -> tuple[str, ...]:
