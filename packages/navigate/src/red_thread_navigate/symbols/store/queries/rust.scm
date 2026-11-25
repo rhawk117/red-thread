@@ -113,40 +113,16 @@
   macro: (identifier) @name) @reference.call
 
 (impl_item
-  trait: [
-    (type_identifier) @name
-    (generic_type
-      type: (type_identifier) @name)
-    (scoped_type_identifier
-      name: (type_identifier) @name)
-  ]) @reference.implementation
+  trait: (type_identifier) @name) @reference.implementation
 
 (trait_bounds
-  [
-    (type_identifier) @name
-    (generic_type
-      type: (type_identifier) @name)
-    (scoped_type_identifier
-      name: (type_identifier) @name)
-  ]) @reference.type
+  (type_identifier) @name) @reference.type
 
 (dynamic_type
-  trait: [
-    (type_identifier) @name
-    (generic_type
-      type: (type_identifier) @name)
-    (scoped_type_identifier
-      name: (type_identifier) @name)
-  ]) @reference.type
+  trait: (type_identifier) @name) @reference.type
 
 (abstract_type
-  trait: [
-    (type_identifier) @name
-    (generic_type
-      type: (type_identifier) @name)
-    (scoped_type_identifier
-      name: (type_identifier) @name)
-  ]) @reference.type
+  trait: (type_identifier) @name) @reference.type
 
 ; A type name in use position. Each branch names its parent and type field, so the name a
 ; struct_item, enum_item, trait_item or type parameter declares never matches. Adding a position
