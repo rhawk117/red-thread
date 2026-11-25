@@ -212,107 +212,109 @@ def value_position_cases() -> pytest.MarkDecorator:
     )
 
 
+TRAIT_IMPL_SELF_SAMPLE = """\
+struct S;
+impl std::fmt::Display for S {}
+struct W<X>(X);
+impl Clone for W<S> {}
+"""
+
+GENERIC_DECLARATION_SAMPLE = 'fn declares<T>() {}\n'
+
+
+def reference_lines(parsed: FileSymbols, name: str) -> list[int]:
+    return sorted(reference.line for reference in parsed.references if reference.name == name)
+
+
 class TestTypeReferences:
-    def test_type_uses_in_every_position_are_references(self) -> None:
-        parsed = parse(TYPE_USES_SAMPLE)
+    @pytest.fixture
+    def type_uses(self) -> FileSymbols:
+        return parse(TYPE_USES_SAMPLE)
 
-        lines = sorted({reference.line for reference in parsed.references if reference.name == 'T'})
+    @pytest.fixture
+    def generic_declaration(self) -> FileSymbols:
+        return parse(GENERIC_DECLARATION_SAMPLE)
 
-        assert lines == [5, 6, 7, 8, 9, 10, 11, 12]
+    def test_type_uses_in_every_position_are_references(self, type_uses: FileSymbols) -> None:
+        assert reference_lines(type_uses, 'T') == [5, 6, 7, 8, 9, 10, 11, 12]
 
-    def test_nested_type_uses_are_references(self) -> None:
-        parsed = parse(NESTED_TYPE_USES_SAMPLE)
-
-        lines = sorted({reference.line for reference in parsed.references if reference.name == 'T'})
-
-        assert lines == [3, 4, 5, 6, 7, 8]
-
-    def test_generic_heads_are_references(self) -> None:
-        parsed = parse(NESTED_TYPE_USES_SAMPLE)
-
-        lines = sorted({reference.line for reference in parsed.references if reference.name == 'W'})
-
-        assert lines == [9, 10, 11]
-
-    def test_item_and_nested_type_positions_are_references(self) -> None:
-        parsed = parse(ITEM_TYPE_USES_SAMPLE)
-
-        t_lines = sorted({r.line for r in parsed.references if r.name == 'T'})
-        w_lines = sorted({r.line for r in parsed.references if r.name == 'W'})
-
-        assert t_lines == [3, 4, 5]
-        assert w_lines == [6, 7, 8]
-
-    def test_trait_impl_self_types_are_references(self) -> None:
-        parsed = parse(
-            'struct S;\nimpl std::fmt::Display for S {}\nstruct W<X>(X);\nimpl Clone for W<S> {}\n'
-        )
-
-        s_lines = sorted({r.line for r in parsed.references if r.name == 'S'})
-        w_lines = sorted({r.line for r in parsed.references if r.name == 'W'})
-
-        assert s_lines == [2, 4]
-        assert w_lines == [4]
-
-    def test_declarations_are_not_references(self) -> None:
-        parsed = parse(TYPE_USES_SAMPLE)
-
-        names = {
-            (reference.name, reference.line)
-            for reference in parsed.references
-            if reference.name in {'T', 'E', 'A', 'Tr'}
+    def test_declarations_are_not_references(self, type_uses: FileSymbols) -> None:
+        declaring = {
+            reference.line
+            for reference in type_uses.references
+            if reference.name in {'T', 'E', 'A', 'Tr'} and reference.line <= 4
         }
 
-        assert not {name for name in names if name[1] <= 4}
+        assert declaring == set()
 
-    def test_generic_parameter_declaration_is_not_a_reference(self) -> None:
-        parsed = parse('fn declares<T>() {}\n')
+    def test_generic_parameter_declaration_is_not_a_reference(
+        self, generic_declaration: FileSymbols
+    ) -> None:
+        assert reference_lines(generic_declaration, 'T') == []
 
-        assert [r for r in parsed.references if r.name == 'T'] == []
+
+class TestNestedTypeReferences:
+    @pytest.fixture
+    def nested_type_uses(self) -> FileSymbols:
+        return parse(NESTED_TYPE_USES_SAMPLE)
+
+    @pytest.fixture
+    def item_type_uses(self) -> FileSymbols:
+        return parse(ITEM_TYPE_USES_SAMPLE)
+
+    @pytest.fixture
+    def trait_impl_self(self) -> FileSymbols:
+        return parse(TRAIT_IMPL_SELF_SAMPLE)
+
+    def test_nested_type_uses_are_references(self, nested_type_uses: FileSymbols) -> None:
+        assert reference_lines(nested_type_uses, 'T') == [3, 4, 5, 6, 7, 8]
+
+    def test_generic_heads_are_references(self, nested_type_uses: FileSymbols) -> None:
+        assert reference_lines(nested_type_uses, 'W') == [9, 10, 11]
+
+    def test_item_and_nested_type_positions_are_references(
+        self, item_type_uses: FileSymbols
+    ) -> None:
+        assert reference_lines(item_type_uses, 'T') == [3, 4, 5]
+        assert reference_lines(item_type_uses, 'W') == [6, 7, 8]
+
+    def test_trait_impl_self_types_are_references(self, trait_impl_self: FileSymbols) -> None:
+        assert reference_lines(trait_impl_self, 'S') == [2, 4]
+        assert reference_lines(trait_impl_self, 'W') == [4]
 
 
 class TestValueReferences:
-    def test_lowercase_locals_are_not_references(self) -> None:
-        parsed = parse(VALUE_USES_SAMPLE)
+    @pytest.fixture
+    def value_uses(self) -> FileSymbols:
+        return parse(VALUE_USES_SAMPLE)
 
-        names = {reference.name for reference in parsed.references}
+    def test_lowercase_locals_are_not_references(self, value_uses: FileSymbols) -> None:
+        names = {reference.name for reference in value_uses.references}
 
         assert not names & {'count', 'n', 'm', 'x'}
 
-    def test_unit_struct_value_is_listed_once_per_line(self) -> None:
-        parsed = parse(VALUE_USES_SAMPLE)
+    def test_unit_struct_value_is_listed_once_per_line(self, value_uses: FileSymbols) -> None:
+        assert reference_lines(value_uses, 'T').count(10) == 1
 
-        lines = [reference.line for reference in parsed.references if reference.name == 'T']
+    def test_constant_in_expression_is_a_reference(self, value_uses: FileSymbols) -> None:
+        assert reference_lines(value_uses, 'LIMIT') == [11]
 
-        assert lines.count(10) == 1
-
-    def test_constant_in_expression_is_a_reference(self) -> None:
-        parsed = parse(VALUE_USES_SAMPLE)
-
-        lines = sorted({
-            reference.line for reference in parsed.references if reference.name == 'LIMIT'
-        })
-
-        assert lines == [11]
-
-    def test_declaring_lines_are_not_references(self) -> None:
-        parsed = parse(VALUE_USES_SAMPLE)
-
+    def test_declaring_lines_are_not_references(self, value_uses: FileSymbols) -> None:
         declared = {'LIMIT', 'COUNT', 'Start', 'Stop', 'ASSOC', 'U', 'Pair', 'MACRO'}
-        lines = {reference.line for reference in parsed.references if reference.name in declared}
+        lines = {r.line for r in value_uses.references if r.name in declared}
 
         assert lines <= {11}
 
-    def reference_lines(self, statement: str, name: str) -> list[int]:
-        parsed = parse(f'const LIMIT: u32 = 1;\nfn f() {{ {statement.replace("NAME", name)} }}\n')
-        return sorted({r.line for r in parsed.references if r.name == name})
+    def statement_reference_lines(self, statement: str, name: str) -> list[int]:
+        text = f'const LIMIT: u32 = 1;\nfn f() {{ {statement.replace("NAME", name)} }}\n'
+        return reference_lines(parse(text), name)
 
     @value_position_cases()
     def test_a_capitalized_name_in_each_value_position_is_a_reference(self, statement: str) -> None:
-        assert self.reference_lines(statement, 'LIMIT') == [2]
+        assert self.statement_reference_lines(statement, 'LIMIT') == [2]
 
     @value_position_cases()
     def test_a_lowercase_name_in_each_value_position_is_not_a_reference(
         self, statement: str
     ) -> None:
-        assert self.reference_lines(statement, 'limit') == []
+        assert self.statement_reference_lines(statement, 'limit') == []
