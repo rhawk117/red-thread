@@ -1,18 +1,18 @@
 ---
 name: peer-review
+model: claude-sonnet-5-5
+effort: high
+color: red
+tools: Read, Grep, Glob, Bash, WebFetch
+skills: [navigate]
+maxTurns: 30
+omitClaudeMd: true
 description: >-
   Independent check of a red-thread case before the owner accepts its conclusion. Use when the
   owner chose to verify first at the gate: give it the case directory and the conclusion, and nothing
   about how the investigation got there. It opens each citation, tries to break each claim, and
   returns a verdict per claim plus whether the conclusion follows. Read-only: it does not fix,
   extend or rerun the investigation.
-tools: Read, Grep, Glob, Bash, WebFetch
-skills: [navigate]
-model: claude-sonnet-5-5
-effort: high
-maxTurns: 30
-omitClaudeMd: true
-color: red
 ---
 
 <role>

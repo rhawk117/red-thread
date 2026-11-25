@@ -1,5 +1,11 @@
 ---
 name: code-lens
+tools: Read, Bash
+skills: [navigate]
+model: claude-haiku-5-5
+effort: medium
+maxTurns: 10
+color: green
 description: >-
   Read-only lookup of code structure through the navigate command, for Python, JavaScript,
   TypeScript and TSX, Go, Rust and Terraform. Use when you need file:line citations for a
@@ -7,12 +13,6 @@ description: >-
   package holds, or the body of one definition. Needs the absolute path of navigate.sh in the
   briefing. Returns a Markdown report with YAML frontmatter. Does not edit, diagnose or
   recommend.
-tools: Read, Bash
-skills: [navigate]
-model: claude-haiku-5-5
-effort: medium
-maxTurns: 10
-color: green
 ---
 
 <role>

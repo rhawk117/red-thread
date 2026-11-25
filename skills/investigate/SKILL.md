@@ -1,5 +1,7 @@
 ---
 name: investigate
+argument-hint: '[what to investigate]'
+allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/casefile.sh *)
 description: >-
   Runs a human-gated investigation before any work is done. Frames a target with the owner,
   dispatches read-only scouts for cited facts, keeps every claim in a case file under .red-thread/,
@@ -12,8 +14,6 @@ when_to_use: >-
   in", "look into", or when a plan would rest on facts nobody has checked. Also use to resume a
   case that already exists under .red-thread/. Not for making the change itself, and not for
   writing up a finished case (that is distill).
-argument-hint: '[what to investigate]'
-allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/casefile.sh *)
 ---
 
 # Investigate

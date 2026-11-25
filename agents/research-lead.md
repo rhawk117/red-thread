@@ -1,5 +1,11 @@
 ---
 name: research-lead
+effort: high
+model: claude-sonnet-5-5
+tools: Agent, Bash
+maxTurns: 30
+omitClaudeMd: true
+color: purple
 description: >-
   Investigation lead for one thread of a red-thread case. Use when a target splits into
   independent threads and only each thread's conclusion should reach you; the investigate skill
@@ -7,12 +13,6 @@ description: >-
   what bears on the question in its own thread file of the case, and returns a short report that
   points at those entries. Needs a case directory in its briefing. Resume it once with
   SendMessage for a second round.
-tools: Agent, Bash
-model: claude-sonnet-5-5
-effort: high
-maxTurns: 30
-omitClaudeMd: true
-color: purple
 ---
 
 <role>

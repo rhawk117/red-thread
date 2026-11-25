@@ -1,16 +1,16 @@
 ---
 name: code-sense
+model: claude-haiku-5-5
+effort: medium
+tools: Read, Grep, Glob, Bash
+skills: [navigate]
+maxTurns: 10
+color: cyan
 description: >-
   Read-only code lookup. Use when you need file:line citations to answer one question about
   this repository: where something is defined or used, a config value, a dependency version,
   git history for a path, or a GitHub issue or pull request. Returns a Markdown report with
   YAML frontmatter. Does not edit, diagnose or recommend.
-tools: Read, Grep, Glob, Bash
-skills: [navigate]
-model: claude-haiku-5-5
-effort: medium
-maxTurns: 10
-color: cyan
 ---
 
 <role>
