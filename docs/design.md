@@ -734,6 +734,20 @@ Made by the owner on 2026-11-26, after reading the first plan page and finding i
 | Links | both ways: the plan page links each case's board, the epic and each issue, and reads "not published yet" until a publish step records them. Each board lists the plans that cite its case, read from `.red-thread/plans/*/plan.json` when the board is drawn, so nothing is written into the case |
 | Layout | every page: at 1280px and up, a rail with the title, facts, toolbar, contents and terms beside the content, where the kind sections or the worktrees sit in columns; on a phone the rail sits on top and the columns stack |
 
+### 2026-11-26: the plan skill
+
+Made by the owner on 2026-11-26, before and during the build of `skills/plan/`. Section 13 holds the design.
+
+| Decision | Choice and reason |
+| --- | --- |
+| Order | build step 5, the plan skill, before step 4, the interface agent. The plan command existed with no skill to drive it, so a session could not make a plan without typing `bin/redthread-plan` by hand. The skill leaves out the interface offer until step 4 is built. Publishing the epic stays step 6 |
+| Lineage | the skill descends from three mightymodels skills, as `debug` descends from `whats-broken`: `game-plan` (intent, approach, invariants, acceptance as observable outcome sentences, non-goals, the consistency check, and the risk interview, with its fixed list of four handlings replaced as section 13 decided), `cross-examine` (the depth question, the frontier of decisions asked in rounds, the shape of a question with what each option buys and costs, facts to scouts and decisions to the owner) and `break-it-down` (cutting by behaviour, module and order, the size of a piece, and the repository passing after each one). It leaves behind `ticket.yml`, `plan.md`, the mighty-mcp state and its `task_*` tools, `terry-toolchain` and worker routing |
+| Picking cases | the skill asks every time, with each case's target, kind and date, even when there is one. Rejected: taking a lone case without asking, which plans silently from a stale or unrelated case; and inferring the case from the conversation, where a wrong match looks plausible |
+| Decisions made while planning | recorded as `decision` entries in the case they bear on, in that case's next round, so a criterion can name them. Rejected: a planning case per plan, which adds a case of decisions with no knowns; and no new decisions, which sends every small design choice back through investigate |
+| Review | `peer-review` gains a plan briefing (PLAN, CASES) beside its case briefing. Rejected: reusing the case briefing unchanged, which judges whether claims hold and not whether a criterion follows from them; and deferring the review |
+| The page | the skill asks at the gate whether to publish `plan.html` privately, and says first that its links to the boards do not open on the published page. Rejected for now: local only until step 6 records a link; and publishing whenever the cases were published |
+| Draft before acceptance | added while building and confirmed by the owner on 2026-11-26: the draft lives in `draft.json` in the plan directory and `revise` runs only once the owner accepts, because a revision is an accepted plan (section 13, "What crosses the boundary") and `revise` has no dry run. A refusal at that point is fixed and, when the fix changes what the owner saw, put to the gate again |
+
 ## 13. Planning
 
 Added 2026-11-25. Section 12 records what the owner decided. The build order at the end says which steps are built; everything else here is **Proposed**.
@@ -810,6 +824,8 @@ The plans package is the only writer of a plan. `revise` reads one JSON document
 6. Gate: the owner accepts, redirects or drops tickets. On acceptance the script stores the revision and the page is published.
 7. Publish the epic to GitHub after one approval that covers every issue it will create.
 
+**Built 2026-11-26** as `skills/plan/`, with steps 3 and 7 left out (section 12, "the plan skill"). The skill asks the owner which cases the plan rests on, runs `check` on each, then settles the design in rounds of questions before drafting (`references/dialog.md`). Each answer is recorded as a `decision` in the case it bears on, through `redthread-casefile add`, so a criterion can name it in `required_by`. The draft is `draft.json` in the plan directory, written to the rules and the consistency check in `references/draft.md`; `revise` reads it only once the owner accepts at the gate, and the file is deleted once the revision is stored. The risk dialog records each handling as a `decision` too, so a mitigation's criterion rests on it. After storing, the skill draws each board again so it lists the plan, and asks whether to publish `plan.html`. The interface offer waits on step 4 of the build order, and publishing the epic on step 6.
+
 ### Risks
 
 Each risk states the risk, a signal someone can observe, and the tickets it touches. The handlings are:
@@ -823,6 +839,8 @@ The dialog offers only handlings a senior engineer could pick, states the cost o
 ### Review
 
 Optional, asked at step 5. One `peer-review` pass in a fresh context that gets the plan and the rendered case, not the conversation. It checks that each criterion follows from the entries that require it, that no decision is left without a ticket, that worktrees do not collide, and what the plan assumes without evidence. A finding without a ref or a `path:line` is dropped. The owner picks which findings change the plan. There is one pass and no debate round.
+
+**Built 2026-11-26:** `peer-review` takes a plan briefing, PLAN (the draft file) and CASES (one alias and case directory per line) in place of CASE and CONCLUSION, and returns a table of findings, each with its place in the plan, its check and its evidence. Its collision check looks for a dependency between worktrees that own different files, such as a shared interface, because the script already refuses two worktrees that own the same path.
 
 ### Interfaces
 
@@ -903,6 +921,8 @@ Not verified: no study was found of padded options in agent plans or of interfac
 - Whether a skill can dispatch another plugin's subagent by name. The docs do not say; a run has to confirm it.
 - Whether a closing keyword takes effect after GitHub retargets a stacked pull request onto the default branch.
 - The names of the routing agent and the interface agent.
+- `plan.html` links each board as `../../<case-id>/board.html`, and a board links its plans as `../plans/<plan-id>/plan.html`. On a page published through the Artifact tool neither link opens, and `plan.json` has no field for the published page, so a later session publishes a new artifact. The plan skill says so when it offers to publish.
+- `peer-review`'s plan briefing ran once headless on 2026-11-26 (Sonnet 5.5, `claude -p --plugin-dir`, $0.33, 2 turns of the primary) against a scratch plan with one criterion planted that its entry did not support. The report kept the plan format and listed 8 findings, the planted criterion first, each with a ref or a `path:line`. One line of text followed the report, from the agent or from the primary that relayed it. It ran `check` and `git ls-files`, both on its allowed list. It has not run from a real plan skill session.
 
 Build order for version 1:
 
@@ -913,7 +933,7 @@ Build order for version 1:
 | 3. The plan page | built 2026-11-25 |
 | 3a. Core, casefile and plans packages; worktrees; criteria; cases by alias; `bin/redthread-plan`; the page's grounds, changes and terms; the rail and columns layout; links between plans and boards | built 2026-11-26 |
 | 4. The interface agent | not started |
-| 5. The plan skill: draft, the interface offer, the risk dialog, the optional review and the gate | not started |
+| 5. The plan skill: draft, the interface offer, the risk dialog, the optional review and the gate | built 2026-11-26, before step 4, without the interface offer |
 | 6. Publishing: the ticket body, issues, sub-issues and dependencies | not started |
 | 7. Syncing a revision | not started |
 | 8. The close step | not started |
