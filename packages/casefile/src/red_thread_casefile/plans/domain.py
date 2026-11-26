@@ -1,0 +1,145 @@
+"""The plan record as drafted on standard input and as stored, one revision per file."""
+
+import re
+from dataclasses import dataclass
+from operator import attrgetter
+from typing import TYPE_CHECKING, Literal
+
+import msgspec
+
+if TYPE_CHECKING:
+    from red_thread_casefile.domain import EntryKind
+
+type PlanSchema = Literal['red-thread/plan@1']
+type Handling = Accept | Mitigate | YouIntervene
+
+PLAN_SCHEMA: PlanSchema = 'red-thread/plan@1'
+RESTING_KINDS: tuple[EntryKind, ...] = ('decision', 'known')
+SLUG = re.compile(r'[a-z][a-z0-9]*(?:-[a-z0-9]+)*')
+RISK_ID = re.compile(r'R[1-9]\d*')
+
+
+class Interface(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields=True, gc=False):
+    language: str
+    source: str
+
+
+class Acceptance(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields=True, gc=False):
+    text: str
+    rests_on: tuple[str, ...] = ()
+
+
+class Accept(
+    msgspec.Struct,
+    frozen=True,
+    kw_only=True,
+    forbid_unknown_fields=True,
+    gc=False,
+    tag='accept',
+    tag_field='kind',
+):
+    pass
+
+
+class Mitigate(
+    msgspec.Struct,
+    frozen=True,
+    kw_only=True,
+    forbid_unknown_fields=True,
+    gc=False,
+    tag='mitigate',
+    tag_field='kind',
+):
+    ticket: str
+    criterion: str | None = None
+
+
+class YouIntervene(
+    msgspec.Struct,
+    frozen=True,
+    kw_only=True,
+    forbid_unknown_fields=True,
+    gc=False,
+    tag='you-intervene',
+    tag_field='kind',
+):
+    recut: tuple[str, ...] = ()
+
+
+class Risk(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields=True, gc=False):
+    id: str
+    risk: str
+    signal: str
+    handling: Handling
+    tickets: tuple[str, ...] = ()
+
+
+class TicketDraft(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields=True, gc=False):
+    id: str
+    title: str
+    lane: str
+    acceptance: tuple[Acceptance, ...] = ()
+    owns: tuple[str, ...] = ()
+    depends_on: tuple[str, ...] = ()
+    interface: Interface | None = None
+
+
+class PlanDraft(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields=True, gc=False):
+    intent: str
+    approach: str
+    invariants: tuple[str, ...] = ()
+    non_goals: tuple[str, ...] = ()
+    tickets: tuple[TicketDraft, ...] = ()
+    risks: tuple[Risk, ...] = ()
+
+
+class Ticket(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields=True, gc=False):
+    id: str
+    title: str
+    lane: str
+    position: int
+    acceptance: tuple[Acceptance, ...] = ()
+    owns: tuple[str, ...] = ()
+    depends_on: tuple[str, ...] = ()
+    interface: Interface | None = None
+
+
+class Plan(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields=True, gc=False):
+    revision: int
+    at: str
+    head: str | None
+    intent: str
+    approach: str
+    schema: PlanSchema = PLAN_SCHEMA
+    invariants: tuple[str, ...] = ()
+    non_goals: tuple[str, ...] = ()
+    tickets: tuple[Ticket, ...] = ()
+    risks: tuple[Risk, ...] = ()
+
+    @property
+    def lanes(self) -> tuple[str, ...]:
+        return tuple(dict.fromkeys(ticket.lane for ticket in self.tickets))
+
+    def stack(self, lane: str) -> tuple[Ticket, ...]:
+        in_lane = (ticket for ticket in self.tickets if ticket.lane == lane)
+        return tuple(sorted(in_lane, key=attrgetter('position')))
+
+    def find_ticket(self, ticket_id: str) -> Ticket | None:
+        return next((ticket for ticket in self.tickets if ticket.id == ticket_id), None)
+
+
+@dataclass(slots=True, kw_only=True, frozen=True)
+class Sentence:
+    ticket: str
+    number: int
+
+    @property
+    def label(self) -> str:
+        return f'ticket {self.ticket}, acceptance {self.number}'
+
+
+@dataclass(slots=True, kw_only=True, frozen=True)
+class Claim:
+    lane: str
+    ticket: str
+    owned: str

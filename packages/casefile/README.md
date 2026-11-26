@@ -34,6 +34,7 @@ A case lives in the repository under investigation:
   threads/T1.jsonl   entries written by one lead; one file per thread, so writers never share a file
   board.html         rendered at every gate
   out/               brief.md, issue.md, handoff.md, report.md and their HTML
+  plans/r1.json      one checked plan revision per file, never edited
 ```
 
 A case id is the UTC date and a slug of the target, such as `20261121-retry-queue-slowdown`. `init` adds `.red-thread/` to the repository's local git exclude file, so a case is never committed.
@@ -48,10 +49,13 @@ A case id is the UTC date and a slug of the target, such as `20261121-retry-queu
 | `check --case DIR` | resolves every live citation against the current tree |
 | `export --case DIR --lens L [--selection F] [--html]` | writes one output to `out/` from the ledger; `--lens` is `brief`, `issue`, `handoff` or `report` |
 | `page --case DIR --url URL` | records the https link that publishing returned in `case.json` |
+| `plan --case DIR [--file F]` | checks a plan whole, redacts secrets and stores it as the next revision in `plans/`; the plan is one JSON object, read from standard input or `--file` |
 
 `--case` takes the directory `init` printed. Round 0 is framing, and the rounds count up from there.
 
 Each output has a line budget, and `export` fails when the output runs over it: 60 lines for a brief, 80 for an issue, 40 for a handoff and 200 for a report. The selection it reads is a JSON object with an optional `title`, `goal`, `include` and `blocking`, the last two as lists of entry refs such as `["e3", "T1.e2"]`.
+
+A plan has an `intent`, an `approach`, `invariants`, `non_goals`, `tickets` and `risks`. A ticket has an `id` and a `lane` (both lowercase slugs), a `title`, `acceptance` sentences that each name in `rests_on` the live `decision` or `known` entries they follow from, the paths or globs it `owns`, the tickets it `depends_on` and an optional `interface` (`language`, `source`). `plan` refuses the whole plan, naming every fault, when a sentence rests on nothing or on a ref that is unknown, retired or of another kind, when the dependencies form a cycle or cross lanes, or when two lanes own a path in common. A stored revision is never rewritten.
 
 ## Entries and their rules
 

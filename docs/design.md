@@ -107,6 +107,7 @@ The code is the workspace package `packages/casefile`. The stored records (`Entr
 | `check` | re-resolves every live citation against the current tree | Built |
 | `export` | assembles a lens output from the ledger and fails when it is over its line budget | Built |
 | `page` | records the link of the published board in `case.json` | Built |
+| `plan` | checks a plan whole (what each promise rests on, cycles, lane collisions), redacts secrets, stores it as the next revision (section 13) | Built |
 
 **Decided:** the script is the workspace package `packages/casefile`, run through `bin/redthread-casefile`, which starts it with `uv run --no-project --python 3.14 --with-editable` on the package. uv takes the dependencies from the package's own `pyproject.toml` and keeps the environment in its cache, so nothing is installed into the project under investigation and the launcher repeats no requirement. The primary passes the launcher's absolute path in each brief as `SCRIPT`, since a brief already carries everything a worker needs.
 
@@ -719,7 +720,7 @@ Made by the owner on 2026-11-25, in three dialogs.
 
 ## 13. Planning
 
-Added 2026-11-25. Section 12 records what the owner decided. Everything else here is **Proposed**, and none of it is built.
+Added 2026-11-25. Section 12 records what the owner decided. The build order at the end says which steps are built; everything else here is **Proposed**.
 
 ### Version 1
 
@@ -758,7 +759,17 @@ The script stays the only writer. A `plan` command reads one JSON document on st
 - A ticket has an id, a title, acceptance sentences, the files it owns, the tickets it depends on, a lane and an optional interface.
 - An acceptance sentence states an outcome someone can observe, and names the live `decision` or `known` entries it rests on. The script refuses one that rests on nothing. This is the guard against "that is not what I asked for": every promise in the plan traces to something the owner decided or a scout verified.
 - The script refuses a dependency cycle, and refuses two tickets in different lanes that own the same file.
-- "Plan" already names the JSON that `export` reads (section 6, `lenses.py`). That document becomes the "selection", and `--plan` becomes `--selection`.
+- "Plan" already named the JSON that `export` reads (section 6, `lenses.py`). That document is now the "selection", and `--plan` is `--selection` (built 2026-11-25).
+
+**Built 2026-11-25**, with the owner's approval of the record and its refusals:
+
+- A revision is `plans/r<n>.json`: the drafted fields, plus `schema` (`red-thread/plan@1`), `revision`, `at` and `head`, which the script stamps. It is created exclusively, so a stored revision is never overwritten.
+- A ticket's `id` and `lane` are lowercase slugs. An acceptance sentence is `{text, rests_on}`. The interface is `{language, source}`.
+- A risk has an `id` (`R1`, `R2`), `risk`, `signal`, the `tickets` it touches and a `handling` tagged by `kind`: `accept`; `mitigate` with the `ticket` that carries the change and an optional `criterion`, which must be one of that ticket's acceptance sentences word for word, or is left out when the ticket itself is the mitigation; or `you-intervene` with the `recut` tickets, which must be among the risk's own.
+- The drafter names each ticket's lane, and the script computes its position: a stable topological order of the lane's tickets, ties kept in drafted order. This settles section 12's "the plan computes lanes and stack order" against "the plan records only lane and position" below: the plan computes the stack and checks the lanes, and does not invent them.
+- A dependency on a ticket in another lane is refused (owner, 2026-11-25), because a lane is one stack.
+- Two lanes collide when some path, existing or not, matches an `owns` entry of each. The check is exact for `*` (any run of characters within one segment, a leading dot included), `?` and `**` (zero or more segments, or at least one at the end), the rules of `PurePosixPath.full_match`, and the refusal names a path both lanes could change. `dir/` means `dir/**`. An entry that is empty, absolute, climbs with `..` or uses a `[ ]` class is refused. Two tickets in one lane may own the same files.
+- A plan that cannot be read is refused at its first shape fault, with the JSON path. A readable plan is checked whole and every fault is named with its fix: blank text, no tickets, a ticket without acceptance or owns, a malformed or duplicate id, a sentence that rests on nothing or on a ref that is unknown, retired or not a decision or known, an unknown or cross-lane dependency, a cycle, a lane collision, and a risk that names an unknown ticket, a criterion the ticket does not have, or a recut that is empty or strays outside the risk. Text is checked as sent, then redacted, then stored.
 - The page is a new composer over the document model. `Flowchart` draws the lanes. It needs a code listing block for interfaces and a status mark for tickets, and the filter chips assume entry kinds today.
 
 ### The plan skill
@@ -870,7 +881,7 @@ Build order for version 1:
 | Step | Status |
 | --- | --- |
 | 1. Rename the export plan to a selection | built 2026-11-25 |
-| 2. The plan record, the `plan` command and its checks: traceability, cycles and lane collisions | not started |
+| 2. The plan record, the `plan` command and its checks: traceability, cycles and lane collisions | built 2026-11-25 |
 | 3. The plan page | not started |
 | 4. The interface agent | not started |
 | 5. The plan skill: draft, the interface offer, the risk dialog, the optional review and the gate | not started |
