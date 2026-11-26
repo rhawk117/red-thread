@@ -75,16 +75,15 @@ From mightymodels `game-plan`, unless marked otherwise.
 - **A non-goal** carries its reason, so a later session does not reopen it.
 - **No `path:line` in plan text.** A line number goes stale with the first ticket that lands and is trusted anyway. The citations live in the entries, and a criterion reaches them through `required_by`. Paths belong in `owns`.
 
-## Cutting tickets
+## From the interview
 
-From mightymodels `break-it-down`, with the worktree rules of `docs/design.md` section 13.
+From mightymodels `game-plan`. Lift what the cross-examine interview settled into the draft before you write anything of your own:
 
-- A ticket is one pull request a reviewer can hold in their head: one to four criteria. A ticket that needs more is two tickets.
-- Cut where the work already has a seam, in this order: by behaviour (criteria that can be proven apart go to different tickets), by module (files that change for different reasons), by order (what must land first, such as a schema before its callers, is a ticket of its own, and the tickets that need it name it in `depends_on`).
-- The repository passes after each ticket, not only after the last.
-- Tickets that depend on each other share a worktree and land as a stack, bottom first. A dependency on a ticket in another worktree is refused.
-- Two worktrees never own the same path. A ticket that cannot keep its files apart from another worktree joins that worktree. `dir/` owns everything under `dir`; an entry may use `*`, `?` and `**`, and may not be absolute, climb with `..` or use `[ ]`.
-- Some work does not cut: one rename across thirty files is one change. Keep it whole and say why.
+- A decision becomes the approach, an invariant, a non-goal, or a criterion of the ticket it bears on. A decision that fits none of these is a ticket.
+- A verified fact becomes ground a criterion rests on, through its ref.
+- An open question or an assumption becomes a risk, as risk-register describes.
+
+Cut the tickets by the rules in `red-thread:break-it-down`.
 
 ## Consistency check
 
@@ -93,11 +92,11 @@ From mightymodels `game-plan`. Run it on every draft before the owner sees it. E
 - Every ticket has a why and one to four criteria, and each criterion is an observable outcome sentence.
 - Each criterion follows from the entries in its `required_by`: read each one on the board. An entry that says less than the criterion promises means a narrower criterion or a question for the owner.
 - Every decision on the boards that bears on the intent shows in the plan as the approach, an invariant, a non-goal or a criterion, and nothing in the plan contradicts one.
-- Every open question and assumption from the design dialog is a risk.
+- Every open question and assumption from the cross-examine interview is a risk.
 - No two tickets do the same thing, and no ticket does what a non-goal excludes.
 - Every `depends_on` names a ticket in the same worktree, and no two worktrees own a path in common.
 - Every invariant says what shows it, and every non-goal its reason.
-- Every risk has a signal someone can see while the work runs, the tickets it touches, and after the risk dialog the handling the owner chose.
+- Every risk has a signal someone can see while the work runs, the tickets it touches, and, once risk-register has run, the handling the owner chose.
 - No ticket has an `interface`, and no plan text carries a `path:line`.
 
 ## Showing the plan
