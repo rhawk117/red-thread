@@ -1,9 +1,9 @@
-"""The assets beside the package source: the page skeleton, styles, script and map header."""
+"""The assets beside the package source: the page skeleton, styles, script and map headers."""
 
 from pathlib import Path
 from typing import Literal
 
-type AssetName = Literal['page.html', 'page.css', 'tailwind.css', 'page.js', 'map.mmd']
+type AssetName = Literal['page.html', 'page.css', 'tailwind.css', 'page.js', 'map.mmd', 'lanes.mmd']
 
 LEVELS_ABOVE = 2
 

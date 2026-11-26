@@ -10,7 +10,7 @@ from red_thread_casefile.plans.errors import PlanRejectedError
 from red_thread_casefile.plans.util import order_stack
 from red_thread_casefile.services import Planner
 
-from tests.casefile.ledger.memory import HEAD, MOMENT
+from tests.casefile.ledger.memory import HEAD, MOMENT, MemoryPageStore
 from tests.casefile.plans.builders import (
     create_resting_ledger,
     create_valid_draft,
@@ -32,6 +32,7 @@ if TYPE_CHECKING:
 @dataclass(slots=True, kw_only=True, frozen=True)
 class PlannerHarness:
     plans: MemoryPlanRepository
+    pages: MemoryPageStore
     planner: Planner
 
 
@@ -39,7 +40,9 @@ def create_planner_harness() -> PlannerHarness:
     service = create_service_harness()
     service.seed(*create_resting_ledger().entries)
     plans = MemoryPlanRepository()
-    return PlannerHarness(plans=plans, planner=Planner(record=service.case_file, plans=plans))
+    pages = MemoryPageStore()
+    planner = Planner(record=service.case_file, plans=plans, pages=pages)
+    return PlannerHarness(plans=plans, pages=pages, planner=planner)
 
 
 def list_lane_positions(plan: Plan, lane: str) -> list[int]:
@@ -60,6 +63,17 @@ class TestPlanner:
         assert stored.path.name == 'r1.json'
         assert harness.plans.revisions == (1,)
 
+    def test_each_stored_revision_redraws_the_plan_page_against_the_one_before(
+        self, harness: PlannerHarness
+    ) -> None:
+        harness.planner.propose(create_valid_draft())
+
+        stored = harness.planner.propose(replace(create_valid_draft(), intent='a second cut'))
+
+        assert stored.page.name == 'plan.html'
+        page = harness.pages.files['plan.html']
+        assert 'since revision 1: 0 new, 0 changed, 3 unchanged, 0 dropped' in page
+
     def test_each_later_plan_is_the_next_revision_and_leaves_the_earlier_one(
         self, harness: PlannerHarness
     ) -> None:
@@ -73,6 +87,7 @@ class TestPlanner:
         self, harness: PlannerHarness
     ) -> None:
         harness.planner.propose(create_valid_draft())
+        drawn = harness.pages.files['plan.html']
         faulty = plant_collision(plant_cycle(plant_groundless(create_valid_draft(), 2)), 0)
 
         with pytest.raises(PlanRejectedError) as refused:
@@ -80,6 +95,7 @@ class TestPlanner:
 
         assert len(refused.value.problems) == 3
         assert harness.plans.revisions == (1,)
+        assert harness.pages.files['plan.html'] == drawn
 
     @given(plan=valid_plans)
     def test_each_lane_is_numbered_from_one_in_stack_order(self, plan: PlanDraft) -> None:

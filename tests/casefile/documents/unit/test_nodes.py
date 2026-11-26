@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 import pytest
 from red_thread_casefile.documents import (
     Code,
+    CodeListing,
     Document,
     EntryList,
     Flowchart,
@@ -17,6 +18,7 @@ from red_thread_casefile.documents import (
     Text,
     parse_line,
 )
+from red_thread_casefile.plans.nodes import TicketList
 
 from tests.casefile.documents.builders import create_entry_node, create_entry_section
 from tests.casefile.documents.fakes import NamingWriter
@@ -61,6 +63,8 @@ def block_dispatch_cases() -> pytest.MarkDecorator:
         'entries': EntryList(entries=(create_entry_node(),)),
         'points': PointList(points=(parse_line('a'),)),
         'flowchart': Flowchart(lines=('a',)),
+        'listing': CodeListing(language='python', source='a'),
+        'tickets': TicketList(tickets=()),
     }
     return pytest.mark.parametrize('node', as_labelled_params(blocks))
 
@@ -106,5 +110,6 @@ class TestDispatch:
     @block_dispatch_cases()
     def test_a_block_reaches_the_method_named_for_its_kind(self, node: Block) -> None:
         name = type(node).__name__.lower().replace('entrylist', 'entries')
-        name = name.replace('pointlist', 'points')
+        name = name.replace('pointlist', 'points').replace('codelisting', 'listing')
+        name = name.replace('ticketlist', 'tickets')
         assert node.write(self.writer).startswith(f'{name} ')

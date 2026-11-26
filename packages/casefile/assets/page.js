@@ -1,17 +1,19 @@
-/* Filters, folding, copying and diagrams for a board or lens page. The page reads the same
+/* Filters, folding, copying and diagrams for a board, lens or plan page. The page reads the same
    without this script: every entry is in the HTML, and the controls stay hidden. */
 (() => {
   const root = document.documentElement;
   const status = document.getElementById('status');
-  const off = { kind: new Set(), thread: new Set() };
+  const FILTERED = '.entry[data-kind], .entry[data-lane]';
+  const off = {};
   const listSections = () => [...document.querySelectorAll('details.section')];
 
   const applyFilters = () => {
-    for (const entry of document.querySelectorAll('.entry[data-kind]')) {
-      entry.hidden = off.kind.has(entry.dataset.kind) || off.thread.has(entry.dataset.thread);
+    const groups = Object.entries(off);
+    for (const entry of document.querySelectorAll(FILTERED)) {
+      entry.hidden = groups.some(([group, values]) => values.has(entry.dataset[group] ?? ''));
     }
     for (const section of listSections()) {
-      const entries = [...section.querySelectorAll('.entry[data-kind]')];
+      const entries = [...section.querySelectorAll(FILTERED)];
       section.hidden = entries.length > 0 && entries.every((entry) => entry.hidden);
     }
   };
@@ -19,6 +21,7 @@
   const toggleChip = (chip) => {
     const shown = chip.getAttribute('aria-pressed') !== 'true';
     chip.setAttribute('aria-pressed', String(shown));
+    off[chip.dataset.filter] ??= new Set();
     const hidden = off[chip.dataset.filter];
     if (shown) hidden.delete(chip.dataset.value);
     if (!shown) hidden.add(chip.dataset.value);

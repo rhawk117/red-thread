@@ -12,6 +12,7 @@ if TYPE_CHECKING:
         Block,
         Citation,
         Code,
+        CodeListing,
         EntryList,
         EntryNode,
         Fact,
@@ -24,6 +25,7 @@ if TYPE_CHECKING:
         Section,
         Text,
     )
+    from red_thread_casefile.plans.nodes import Promise, TicketList, TicketNode
     from red_thread_casefile.policy import Finding
 
 STATE_TITLE = 'The citation at the last check'
@@ -119,26 +121,68 @@ class HtmlInlines:
         return t'{tuple(map(self.write_inline, line))}'
 
 
+def write_claim(inlines: HtmlInlines, entry: EntryNode) -> Template:
+    line = inlines.write_line(entry.claim)
+    if not entry.verdict:
+        return t'<p class="claim">{line}</p>'
+    badge = t'<span class="verdict" data-verdict="{entry.verdict}">{entry.verdict}</span>'
+    return t'<p class="claim">{badge} {line}</p>'
+
+
+def write_point(inlines: HtmlInlines, point: Line) -> Template:
+    claim = t'<p class="claim">{inlines.write_line(point)}</p>'
+    return t'<li class="entry"><div>{claim}</div></li>'
+
+
+def write_listing(listing: CodeListing | None) -> Template:
+    if listing is None:
+        return t''
+    code = t'<code>{listing.source}</code>'
+    return t'<pre class="listing" data-language="{listing.language}">{code}</pre>'
+
+
+def write_ticket_notes(ticket: TicketNode) -> Template:
+    place = t'<li class="stamp">lane {ticket.lane}, position {ticket.position}</li>'
+    after = ', '.join(ticket.depends_on)
+    depends = t'<li>depends on: {after}</li>' if after else t''
+    owned = tuple(t'<li><code>{owned}</code></li>' for owned in ticket.owns)
+    return t'<ul class="notes">{place}{depends}{owned}</ul>'
+
+
+@dataclass(slots=True, kw_only=True, frozen=True)
+class HtmlTickets:
+    inlines: HtmlInlines = field(default_factory=HtmlInlines)
+
+    def write_promise(self, promise: Promise) -> Template:
+        rests = t'<span class="rests">rests on {", ".join(promise.rests_on)}</span>'
+        return t'<li>{self.inlines.write_line(promise.text)} {rests}</li>'
+
+    def write_ticket(self, ticket: TicketNode) -> Template:
+        mark = t'<span class="status" data-status="{ticket.status}">{ticket.status}</span>'
+        claim = t'<p class="claim">{mark} {self.inlines.write_line(ticket.title)}</p>'
+        promises = tuple(map(self.write_promise, ticket.acceptance))
+        listed = t'<ol class="promises">{promises}</ol>'
+        details = t'{write_ticket_notes(ticket)}{listed}{write_listing(ticket.interface)}'
+        body = t'<div>{claim}{details}</div>'
+        marks = t'data-lane="{ticket.lane}" data-status="{ticket.status}"'
+        return t'<li class="entry ticket" {marks}>{write_ref(ticket.id)}{body}</li>'
+
+    def write_tickets(self, node: TicketList) -> Template:
+        if not node.tickets:
+            return t''
+        return t'<ol class="thread">{tuple(map(self.write_ticket, node.tickets))}</ol>'
+
+
 @dataclass(slots=True, kw_only=True, frozen=True)
 class HtmlWriter:
     inlines: HtmlInlines = field(default_factory=HtmlInlines)
-
-    def write_claim(self, entry: EntryNode) -> Template:
-        line = self.inlines.write_line(entry.claim)
-        if not entry.verdict:
-            return t'<p class="claim">{line}</p>'
-        badge = t'<span class="verdict" data-verdict="{entry.verdict}">{entry.verdict}</span>'
-        return t'<p class="claim">{badge} {line}</p>'
+    tickets: HtmlTickets = field(default_factory=HtmlTickets)
 
     def write_entry(self, entry: EntryNode) -> Template:
         details = t'{write_cite(entry.citation)}{write_notes(entry)}{write_diagram(entry.diagram)}'
-        body = t'<div>{self.write_claim(entry)}{details}</div>'
+        body = t'<div>{write_claim(self.inlines, entry)}{details}</div>'
         marks = t'data-kind="{entry.kind}" data-thread="{entry.thread or ""}"'
         return t'<li class="entry" {marks}>{write_ref(entry.ref)}{body}</li>'
-
-    def write_point(self, point: Line) -> Template:
-        claim = t'<p class="claim">{self.inlines.write_line(point)}</p>'
-        return t'<li class="entry"><div>{claim}</div></li>'
 
     def write_paragraph(self, node: Paragraph) -> Template:
         return t'<p>{self.inlines.write_line(node.line)}</p>'
@@ -151,10 +195,17 @@ class HtmlWriter:
     def write_points(self, node: PointList) -> Template:
         if not node.points:
             return t''
-        return t'<ol class="plain">{tuple(map(self.write_point, node.points))}</ol>'
+        points = tuple(write_point(self.inlines, point) for point in node.points)
+        return t'<ol class="plain">{points}</ol>'
 
     def write_flowchart(self, node: Flowchart) -> Template:
         return t'<pre class="mermaid">{"\n".join(node.lines)}</pre>'
+
+    def write_listing(self, node: CodeListing) -> Template:
+        return write_listing(node)
+
+    def write_tickets(self, node: TicketList) -> Template:
+        return self.tickets.write_tickets(node)
 
     def write_block(self, block: Block) -> Template:
         return block.write(self)

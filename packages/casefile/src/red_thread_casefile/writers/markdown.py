@@ -11,6 +11,7 @@ if TYPE_CHECKING:
         Block,
         Citation,
         Code,
+        CodeListing,
         Document,
         EntryList,
         EntryNode,
@@ -23,6 +24,7 @@ if TYPE_CHECKING:
         Section,
         Text,
     )
+    from red_thread_casefile.plans.nodes import TicketList, TicketNode
 
 type Lines = tuple[str, ...]
 
@@ -55,6 +57,16 @@ class MarkdownInlines:
         return ''.join(map(self.write_inline, line))
 
 
+def write_ticket(inlines: MarkdownInlines, ticket: TicketNode) -> Lines:
+    title = inlines.write_line(ticket.title)
+    place = f'{ticket.status}; lane {ticket.lane}, position {ticket.position}'
+    promises = (
+        f'  - {inlines.write_line(promise.text)} (rests on {", ".join(promise.rests_on)})'
+        for promise in ticket.acceptance
+    )
+    return (f'- {title} ({place}) [{ticket.id}]', *promises)
+
+
 @dataclass(slots=True, kw_only=True, frozen=True)
 class MarkdownWriter:
     document: Document
@@ -79,6 +91,13 @@ class MarkdownWriter:
 
     def write_flowchart(self, node: Flowchart) -> Lines:
         return ('```mermaid', *node.lines, '```')
+
+    def write_listing(self, node: CodeListing) -> Lines:
+        return (f'```{node.language}', *node.source.splitlines(), '```')
+
+    def write_tickets(self, node: TicketList) -> Lines:
+        written = (write_ticket(self.inlines, ticket) for ticket in node.tickets)
+        return tuple(chain.from_iterable(written))
 
     def write_block(self, block: Block) -> Lines:
         return block.write(self)

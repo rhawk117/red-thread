@@ -2,11 +2,13 @@
 
 from collections import Counter
 from dataclasses import dataclass, field
+from itertools import chain
 from string import Template as PageTemplate
 from typing import TYPE_CHECKING, Literal
 
 from red_thread_casefile.assets import read_asset
 from red_thread_casefile.charts import MAIN_LEDGER
+from red_thread_casefile.plans.nodes import TICKET_STATUSES, TicketList
 from red_thread_casefile.views import HEADINGS
 from red_thread_casefile.writers.markup import HtmlWriter, render
 
@@ -14,8 +16,9 @@ if TYPE_CHECKING:
     from string.templatelib import Template
 
     from red_thread_casefile.documents import Document, EntryNode
+    from red_thread_casefile.plans.nodes import TicketNode
 
-type FilterName = Literal['kind', 'thread']
+type FilterName = Literal['kind', 'thread', 'lane', 'status']
 
 MIN_CHIPS = 2
 
@@ -50,6 +53,12 @@ def name_thread(entry: EntryNode) -> str:
     return entry.thread or ''
 
 
+def list_tickets(document: Document) -> tuple[TicketNode, ...]:
+    blocks = chain.from_iterable(section.blocks for section in document.sections)
+    lists = (block.tickets for block in blocks if isinstance(block, TicketList))
+    return tuple(chain.from_iterable(lists))
+
+
 @dataclass(slots=True, kw_only=True, frozen=True)
 class HtmlPage:
     document: Document
@@ -75,13 +84,28 @@ class HtmlPage:
             for name in sorted(counted, key=order_name)
         ]
 
+    def list_lane_chips(self) -> list[Chip]:
+        counted = Counter(ticket.lane for ticket in list_tickets(self.document))
+        return [Chip(group='lane', value=lane, label=lane, count=counted[lane]) for lane in counted]
+
+    def list_status_chips(self) -> list[Chip]:
+        counted = Counter(ticket.status for ticket in list_tickets(self.document))
+        return [
+            Chip(group='status', value=status, label=status, count=counted[status])
+            for status in TICKET_STATUSES
+            if counted[status]
+        ]
+
     def write_toolbar(self) -> Template:
         if not self.document.sections:
             return t''
         kinds = write_chips(self.list_kind_chips())
         threads = write_chips(self.list_thread_chips())
+        lanes = write_chips(self.list_lane_chips())
+        statuses = write_chips(self.list_status_chips())
         fold = t'<button type="button" class="tool" data-fold>Collapse all</button>'
-        return t'<nav class="toolbar" aria-label="Page controls">{kinds}{threads}{fold}</nav>\n'
+        chips = t'{kinds}{threads}{lanes}{statuses}'
+        return t'<nav class="toolbar" aria-label="Page controls">{chips}{fold}</nav>\n'
 
     def write_summary(self) -> Template:
         inlines = self.writer.inlines

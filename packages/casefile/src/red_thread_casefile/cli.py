@@ -240,6 +240,7 @@ class PlanCommand:
 
         stored = self.cases.open_planner(arguments.case).propose(draft)
         print(f'stored revision {stored.plan.revision} at {stored.path}')
+        print(f'wrote {stored.page}')
         if stored.redactions:
             print(f'redacted {stored.redactions} secrets before storing')
         return EXIT_OK

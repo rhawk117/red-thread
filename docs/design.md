@@ -107,7 +107,7 @@ The code is the workspace package `packages/casefile`. The stored records (`Entr
 | `check` | re-resolves every live citation against the current tree | Built |
 | `export` | assembles a lens output from the ledger and fails when it is over its line budget | Built |
 | `page` | records the link of the published board in `case.json` | Built |
-| `plan` | checks a plan whole (what each promise rests on, cycles, lane collisions), redacts secrets, stores it as the next revision (section 13) | Built |
+| `plan` | checks a plan whole (what each promise rests on, cycles, lane collisions), redacts secrets, stores it as the next revision and writes `plan.html` (section 13) | Built |
 
 **Decided:** the script is the workspace package `packages/casefile`, run through `bin/redthread-casefile`, which starts it with `uv run --no-project --python 3.14 --with-editable` on the package. uv takes the dependencies from the package's own `pyproject.toml` and keeps the environment in its cache, so nothing is installed into the project under investigation and the launcher repeats no requirement. The primary passes the launcher's absolute path in each brief as `SCRIPT`, since a brief already carries everything a worker needs.
 
@@ -770,7 +770,15 @@ The script stays the only writer. A `plan` command reads one JSON document on st
 - A dependency on a ticket in another lane is refused (owner, 2026-11-25), because a lane is one stack.
 - Two lanes collide when some path, existing or not, matches an `owns` entry of each. The check is exact for `*` (any run of characters within one segment, a leading dot included), `?` and `**` (zero or more segments, or at least one at the end), the rules of `PurePosixPath.full_match`, and the refusal names a path both lanes could change. `dir/` means `dir/**`. An entry that is empty, absolute, climbs with `..` or uses a `[ ]` class is refused. Two tickets in one lane may own the same files.
 - A plan that cannot be read is refused at its first shape fault, with the JSON path. A readable plan is checked whole and every fault is named with its fix: blank text, no tickets, a ticket without acceptance or owns, a malformed or duplicate id, a sentence that rests on nothing or on a ref that is unknown, retired or not a decision or known, an unknown or cross-lane dependency, a cycle, a lane collision, and a risk that names an unknown ticket, a criterion the ticket does not have, or a recut that is empty or strays outside the risk. Text is checked as sent, then redacted, then stored.
-- The page is a new composer over the document model. `Flowchart` draws the lanes. It needs a code listing block for interfaces and a status mark for tickets, and the filter chips assume entry kinds today.
+
+**The page, built 2026-11-25:**
+
+- `plan` writes `plan.html` in the case each time it stores a revision, from that revision and the one before it. A refused plan writes nothing, and there is no separate command to redraw the page.
+- `PlanPage` (`plans/page.py`) is a composer beside `BoardPage`. Its sections are Approach, Invariants, Non-goals, one `Lane <name>` panel per lane with its stack bottom first, and Risks. The appendix holds the `Lanes` chart and, when tickets were dropped, a folded `Dropped` list. The facts are the revision, the date, the commit, the ticket and lane count, and the changes.
+- The status mark compares each ticket with the ticket of the same id in the revision before: `new` when it had none, `unchanged` when every field is equal, `changed` otherwise. Status from events stays after version 1.
+- `Flowchart` draws each lane as a subgraph, with an arrow from each dependency to its dependent and each node coloured by its mark (header `assets/lanes.mmd`).
+- `CodeListing` is a general block in the document model, written as `<pre class="listing">` on a page and as a fenced block in Markdown. The plan's own nodes, `TicketNode`, `Promise` and `TicketList`, live in `plans/nodes.py` and reach the writers through `BlockWriter.write_tickets`, as every other block does.
+- The toolbar adds lane and status chips beside the kind and thread chips. `page.js` now filters any entry that carries `data-kind` or `data-lane` on every chip group, so `Section.kind` stays an entry kind.
 
 ### The plan skill
 
@@ -882,7 +890,7 @@ Build order for version 1:
 | --- | --- |
 | 1. Rename the export plan to a selection | built 2026-11-25 |
 | 2. The plan record, the `plan` command and its checks: traceability, cycles and lane collisions | built 2026-11-25 |
-| 3. The plan page | not started |
+| 3. The plan page | built 2026-11-25 |
 | 4. The interface agent | not started |
 | 5. The plan skill: draft, the interface offer, the risk dialog, the optional review and the gate | not started |
 | 6. Publishing: the ticket body, issues, sub-issues and dependencies | not started |

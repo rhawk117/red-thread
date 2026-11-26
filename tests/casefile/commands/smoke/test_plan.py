@@ -54,6 +54,7 @@ class TestPlan:
 
         assert result.code == 0, result.err
         assert result.out.startswith('stored revision 1 at ')
+        assert result.out.splitlines()[1] == f'wrote {grounded.resolve().joinpath("plan.html")}'
         assert list_revision_files(grounded) == ['r1.json']
 
     def test_a_second_plan_is_stored_beside_the_first_as_revision_two(
@@ -82,6 +83,7 @@ class TestPlan:
         assert 'in a cycle: loop-a -> loop-b -> loop-a' in result.err
         assert 'lanes core and rogue can both change core/plans/' in result.err
         assert list_revision_files(grounded) == []
+        assert not grounded.joinpath('plan.html').exists()
 
     def test_a_plan_that_is_not_json_is_refused_before_any_check(
         self, cli: CliHarness, grounded: Path

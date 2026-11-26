@@ -65,12 +65,16 @@
       tabular-nums hover:underline;
   }
   .claim { @apply max-w-[65ch] wrap-anywhere; }
-  .verdict {
+  .verdict, .status {
     @apply mr-1 inline-block rounded border border-line px-1.5 align-middle font-sans
       text-[0.65rem] leading-5 font-semibold tracking-wider text-quiet;
   }
   .verdict[data-verdict="VERIFIED"] { @apply text-good; }
   .verdict[data-verdict="BLOCKED"] { @apply border-transparent bg-flag-ground text-flag; }
+  .status[data-status="new"] { @apply text-good; }
+  .status[data-status="changed"] { @apply border-transparent bg-flag-ground text-flag; }
+  .promises { @apply mt-1.5 list-decimal space-y-1 pl-5 text-sm; }
+  .rests { @apply font-mono text-xs text-quiet; }
   .cite {
     @apply mt-1 flex flex-wrap items-baseline gap-2 font-mono text-xs text-quiet wrap-anywhere;
   }
@@ -84,7 +88,7 @@
     @apply cursor-pointer rounded border border-line px-1.5 font-sans text-[0.7rem] text-quiet
       hover:text-ink;
   }
-  .quote {
+  .quote, .listing {
     @apply mt-1.5 overflow-x-auto rounded bg-ground px-2.5 py-1.5 font-mono text-xs
       whitespace-pre-wrap text-ink;
   }

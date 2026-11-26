@@ -5,11 +5,16 @@ from typing import TYPE_CHECKING
 from msgspec.structs import replace
 from red_thread_casefile.domain import Ledger
 from red_thread_casefile.plans.domain import Acceptance, PlanDraft, TicketDraft
+from red_thread_casefile.plans.page import PlanChanges, PlanPage
 from red_thread_casefile.plans.policy import create_grounds
+from red_thread_casefile.services.planning import RevisionStamp
 
-from tests.casefile.ledger.builders import URL_CITE, create_entry
+from tests.casefile.ledger.builders import URL_CITE, create_case, create_entry
+from tests.casefile.ledger.memory import HEAD, MOMENT
 
 if TYPE_CHECKING:
+    from red_thread_casefile.documents import Document
+    from red_thread_casefile.plans.domain import Plan
     from red_thread_casefile.plans.policy import Grounds
 
 LANES = ('core', 'docs', 'web')
@@ -93,3 +98,12 @@ def plant_cycle(draft: PlanDraft) -> PlanDraft:
 def plant_collision(draft: PlanDraft, index: int) -> PlanDraft:
     owned = draft.tickets[index].owns[-1]
     return add_tickets(draft, create_ticket_draft(INTRUDER, ROGUE_LANE, (owned,)))
+
+
+def stamp_plan(draft: PlanDraft, revision: int = 1) -> Plan:
+    return RevisionStamp(revision=revision, at=MOMENT, head=HEAD).apply(draft)
+
+
+def create_plan_document(plan: Plan, previous: Plan | None = None) -> Document:
+    changes = PlanChanges(plan=plan, previous=previous)
+    return PlanPage(case=create_case(), changes=changes).compose()

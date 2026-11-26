@@ -1,6 +1,5 @@
 """The page script, run under Node against a fake DOM built from a rendered board."""
 
-import shutil
 from typing import TYPE_CHECKING
 
 import pytest
@@ -29,14 +28,6 @@ FLOW = 'flowchart LR\n  retry --> pool'
 OLD_FLOW = 'flowchart LR\n  guess --> pool'
 RETIRED = 'Retired'
 RETIRED_INDEX = 3
-
-
-@pytest.fixture(scope='session')
-def node() -> str:
-    found = shutil.which('node')
-    if found is None:
-        pytest.skip('node is not installed, and the page script runs under it')
-    return found
 
 
 @pytest.fixture

@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from red_thread_casefile.documents import (
         Code,
+        CodeListing,
         EntryList,
         Flowchart,
         Link,
@@ -13,6 +14,7 @@ if TYPE_CHECKING:
         PointList,
         Text,
     )
+    from red_thread_casefile.plans.nodes import TicketList
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -37,3 +39,9 @@ class NamingWriter:
 
     def write_flowchart(self, node: Flowchart) -> str:
         return f'flowchart {len(node.lines)}'
+
+    def write_listing(self, node: CodeListing) -> str:
+        return f'listing {node.language}'
+
+    def write_tickets(self, node: TicketList) -> str:
+        return f'tickets {len(node.tickets)}'

@@ -39,5 +39,7 @@ class CaseFiles:
     def open_planner(self, directory: Path) -> Planner:
         resolved = directory.resolve()
         return Planner(
-            record=self.bind(resolved), plans=DirectoryPlanRepository(directory=resolved)
+            record=self.bind(resolved),
+            plans=DirectoryPlanRepository(directory=resolved),
+            pages=DirectoryPageStore(directory=resolved),
         )

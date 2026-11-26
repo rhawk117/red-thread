@@ -11,6 +11,7 @@ from red_thread_casefile.views import describe_lead, get_shown_verdict
 
 if TYPE_CHECKING:
     from red_thread_casefile.domain import Entry, EntryKind, Verdict
+    from red_thread_casefile.plans.nodes import TicketList
     from red_thread_casefile.policy import Finding
     from red_thread_casefile.views import Annotator
 
@@ -37,6 +38,10 @@ class BlockWriter[T](Protocol):
     def write_points(self, node: PointList) -> T: ...
 
     def write_flowchart(self, node: Flowchart) -> T: ...
+
+    def write_listing(self, node: CodeListing) -> T: ...
+
+    def write_tickets(self, node: TicketList) -> T: ...
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -175,7 +180,16 @@ class Flowchart:
         return writer.write_flowchart(self)
 
 
-type Block = Paragraph | EntryList | PointList | Flowchart
+@dataclass(slots=True, kw_only=True, frozen=True)
+class CodeListing:
+    language: str
+    source: str
+
+    def write[T](self, writer: BlockWriter[T]) -> T:
+        return writer.write_listing(self)
+
+
+type Block = Paragraph | EntryList | PointList | Flowchart | CodeListing | TicketList
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)

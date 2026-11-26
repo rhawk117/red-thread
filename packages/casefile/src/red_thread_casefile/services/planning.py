@@ -7,8 +7,10 @@ import msgspec
 
 from red_thread_casefile.plans.domain import Plan, PlanDraft, Ticket
 from red_thread_casefile.plans.errors import PlanRejectedError
+from red_thread_casefile.plans.page import PlanChanges, PlanPage
 from red_thread_casefile.plans.policy import PlanPolicy, create_grounds
 from red_thread_casefile.plans.util import order_stack
+from red_thread_casefile.writers.page import HtmlPage
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -18,6 +20,9 @@ if TYPE_CHECKING:
     from red_thread_casefile.plans.store import PlanRepository
     from red_thread_casefile.redaction import SecretPatterns
     from red_thread_casefile.services.casefile import CaseFile
+    from red_thread_casefile.store import PageStore
+
+PLAN_PAGE = 'plan.html'
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -100,13 +105,20 @@ class RevisionStamp:
 class Stored:
     plan: Plan
     path: Path
+    page: Path
     redactions: int
+
+
+def find_previous(plans: tuple[Plan, ...], plan: Plan) -> Plan | None:
+    earlier = (stored for stored in reversed(plans) if stored.revision < plan.revision)
+    return next(earlier, None)
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class Planner:
     record: CaseFile
     plans: PlanRepository
+    pages: PageStore
 
     @property
     def next_revision(self) -> int:
@@ -126,4 +138,10 @@ class Planner:
             head=self.record.tree.get_head(),
         )
         plan = stamp.apply(clean)
-        return Stored(plan=plan, path=self.plans.add(plan), redactions=hits)
+        path = self.plans.add(plan)
+        return Stored(plan=plan, path=path, page=self.draw(plan), redactions=hits)
+
+    def draw(self, plan: Plan) -> Path:
+        changes = PlanChanges(plan=plan, previous=find_previous(self.plans.read_plans(), plan))
+        page = PlanPage(case=self.record.repository.read_case(), changes=changes)
+        return self.pages.write(PLAN_PAGE, HtmlPage(document=page.compose()).render())
