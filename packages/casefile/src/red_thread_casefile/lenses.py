@@ -3,116 +3,45 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
 
+import msgspec
 from red_thread_core.documents import Document, Paragraph, PointList, Section, parse_line
 from red_thread_core.util import squeeze
 
-from red_thread_casefile.documents import EntryBuilder, Note, list_caveat_notes, list_entries_block
-from red_thread_casefile.domain import PROGRAM, STATE_DIRECTORY, shorten_head
+from red_thread_casefile.documents import EntryBuilder, list_entries_block
+from red_thread_casefile.domain import PROGRAM, STATE_DIRECTORY, EntryKind, shorten_head
 from red_thread_casefile.errors import LensOverBudgetError, UnknownSelectionRefError
-from red_thread_casefile.views import Annotator, CheckReport, describe_kind
+from red_thread_casefile.views import Annotator, CheckReport
 
 if TYPE_CHECKING:
-    from red_thread_casefile.documents import EntryNode
-    from red_thread_casefile.domain import Case, Entry, EntryKind, Ledger
+    from red_thread_casefile.documents import EntryNode, Note, Wording
+    from red_thread_casefile.domain import Case, Entry, Ledger
     from red_thread_casefile.policy import Finding
 
 type LensName = Literal['brief', 'issue', 'handoff', 'report']
 type FixedPart = Literal['goal', 'pointers', 'reading']
 
 LENS_NAMES: tuple[LensName, ...] = ('brief', 'issue', 'handoff', 'report')
-READING = (
-    'Citations are pointers. Open the cited line before relying on a summary of it.',
-    'An entry flagged as a lead was recorded at another commit. Verify it again first.',
-    'An open entry is not established. Its rests on note names what it depends on.',
-    'Square brackets hold the entry ref in the ledger, which has the full record.',
-)
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Part:
+class Part(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields=True, gc=False):
     title: str
     kind: EntryKind | None = None
     fixed: FixedPart | None = None
 
 
-GOAL_SUMMARY = Part(title='Summary', fixed='goal')
-POINTERS = Part(title='Pointers', fixed='pointers')
-HOW_TO_READ = Part(title='How to read', fixed='reading')
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Lens:
+class Lens(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields=True, gc=False):
     name: LensName
     intro: str
     budget: int
     parts: tuple[Part, ...]
 
 
-LENSES = (
-    Lens(
-        name='brief',
-        intro='Brief of',
-        budget=60,
-        parts=(
-            Part(title='Goal', fixed='goal'),
-            Part(title='Decided', kind='decision'),
-            Part(title='Constraints', kind='known'),
-            Part(title='Ruled out', kind='ruled_out'),
-            Part(title='Open', kind='open'),
-            POINTERS,
-            HOW_TO_READ,
-        ),
-    ),
-    Lens(
-        name='issue',
-        intro='Raised from',
-        budget=80,
-        parts=(
-            GOAL_SUMMARY,
-            Part(title='Findings', kind='known'),
-            Part(title='Open questions', kind='open'),
-            Part(title='Ruled out', kind='ruled_out'),
-            Part(title='Next steps', kind='next'),
-            Part(title='References', kind='resource'),
-            POINTERS,
-        ),
-    ),
-    Lens(
-        name='handoff',
-        intro='Handoff of',
-        budget=40,
-        parts=(
-            Part(title='Where this stands', fixed='goal'),
-            Part(title='Decided', kind='decision'),
-            Part(title='Start here', kind='next'),
-            Part(title='Open', kind='open'),
-            Part(title='Hypotheses', kind='hypothesis'),
-            POINTERS,
-            HOW_TO_READ,
-        ),
-    ),
-    Lens(
-        name='report',
-        intro='Report on',
-        budget=200,
-        parts=(
-            GOAL_SUMMARY,
-            Part(title='Decided', kind='decision'),
-            Part(title='Findings', kind='known'),
-            Part(title='Hypotheses', kind='hypothesis'),
-            Part(title='Ruled out', kind='ruled_out'),
-            Part(title='Open', kind='open'),
-            Part(title='Next steps', kind='next'),
-            Part(title='Resources', kind='resource'),
-            POINTERS,
-            HOW_TO_READ,
-        ),
-    ),
-)
+class LensBook(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields=True, gc=False):
+    reading: tuple[str, ...]
+    lenses: tuple[Lens, ...]
 
-
-def get_lens(name: LensName) -> Lens:
-    return next(lens for lens in LENSES if lens.name == name)
+    def get(self, name: LensName) -> Lens:
+        return next(lens for lens in self.lenses if lens.name == name)
 
 
 def count_lines(text: str) -> int:
@@ -165,6 +94,8 @@ class Composer:
     lens: Lens
     selection: Selection
     edition: Edition
+    wording: Wording
+    reading: tuple[str, ...]
 
     def get_selection_problem(self) -> UnknownSelectionRefError | None:
         live = {entry.ref for entry in self.edition.ledger.live}
@@ -184,11 +115,11 @@ class Composer:
         return tuple(sorted(admitted, key=self.selection.rank))
 
     def list_notes(self, entry: Entry) -> tuple[Note, ...]:
-        notes = list_caveat_notes(entry)
+        notes = self.wording.list_caveat_notes(entry)
         if self.selection.blocking is None or entry.kind != 'open':
             return notes
         urgency = 'blocking' if self.selection.is_blocking(entry) else 'not blocking'
-        return (Note(kind='urgency', value=urgency), *notes)
+        return (self.wording.write_note('urgency', urgency), *notes)
 
     def create_entry(self, entry: Entry) -> EntryNode:
         builder = EntryBuilder(annotator=self.edition.annotator)
@@ -217,14 +148,14 @@ class Composer:
         if part.kind:
             entries = tuple(map(self.create_entry, self.select(part.kind)))
             blocks = list_entries_block(entries)
-            note = describe_kind(part.kind)
+            note = self.wording.describe_kind(part.kind)
             return Section(title=part.title, blocks=blocks, kind=part.kind, note=note)
 
         if part.fixed == 'goal':
             return Section(title=part.title, blocks=(self.write_goal(),))
 
         if part.fixed == 'reading':
-            reading = PointList(points=tuple(map(parse_line, READING)))
+            reading = PointList(points=tuple(map(parse_line, self.reading)))
             return Section(title=part.title, blocks=(reading,))
 
         return Section(title=part.title, blocks=(self.list_pointers(),))

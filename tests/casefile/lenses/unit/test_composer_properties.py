@@ -6,7 +6,8 @@ import msgspec
 from hypothesis import given
 from hypothesis import strategies as st
 from red_thread_casefile.domain import ENTRY_KINDS, Ledger
-from red_thread_casefile.lenses import Composer, Edition, Selection, count_lines, get_lens
+from red_thread_casefile.lenses import Composer, Edition, Selection, count_lines
+from red_thread_casefile.packaged import load_lens_book, load_wording
 
 from tests.casefile.entries.strategies import POOLED_REFS, optional, pooled_entries, words
 from tests.casefile.ledger.builders import create_entry
@@ -70,7 +71,13 @@ class TestComposerSelect:
         entries = tuple(create_entry(seq=seq) for seq in range(1, count + 1))
         edition = Edition(case=CASE, ledger=Ledger(entries=entries))
         refs = [entry.ref for entry in entries]
-        return Composer(lens=get_lens('brief'), selection=selection, edition=edition), refs
+        return Composer(
+            lens=load_lens_book().get('brief'),
+            selection=selection,
+            edition=edition,
+            wording=load_wording(),
+            reading=load_lens_book().reading,
+        ), refs
 
     @given(count=counts, data=st.data())
     def test_blocking_entries_come_first_and_the_rest_keep_the_include_order(

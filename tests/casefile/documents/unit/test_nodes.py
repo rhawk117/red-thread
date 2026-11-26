@@ -6,10 +6,10 @@ from typing import TYPE_CHECKING
 import pytest
 from red_thread_casefile.documents import (
     EntryList,
-    Note,
     list_document_entries,
     list_section_entries,
 )
+from red_thread_casefile.packaged import load_wording
 from red_thread_core.documents import (
     Block,
     Code,
@@ -76,7 +76,7 @@ def block_dispatch_cases() -> pytest.MarkDecorator:
 class TestNote:
     @note_text_cases()
     def test_a_note_reads_as_its_label_then_its_value(self, case: NoteText) -> None:
-        assert Note(kind=case.kind, value='a page').text == case.text
+        assert load_wording().write_note(case.kind, 'a page').text == case.text
 
 
 class TestEntryNode:

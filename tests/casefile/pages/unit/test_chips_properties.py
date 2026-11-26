@@ -8,7 +8,7 @@ from hypothesis import strategies as st
 from red_thread_casefile.charts import MAIN_LEDGER
 from red_thread_casefile.documents import EntryNode, list_document_entries, list_entries_block
 from red_thread_casefile.domain import ENTRY_KINDS
-from red_thread_casefile.views import HEADINGS
+from red_thread_casefile.packaged import load_wording
 from red_thread_casefile.writers.page import (
     list_kind_chips,
     list_thread_chips,
@@ -72,7 +72,7 @@ def expect_kind_chips(document: Document) -> list[ChipReading]:
             label=heading.title,
             count=counted[heading.kind],
         )
-        for heading in HEADINGS
+        for heading in load_wording().headings
         if counted[heading.kind]
     ]
 
@@ -106,7 +106,7 @@ class TestChipProperties:
     def test_kind_chips_count_the_entries_of_each_kind_in_the_order_of_the_sections(
         self, document: Document
     ) -> None:
-        chips = list_kind_chips(list_document_entries(document))
+        chips = list_kind_chips(list_document_entries(document), load_wording().headings)
 
         assert list(map(read_chip, chips)) == expect_kind_chips(document)
 
@@ -122,14 +122,16 @@ class TestChipProperties:
     def test_a_point_is_counted_by_no_chip(self, document: Document) -> None:
         entries = list_document_entries(document)
 
-        assert sum(chip.count for chip in list_kind_chips(entries)) == len(entries)
+        assert sum(chip.count for chip in list_kind_chips(entries, load_wording().headings)) == len(
+            entries
+        )
         assert sum(chip.count for chip in list_thread_chips(entries)) == len(entries)
 
     @given(document=documents)
     def test_the_page_shows_a_chip_group_only_for_a_filter_with_two_or_more_chips(
         self, document: Document
     ) -> None:
-        page = render_case_page(document)
+        page = render_case_page(document, load_wording().headings)
 
         shown = list_chip_groups(page)
         offered = [expect_kind_chips(document), expect_thread_chips(document)]
@@ -140,7 +142,7 @@ class TestChipProperties:
     def test_the_toolbar_exists_exactly_when_there_is_a_section_and_holds_one_fold_button(
         self, document: Document
     ) -> None:
-        page = render_case_page(document)
+        page = render_case_page(document, load_wording().headings)
 
         toolbars = [nav for nav in find_tags(page, 'nav') if nav['class'] == 'toolbar']
         folds = [tool for tool in find_buttons(page, 'tool') if 'data-fold' in tool]

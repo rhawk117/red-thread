@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 from red_thread_casefile.boards import BoardPage
+from red_thread_casefile.packaged import load_wording
 
 from tests.casefile.board.builders import create_case_with, create_finding, create_page_board
 from tests.casefile.board.cases import state_count_params
@@ -36,30 +37,43 @@ def state_count_cases() -> pytest.MarkDecorator:
 
 
 def read_facts(board: Board) -> dict[str, str]:
-    return {fact.label: join_line(fact.value) for fact in BoardPage(board=board).list_facts()}
+    return {
+        fact.label: join_line(fact.value)
+        for fact in BoardPage(board=board, wording=load_wording()).list_facts()
+    }
 
 
 def find_fact(board: Board, label: str) -> Fact:
-    return next(fact for fact in BoardPage(board=board).list_facts() if fact.label == label)
+    return next(
+        fact
+        for fact in BoardPage(board=board, wording=load_wording()).list_facts()
+        if fact.label == label
+    )
 
 
 class TestBoardPageFacts:
     def test_the_facts_come_in_a_fixed_order_with_no_page_fact_before_a_link_is_recorded(
         self,
     ) -> None:
-        facts = BoardPage(board=create_page_board(create_entry())).compose().facts
+        facts = (
+            BoardPage(board=create_page_board(create_entry()), wording=load_wording())
+            .compose()
+            .facts
+        )
 
         assert [fact.label for fact in facts] == LABELS
 
     def test_the_bar_and_the_citation_count_are_wide_and_no_other_fact_is(self) -> None:
-        facts = BoardPage(board=create_page_board(create_entry())).list_facts()
+        facts = BoardPage(
+            board=create_page_board(create_entry()), wording=load_wording()
+        ).list_facts()
 
         assert {fact.label for fact in facts if fact.wide} == {'Bar', 'Citations'}
 
     def test_a_recorded_page_link_is_a_wide_fact_after_the_others(self) -> None:
         board = create_page_board(create_entry(), case=create_case_with(page_url=PAGE_URL))
 
-        *others, page = BoardPage(board=board).list_facts()
+        *others, page = BoardPage(board=board, wording=load_wording()).list_facts()
 
         assert [fact.label for fact in others] == LABELS
         assert (page.label, join_line(page.value), page.wide) == ('Page', PAGE_URL, True)
@@ -119,4 +133,4 @@ class TestBoardPageCitationCount:
         board = create_page_board(create_entry(), findings=findings)
 
         assert join_line(find_fact(board, 'Citations').value) == scenario.written
-        assert BoardPage(board=board).count_states() == scenario.written
+        assert BoardPage(board=board, wording=load_wording()).count_states() == scenario.written

@@ -2,7 +2,7 @@
 name: artifact-authoring
 user-invocable: false
 description: >-
-  How to word what a red-thread agent writes for a reader who was not there: a case file entry, a report up the chain, a gate summary for the owner, a distill title and goal, and a handoff. Read before writing any of them. Preloaded into research-lead and loaded by name from investigate, debug and distill; not a command you run.
+  How to word what a red-thread agent writes for a reader who was not there: a case file entry, a report up the chain, a gate summary for the owner, a distill title and goal, and a handoff. Read before writing any of them. Preloaded into research-lead and loaded by name from investigate, debug, distill and game-plan; not a command you run.
 ---
 
 # Artifact authoring

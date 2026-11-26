@@ -4,8 +4,9 @@ from dataclasses import replace
 from typing import TYPE_CHECKING
 
 import pytest
-from red_thread_casefile.documents import Citation, Note
+from red_thread_casefile.documents import Citation
 from red_thread_casefile.domain import VERDICTS
+from red_thread_casefile.packaged import load_wording
 from red_thread_casefile.policy import CITE_STATES, Finding
 from red_thread_core.documents import Document, PointList, Section, parse_line
 
@@ -152,7 +153,9 @@ class TestQuote:
 
 class TestStamps:
     def test_the_round_and_the_day_are_the_first_notes_and_the_time_is_kept_whole(self) -> None:
-        entry = replace(create_stamped(2), lead='1111111', notes=(Note(kind='source', value='n'),))
+        entry = replace(
+            create_stamped(2), lead='1111111', notes=(load_wording().write_note('source', 'n'),)
+        )
 
         page = render_entry(entry)
 

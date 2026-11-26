@@ -5,7 +5,8 @@ from typing import TYPE_CHECKING
 from red_thread_casefile.boards import BoardPage
 from red_thread_casefile.documents import list_document_entries
 from red_thread_casefile.domain import Ledger
-from red_thread_casefile.lenses import Composer, Edition, Selection, get_lens
+from red_thread_casefile.lenses import Composer, Edition, Selection
+from red_thread_casefile.packaged import load_lens_book, load_wording
 from red_thread_casefile.views import Board
 from red_thread_core.documents import Flowchart
 
@@ -21,7 +22,12 @@ DIAGRAM = 'flowchart TD\n  A --> B'
 
 
 def create_board(*entries: Entry) -> Board:
-    return Board(case=create_case(), ledger=Ledger(entries=entries), head=HEAD)
+    return Board(
+        case=create_case(),
+        ledger=Ledger(entries=entries),
+        head=HEAD,
+        headings=load_wording().headings,
+    )
 
 
 def list_item_diagrams(document: Document) -> list[str | None]:
@@ -44,7 +50,7 @@ class TestBoardMap:
             create_entry(seq=1, thread='T1', kind='known', text='deep'),
         )
 
-        drawn = read_map(list_map_lines(BoardPage(board=board).compose()))
+        drawn = read_map(list_map_lines(BoardPage(board=board, wording=load_wording()).compose()))
 
         assert [node.label.split(':')[0] for node in drawn.nodes] == [
             'e1 open',
@@ -55,7 +61,9 @@ class TestBoardMap:
         assert len(drawn.retirements) == 1
 
     def test_an_empty_ledger_has_no_map_lines(self) -> None:
-        assert list_map_lines(BoardPage(board=create_board()).compose()) == ()
+        assert (
+            list_map_lines(BoardPage(board=create_board(), wording=load_wording()).compose()) == ()
+        )
 
 
 class TestDiagramOnItems:
@@ -65,7 +73,10 @@ class TestDiagramOnItems:
             create_entry(seq=2, kind='known', text='b'),
         )
 
-        assert list_item_diagrams(BoardPage(board=board).compose()) == [DIAGRAM, None]
+        assert list_item_diagrams(BoardPage(board=board, wording=load_wording()).compose()) == [
+            DIAGRAM,
+            None,
+        ]
 
     def test_the_text_board_does_not_show_a_diagram(self) -> None:
         board = create_board(create_entry(seq=1, kind='known', text='a', diagram=DIAGRAM))
@@ -78,7 +89,13 @@ class TestDiagramOnItems:
 class TestLensDocument:
     def create_composer(self, *entries: Entry) -> Composer:
         edition = Edition(case=create_case(), ledger=Ledger(entries=entries), head=HEAD)
-        return Composer(lens=get_lens('brief'), selection=Selection(), edition=edition)
+        return Composer(
+            lens=load_lens_book().get('brief'),
+            selection=Selection(),
+            edition=edition,
+            wording=load_wording(),
+            reading=load_lens_book().reading,
+        )
 
     def test_a_lens_document_leaves_the_map_empty(self) -> None:
         composer = self.create_composer(create_entry(seq=1, kind='open', text='a question'))

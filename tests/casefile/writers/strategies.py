@@ -18,7 +18,7 @@ path_cites = st.from_regex(r'[a-z/]{1,10}:[1-9]', fullmatch=True)
 url_cites = st.builds('https://{}'.format, words)
 citations = st.builds(Citation, target=st.one_of(path_cites, url_cites))
 lines = st.builds(parse_line, words)
-notes = st.builds(Note, kind=st.sampled_from(('rests_on', 'source', 'urgency')), value=words)
+notes = st.builds(Note, kind=st.sampled_from(('rests_on', 'source', 'urgency')), text=words)
 entries = st.builds(
     EntryNode,
     ref=st.from_regex(r'(T[1-9]\.)?e[1-9]', fullmatch=True),

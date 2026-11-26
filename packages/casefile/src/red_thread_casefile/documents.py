@@ -4,11 +4,12 @@ from dataclasses import dataclass
 from itertools import chain
 from typing import TYPE_CHECKING, Literal
 
-from red_thread_core.documents import parse_line
+import msgspec
+from red_thread_core.documents import Term, parse_line
 from red_thread_core.util import squeeze
 
 from red_thread_casefile.domain import Cite
-from red_thread_casefile.views import describe_lead, get_shown_verdict
+from red_thread_casefile.views import Heading, describe_lead, get_shown_verdict
 from red_thread_casefile.writers.markdown import write_markdown_entry
 from red_thread_casefile.writers.markup import write_entries
 
@@ -25,30 +26,30 @@ type NoteKind = Literal['rests_on', 'refuted_by', 'retires', 'retired_by', 'urge
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
-class NoteLabel:
-    kind: NoteKind
-    prefix: str
-
-
-NOTE_LABELS = (
-    NoteLabel(kind='rests_on', prefix='rests on: '),
-    NoteLabel(kind='refuted_by', prefix='refuted by: '),
-    NoteLabel(kind='retires', prefix='retires: '),
-    NoteLabel(kind='retired_by', prefix='retired by '),
-    NoteLabel(kind='urgency', prefix=''),
-    NoteLabel(kind='source', prefix=''),
-)
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
 class Note:
     kind: NoteKind
-    value: str
+    text: str
 
-    @property
-    def text(self) -> str:
-        prefix = next(label.prefix for label in NOTE_LABELS if label.kind == self.kind)
-        return f'{prefix}{self.value}'
+
+class Wording(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields=True):
+    headings: tuple[Heading, ...]
+    prefixes: dict[NoteKind, str]
+    map_note: str
+    retired_note: str
+    terms: tuple[Term, ...]
+
+    def describe_kind(self, kind: EntryKind) -> str:
+        return next(heading.note for heading in self.headings if heading.kind == kind)
+
+    def write_note(self, kind: NoteKind, value: str) -> Note:
+        return Note(kind=kind, text=f'{self.prefixes[kind]}{value}')
+
+    def list_caveat_notes(self, entry: Entry) -> tuple[Note, ...]:
+        rests_on = entry.rests_on
+        refute = entry.refute
+        resting = (self.write_note('rests_on', rests_on),) if rests_on is not None else ()
+        refuted = (self.write_note('refuted_by', refute),) if refute is not None else ()
+        return (*resting, *refuted)
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -111,12 +112,6 @@ def list_entries_block(entries: tuple[EntryNode, ...]) -> tuple[Block, ...]:
     if not entries:
         return ()
     return (EntryList(entries=entries),)
-
-
-def list_caveat_notes(entry: Entry) -> tuple[Note, ...]:
-    rests_on = (Note(kind='rests_on', value=entry.rests_on),) if entry.rests_on is not None else ()
-    refuted = (Note(kind='refuted_by', value=entry.refute),) if entry.refute is not None else ()
-    return (*rests_on, *refuted)
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)

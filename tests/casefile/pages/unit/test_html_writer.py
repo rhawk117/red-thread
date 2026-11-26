@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
-from red_thread_casefile.documents import Citation, Note
+from red_thread_casefile.documents import Citation
+from red_thread_casefile.packaged import load_wording
 from red_thread_core.documents import Document, Paragraph, Section, parse_line
 
 from tests.casefile.pages.builders import (
@@ -190,7 +191,9 @@ class TestContent:
 
     def test_flags_and_notes_are_shown_as_text(self) -> None:
         entry = replace(
-            create_entry_node(), notes=(Note(kind='rests_on', value='a page'),), lead='1111111'
+            create_entry_node(),
+            notes=(load_wording().write_note('rests_on', 'a page'),),
+            lead='1111111',
         )
 
         page = render_page(create_document(entry))

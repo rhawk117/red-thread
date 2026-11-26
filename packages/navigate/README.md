@@ -2,7 +2,7 @@
 
 Code navigation for the red-thread plugin. It answers structure questions about a repository (what is in it, where a name is defined and used, what a symbol's code says) with output small enough for a scout to read and precise enough to cite. It reads Python, JavaScript, TypeScript and TSX, Go, Rust and Terraform.
 
-The package depends on tree-sitter and the grammar wheels for JavaScript, TypeScript, Go, Rust and Terraform, all pinned with `==`. Python uses the standard library `ast`. `docs/design.md` section 8 holds the design and the reasons for it.
+The package depends on `red-thread-core`, which reads its vendored queries from `src/red_thread_navigate/assets/queries/`, and on tree-sitter and the grammar wheels for JavaScript, TypeScript, Go, Rust and Terraform, all pinned with `==`. Python uses the standard library `ast`. `docs/design.md` section 8 holds the design and the reasons for it.
 
 ## Who uses it
 

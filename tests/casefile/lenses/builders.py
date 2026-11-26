@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from red_thread_casefile.factory import CaseFiles
 from red_thread_casefile.lenses import Selection
+from red_thread_casefile.packaged import load_lens_book
 from red_thread_casefile.services import ExportRequest, Press
 
 from tests.casefile.ledger.builders import QUEUE_PATH, create_entry, create_framed_harness
@@ -83,7 +84,11 @@ class PressHarness:
 def create_press_harness() -> PressHarness:
     case = create_framed_harness()
     pages = MemoryPageStore()
-    return PressHarness(case=case, pages=pages, press=Press(record=case.casefile, pages=pages))
+    return PressHarness(
+        case=case,
+        pages=pages,
+        press=Press(record=case.casefile, pages=pages, book=load_lens_book()),
+    )
 
 
 def seed_flag_scenario(harness: PressHarness, scenario: FlagScenario) -> None:

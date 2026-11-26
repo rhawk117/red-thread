@@ -7,14 +7,14 @@ from typing import TYPE_CHECKING
 import pytest
 from hypothesis import example, given
 from hypothesis import strategies as st
-from red_thread_core.assets import read_asset
+from red_thread_core.packaged import read_asset
 from red_thread_core.writers.markup import render, render_value
 
 from tests.casefile.pages.asset_names import ASSET_NAMES
 from tests.casefile.writers.reading import render_marked_up
 
 if TYPE_CHECKING:
-    from red_thread_core.assets import CoreAsset
+    from red_thread_core.packaged import CoreAsset
 
 BARE_AMPERSAND = re.compile(r'&(?!(?:amp|lt|gt|quot|#x27);)')
 METACHARACTERS = '<>"\''

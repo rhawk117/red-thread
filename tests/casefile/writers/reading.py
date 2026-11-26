@@ -2,6 +2,7 @@
 
 from typing import TYPE_CHECKING
 
+from red_thread_casefile.packaged import load_wording
 from red_thread_casefile.writers.page import render_case_page
 from red_thread_core.documents import parse_line
 from red_thread_core.writers.markdown import MarkdownWriter
@@ -16,7 +17,7 @@ def render_markdown(document: Document) -> str:
 
 
 def render_page(document: Document) -> str:
-    return render_case_page(document)
+    return render_case_page(document, load_wording().headings)
 
 
 def render_marked_up(text: str) -> str:

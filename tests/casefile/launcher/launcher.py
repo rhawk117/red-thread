@@ -105,8 +105,8 @@ class Launcher:
         runner = ChildRunner(cwd=self.git.root, env=self.environment)
         return runner.run('bash', str(self.plugin.plan_script), *arguments, stdin=stdin)
 
-    def init_plan(self) -> Path:
-        finished = self.run_plan('init', '--title', TARGET)
+    def init_plan(self, case: Path) -> Path:
+        finished = self.run_plan('init', '--title', TARGET, '--case', case.name)
         assert finished.code == 0, finished.err
         created = finished.out.splitlines()[0].removeprefix('created ')
         return self.git.root.joinpath(created).resolve()

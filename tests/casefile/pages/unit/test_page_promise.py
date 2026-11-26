@@ -5,9 +5,8 @@ from dataclasses import replace
 from typing import TYPE_CHECKING
 
 import pytest
-from red_thread_casefile.assets import read_asset
-from red_thread_casefile.boards import MAP_NOTE
-from red_thread_casefile.documents import Citation, EntryList, EntryNode, Note
+from red_thread_casefile.documents import Citation, EntryList, EntryNode
+from red_thread_casefile.packaged import load_wording, read_asset
 from red_thread_casefile.policy import Finding
 from red_thread_core.documents import Document, Flowchart, Paragraph, Section, parse_line
 
@@ -45,7 +44,7 @@ def create_rich_document() -> Document:
             target='src/queue.py:3',
             finding=Finding(ref='e1', cite='src/queue.py:3', state='changed'),
         ),
-        notes=(Note(kind='rests_on', value='a page'),),
+        notes=(load_wording().write_note('rests_on', 'a page'),),
         lead='1111111',
         diagram='flowchart TD\n  A --> B',
     )
@@ -57,7 +56,7 @@ def create_rich_document() -> Document:
         title='A case',
         summary=(parse_line('Case line'),),
         sections=(Section(title='Findings', blocks=blocks),),
-        appendix=(Section(title='Map', blocks=(chart,), note=MAP_NOTE),),
+        appendix=(Section(title='Map', blocks=(chart,), note=load_wording().map_note),),
     )
 
 

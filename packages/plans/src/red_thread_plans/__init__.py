@@ -1,4 +1,4 @@
-"""The plans behind red-thread: a cut of tickets checked whole and stored revision by revision."""
+"""A ticket's plan in red-thread: a Markdown file with frontmatter, started and checked here."""
 
 from red_thread_plans.cli import main
 

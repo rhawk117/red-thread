@@ -2,12 +2,12 @@
 name: meet-the-team
 user-invocable: false
 description: >-
-  Who the red-thread agents are and how to brief each one: which agent takes which question, the brief fields each needs, what it returns and what to do with each verdict. Read before dispatching a red-thread agent. The investigate and debug skills refer to it and research-lead uses it; not a command you run.
+  Who the red-thread agents are and how to brief each one: which agent takes which question, the brief fields each needs, what it returns and what to do with each verdict. Read before dispatching a red-thread agent. The investigate, debug and game-plan skills refer to it and research-lead uses it; not a command you run.
 ---
 
 # Meet the team
 
-red-thread has six agents. Four scouts each answer one question or run one experiment. `research-lead` runs one thread of a case with the scouts as its team. `peer-review` checks a case before the owner accepts its conclusion. This file is for whoever dispatches them: the primary, which is the session running `investigate` or `debug`, and `research-lead`.
+red-thread has six agents. Four scouts each answer one question or run one experiment. `research-lead` runs one thread of a case with the scouts as its team. `peer-review` checks a case before the owner accepts its conclusion, or a draft plan before its gate. This file is for whoever dispatches them: the primary, which is the session running `investigate`, `debug`, `game-plan` or `course-correction`, and `research-lead`.
 
 Every agent starts with no memory of your conversation. Your brief is all it knows, and its report is all you get back.
 
@@ -32,7 +32,7 @@ The primary also dispatches `red-thread:research-lead` and `red-thread:peer-revi
 | what a dependency, API, protocol or tool documents: a default, a signature, a deprecation, a change between versions | `web-head` |
 | a claim that only running something can settle | `lab-rat` |
 | an independent thread that needs several lookups, when you want only its conclusion (primary only) | `research-lead` |
-| whether a conclusion follows from the case, before the owner accepts it (primary only) | `peer-review` |
+| whether a conclusion follows from the case, before the owner accepts it, or whether a draft plan follows from its cases (primary only) | `peer-review` |
 
 A scout that gets another scout's question returns BLOCKED and names the right one, which costs a dispatch. Route it correctly the first time.
 
@@ -158,3 +158,17 @@ Required: CASE, SCRIPT, CONCLUSION. Give TODAY and NAVIGATE as well. REFS is opt
 - It returns one verdict per claim (HOLDS, WEAKENED, BROKEN or UNCHECKED), whether the conclusion FOLLOWS, FOLLOWS-WITH-CAVEATS or DOES-NOT-FOLLOW, and what would change each verdict.
 - A claim cited by a command it may not run comes back UNCHECKED. It does not rerun experiments.
 - It records nothing. Retiring a claim it broke is the primary's step, after the owner agrees.
+
+For a draft plan, the game-plan skill sends PLAN and CASES in place of CASE and CONCLUSION:
+
+```text
+PLAN: /abs/path/.red-thread/tickets/20261126-cap-retries/plan.md
+CASES:
+C1 /abs/path/.red-thread/20261126-retry-pool
+C2 /abs/path/.red-thread/20261126-retry-limit
+SCRIPT: /abs/path/bin/redthread-casefile
+TODAY: 2026-11-26
+NAVIGATE: /abs/path/bin/redthread-navigate
+```
+
+Required: PLAN, CASES, SCRIPT. It checks that each criterion follows from the entries that require it, that no decision on the boards is left without work, that its tasks can be done in the order written, and what the plan assumes without evidence, and it names the plan's risks itself, because the draft reaches it with none. It returns a table of findings, each with where it is in the plan, and a table of risks, each with a signal and the tasks it touches; each row carries an entry ref or a `path:line`, and you drop any that has neither. Say nothing about how the plan was reached: a reviewer who hears the argument checks the argument, and its risks come out in your framing.

@@ -9,6 +9,7 @@ authors = [
 requires-python = ">=3.14"
 dependencies = [
     "cyclopts==5.5.3",
+    "red-thread-core",
     "tree-sitter==0.27.0",
     "tree-sitter-go==0.25.0",
     "tree-sitter-hcl==1.2.0",
@@ -23,3 +24,6 @@ redthread-navigate = "red_thread_navigate:main"
 [build-system]
 requires = ["uv_build>=0.13.1,<0.14.0"]
 build-backend = "uv_build"
+
+[tool.uv.sources]
+red-thread-core = { workspace = true }

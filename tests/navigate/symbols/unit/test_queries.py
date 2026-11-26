@@ -1,9 +1,9 @@
 """The vendored tree-sitter queries: each carries its upstream license notice and loads."""
 
 from dataclasses import dataclass
-from importlib import resources
 
 import pytest
+from red_thread_navigate.symbols.store.treesitter import load_query_source
 
 from tests.params import as_params
 
@@ -29,12 +29,7 @@ def query_notice_cases() -> pytest.MarkDecorator:
 
 class TestQueryNotice:
     def read_query(self, name: str) -> str:
-        return (
-            resources
-            .files('red_thread_navigate.symbols.store')
-            .joinpath('queries', f'{name}.scm')
-            .read_text(encoding='utf-8')
-        )
+        return load_query_source(name)
 
     @query_notice_cases()
     def test_query_carries_the_upstream_notice_and_loads_as_a_resource(

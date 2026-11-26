@@ -31,6 +31,5 @@ def case(cli: CliHarness) -> Path:
 def planner(
     git_repository: GitRepository,
     capsys: pytest.CaptureFixture[str],
-    monkeypatch: pytest.MonkeyPatch,
 ) -> PlanHarness:
-    return PlanHarness(scratch=git_repository.root.parent, capsys=capsys, monkeypatch=monkeypatch)
+    return PlanHarness(root=git_repository.root, capsys=capsys)

@@ -3,8 +3,7 @@
 from dataclasses import dataclass, replace
 
 import pytest
-from red_thread_casefile.assets import read_asset
-from red_thread_casefile.boards import MAP_NOTE
+from red_thread_casefile.packaged import load_wording, read_asset
 from red_thread_core.documents import Document, Flowchart, Paragraph, PointList, Section, parse_line
 
 from tests.casefile.pages.builders import DIAGRAM, create_document, create_marked_entry
@@ -34,7 +33,7 @@ def create_pointer_document() -> Document:
 
 def create_map_section(lines: tuple[str, ...]) -> Section:
     chart = Flowchart(lines=(read_asset('map.mmd').rstrip(), *lines))
-    return Section(title='Map', blocks=(chart,), note=MAP_NOTE)
+    return Section(title='Map', blocks=(chart,), note=load_wording().map_note)
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)

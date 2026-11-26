@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
-from red_thread_casefile.boards import RETIRED_NOTE
 from red_thread_casefile.documents import (
     Citation,
     EntryList,
@@ -17,6 +16,7 @@ from red_thread_casefile.documents import (
     list_section_entries,
 )
 from red_thread_casefile.domain import ENTRY_KINDS, VERDICTS
+from red_thread_casefile.packaged import load_wording
 from red_thread_casefile.policy import CITE_STATES, Finding
 from red_thread_core.documents import Document, Fact, Section, parse_line, parse_value
 
@@ -61,7 +61,7 @@ def create_retired(entries: tuple[EntryNode, ...]) -> tuple[Section, ...]:
     if not entries:
         return ()
     blocks = (EntryList(entries=entries),)
-    return (Section(title='Retired', blocks=blocks, note=RETIRED_NOTE, folded=True),)
+    return (Section(title='Retired', blocks=blocks, note=load_wording().retired_note, folded=True),)
 
 
 def list_all_entries(document: Document) -> list[EntryNode]:
@@ -178,7 +178,7 @@ class TestNewFieldsRoundTrip:
         round=st.integers(min_value=0, max_value=999),
         at=st.datetimes().map(datetime.isoformat),
         citation=citations,
-        notes=many(st.builds(Note, kind=st.just('source'), value=texts), 2),
+        notes=many(st.builds(Note, kind=st.just('source'), text=texts), 2),
     )
     sections = st.builds(
         Section,
