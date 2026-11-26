@@ -47,7 +47,9 @@ class TestEntry:
         page = render_page(create_document(entry))
 
         assert list_item_refs(page) == ['T1.e2']
-        assert find_entries(page) == [{'class': 'entry', 'data-kind': 'open', 'data-thread': 'T1'}]
+        assert find_entries(page) == [
+            {'class': 'entry', 'id': 'T1.e2', 'data-kind': 'open', 'data-thread': 'T1'}
+        ]
 
     def test_code_spans_in_the_claim_are_code_elements(self) -> None:
         page = render_page(create_document(create_entry_node('run `make` first')))

@@ -67,7 +67,7 @@ def write_entry(entry: EntryNode) -> Template:
     details = t'{write_cite(entry.citation)}{write_notes(entry)}{write_diagram(entry.diagram)}'
     body = t'<div>{write_claim(entry)}{details}</div>'
     marks = t'data-kind="{entry.kind}" data-thread="{entry.thread or ""}"'
-    return t'<li class="entry" {marks}>{write_ref(entry.ref)}{body}</li>'
+    return t'<li class="entry" id="{entry.ref}" {marks}>{write_ref(entry.ref)}{body}</li>'
 
 
 def write_entries(entries: tuple[EntryNode, ...]) -> Template:

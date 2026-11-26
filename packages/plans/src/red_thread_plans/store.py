@@ -6,7 +6,7 @@ from pathlib import PurePath
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from red_thread_casefile.store import DirectoryCaseRepository
-from red_thread_core.places import PLAN_HOME
+from red_thread_core.places import PLAN_HOME, PLAN_INDEX
 
 from red_thread_plans.domain import CaseRecord
 from red_thread_plans.errors import CorruptPlanError, MissingPlanError, RevisionExistsError
@@ -17,7 +17,6 @@ if TYPE_CHECKING:
 
     from red_thread_plans.domain import Plan, PlanIndex
 
-INDEX_FILE = 'plan.json'
 REVISION_FILE = re.compile(r'r(?P<revision>[1-9]\d*)\.json')
 NOT_CASES = frozenset({'.', '..', PLAN_HOME})
 
@@ -46,7 +45,7 @@ class DirectoryPlanRepository:
 
     @property
     def index_path(self) -> Path:
-        return self.directory.joinpath(INDEX_FILE)
+        return self.directory.joinpath(PLAN_INDEX)
 
     def exists(self) -> bool:
         return self.index_path.is_file()

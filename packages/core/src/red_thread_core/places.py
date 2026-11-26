@@ -3,6 +3,7 @@
 PLAN_HOME = 'plans'
 BOARD_PAGE = 'board.html'
 PLAN_PAGE = 'plan.html'
+PLAN_INDEX = 'plan.json'
 
 
 def link_board(case_id: str, anchor: str = '') -> str:

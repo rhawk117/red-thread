@@ -1,9 +1,20 @@
 """The board as a page: each live entry with its details, the case facts and what was retired."""
 
 from dataclasses import dataclass
+from itertools import chain
 from typing import TYPE_CHECKING
 
-from red_thread_core.documents import Document, Fact, Flowchart, Section, parse_line, parse_value
+from red_thread_core.documents import (
+    Document,
+    Fact,
+    Flowchart,
+    Link,
+    Section,
+    Text,
+    parse_line,
+    parse_value,
+)
+from red_thread_core.places import link_plan
 
 from red_thread_casefile.assets import read_asset
 from red_thread_casefile.charts import create_case_map
@@ -16,9 +27,13 @@ from red_thread_casefile.documents import (
 )
 from red_thread_casefile.domain import NO_HEAD, date_of, shorten_head
 from red_thread_casefile.policy import CITE_STATES, tally_states
+from red_thread_casefile.terms import BOARD_TERMS
 from red_thread_casefile.views import HEADINGS
 
 if TYPE_CHECKING:
+    from red_thread_core.documents import Line
+    from red_thread_core.mentions import PlanMention
+
     from red_thread_casefile.documents import EntryNode
     from red_thread_casefile.domain import Entry
     from red_thread_casefile.views import Board, Heading
@@ -33,6 +48,14 @@ RETIRED_NOTE = (
 
 def create_fact(label: str, value: str, *, wide: bool = False) -> Fact:
     return Fact(label=label, value=parse_value(value), wide=wide)
+
+
+def mention_plan(plan: PlanMention) -> Line:
+    return (Text(value=', '), Link(url=link_plan(plan.id), label=plan.title))
+
+
+def link_plans(plans: tuple[PlanMention, ...]) -> Line:
+    return tuple(chain.from_iterable(map(mention_plan, plans)))[1:]
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -60,7 +83,9 @@ class BoardPage:
     def compose_section(self, heading: Heading) -> Section:
         entries = tuple(map(self.create_entry, self.board.ledger.select(heading.kind)))
         blocks = list_entries_block(entries)
-        return Section(title=heading.title, blocks=blocks, kind=heading.kind, note=heading.note)
+        return Section(
+            title=heading.title, blocks=blocks, kind=heading.kind, note=heading.note, column=True
+        )
 
     def compose_map(self) -> tuple[Section, ...]:
         lines = create_case_map(self.board.ledger).render()
@@ -100,6 +125,9 @@ class BoardPage:
         ]
         if case.page_url is not None:
             facts.append(create_fact('Page', case.page_url, wide=True))
+
+        if self.board.plans:
+            facts.append(Fact(label='Plans', value=link_plans(self.board.plans), wide=True))
         return tuple(facts)
 
     def compose(self) -> Document:
@@ -110,4 +138,5 @@ class BoardPage:
             facts=self.list_facts(),
             sections=tuple(section for section in sections if section.blocks),
             appendix=(*self.compose_map(), *self.compose_retired()),
+            terms=BOARD_TERMS,
         )

@@ -93,17 +93,21 @@ class TestSections:
 
 
 class TestEntryMarks:
-    def test_an_entry_carries_its_kind_and_thread(self) -> None:
+    def test_an_entry_carries_its_ref_as_an_anchor_with_its_kind_and_thread(self) -> None:
         entry = create_marked_entry(ref='T1.e2', kind='open', thread='T1')
 
         page = render_page(create_document(entry))
 
-        assert find_entries(page) == [{'class': 'entry', 'data-kind': 'open', 'data-thread': 'T1'}]
+        assert find_entries(page) == [
+            {'class': 'entry', 'id': 'T1.e2', 'data-kind': 'open', 'data-thread': 'T1'}
+        ]
 
     def test_the_main_ledger_is_an_empty_thread_string(self) -> None:
         page = render_page(create_document(create_marked_entry(thread=None)))
 
-        assert find_entries(page) == [{'class': 'entry', 'data-kind': 'known', 'data-thread': ''}]
+        assert find_entries(page) == [
+            {'class': 'entry', 'id': 'e1', 'data-kind': 'known', 'data-thread': ''}
+        ]
 
     def test_a_point_carries_no_mark_and_no_ref_button(self) -> None:
         page = render_page(create_pointer_document())

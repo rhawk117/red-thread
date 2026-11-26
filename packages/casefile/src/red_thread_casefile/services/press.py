@@ -4,6 +4,8 @@ from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING
 
 import msgspec
+from red_thread_core.mentions import MemoryMentionShelf
+from red_thread_core.places import BOARD_PAGE
 from red_thread_core.writers.markdown import MarkdownWriter
 
 from red_thread_casefile.boards import BoardPage
@@ -15,13 +17,12 @@ from red_thread_casefile.writers.page import render_case_page
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from red_thread_core.mentions import MentionShelf
     from red_thread_core.store import PageStore
 
     from red_thread_casefile.domain import Case
     from red_thread_casefile.lenses import LensName
     from red_thread_casefile.services.casefile import CaseFile
-
-BOARD_PAGE = 'board.html'
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -42,6 +43,7 @@ class Exported:
 class Press:
     record: CaseFile
     pages: PageStore
+    mentions: MentionShelf = field(default_factory=MemoryMentionShelf)
 
     def gather(self) -> Edition:
         return Edition(
@@ -63,6 +65,7 @@ class Press:
             ledger=edition.ledger,
             head=edition.head,
             findings=edition.findings,
+            plans=self.mentions.list_mentions(edition.case.id),
         )
         document = BoardPage(board=board).compose()
         return self.pages.write(BOARD_PAGE, render_case_page(document))

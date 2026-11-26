@@ -173,6 +173,13 @@ class TestLinks:
         assert RETIRED in list_open_sections(state)
         assert list_drawn(state) == [True, True, True]
 
+    def test_a_link_to_a_retired_entry_opens_the_fold_that_holds_it(
+        self, script: ScriptHarness
+    ) -> None:
+        state = script.play(load(), navigate('e3'))
+
+        assert RETIRED in list_open_sections(state)
+
     def test_a_link_to_nothing_on_the_page_opens_nothing(self, script: ScriptHarness) -> None:
         state = script.play(load(), navigate('section-elsewhere'))
 
