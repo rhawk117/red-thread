@@ -78,17 +78,21 @@ class TestExport:
 
         assert [path.name for path in stocked.joinpath('out').iterdir()] == ['brief.md']
 
-    def test_a_plan_file_selects_orders_and_titles(self, cli: CliHarness, case: Path) -> None:
+    def test_a_selection_file_selects_orders_and_titles(self, cli: CliHarness, case: Path) -> None:
         cli.add(case, *create_open_records(4))
-        plan = json.dumps({'title': 'Why jobs wait', 'include': ['e3', 'e1'], 'blocking': ['e1']})
+        selection = json.dumps({
+            'title': 'Why jobs wait',
+            'include': ['e3', 'e1'],
+            'blocking': ['e1'],
+        })
 
-        cli.export(case, 'brief', plan=plan)
+        cli.export(case, 'brief', selection=selection)
 
         text = read_brief(case)
         assert text.splitlines()[0] == '# Why jobs wait'
         assert list_refs(text, 'Open') == ['e1', 'e3']
 
-    def test_a_plan_on_standard_input_is_read_when_no_plan_file_is_given(
+    def test_a_selection_on_standard_input_is_read_when_no_selection_file_is_given(
         self, cli: CliHarness, case: Path
     ) -> None:
         cli.add(case, *create_open_records(4))
@@ -98,19 +102,19 @@ class TestExport:
         assert result.code == 0
         assert list_refs(read_brief(case), 'Open') == ['e4']
 
-    def test_no_plan_exports_every_live_entry(self, cli: CliHarness, case: Path) -> None:
+    def test_no_selection_exports_every_live_entry(self, cli: CliHarness, case: Path) -> None:
         cli.add(case, *create_open_records(3))
 
         cli.export(case, 'brief')
 
         assert list_refs(read_brief(case), 'Open') == ['e1', 'e2', 'e3']
 
-    def test_a_secret_in_the_plan_is_redacted_before_it_is_written(
+    def test_a_secret_in_the_selection_is_redacted_before_it_is_written(
         self, cli: CliHarness, case: Path
     ) -> None:
-        plan = json.dumps({'title': 'Leak of AKIAIOSFODNN7EXAMPLE'})
+        selection = json.dumps({'title': 'Leak of AKIAIOSFODNN7EXAMPLE'})
 
-        cli.export(case, 'brief', '--html', plan=plan)
+        cli.export(case, 'brief', '--html', selection=selection)
 
         for name in ('brief.md', 'brief.html'):
             written = case.joinpath('out', name).read_text(encoding='utf-8')
@@ -134,8 +138,8 @@ class TestExportRefusals:
         cli.add(case, KNOWN, *create_open_records(2))
         return case
 
-    def assert_refused_without_writing(self, cli: CliHarness, case: Path, plan: str) -> str:
-        result = cli.export(case, 'brief', plan=plan)
+    def assert_refused_without_writing(self, cli: CliHarness, case: Path, selection: str) -> str:
+        result = cli.export(case, 'brief', selection=selection)
 
         assert result.code == 1
         assert result.out == ''
@@ -144,7 +148,7 @@ class TestExportRefusals:
         return result.err
 
     @pytest.mark.parametrize(
-        ('plan', 'named'),
+        ('selection', 'named'),
         [
             pytest.param('not json at all', 'not JSON', id='not-json'),
             pytest.param('["e1"]', 'not a JSON object', id='not-an-object'),
@@ -153,12 +157,12 @@ class TestExportRefusals:
             pytest.param('{"title": 4}', 'title', id='title-not-a-string'),
         ],
     )
-    def test_a_malformed_plan_is_reported_and_nothing_is_written(
-        self, cli: CliHarness, stocked: Path, plan: str, named: str
+    def test_a_malformed_selection_is_reported_and_nothing_is_written(
+        self, cli: CliHarness, stocked: Path, selection: str, named: str
     ) -> None:
-        error = self.assert_refused_without_writing(cli, stocked, plan)
+        error = self.assert_refused_without_writing(cli, stocked, selection)
 
-        assert 'the plan cannot be read' in error
+        assert 'the selection cannot be read' in error
         assert named in error
 
     def test_a_ref_that_is_not_live_is_reported_and_nothing_is_written(

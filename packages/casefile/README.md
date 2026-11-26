@@ -46,12 +46,12 @@ A case id is the UTC date and a slug of the target, such as `20261121-retry-queu
 | `add --case DIR --round N [--thread T1] [--file F]` | validates a batch of entries whole, stamps the time and HEAD, redacts secrets and appends it; the batch is one JSON object or a JSON array of them, read from standard input or `--file` |
 | `render --case DIR [--full] [--html]` | opens every citation again and prints the board with a changed, moved or missing citation flagged beside its entry; `--full` shows every live entry, `--html` also writes `board.html` |
 | `check --case DIR` | resolves every live citation against the current tree |
-| `export --case DIR --lens L [--plan F] [--html]` | writes one output to `out/` from the ledger; `--lens` is `brief`, `issue`, `handoff` or `report` |
+| `export --case DIR --lens L [--selection F] [--html]` | writes one output to `out/` from the ledger; `--lens` is `brief`, `issue`, `handoff` or `report` |
 | `page --case DIR --url URL` | records the https link that publishing returned in `case.json` |
 
 `--case` takes the directory `init` printed. Round 0 is framing, and the rounds count up from there.
 
-Each output has a line budget, and `export` fails when the output runs over it: 60 lines for a brief, 80 for an issue, 40 for a handoff and 200 for a report. The plan it reads is a JSON object with an optional `title`, `goal`, `include` and `blocking`, the last two as lists of entry refs such as `["e3", "T1.e2"]`.
+Each output has a line budget, and `export` fails when the output runs over it: 60 lines for a brief, 80 for an issue, 40 for a handoff and 200 for a report. The selection it reads is a JSON object with an optional `title`, `goal`, `include` and `blocking`, the last two as lists of entry refs such as `["e3", "T1.e2"]`.
 
 ## Entries and their rules
 

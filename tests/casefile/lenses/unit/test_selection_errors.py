@@ -1,11 +1,11 @@
-"""export: a plan that names no live entry raises and writes nothing."""
+"""export: a selection that names no live entry raises and writes nothing."""
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
-from red_thread_casefile.errors import UnknownPlanRefError
-from red_thread_casefile.lenses import Plan
+from red_thread_casefile.errors import UnknownSelectionRefError
+from red_thread_casefile.lenses import Selection
 
 from tests.casefile.ledger.builders import create_entry
 from tests.casefile.lenses.builders import create_numbered_entries, export
@@ -20,35 +20,45 @@ PREVIOUS = 'a brief written by an earlier export\n'
 @dataclass(slots=True, kw_only=True, frozen=True)
 class RefScenario:
     name: str
-    plan: Plan
+    selection: Selection
     unknown: str
     marks: tuple[pytest.MarkDecorator, ...] = ()
 
 
-def plan_ref_cases() -> pytest.MarkDecorator:
+def selection_ref_cases() -> pytest.MarkDecorator:
     scenarios = [
-        RefScenario(name='include-never-existed', plan=Plan(include=('e99',)), unknown='e99'),
-        RefScenario(name='blocking-never-existed', plan=Plan(blocking=('e99',)), unknown='e99'),
-        RefScenario(name='include-names-a-retired-entry', plan=Plan(include=('e1',)), unknown='e1'),
         RefScenario(
-            name='blocking-names-a-retired-entry', plan=Plan(blocking=('e1',)), unknown='e1'
+            name='include-never-existed', selection=Selection(include=('e99',)), unknown='e99'
         ),
-        RefScenario(name='thread-ref-in-no-thread', plan=Plan(include=('T1.e1',)), unknown='T1.e1'),
+        RefScenario(
+            name='blocking-never-existed', selection=Selection(blocking=('e99',)), unknown='e99'
+        ),
+        RefScenario(
+            name='include-names-a-retired-entry', selection=Selection(include=('e1',)), unknown='e1'
+        ),
+        RefScenario(
+            name='blocking-names-a-retired-entry',
+            selection=Selection(blocking=('e1',)),
+            unknown='e1',
+        ),
+        RefScenario(
+            name='thread-ref-in-no-thread', selection=Selection(include=('T1.e1',)), unknown='T1.e1'
+        ),
         RefScenario(
             name='live-refs-then-one-unknown',
-            plan=Plan(include=('e2', 'e3', 'e99')),
+            selection=Selection(include=('e2', 'e3', 'e99')),
             unknown='e99',
         ),
         RefScenario(
             name='unknown-blocking-beside-valid-include',
-            plan=Plan(include=('e2',), blocking=('e77',)),
+            selection=Selection(include=('e2',), blocking=('e77',)),
             unknown='e77',
         ),
     ]
     return pytest.mark.parametrize('scenario', as_params(scenarios))
 
 
-class TestUnknownPlanRef:
+class TestUnknownSelectionRef:
     @pytest.fixture
     def harness(self, press_harness: PressHarness) -> PressHarness:
         press_harness.seed(
@@ -60,28 +70,28 @@ class TestUnknownPlanRef:
         return press_harness
 
     def assert_refused_without_writing(
-        self, harness: PressHarness, plan: Plan, *, html: bool = False
-    ) -> UnknownPlanRefError:
+        self, harness: PressHarness, selection: Selection, *, html: bool = False
+    ) -> UnknownSelectionRefError:
         before = harness.snapshot()
-        with pytest.raises(UnknownPlanRefError) as raised:
-            export(harness, 'brief', plan, html=html)
+        with pytest.raises(UnknownSelectionRefError) as raised:
+            export(harness, 'brief', selection, html=html)
         assert harness.snapshot() == before
         return raised.value
 
-    @plan_ref_cases()
+    @selection_ref_cases()
     def test_a_ref_that_is_unknown_or_retired_raises_and_writes_nothing(
         self, harness: PressHarness, scenario: RefScenario
     ) -> None:
-        error = self.assert_refused_without_writing(harness, scenario.plan)
+        error = self.assert_refused_without_writing(harness, scenario.selection)
 
         assert error.ref == scenario.unknown
 
     def test_the_html_page_is_not_written_either(self, harness: PressHarness) -> None:
-        self.assert_refused_without_writing(harness, Plan(include=('e99',)), html=True)
+        self.assert_refused_without_writing(harness, Selection(include=('e99',)), html=True)
 
         assert 'out/brief.html' not in harness.pages.files
 
-    def test_a_plan_naming_only_live_entries_exports(self, harness: PressHarness) -> None:
-        export(harness, 'brief', Plan(include=('e2', 'e3'), blocking=('e3',)))
+    def test_a_selection_naming_only_live_entries_exports(self, harness: PressHarness) -> None:
+        export(harness, 'brief', Selection(include=('e2', 'e3'), blocking=('e3',)))
 
         assert harness.read_markdown('brief') != PREVIOUS

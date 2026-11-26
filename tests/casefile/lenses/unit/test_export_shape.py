@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 from red_thread_casefile.domain import ENTRY_KINDS
-from red_thread_casefile.lenses import Plan
+from red_thread_casefile.lenses import Selection
 
 from tests.casefile.ledger.builders import CASE_ID, URL_CITE, create_entry
 from tests.casefile.lenses.builders import create_numbered_entries
@@ -181,7 +181,7 @@ class TestEntryWording:
 
 
 class TestTitleAndGoal:
-    def test_without_a_plan_the_title_is_the_target_and_the_goal_is_target_and_bar(
+    def test_without_a_selection_the_title_is_the_target_and_the_goal_is_target_and_bar(
         self, press_harness: PressHarness
     ) -> None:
         text = press_harness.export_markdown('brief')
@@ -191,15 +191,19 @@ class TestTitleAndGoal:
         assert 'why the retry queue stalls' in goal
         assert 'name the line that stalls it' in goal
 
-    def test_plan_title_replaces_the_target_as_title(self, press_harness: PressHarness) -> None:
-        text = press_harness.export_markdown('brief', Plan(title='Why jobs wait'))
+    def test_selection_title_replaces_the_target_as_title(
+        self, press_harness: PressHarness
+    ) -> None:
+        text = press_harness.export_markdown('brief', Selection(title='Why jobs wait'))
 
         assert text.splitlines()[0] == '# Why jobs wait'
 
-    def test_plan_goal_replaces_the_target_and_bar_in_the_goal(
+    def test_selection_goal_replaces_the_target_and_bar_in_the_goal(
         self, press_harness: PressHarness
     ) -> None:
-        text = press_harness.export_markdown('brief', Plan(goal='Decide whether to drop retries'))
+        text = press_harness.export_markdown(
+            'brief', Selection(goal='Decide whether to drop retries')
+        )
 
         assert list_section_lines(text, 'Goal') == ['Decide whether to drop retries']
 

@@ -1,4 +1,4 @@
-"""Lens outputs: a plan selects and ranks live entries, and the ledger supplies their words."""
+"""Lens outputs: a selection picks and ranks live entries, and the ledger supplies their words."""
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
@@ -15,7 +15,7 @@ from red_thread_casefile.documents import (
     parse_line,
 )
 from red_thread_casefile.domain import PROGRAM, STATE_DIRECTORY, shorten_head
-from red_thread_casefile.errors import LensOverBudgetError, UnknownPlanRefError
+from red_thread_casefile.errors import LensOverBudgetError, UnknownSelectionRefError
 from red_thread_casefile.util import squeeze
 from red_thread_casefile.views import Annotator, CheckReport, describe_kind
 
@@ -128,7 +128,7 @@ def count_lines(text: str) -> int:
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
-class Plan:
+class Selection:
     title: str | None = None
     goal: str | None = None
     include: tuple[str, ...] | None = None
@@ -171,15 +171,15 @@ class Edition:
 @dataclass(slots=True, kw_only=True, frozen=True)
 class Composer:
     lens: Lens
-    plan: Plan
+    selection: Selection
     edition: Edition
 
-    def get_plan_problem(self) -> UnknownPlanRefError | None:
+    def get_selection_problem(self) -> UnknownSelectionRefError | None:
         live = {entry.ref for entry in self.edition.ledger.live}
-        unknown = next((ref for ref in self.plan.named if ref not in live), None)
+        unknown = next((ref for ref in self.selection.named if ref not in live), None)
         if unknown is None:
             return None
-        return UnknownPlanRefError(ref=unknown)
+        return UnknownSelectionRefError(ref=unknown)
 
     def get_budget_problem(self, text: str) -> LensOverBudgetError | None:
         lines = count_lines(text)
@@ -188,14 +188,14 @@ class Composer:
         return LensOverBudgetError(lens=self.lens.name, lines=lines, budget=self.lens.budget)
 
     def select(self, kind: EntryKind) -> tuple[Entry, ...]:
-        admitted = filter(self.plan.admits, self.edition.ledger.select(kind))
-        return tuple(sorted(admitted, key=self.plan.rank))
+        admitted = filter(self.selection.admits, self.edition.ledger.select(kind))
+        return tuple(sorted(admitted, key=self.selection.rank))
 
     def list_notes(self, entry: Entry) -> tuple[Note, ...]:
         notes = list_caveat_notes(entry)
-        if self.plan.blocking is None or entry.kind != 'open':
+        if self.selection.blocking is None or entry.kind != 'open':
             return notes
-        urgency = 'blocking' if self.plan.is_blocking(entry) else 'not blocking'
+        urgency = 'blocking' if self.selection.is_blocking(entry) else 'not blocking'
         return (Note(kind='urgency', value=urgency), *notes)
 
     def create_entry(self, entry: Entry) -> EntryNode:
@@ -217,8 +217,8 @@ class Composer:
 
     def write_goal(self) -> Paragraph:
         case = self.edition.case
-        if self.plan.goal is not None:
-            return Paragraph(line=parse_line(squeeze(self.plan.goal)))
+        if self.selection.goal is not None:
+            return Paragraph(line=parse_line(squeeze(self.selection.goal)))
         return Paragraph(line=parse_line(f'{case.target} The bar for an answer: {case.bar}'))
 
     def compose_part(self, part: Part) -> Section:
@@ -246,7 +246,7 @@ class Composer:
             f'at commit {self.edition.short_head}.'
         )
         return Document(
-            title=squeeze(self.plan.title or case.target),
+            title=squeeze(self.selection.title or case.target),
             summary=(parse_line(summary),),
             sections=tuple(section for section in sections if section.blocks),
         )

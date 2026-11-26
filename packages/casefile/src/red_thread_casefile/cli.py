@@ -9,10 +9,10 @@ from typing import TYPE_CHECKING, Annotated
 from cyclopts import App, CycloptsError, Parameter
 
 from red_thread_casefile.domain import PROGRAM, STATE_DIRECTORY, CaseKind, build_case_id
-from red_thread_casefile.errors import CaseFileError, MalformedPlanError, UnreadableInputError
+from red_thread_casefile.errors import CaseFileError, MalformedSelectionError, UnreadableInputError
 from red_thread_casefile.factory import CaseFiles
 from red_thread_casefile.lenses import LensName
-from red_thread_casefile.schemas import load_plan, parse_batch
+from red_thread_casefile.schemas import load_selection, parse_batch
 from red_thread_casefile.services import Batch, ExportRequest, Framing
 from red_thread_casefile.views import BoardOptions, CheckReport
 
@@ -41,8 +41,8 @@ type BatchFileOption = Annotated[
 type FullFlag = Annotated[bool, Parameter(help='show every live entry')]
 type BoardFlag = Annotated[bool, Parameter(help='also write board.html in the case')]
 type LensOption = Annotated[LensName, Parameter(help='the output to write')]
-type PlanOption = Annotated[
-    str | None, Parameter(help='read the plan from this file instead of standard input')
+type SelectionOption = Annotated[
+    str | None, Parameter(help='read the selection from this file instead of standard input')
 ]
 type PageFlag = Annotated[bool, Parameter(help='also write the output as a page')]
 type UrlOption = Annotated[str, Parameter(help='the https link that publishing returned')]
@@ -87,7 +87,7 @@ class RenderArguments:
 class ExportArguments:
     case: CaseOption
     lens: LensOption
-    plan: PlanOption = None
+    selection: SelectionOption = None
     html: PageFlag = False
 
 
@@ -187,15 +187,15 @@ class ExportCommand:
     summary: str = 'write a lens output from the ledger'
 
     def run(self, arguments: ExportArguments) -> int:
-        unplanned = arguments.plan is None and sys.stdin.isatty()
-        loaded = load_plan('' if unplanned else read_input(arguments.plan))
-        if isinstance(loaded, MalformedPlanError):
+        unselected = arguments.selection is None and sys.stdin.isatty()
+        loaded = load_selection('' if unselected else read_input(arguments.selection))
+        if isinstance(loaded, MalformedSelectionError):
             raise loaded
 
         if problem := loaded.get_shape_problem():
             raise problem
 
-        request = ExportRequest(lens=arguments.lens, plan=loaded.parse(), html=arguments.html)
+        request = ExportRequest(lens=arguments.lens, selection=loaded.parse(), html=arguments.html)
         exported = self.cases.open_press(arguments.case).export(request)
         written = '\n'.join(f'wrote {path}' for path in exported.paths)
         print(written)

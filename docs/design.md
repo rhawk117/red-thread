@@ -97,7 +97,7 @@ Platform facts checked on 2026-11-21 against the Claude Code docs and one live p
 
 **Decided:** one Python script is the only writer and renderer of the case file. It replaces the MCP server, the database and the recorder hooks. Its one dependency is msgspec, which reads and writes every JSON record. That reverses the earlier choice of the standard library alone. The launcher asks uv for msgspec with `--with`, so nothing is installed into the project under investigation, and the first run on a machine downloads it.
 
-The code is the workspace package `packages/casefile`. The stored records (`Entry`, `Case` and `Capabilities`) are frozen msgspec Structs, so a ledger line or a `case.json` that does not match its type is refused with the file and the fault named. Batches and export plans keep their own validation, so `add` still reports every fault in a batch with its fix. The page's skeleton, styles, script and map header sit in `packages/casefile/assets/`, beside `src/`, where they are easy to find, and `assets.py` reads them by path from the module file. The package therefore runs from the source tree, which is how `bin/redthread-casefile` and an editable install run it; a built wheel would not carry the assets. The HTML fragments are Python 3.14 t-strings rendered through one escaping function. Imports inside the package are absolute.
+The code is the workspace package `packages/casefile`. The stored records (`Entry`, `Case` and `Capabilities`) are frozen msgspec Structs, so a ledger line or a `case.json` that does not match its type is refused with the file and the fault named. Batches and export selections keep their own validation, so `add` still reports every fault in a batch with its fix. The page's skeleton, styles, script and map header sit in `packages/casefile/assets/`, beside `src/`, where they are easy to find, and `assets.py` reads them by path from the module file. The package therefore runs from the source tree, which is how `bin/redthread-casefile` and an editable install run it; a built wheel would not carry the assets. The HTML fragments are Python 3.14 t-strings rendered through one escaping function. Imports inside the package are absolute.
 
 | Command | What it does | Status |
 | --- | --- | --- |
@@ -273,7 +273,7 @@ Rules:
 - With no case open, `distill` first builds a ledger from the conversation, and any claim it cannot cite becomes `open`.
 - The brief carries its own reading instructions, so it works for a person, for an agent without the plugin, and inside a GitHub issue.
 
-`export` takes an optional JSON plan on standard input: `title`, `goal`, `include` (refs, most important first) and `blocking` (open refs). The model chooses and ranks. The script writes each entry's own text, citation and ref, flags leads and changed citations, redacts the title and goal, and writes nothing when the output is over budget. A budget counts lines that carry text: brief 60, issue 80, handoff 40, report 200. The last three were set while building. **Decided 2026-11-21:** the owner accepted them as built. A budget that a real case shows to be wrong is reported, not changed on the spot.
+`export` takes an optional JSON selection on standard input (named a "plan" until 2026-11-25, renamed when the plan record took the word, section 13): `title`, `goal`, `include` (refs, most important first) and `blocking` (open refs). The model chooses and ranks. The script writes each entry's own text, citation and ref, flags leads and changed citations, redacts the title and goal, and writes nothing when the output is over budget. A budget counts lines that carry text: brief 60, issue 80, handoff 40, report 200. The last three were set while building. **Decided 2026-11-21:** the owner accepted them as built. A budget that a real case shows to be wrong is reported, not changed on the spot.
 
 Brief template (Decided):
 
@@ -869,7 +869,7 @@ Build order for version 1:
 
 | Step | Status |
 | --- | --- |
-| 1. Rename the export plan to a selection | not started |
+| 1. Rename the export plan to a selection | built 2026-11-25 |
 | 2. The plan record, the `plan` command and its checks: traceability, cycles and lane collisions | not started |
 | 3. The plan page | not started |
 | 4. The interface agent | not started |

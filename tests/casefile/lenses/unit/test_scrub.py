@@ -1,4 +1,4 @@
-"""export: secrets in the plan's title and goal never reach the output."""
+"""export: secrets in the selection's title and goal never reach the output."""
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
-from red_thread_casefile.lenses import Plan
+from red_thread_casefile.lenses import Selection
 
 from tests.casefile.lenses.builders import create_press_harness, export
 from tests.casefile.lenses.cases import lens_name_params, lens_shapes
@@ -42,14 +42,14 @@ def secret_cases() -> pytest.MarkDecorator:
     return pytest.mark.parametrize('scenario', as_params(scenarios))
 
 
-class TestPlanScrub:
+class TestSelectionScrub:
     @secret_cases()
     def test_secret_in_the_title_is_replaced_in_markdown(
         self, press_harness: PressHarness, scenario: SecretScenario
     ) -> None:
-        plan = Plan(title=f'Why {scenario.secret} leaked')
+        selection = Selection(title=f'Why {scenario.secret} leaked')
 
-        text = press_harness.export_markdown('brief', plan)
+        text = press_harness.export_markdown('brief', selection)
 
         assert text.splitlines()[0] == f'# Why {scenario.marker} leaked'
         assert scenario.secret not in text
@@ -58,18 +58,20 @@ class TestPlanScrub:
     def test_secret_in_the_goal_is_replaced_in_markdown(
         self, press_harness: PressHarness, scenario: SecretScenario
     ) -> None:
-        plan = Plan(goal=f'Rotate {scenario.secret} before friday')
+        selection = Selection(goal=f'Rotate {scenario.secret} before friday')
 
-        text = press_harness.export_markdown('brief', plan)
+        text = press_harness.export_markdown('brief', selection)
 
         assert list_section_lines(text, 'Goal') == [f'Rotate {scenario.marker} before friday']
         assert scenario.secret not in text
 
     @lens_name_cases()
-    def test_every_lens_scrubs_the_plan(self, press_harness: PressHarness, lens: LensName) -> None:
-        plan = Plan(title=f'About {AWS_KEY}', goal=f'Rotate {AWS_KEY}')
+    def test_every_lens_scrubs_the_selection(
+        self, press_harness: PressHarness, lens: LensName
+    ) -> None:
+        selection = Selection(title=f'About {AWS_KEY}', goal=f'Rotate {AWS_KEY}')
 
-        export(press_harness, lens, plan, html=True)
+        export(press_harness, lens, selection, html=True)
 
         written = press_harness.snapshot()
         assert set(written) == {f'out/{lens}.md', f'out/{lens}.html'}
@@ -79,13 +81,15 @@ class TestPlanScrub:
     def test_a_title_without_a_secret_is_written_as_given(
         self, press_harness: PressHarness
     ) -> None:
-        text = press_harness.export_markdown('brief', Plan(title='Why jobs wait', goal='Find out'))
+        text = press_harness.export_markdown(
+            'brief', Selection(title='Why jobs wait', goal='Find out')
+        )
 
         assert text.splitlines()[0] == '# Why jobs wait'
         assert 'REDACTED' not in text
 
 
-class TestPlanScrubProperty:
+class TestSelectionScrubProperty:
     lenses = st.sampled_from(tuple(shape.name for shape in lens_shapes()))
     aws_keys = st.from_regex(r'AKIA[0-9A-Z]{16}', fullmatch=True)
     words = st.lists(st.text('abcdefgh', min_size=1, max_size=8), min_size=1, max_size=5)
@@ -96,9 +100,9 @@ class TestPlanScrubProperty:
         self, lens: LensName, key: str, before: str, after: str
     ) -> None:
         harness = create_press_harness()
-        plan = Plan(title=f'{before} {key} {after}', goal=f'{after} {key} {before}')
+        selection = Selection(title=f'{before} {key} {after}', goal=f'{after} {key} {before}')
 
-        export(harness, lens, plan, html=True)
+        export(harness, lens, selection, html=True)
 
         written = harness.snapshot()
         assert set(written) == {f'out/{lens}.md', f'out/{lens}.html'}
@@ -111,7 +115,7 @@ class TestPlanScrubProperty:
     ) -> None:
         harness = create_press_harness()
 
-        text = harness.export_markdown(lens, Plan(title=title, goal=goal))
+        text = harness.export_markdown(lens, Selection(title=title, goal=goal))
 
         assert text.splitlines()[0] == f'# {title}'
         assert goal in text.splitlines()

@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 import msgspec
 
 from red_thread_casefile.boards import BoardPage
-from red_thread_casefile.lenses import Composer, Edition, Plan, count_lines, get_lens
+from red_thread_casefile.lenses import Composer, Edition, Selection, count_lines, get_lens
 from red_thread_casefile.policy import get_page_problem
 from red_thread_casefile.views import Board
 from red_thread_casefile.writers.markdown import MarkdownWriter
@@ -26,7 +26,7 @@ BOARD_PAGE = 'board.html'
 @dataclass(slots=True, kw_only=True, frozen=True)
 class ExportRequest:
     lens: LensName
-    plan: Plan = field(default_factory=Plan)
+    selection: Selection = field(default_factory=Selection)
     html: bool = False
 
 
@@ -68,10 +68,10 @@ class Press:
 
     def export(self, request: ExportRequest) -> Exported:
         lens = get_lens(request.lens)
-        title = self.scrub(request.plan.title)
-        plan = replace(request.plan, title=title, goal=self.scrub(request.plan.goal))
-        composer = Composer(lens=lens, plan=plan, edition=self.gather())
-        if problem := composer.get_plan_problem():
+        title = self.scrub(request.selection.title)
+        selection = replace(request.selection, title=title, goal=self.scrub(request.selection.goal))
+        composer = Composer(lens=lens, selection=selection, edition=self.gather())
+        if problem := composer.get_selection_problem():
             raise problem
 
         document = composer.compose()

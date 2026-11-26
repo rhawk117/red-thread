@@ -9,10 +9,10 @@ from red_thread_casefile.domain import ENTRY_KINDS, VERDICTS, Case, Draft, Entry
 from red_thread_casefile.errors import (
     InvalidFieldError,
     MalformedBatchError,
-    MalformedPlanError,
+    MalformedSelectionError,
     UnknownFieldError,
 )
-from red_thread_casefile.lenses import Plan
+from red_thread_casefile.lenses import Selection
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
@@ -159,8 +159,8 @@ def case_from_text(text: str) -> Case:
     return msgspec.json.decode(text, type=Case)
 
 
-PLAN_TEXT_FIELDS = ('title', 'goal')
-PLAN_REF_FIELDS = ('include', 'blocking')
+SELECTION_TEXT_FIELDS = ('title', 'goal')
+SELECTION_REF_FIELDS = ('include', 'blocking')
 
 
 def is_ref_list(value: object) -> bool:
@@ -168,32 +168,32 @@ def is_ref_list(value: object) -> bool:
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
-class PlanRecord:
+class SelectionRecord:
     record: Mapping[str, object]
 
     @property
     def unknown_field(self) -> str | None:
-        return find_unknown_field(self.record, (*PLAN_TEXT_FIELDS, *PLAN_REF_FIELDS))
+        return find_unknown_field(self.record, (*SELECTION_TEXT_FIELDS, *SELECTION_REF_FIELDS))
 
     @property
     def malformed_text_field(self) -> str | None:
-        present = (name for name in PLAN_TEXT_FIELDS if name in self.record)
+        present = (name for name in SELECTION_TEXT_FIELDS if name in self.record)
         return find_non_string(self.record, present)
 
     @property
     def malformed_ref_field(self) -> str | None:
-        present = (name for name in PLAN_REF_FIELDS if name in self.record)
+        present = (name for name in SELECTION_REF_FIELDS if name in self.record)
         return next((name for name in present if not is_ref_list(self.record[name])), None)
 
-    def get_shape_problem(self) -> MalformedPlanError | None:
+    def get_shape_problem(self) -> MalformedSelectionError | None:
         if (unknown := self.unknown_field) is not None:
-            return MalformedPlanError(reason=f'{unknown} is not a plan key')
+            return MalformedSelectionError(reason=f'{unknown} is not a selection key')
 
         if (malformed := self.malformed_text_field) is not None:
-            return MalformedPlanError(reason=f'{malformed} must be a string')
+            return MalformedSelectionError(reason=f'{malformed} must be a string')
 
         if (malformed := self.malformed_ref_field) is not None:
-            return MalformedPlanError(reason=f'{malformed} must be a list of entry refs')
+            return MalformedSelectionError(reason=f'{malformed} must be a list of entry refs')
 
         return None
 
@@ -203,8 +203,8 @@ class PlanRecord:
             return None
         return tuple(ref for ref in value if isinstance(ref, str))
 
-    def parse(self) -> Plan:
-        return Plan(
+    def parse(self) -> Selection:
+        return Selection(
             title=read_text(self.record, 'title'),
             goal=read_text(self.record, 'goal'),
             include=self.read_refs('include'),
@@ -212,13 +212,13 @@ class PlanRecord:
         )
 
 
-def load_plan(text: str) -> PlanRecord | MalformedPlanError:
+def load_selection(text: str) -> SelectionRecord | MalformedSelectionError:
     if not text.strip():
-        return PlanRecord(record={})
+        return SelectionRecord(record={})
     try:
         loaded = msgspec.json.decode(text)
     except msgspec.DecodeError as error:
-        return MalformedPlanError(reason=f'it is not JSON ({error})')
+        return MalformedSelectionError(reason=f'it is not JSON ({error})')
     if not isinstance(loaded, dict):
-        return MalformedPlanError(reason='it is not a JSON object')
-    return PlanRecord(record=loaded)
+        return MalformedSelectionError(reason='it is not a JSON object')
+    return SelectionRecord(record=loaded)

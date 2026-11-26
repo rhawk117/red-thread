@@ -214,20 +214,20 @@ class CorruptCaseError(CaseFileError):
         )
 
 
-class MalformedPlanError(CaseFileError):
+class MalformedSelectionError(CaseFileError):
     def __init__(self, *, reason: str) -> None:
         self.reason = reason
         super().__init__(
-            f'the plan cannot be read: {reason}. Send one JSON object with any of the keys '
+            f'the selection cannot be read: {reason}. Send one JSON object with any of the keys '
             'title, goal, include and blocking, or send nothing.'
         )
 
 
-class UnknownPlanRefError(CaseFileError):
+class UnknownSelectionRefError(CaseFileError):
     def __init__(self, *, ref: str) -> None:
         self.ref = ref
         super().__init__(
-            f'the plan names {ref}, which is not a live entry. '
+            f'the selection names {ref}, which is not a live entry. '
             'Run render --full and use the refs it shows.'
         )
 
@@ -239,7 +239,7 @@ class LensOverBudgetError(CaseFileError):
         self.budget = budget
         super().__init__(
             f'the {lens} came to {lines} lines and its budget is {budget}, so nothing was '
-            'written. Send a plan whose include lists fewer entries, most important first.'
+            'written. Send a selection whose include lists fewer entries, most important first.'
         )
 
 

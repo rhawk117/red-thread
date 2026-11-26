@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from red_thread_casefile.factory import CaseFiles
-from red_thread_casefile.lenses import Plan
+from red_thread_casefile.lenses import Selection
 from red_thread_casefile.services import ExportRequest, Press
 
 from tests.casefile.ledger.builders import QUEUE_PATH, create_entry, create_framed_harness
@@ -45,9 +45,9 @@ class Pressing(Protocol):
 
 
 def export(
-    harness: Pressing, lens: LensName, plan: Plan | None = None, *, html: bool = False
+    harness: Pressing, lens: LensName, selection: Selection | None = None, *, html: bool = False
 ) -> Exported:
-    request = ExportRequest(lens=lens, plan=plan or Plan(), html=html)
+    request = ExportRequest(lens=lens, selection=selection or Selection(), html=html)
     return harness.press.export(request)
 
 
@@ -66,8 +66,8 @@ class PressHarness:
     def frame(self, case: Case) -> None:
         self.case.repository.write_case(case)
 
-    def export_markdown(self, lens: LensName, plan: Plan | None = None) -> str:
-        export(self, lens, plan)
+    def export_markdown(self, lens: LensName, selection: Selection | None = None) -> str:
+        export(self, lens, selection)
         return self.read_markdown(lens)
 
     def read_markdown(self, lens: LensName) -> str:

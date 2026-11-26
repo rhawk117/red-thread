@@ -1,11 +1,11 @@
-"""export: how a plan selects, orders and labels entries."""
+"""export: which entries a selection admits, how it orders and labels entries."""
 
 from typing import TYPE_CHECKING
 
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
-from red_thread_casefile.lenses import Plan
+from red_thread_casefile.lenses import Selection
 
 from tests.casefile.ledger.builders import create_entry
 from tests.casefile.lenses.builders import create_numbered_entries, create_press_harness
@@ -35,7 +35,7 @@ def lens_with_decisions_cases() -> pytest.MarkDecorator:
     return pytest.mark.parametrize('lens', lens_with_decisions_params())
 
 
-class TestWithoutAPlan:
+class TestWithoutASelection:
     @pytest.fixture
     def stocked(self, press_harness: PressHarness) -> PressHarness:
         press_harness.seed(
@@ -80,10 +80,10 @@ class TestWithoutAPlan:
         assert read_urgency(text, 'e1') is None
         assert read_urgency(text, 'T1.e1') is None
 
-    def test_a_plan_with_only_a_title_still_lists_every_live_entry(
+    def test_a_selection_with_only_a_title_still_lists_every_live_entry(
         self, stocked: PressHarness
     ) -> None:
-        text = stocked.export_markdown('report', Plan(title='A title'))
+        text = stocked.export_markdown('report', Selection(title='A title'))
 
         assert list_refs(text, 'Open') == ['e1', 'e4', 'e7', 'T1.e1']
 
@@ -95,12 +95,12 @@ class TestInclude:
         return press_harness
 
     def test_include_selects_and_orders_entries(self, stocked: PressHarness) -> None:
-        text = stocked.export_markdown('brief', Plan(include=('e3', 'e1')))
+        text = stocked.export_markdown('brief', Selection(include=('e3', 'e1')))
 
         assert list_refs(text, 'Constraints') == ['e3', 'e1']
 
     def test_include_order_beats_ledger_order(self, stocked: PressHarness) -> None:
-        text = stocked.export_markdown('brief', Plan(include=('e4', 'e3', 'e2', 'e1')))
+        text = stocked.export_markdown('brief', Selection(include=('e4', 'e3', 'e2', 'e1')))
 
         assert list_refs(text, 'Constraints') == ['e4', 'e3', 'e2', 'e1']
 
@@ -113,7 +113,7 @@ class TestInclude:
             create_entry(seq=3, kind='decision', text='a decision', source='user'),
         )
 
-        text = press_harness.export_markdown('brief', Plan(include=()))
+        text = press_harness.export_markdown('brief', Selection(include=()))
 
         assert list_headings(text) == ['Goal', 'Decided', 'Pointers', 'How to read']
         assert list_refs(text, 'Decided') == ['e3']
@@ -127,7 +127,7 @@ class TestInclude:
             create_entry(seq=3, kind='open', text='another question'),
         )
 
-        text = press_harness.export_markdown('brief', Plan(include=('e3', 'e1')))
+        text = press_harness.export_markdown('brief', Selection(include=('e3', 'e1')))
 
         assert list_refs(text, 'Constraints') == ['e1']
         assert list_refs(text, 'Open') == ['e3']
@@ -140,7 +140,7 @@ class TestIncludeProperty:
         harness = create_press_harness()
         harness.seed(*create_numbered_entries('known', 8))
         include = tuple(f'e{pick}' for pick in picks)
-        return harness.export_markdown('brief', Plan(include=include))
+        return harness.export_markdown('brief', Selection(include=include))
 
     @given(picks=ref_picks)
     def test_the_section_lists_exactly_the_included_refs_in_include_order(
@@ -165,21 +165,21 @@ class TestDecisions:
     def test_decisions_appear_even_when_include_names_none_of_them(
         self, stocked: PressHarness, lens: LensName
     ) -> None:
-        text = stocked.export_markdown(lens, Plan(include=('e3',)))
+        text = stocked.export_markdown(lens, Selection(include=('e3',)))
 
         assert sorted(list_refs(text, 'Decided')) == ['e1', 'e2']
 
     def test_a_decision_the_include_names_is_ordered_by_it(self, stocked: PressHarness) -> None:
-        text = stocked.export_markdown('brief', Plan(include=('e2', 'e1')))
+        text = stocked.export_markdown('brief', Selection(include=('e2', 'e1')))
 
         assert list_refs(text, 'Decided') == ['e2', 'e1']
 
-    def test_a_decision_stays_when_the_plan_blocks_other_entries(
+    def test_a_decision_stays_when_the_selection_blocks_other_entries(
         self, stocked: PressHarness
     ) -> None:
         stocked.seed(create_entry(seq=4, kind='open', text='a question'))
 
-        text = stocked.export_markdown('brief', Plan(include=(), blocking=('e4',)))
+        text = stocked.export_markdown('brief', Selection(include=(), blocking=('e4',)))
 
         assert sorted(list_refs(text, 'Decided')) == ['e1', 'e2']
 
@@ -193,35 +193,35 @@ class TestBlocking:
     def test_blocking_entries_sort_first_and_the_rest_keep_ledger_order(
         self, stocked: PressHarness
     ) -> None:
-        text = stocked.export_markdown('brief', Plan(blocking=('e4',)))
+        text = stocked.export_markdown('brief', Selection(blocking=('e4',)))
 
         assert list_refs(text, 'Open') == ['e4', 'e1', 'e2', 'e3', 'e5']
 
     def test_blocking_entry_the_include_leaves_out_still_appears_first(
         self, stocked: PressHarness
     ) -> None:
-        text = stocked.export_markdown('brief', Plan(include=('e1',), blocking=('e3',)))
+        text = stocked.export_markdown('brief', Selection(include=('e1',), blocking=('e3',)))
 
         assert list_refs(text, 'Open') == ['e3', 'e1']
 
     def test_blocking_sorts_ahead_of_the_include_order(self, stocked: PressHarness) -> None:
-        plan = Plan(include=('e4', 'e2'), blocking=('e3',))
+        selection = Selection(include=('e4', 'e2'), blocking=('e3',))
 
-        text = stocked.export_markdown('brief', plan)
+        text = stocked.export_markdown('brief', selection)
 
         assert list_refs(text, 'Open') == ['e3', 'e4', 'e2']
 
     def test_blocking_entry_the_include_also_names_still_sorts_first(
         self, stocked: PressHarness
     ) -> None:
-        text = stocked.export_markdown('brief', Plan(include=('e2', 'e5'), blocking=('e5',)))
+        text = stocked.export_markdown('brief', Selection(include=('e2', 'e5'), blocking=('e5',)))
 
         assert list_refs(text, 'Open') == ['e5', 'e2']
 
     def test_open_entries_are_labelled_blocking_or_not_blocking(
         self, stocked: PressHarness
     ) -> None:
-        text = stocked.export_markdown('brief', Plan(blocking=('e4',)))
+        text = stocked.export_markdown('brief', Selection(blocking=('e4',)))
 
         assert read_urgency(text, 'e4') == 'blocking'
         assert [read_urgency(text, ref) for ref in ('e1', 'e2', 'e3', 'e5')] == ['not blocking'] * 4
@@ -229,13 +229,15 @@ class TestBlocking:
     def test_an_empty_blocking_list_still_labels_every_open_entry_not_blocking(
         self, stocked: PressHarness
     ) -> None:
-        text = stocked.export_markdown('brief', Plan(blocking=()))
+        text = stocked.export_markdown('brief', Selection(blocking=()))
 
         labels = {read_urgency(text, ref) for ref in list_refs(text, 'Open')}
         assert labels == {'not blocking'}
 
-    def test_a_plan_without_the_blocking_key_labels_nothing(self, stocked: PressHarness) -> None:
-        text = stocked.export_markdown('brief', Plan(include=('e2', 'e1')))
+    def test_a_selection_without_the_blocking_key_labels_nothing(
+        self, stocked: PressHarness
+    ) -> None:
+        text = stocked.export_markdown('brief', Selection(include=('e2', 'e1')))
 
         assert list_refs(text, 'Open') == ['e2', 'e1']
         assert {read_urgency(text, ref) for ref in ('e1', 'e2')} == {None}
@@ -245,7 +247,7 @@ class TestBlocking:
     ) -> None:
         press_harness.seed(create_entry(seq=1, kind='open', rests_on='a docs page'))
 
-        text = press_harness.export_markdown('brief', Plan(blocking=('e1',)))
+        text = press_harness.export_markdown('brief', Selection(blocking=('e1',)))
 
         remarks = list_remarks(find_item(text, 'e1'))
         assert remarks == ['blocking', 'rests on: a docs page']
@@ -256,7 +258,7 @@ class TestBlocking:
             create_entry(seq=2, kind='open', text='a question'),
         )
 
-        text = press_harness.export_markdown('brief', Plan(blocking=('e2',)))
+        text = press_harness.export_markdown('brief', Selection(blocking=('e2',)))
 
         assert list_section_lines(text, 'Constraints') == ['- a finding `src/queue.py:3` [e1]']
         assert read_urgency(text, 'e2') == 'blocking'
@@ -269,7 +271,7 @@ class TestBlockingProperty:
         harness = create_press_harness()
         harness.seed(*create_numbered_entries('open', 6))
         blocking = tuple(f'e{pick}' for pick in picks)
-        return harness.export_markdown('brief', Plan(blocking=blocking))
+        return harness.export_markdown('brief', Selection(blocking=blocking))
 
     @given(picks=blocked_picks)
     def test_blocking_entries_come_first_and_every_entry_is_labelled_by_membership(
