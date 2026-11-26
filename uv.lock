@@ -7,6 +7,7 @@ members = [
     "red-thread-casefile",
     "red-thread-core",
     "red-thread-navigate",
+    "red-thread-plans",
     "red-thread-plugin",
 ]
 
@@ -501,6 +502,25 @@ requires-dist = [
     { name = "tree-sitter-javascript", specifier = "==0.25.0" },
     { name = "tree-sitter-rust", specifier = "==0.24.2" },
     { name = "tree-sitter-typescript", specifier = "==0.23.2" },
+]
+
+[[package]]
+name = "red-thread-plans"
+version = "0.1.0"
+source = { editable = "packages/plans" }
+dependencies = [
+    { name = "cyclopts" },
+    { name = "msgspec" },
+    { name = "red-thread-casefile" },
+    { name = "red-thread-core" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "cyclopts", specifier = "==5.5.3" },
+    { name = "msgspec", specifier = ">=0.22.0" },
+    { name = "red-thread-casefile", editable = "packages/casefile" },
+    { name = "red-thread-core", editable = "packages/core" },
 ]
 
 [[package]]

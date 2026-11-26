@@ -34,8 +34,6 @@ A case lives in the repository under investigation:
   threads/T1.jsonl   entries written by one lead; one file per thread, so writers never share a file
   board.html         rendered at every gate
   out/               brief.md, issue.md, handoff.md, report.md and their HTML
-  plans/r1.json      one checked plan revision per file, never edited
-  plan.html          the latest plan revision, redrawn each time one is stored
 ```
 
 A case id is the UTC date and a slug of the target, such as `20261121-retry-queue-slowdown`. `init` adds `.red-thread/` to the repository's local git exclude file, so a case is never committed.
@@ -50,13 +48,10 @@ A case id is the UTC date and a slug of the target, such as `20261121-retry-queu
 | `check --case DIR` | resolves every live citation against the current tree |
 | `export --case DIR --lens L [--selection F] [--html]` | writes one output to `out/` from the ledger; `--lens` is `brief`, `issue`, `handoff` or `report` |
 | `page --case DIR --url URL` | records the https link that publishing returned in `case.json` |
-| `plan --case DIR [--file F]` | checks a plan whole, redacts secrets, stores it as the next revision in `plans/` and writes `plan.html`; the plan is one JSON object, read from standard input or `--file` |
 
 `--case` takes the directory `init` printed. Round 0 is framing, and the rounds count up from there.
 
 Each output has a line budget, and `export` fails when the output runs over it: 60 lines for a brief, 80 for an issue, 40 for a handoff and 200 for a report. The selection it reads is a JSON object with an optional `title`, `goal`, `include` and `blocking`, the last two as lists of entry refs such as `["e3", "T1.e2"]`.
-
-A plan has an `intent`, an `approach`, `invariants`, `non_goals`, `tickets` and `risks`. A ticket has an `id` and a `lane` (both lowercase slugs), a `title`, `acceptance` sentences that each name in `rests_on` the live `decision` or `known` entries they follow from, the paths or globs it `owns`, the tickets it `depends_on` and an optional `interface` (`language`, `source`). `plan` refuses the whole plan, naming every fault, when a sentence rests on nothing or on a ref that is unknown, retired or of another kind, when the dependencies form a cycle or cross lanes, or when two lanes own a path in common. A stored revision is never rewritten.
 
 ## Entries and their rules
 
@@ -92,9 +87,7 @@ This answers the question a later session has to ask first: which of these claim
 
 `render --html` and `export --html` write HTML pages from the ledger. The board page opens with the case facts (bar, kind, round, commit, languages, entry counts, threads and the totals of the citation check), then one panel per section, then a mermaid map of the case: each thread is a line of its entries, and a retired entry has a dashed outline with an edge from the entry that retired it. A folded list of retired entries closes the page. Lens pages share the panels and entry details but leave out the facts and the retired list.
 
-`plan` writes `plan.html` each time it stores a revision. The page opens with the revision, the date, the commit, the ticket count and what changed since the revision before, then the approach, the invariants and the non-goals. Each lane is a panel of its tickets, bottom of the stack first: a ticket shows its status mark (`new`, `changed` or `unchanged` against the revision before), its title, its place in the lane, what it depends on, the paths it owns, each acceptance sentence with the entries it rests on, and its interface as a code listing. The risks follow, each with its handling and its signal. A mermaid chart draws each lane as a stack with an arrow from each dependency to its dependent, and a folded list names the tickets the revision before had and this one drops.
-
-A page loads two scripts from cdnjs, each pinned to an exact version with an integrity hash: the Tailwind browser build for styling and mermaid for diagrams. Offline, a page still reads top to bottom with every entry in the HTML. The page's own script, `assets/page.js`, uses no library. It filters entries by kind and thread and a plan's tickets by lane and status, folds sections, copies a ref or a citation, and redraws diagrams when the theme changes. Entry text reaches the page only as escaped text.
+A page loads two scripts from cdnjs, each pinned to an exact version with an integrity hash: the Tailwind browser build for styling and mermaid for diagrams. Offline, a page still reads top to bottom with every entry in the HTML. The page's own script, `page.js` in `red-thread-core`, uses no library. It filters entries by kind and thread, folds sections, copies a ref or a citation, and redraws diagrams when the theme changes. Entry text reaches the page only as escaped text.
 
 The skeleton, styles, script and map headers are in `assets/`, beside `src/`. The package reads them by path from the source tree, which is how the launcher and an editable install run it. A built wheel would not carry them. Colors are tokens in `assets/page.css`, one set per theme, and `assets/tailwind.css` maps them to Tailwind utilities, so a palette change touches one file.
 

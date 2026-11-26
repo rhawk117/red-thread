@@ -27,6 +27,7 @@ TIER_NAMES_BY_TREE = {
     'casefile': CORE_TIER_NAMES,
     'plugin': CORE_TIER_NAMES,
     'navigate': CORE_TIER_NAMES,
+    'plans': CORE_TIER_NAMES,
 }
 
 

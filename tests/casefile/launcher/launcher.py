@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from tests.casefile.launcher.children import Finished
     from tests.casefile.ledger.git_repository import GitRepository
 
-PACKAGES = ('core', 'casefile')
+PACKAGES = ('core', 'casefile', 'plans')
 PLUGIN_ROOT = 'CLAUDE_PLUGIN_ROOT'
 OUTER_VARIABLES = frozenset({PLUGIN_ROOT, 'VIRTUAL_ENV'})
 TARGET = 'why the retry queue stalls'
@@ -55,6 +55,10 @@ class PluginCopy:
     def script(self) -> Path:
         return self.root.joinpath('bin', 'redthread-casefile')
 
+    @property
+    def plan_script(self) -> Path:
+        return self.root.joinpath('bin', 'redthread-plan')
+
 
 def copy_plugin(source: Path, target: Path) -> PluginCopy:
     skipped = shutil.ignore_patterns('__pycache__', '*.pyc', '*.egg-info', '.venv')
@@ -66,6 +70,7 @@ def copy_plugin(source: Path, target: Path) -> PluginCopy:
     bin_dir.mkdir()
     shutil.copy2(source.joinpath('bin', 'redthread-lib'), bin_dir)
     shutil.copy2(source.joinpath('bin', 'redthread-casefile'), bin_dir)
+    shutil.copy2(source.joinpath('bin', 'redthread-plan'), bin_dir)
     return PluginCopy(root=target, files=tuple(list_tree(target)))
 
 
@@ -95,3 +100,8 @@ class Launcher:
 
     def on_case(self, command: str, case: Path, *extra: str) -> Finished:
         return self.run(command, '--case', str(case), *extra)
+
+    def revise(self, case: Path, plan: str) -> Finished:
+        runner = ChildRunner(cwd=self.git.root, env=self.environment)
+        script = str(self.plugin.plan_script)
+        return runner.run('bash', script, 'revise', '--case', str(case), stdin=plan)

@@ -1,4 +1,4 @@
-"""The command line that skills and agents call: init, add, render, check, export, page and plan."""
+"""The command line that skills and agents call: init, add, render, check, export and page."""
 
 import sys
 from dataclasses import dataclass
@@ -12,8 +12,6 @@ from red_thread_casefile.domain import PROGRAM, STATE_DIRECTORY, CaseKind, build
 from red_thread_casefile.errors import CaseFileError, MalformedSelectionError, UnreadableInputError
 from red_thread_casefile.factory import CaseFiles
 from red_thread_casefile.lenses import LensName
-from red_thread_casefile.plans.errors import PlanShapeError
-from red_thread_casefile.plans.schemas import decode_draft
 from red_thread_casefile.schemas import load_selection, parse_batch
 from red_thread_casefile.services import Batch, ExportRequest, Framing
 from red_thread_casefile.views import BoardOptions, CheckReport
@@ -48,9 +46,6 @@ type SelectionOption = Annotated[
 ]
 type PageFlag = Annotated[bool, Parameter(help='also write the output as a page')]
 type UrlOption = Annotated[str, Parameter(help='the https link that publishing returned')]
-type PlanFileOption = Annotated[
-    str | None, Parameter(help='read the plan from this file instead of standard input')
-]
 
 
 @Parameter(name='*')
@@ -101,13 +96,6 @@ class ExportArguments:
 class PageArguments:
     case: CaseOption
     url: UrlOption
-
-
-@Parameter(name='*')
-@dataclass(slots=True, kw_only=True, frozen=True)
-class PlanArguments:
-    case: CaseOption
-    file: PlanFileOption = None
 
 
 def read_input(path: str | None) -> str:
@@ -228,25 +216,6 @@ class PageCommand:
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
-class PlanCommand:
-    cases: CaseFiles
-    name: str = 'plan'
-    summary: str = 'check a plan whole, then store it as the next revision'
-
-    def run(self, arguments: PlanArguments) -> int:
-        draft = decode_draft(read_input(arguments.file))
-        if isinstance(draft, PlanShapeError):
-            raise draft
-
-        stored = self.cases.open_planner(arguments.case).propose(draft)
-        print(f'stored revision {stored.plan.revision} at {stored.path}')
-        print(f'wrote {stored.page}')
-        if stored.redactions:
-            print(f'redacted {stored.redactions} secrets before storing')
-        return EXIT_OK
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
 class CommandMenu:
     names: tuple[str, ...]
 
@@ -270,7 +239,6 @@ def create_app(cases: CaseFiles | None = None) -> App:
         CheckCommand(cases=cases),
         ExportCommand(cases=cases),
         PageCommand(cases=cases),
-        PlanCommand(cases=cases),
     )
     app = App(
         name=PROGRAM,

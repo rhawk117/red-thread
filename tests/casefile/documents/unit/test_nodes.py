@@ -10,7 +10,6 @@ from red_thread_casefile.documents import (
     list_document_entries,
     list_section_entries,
 )
-from red_thread_casefile.plans.nodes import TicketList
 from red_thread_core.documents import (
     Block,
     Code,
@@ -70,7 +69,6 @@ def block_dispatch_cases() -> pytest.MarkDecorator:
         'points': PointList(points=(parse_line('a'),)),
         'flowchart': Flowchart(lines=('a',)),
         'listing': CodeListing(language='python', source='a'),
-        'tickets': TicketList(tickets=()),
     }
     return pytest.mark.parametrize('node', as_labelled_params(blocks))
 
