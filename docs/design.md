@@ -177,7 +177,7 @@ Rules. The first six come from mightymodels. `check` enforces all eight and repo
 2. A `decision` comes only from the owner.
 3. An entry is corrected where it stands until a gate or a report has shown it. After that it is retired by a later entry that names it, never edited. (2026-11-26: was "files are append-only", which the script enforced when it was the only writer.)
 4. `check` reads every file whole and names each fault with its place and fix. `render` and `export` refuse a case whose files cannot be read. (2026-11-26: was "a batch is validated whole before anything is stored".)
-5. Text matching a secret pattern is a fault, and `check` prints the text with the secret replaced, to put in its place. (2026-11-26: was redacted before it was stored.)
+5. Text matching a secret pattern is a fault, and `check` prints the text with the secret replaced, to put in its place. (2026-11-26: was redacted before it was stored.) **Decided 2026-11-26:** the patterns come from detect-secrets: its regex detectors (every one but the public IP detector) and its keyword detector. Core adds detectors only for what it misses: a whole PEM block, Stripe test and restricted keys, `sk-` API keys, Bearer tokens, GitHub fine-grained tokens, URL credentials with punctuation, and unquoted `key=value` assignments. A hit is widened to the whole token around it and labelled `[REDACTED:<type>]` from the detector's type. Rejected: keeping the hand-written patterns, and detect-secrets' entropy detectors, which flag ordinary prose.
 6. An entry whose `head` differs from the current HEAD is a lead to re-verify, not evidence.
 7. A `hypothesis` needs a `refute` line.
 8. A `ruled_out` entry needs a citation or the owner as its source.

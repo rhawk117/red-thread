@@ -119,7 +119,7 @@ class TestExport:
         for name in ('brief.md', 'brief.html'):
             written = case.joinpath('out', name).read_text(encoding='utf-8')
             assert 'AKIAIOSFODNN7EXAMPLE' not in written
-            assert '[REDACTED:aws-key]' in written
+            assert '[REDACTED:aws-access-key]' in written
 
     def test_a_retired_entry_is_not_exported(self, cli: CliHarness, case: Path) -> None:
         cli.write(case, *create_open_records(1))

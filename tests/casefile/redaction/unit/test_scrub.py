@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from tests.casefile.ledger.builders import CaseHarness
     from tests.casefile.redaction.cases import SecretCase
 
-LEAK_MARK = '[REDACTED:aws-key]'
+LEAK_MARK = '[REDACTED:aws-access-key]'
 LEAK_LINE = f'AWS_KEY = "{LEAKED}"'
 SCRUBBED_LINE = f'AWS_KEY = "{LEAK_MARK}"'
 

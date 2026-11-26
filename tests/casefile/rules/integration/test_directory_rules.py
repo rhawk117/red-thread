@@ -82,7 +82,7 @@ class TestCheckOnADirectory:
             create_valid_entry('known'),
             text=f'the key {LEAKED} is committed',
             cite='src/config.py:2',
-            quote='AWS_KEY = "[REDACTED:aws-key]"',
+            quote='AWS_KEY = "[REDACTED:aws-access-key]"',
         )
         harness.seed(None, entry)
 

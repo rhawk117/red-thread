@@ -36,7 +36,7 @@ class SecretScenario:
 
 def secret_cases() -> pytest.MarkDecorator:
     scenarios = [
-        SecretScenario(name='aws-key', secret=AWS_KEY, marker='[REDACTED:aws-key]'),
+        SecretScenario(name='aws-key', secret=AWS_KEY, marker='[REDACTED:aws-access-key]'),
         SecretScenario(name='github-token', secret=GITHUB_TOKEN, marker='[REDACTED:github-token]'),
     ]
     return pytest.mark.parametrize('scenario', as_params(scenarios))
@@ -76,7 +76,7 @@ class TestSelectionScrub:
         written = press_harness.snapshot()
         assert set(written) == {f'out/{lens}.md', f'out/{lens}.html'}
         assert all(AWS_KEY not in text for text in written.values())
-        assert all('[REDACTED:aws-key]' in text for text in written.values())
+        assert all('[REDACTED:aws-access-key]' in text for text in written.values())
 
     def test_a_title_without_a_secret_is_written_as_given(
         self, press_harness: PressHarness
@@ -107,7 +107,7 @@ class TestSelectionScrubProperty:
         written = harness.snapshot()
         assert set(written) == {f'out/{lens}.md', f'out/{lens}.html'}
         assert all(key not in text for text in written.values())
-        assert all('[REDACTED:aws-key]' in text for text in written.values())
+        assert all('[REDACTED:aws-access-key]' in text for text in written.values())
 
     @given(lens=lenses, title=sentences, goal=sentences)
     def test_a_title_and_goal_with_no_secret_are_written_as_given(

@@ -109,7 +109,7 @@ class TestCheckFaults:
         result = cli.check(case)
 
         assert result.code == 1
-        assert '[REDACTED:aws-key]' in result.out
+        assert '[REDACTED:aws-access-key]' in result.out
         assert LEAKED not in result.out
         assert LEAKED in self.read_case_text(case)
 
