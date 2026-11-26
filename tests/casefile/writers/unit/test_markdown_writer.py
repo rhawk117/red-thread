@@ -4,10 +4,18 @@ from dataclasses import replace
 from typing import TYPE_CHECKING
 
 import pytest
-from hypothesis import given
+from hypothesis import example, given
 from red_thread_casefile.documents import Citation, Note, list_section_entries
 from red_thread_casefile.policy import Finding
-from red_thread_core.documents import Document, Flowchart, Paragraph, PointList, Section, parse_line
+from red_thread_core.documents import (
+    Document,
+    Flowchart,
+    Paragraph,
+    PointList,
+    Section,
+    Text,
+    parse_line,
+)
 
 from tests.casefile.lenses.cases import cite_shape_params
 from tests.casefile.writers.builders import create_document, create_entry_node
@@ -109,14 +117,22 @@ class TestDocumentLayout:
         assert not text.endswith('\n\n')
 
 
+BRACKET_POINT = Document(
+    title='0',
+    sections=(Section(title='0', blocks=(PointList(points=((Text(value=']'),),)),)),),
+)
+
+
 class TestMarkdownWriterProperties:
+    @pytest.mark.regression
     @given(document=documents)
+    @example(document=BRACKET_POINT)
     def test_every_entry_is_one_line_ending_with_its_ref_in_order(self, document: Document) -> None:
         entries = [
             entry for section in document.sections for entry in list_section_entries(section)
         ]
 
-        lines = [line for line in list_item_lines(document) if line.endswith(']')]
+        lines = [line for line in list_item_lines(document) if ' [' in line and line.endswith(']')]
 
         assert [line.rsplit(' [', 1)[1] for line in lines] == [f'{entry.ref}]' for entry in entries]
 
