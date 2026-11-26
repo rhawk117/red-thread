@@ -1,6 +1,6 @@
 # red-thread design
 
-Status on 2026-11-21: the direction is agreed, and steps 1 to 5 of the build order in section 11 are built. No real case has been run yet. **Decided** marks a choice the owner made in a dialog. **Proposed** marks the designer's intent that the owner has not confirmed.
+Status on 2026-11-25: the direction is agreed, and steps 1 to 5 of the build order in section 11 are built. One real case ran from framing to a brief on 2026-11-21 (section 11, step 6). Planning is built through step 3 of its build order in section 13: the selection rename, the plan record with the `plan` command, and the plan page. **Decided** marks a choice the owner made in a dialog. **Proposed** marks the designer's intent that the owner has not confirmed.
 
 ## How to read this
 
@@ -8,7 +8,7 @@ Status on 2026-11-21: the direction is agreed, and steps 1 to 5 of the build ord
 - Sections 4 to 7 are the contract for building it.
 - Section 8 describes `navigate`, the code navigation red-thread ships in `packages/navigate`, which replaced the external agentlens.
 - Section 9 lists the evidence, section 10 the prompting guidance for agent files, section 11 what is open and the build order, section 12 the decision log.
-- Section 13 describes planning: the plan, the epic and its tickets as GitHub issues, and what the implementation plugin reads. Most of it is proposed.
+- Section 13 describes planning: the plan, the epic and its tickets as GitHub issues, and what the implementation plugin reads. Steps 1 to 3 of its build order are built; the rest is proposed.
 
 ## 1. Purpose
 
