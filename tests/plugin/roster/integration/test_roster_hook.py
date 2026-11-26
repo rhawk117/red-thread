@@ -20,7 +20,11 @@ if TYPE_CHECKING:
     from tests.plugin.roster.cases import Pairing
     from tests.plugin.roster.hook import RosterHook
 
-AGENT_FILES = sorted(Path(__file__).parents[4].joinpath('agents').glob('*.md'))
+AGENTS_ROOT = Path(__file__).parents[4].joinpath('agents')
+AGENT_NAMES = sorted(
+    ':'.join(path.relative_to(AGENTS_ROOT).with_suffix('').parts)
+    for path in AGENTS_ROOT.rglob('*.md')
+)
 
 
 def allowed_pairing_cases() -> pytest.MarkDecorator:
@@ -36,9 +40,7 @@ def unreadable_input_cases() -> pytest.MarkDecorator:
 
 
 def agent_file_cases() -> pytest.MarkDecorator:
-    return pytest.mark.parametrize(
-        'agent', [pytest.param(path.stem, id=path.stem) for path in AGENT_FILES]
-    )
+    return pytest.mark.parametrize('agent', [pytest.param(name, id=name) for name in AGENT_NAMES])
 
 
 class TestRosterHook:

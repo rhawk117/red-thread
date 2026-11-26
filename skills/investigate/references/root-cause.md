@@ -23,7 +23,7 @@ Then record at least two rival explanations as `hypothesis` entries, each with `
 For each live hypothesis, pick the cheapest test that could refute it:
 
 - A line can refute it: a `code-sense` or `web-head` lookup.
-- Only a run can refute it: `research-cell`, with HYPOTHESIS and REFUTE copied from the entry. Start EXPERIMENT with `git checkout --detach SHA`, where SHA is the commit under test (`git rev-parse HEAD`). By default a worktree branches from the repository's default branch, not from your HEAD, and it holds committed files only.
+- Only a run can refute it: `lab-rat`, with HYPOTHESIS and REFUTE copied from the entry. Start EXPERIMENT with `git checkout --detach SHA`, where SHA is the commit under test (`git rev-parse HEAD`). By default a worktree branches from the repository's default branch, not from your HEAD, and it holds committed files only.
 
 Fold the result:
 

@@ -15,7 +15,7 @@ Two lookups, sent together:
 - `code-sense` or `web-head`: the exact lines that would make the claim true.
 - `code-sense`: the strongest counter-example, such as a second definition, an override in another config layer, a call through an alias, or a code path the claim forgot.
 
-A claim about behavior at runtime ("is never called", "is read at startup") that reading cannot settle goes to `research-cell` in round 2.
+A claim about behavior at runtime ("is never called", "is read at startup") that reading cannot settle goes to `lab-rat` in round 2.
 
 ## Recording
 

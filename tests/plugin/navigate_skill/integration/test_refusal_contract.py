@@ -1,4 +1,4 @@
-"""skills/navigate/SKILL.md and the navigate package agree on the markers a refusal carries."""
+"""skills/agents/navigate/SKILL.md and the navigate package agree on refusal markers."""
 
 import re
 from typing import TYPE_CHECKING
@@ -58,7 +58,7 @@ class TestRefusalContract:
 
     @pytest.fixture
     def named_in_prompt(self, repository_root: Path) -> tuple[str, ...]:
-        prompt = repository_root.joinpath('skills', 'navigate', 'SKILL.md').read_text(
+        prompt = repository_root.joinpath('skills', 'agents', 'navigate', 'SKILL.md').read_text(
             encoding='utf-8'
         )
         refusals_section = prompt.partition('\n## Refusals')[2]

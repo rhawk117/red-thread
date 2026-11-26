@@ -50,8 +50,8 @@ When something is broken and you want it working, start from the failure instead
 | `skills/investigate` | the investigation loop and its gate |
 | `skills/distill` | the four outputs, one reference file per output |
 | `skills/debug` | a failure taken to a confirmed cause, a fix you approve and a decision on preventing it; one reference file for failure shapes and one for the escape analysis |
-| `skills/navigate` | how the scouts use the navigate script; preloaded into them, not a command you run |
-| `agents/` | `research-lead`, which runs one thread of a case, the scouts `code-sense`, `code-lens`, `web-head` and `research-cell`, and the skeptic `peer-review` |
+| `skills/agents/navigate` | how the scouts use the navigate script; preloaded into them, not a command you run |
+| `agents/` | `research-lead`, which runs one thread of a case, the scouts in `agents/swarm/` (`code-sense`, `code-lens`, `web-head` and `lab-rat`), and the skeptic `peer-review` |
 | `hooks/roster.py` | a hook that denies a red-thread agent's dispatch outside its roster |
 | `packages/casefile` | the only writer and renderer of a case file: `init`, `add`, `render`, `check`, `export` and `page` |
 | `bin/redthread-casefile` | how the skills and agents run that package, without installing anything into your project |

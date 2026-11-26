@@ -56,15 +56,15 @@ Scale the rounds to the failure, not the gates. A failure whose error message st
 | `code-sense` | QUESTION, SCOPE (a directory, file or package), NAVIGATE; optional known facts and paths to skip | the path from the error text to the lines that produce it, `git log` and `git blame` for that path, the configuration it reads, pinned versions, CI configuration, a failing CI run or an issue through `gh` |
 | `code-lens` | QUESTION, SCOPE, NAVIGATE; optional known facts and paths to skip | structure in Python, JavaScript, TypeScript, Go, Rust and Terraform: where a symbol is defined, what calls it, which tests refer to it |
 | `web-head` | QUESTION, SUBJECT (package name), LEAD (a URL or a search phrase), TODAY; optional VERSION | what upstream documents at the pinned version: a changed default, a deprecation, a known bug |
-| `research-cell` | HYPOTHESIS, REFUTE (the observation that would prove it wrong), SCOPE, NAVIGATE; optional EXPERIMENT | one experiment in its own worktree: reproduce at a commit, add a probe, change an input, bisect, time a path, run a guard against the unfixed code |
+| `lab-rat` | HYPOTHESIS, REFUTE (the observation that would prove it wrong), SCOPE, NAVIGATE; optional EXPERIMENT | one experiment in its own worktree: reproduce at a commit, add a probe, change an input, bisect, time a path, run a guard against the unfixed code |
 | `peer-review` | CASE, SCRIPT, CONCLUSION, TODAY, NAVIGATE; optional REFS | an independent check of the cause before a fix that is costly to undo rests on it |
 | `research-lead` | QUESTION, DECISION, CASE, THREAD, ROUND, SCRIPT, NAVIGATE, TODAY; optional KNOWN, SCOPE, SKIP | a failure that splits into independent threads, one lead per thread. Most debugging is one thread, so you usually dispatch the scouts yourself |
 
-The Agent tool lists them with the plugin prefix, as in `red-thread:code-sense`. Each starts with no memory of this conversation, so a brief stands alone: use the field names above exactly, put one question or one hypothesis in each brief, and say what to skip. Send briefs that do not depend on each other in the same turn. TODAY is today's date; if you do not know it, run `date -u +%F`.
+The Agent tool lists them with the plugin prefix. The four scouts also carry their folder, as in `red-thread:swarm:code-sense`; `research-lead` and `peer-review` do not, as in `red-thread:research-lead`. Each starts with no memory of this conversation, so a brief stands alone: use the field names above exactly, put one question or one hypothesis in each brief, and say what to skip. Send briefs that do not depend on each other in the same turn. TODAY is today's date; if you do not know it, run `date -u +%F`.
 
 ### What a worktree holds
 
-`research-cell` works in a git worktree, a private copy that is thrown away. That is what lets it add a probe or bisect without touching the checkout, and it has two consequences for a debugging case:
+`lab-rat` works in a git worktree, a private copy that is thrown away. That is what lets it add a probe or bisect without touching the checkout, and it has two consequences for a debugging case:
 
 - A worktree does not start where you are. By default Claude Code branches it from the repository's default branch, not from your HEAD, so every EXPERIMENT begins with `git checkout --detach SHA`, where SHA is the commit recorded in phase 2.
 - A worktree holds committed files only. Uncommitted edits, untracked and ignored files, installed dependencies and local services are not in it.
@@ -99,7 +99,7 @@ SCRIPT add --case CASE --round 2 <<'EOF'
 [
   {"kind": "known", "text": "uv run pytest tests/test_pool.py -k starvation fails: AssertionError: queue_depth=412", "source": "primary", "verdict": "VERIFIED", "cite": "uv run pytest tests/test_pool.py -k starvation"},
   {"kind": "hypothesis", "text": "Retries share the pool with new jobs, so a burst of retries starves it (src/pool.py)", "source": "primary", "refute": "queue depth keeps growing with retries disabled"},
-  {"kind": "ruled_out", "text": "The pool size is not the cause: WORKERS=16 fails the same way", "source": "research-cell", "cite": "WORKERS=16 uv run pytest tests/test_pool.py -k starvation", "supersedes": ["e7"]}
+  {"kind": "ruled_out", "text": "The pool size is not the cause: WORKERS=16 fails the same way", "source": "lab-rat", "cite": "WORKERS=16 uv run pytest tests/test_pool.py -k starvation", "supersedes": ["e7"]}
 ]
 EOF
 ```
@@ -143,8 +143,8 @@ Fold a report into the board by its verdict, in one `add` batch for the round:
 1. Record the commit under test, `git rev-parse HEAD`, and look at `git status --short`. The commit is SHA in every experiment brief.
 2. Run the reproduction command yourself, once, in the checkout, because the checkout is where the owner sees the failure. Send its output to a log file and read only the exit code and the last 30 lines. If the command cannot run here (it needs a service, a secret or a machine you do not have), ask the owner to run it and paste the output, and treat the failure as `open` until someone has seen it.
 3. Read what the error says, not what the request assumed it says. Record a `known` with the first error line in the text and the command in `cite`.
-4. If the failure is intermittent, measure it before anything else: brief `research-cell` to run the command 20 times and count. Record the rate ("3 of 20 runs") and carry it in every later REFUTE. A failure that happens sometimes, investigated as one that always happens, produces confident nonsense.
-5. Check that a worktree can show the failure: brief `research-cell` with HYPOTHESIS "the command fails at SHA in a clean worktree", REFUTE "it passes there" and the command as EXPERIMENT. Send it in the same turn as the phase 3 lookups.
+4. If the failure is intermittent, measure it before anything else: brief `lab-rat` to run the command 20 times and count. Record the rate ("3 of 20 runs") and carry it in every later REFUTE. A failure that happens sometimes, investigated as one that always happens, produces confident nonsense.
+5. Check that a worktree can show the failure: brief `lab-rat` with HYPOTHESIS "the command fails at SHA in a clean worktree", REFUTE "it passes there" and the command as EXPERIMENT. Send it in the same turn as the phase 3 lookups.
    - Survived: experiments in a worktree can test this failure.
    - Refuted: the failure needs something a worktree lacks. That is the first finding, so record it as a `known`. The cause is then in the uncommitted changes, an untracked or ignored file, an installed dependency or the local environment, and the next lookups compare those.
    - BLOCKED: the project cannot run in a worktree at all.
@@ -165,8 +165,8 @@ Fold the reports, then `render` and `check`. No fix is discussed in this phase.
 ## 4. Hypotheses
 
 1. Record at least two rival explanations as `hypothesis` entries. Each names where the defect would be (a file or a function) and carries `refute`: the observation that would prove it wrong. One hypothesis alone gets confirmed by whatever turns up next, and the location is what the fix is later judged against.
-2. For each, pick the cheapest test that could refute it. A line can refute it: a scout lookup. Only a run can refute it: `research-cell`, with HYPOTHESIS and REFUTE copied from the entry and an EXPERIMENT that starts at SHA.
-3. One experiment answers for one hypothesis. Rival hypotheses that do not depend on each other go to separate `research-cell` dispatches in the same turn, each in its own worktree. Never ask one experiment to settle two.
+2. For each, pick the cheapest test that could refute it. A line can refute it: a scout lookup. Only a run can refute it: `lab-rat`, with HYPOTHESIS and REFUTE copied from the entry and an EXPERIMENT that starts at SHA.
+3. One experiment answers for one hypothesis. Rival hypotheses that do not depend on each other go to separate `lab-rat` dispatches in the same turn, each in its own worktree. Never ask one experiment to settle two.
 4. Fold the results. A cause seen only as a correlation, such as a commit near the start date, is `open` with `rests_on`.
 5. Run `render` and `check`, then stop at the cause gate.
 
@@ -214,7 +214,7 @@ A fixed defect leaves two questions the owner asked this skill to answer: why di
    - Guards, as a multi-select: each candidate with what it would catch (this defect only, or its class), what it costs to build and what it costs to keep. Include "None: the regression test is enough" as an option, and recommend it when that is your judgment. Whether prevention is worth its effort is the owner's call.
    - One question for each debt finding, three at most: investigate it now, record it for later, or drop it. State the target the investigation would have and what it would establish. Do not size or plan the debt here.
 4. Record each answer as a `decision`.
-5. Build the guards the owner chose, each as its own small change under the rules of phase 5. A guard is proven when it has been seen to fail on the defect and pass on the fix. To see the first, brief `research-cell` with the guard's content in EXPERIMENT, to run at SHA, the commit before the fix. If neither can be shown, say the guard is unproven.
+5. Build the guards the owner chose, each as its own small change under the rules of phase 5. A guard is proven when it has been seen to fail on the defect and pass on the fix. To see the first, brief `lab-rat` with the guard's content in EXPERIMENT, to run at SHA, the commit before the fix. If neither can be shown, say the guard is unproven.
 6. Record every guard the owner declined and every debt finding left for later as a `next` entry, so the case states what was left undone on purpose.
 7. Run `render` a last time and tell the owner: the files changed, the guards built and declined, the follow-ups, the case directory, and that `/red-thread:distill` turns the case into an issue, a handoff or a report.
 8. If the owner chose to investigate a debt finding now, do it last: load `red-thread:investigate` with the Skill tool and the target as its argument. It opens a case of its own, usually a `survey`, so this one keeps its conclusion. At its framing dialog, offer this case's entries as what is already known, by ref and case directory. If the Skill tool is not available, give the owner the line to type: `/red-thread:investigate TARGET`.

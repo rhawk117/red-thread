@@ -28,13 +28,13 @@ Read this once after framing. Pick the one shape that fits the failure and use i
 - Reproduce: measure the rate first (phase 2). Then look for the input that makes it certain: a fixed seed, a fixed order, a single worker, a frozen clock.
 - First questions: `code-sense` for shared state the test touches (module globals, files, ports, the clock, the network); the seed and order of a failing run.
 - Usual rivals: order dependence between tests; a race; time or locale; an external service.
-- Trap: a rerun that passes. With a failure rate of 3 in 20, one green run happens 85 times in 100 with nothing fixed. State in every REFUTE how many runs it takes to mean something, and ask `research-cell` for that many.
+- Trap: a rerun that passes. With a failure rate of 3 in 20, one green run happens 85 times in 100 with nothing fixed. State in every REFUTE how many runs it takes to mean something, and ask `lab-rat` for that many.
 
 ## It worked before
 
 - Reproduce: confirm the last known good really is good, with the same command at that commit, in a worktree.
 - First questions: `code-sense` for `git log` between the good commit and SHA on the failing path; lockfile changes in that range.
-- The experiment: when the range is more than a few commits, one `research-cell` with EXPERIMENT `git bisect start SHA GOOD` then `git bisect run COMMAND`. A worktree is the right place for it, because bisecting moves HEAD.
+- The experiment: when the range is more than a few commits, one `lab-rat` with EXPERIMENT `git bisect start SHA GOOD` then `git bisect run COMMAND`. A worktree is the right place for it, because bisecting moves HEAD.
 - Usual rivals: a code change in the range; a dependency that moved under an unpinned or loosely pinned requirement; a change in the environment, with no commit at all.
 - Trap: taking the commit that bisection names as the cause. It is where the failure starts to show. Whether that commit introduced the defect or exposed an older one is a question for phase 6.
 
@@ -56,7 +56,7 @@ Read this once after framing. Pick the one shape that fits the failure and use i
 
 - Reproduce: a timing with a number and a baseline, run three times, on the same machine. Without a baseline, ask the owner what "fast" was and at which commit.
 - First questions: `code-sense` for `git log` on the slow path; what the path does per item (queries, allocations, network calls); data size now and before.
-- The experiment: `research-cell` times the path at SHA and at the baseline commit. For a suspected step, it times the path with that step stubbed out.
+- The experiment: `lab-rat` times the path at SHA and at the baseline commit. For a suspected step, it times the path with that step stubbed out.
 - Usual rivals: an algorithm that changed; work that moved inside a loop; data that grew; a dependency that got slower.
 - Trap: timing once. Report each run, and treat a difference smaller than the spread between runs as no difference.
 

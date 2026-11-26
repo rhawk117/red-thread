@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
 
 PREFIX = 'red-thread:'
-SCOUTS = ('code-sense', 'code-lens', 'web-head', 'research-cell')
+SCOUTS = ('swarm:code-sense', 'swarm:code-lens', 'swarm:web-head', 'swarm:lab-rat')
 
 type Teams = Mapping[str, tuple[str, ...]]
 
@@ -25,10 +25,10 @@ type Teams = Mapping[str, tuple[str, ...]]
 def create_teams() -> dict[str, tuple[str, ...]]:
     return {
         'research-lead': SCOUTS,
-        'code-sense': (),
-        'code-lens': (),
-        'web-head': (),
-        'research-cell': (),
+        'swarm:code-sense': (),
+        'swarm:code-lens': (),
+        'swarm:web-head': (),
+        'swarm:lab-rat': (),
         'peer-review': (),
     }
 

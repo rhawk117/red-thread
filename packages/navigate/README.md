@@ -6,7 +6,7 @@ The package depends on tree-sitter and the grammar wheels for JavaScript, TypeSc
 
 ## Who uses it
 
-The `code-lens` scout runs only this tool and `rg`, with a budget of 6,000 tokens of output per question. `code-sense`, `research-cell` and `peer-review` reach for it first on structure questions in the six languages and keep their own tools for the rest. The `skills/navigate` skill is preloaded into all four and covers the commands, addresses, recipes and refusals.
+The `code-lens` scout runs only this tool and `rg`, with a budget of 6,000 tokens of output per question. `code-sense`, `lab-rat` and `peer-review` reach for it first on structure questions in the six languages and keep their own tools for the rest. The `skills/agents/navigate` skill is preloaded into all four and covers the commands, addresses, recipes and refusals.
 
 The agents call it through `bin/redthread-navigate`, which starts it the same way `bin/redthread-casefile` starts the case file:
 

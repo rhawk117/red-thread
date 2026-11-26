@@ -55,10 +55,10 @@ primary     target, thread list, your decisions    holds the rendered board, nev
 | --- | --- | --- | --- |
 | primary | none, it is the session | the session's model | never reads raw scout output when leads are in use |
 | lead | `agents/research-lead.md` | `claude-sonnet-5-5` | six jobs a round, two rounds |
-| code scout | `agents/code-sense.md` | `claude-haiku-5-5` | five tool calls, read-only |
-| lens scout | `agents/code-lens.md` | `claude-haiku-5-5` | 6,000 tokens of navigate output, read-only |
-| web scout | `agents/web-head.md` | `claude-haiku-5-5` | five tool calls, read-only |
-| lab scout | `agents/research-cell.md` | `claude-sonnet-5-5` | one experiment per dispatch, in a git worktree |
+| code scout | `agents/swarm/code-sense.md` | `claude-haiku-5-5` | five tool calls, read-only |
+| lens scout | `agents/swarm/code-lens.md` | `claude-haiku-5-5` | 6,000 tokens of navigate output, read-only |
+| web scout | `agents/swarm/web-head.md` | `claude-haiku-5-5` | five tool calls, read-only |
+| lab scout | `agents/swarm/lab-rat.md` | `claude-sonnet-5-5` | one experiment per dispatch, in a git worktree |
 | skeptic | `agents/peer-review.md` | `claude-sonnet-5-5` | receives claims and citations, never the reasoning; read-only |
 
 **Decided: depth is adaptive.** With one thread, the primary dispatches scouts itself and stops at a gate every two or three lookups. With two or more independent threads, each thread gets a lead. The owner approves the thread split in round zero, and at each gate chooses which threads advance, redirect or stop. Leads cost steering precision: a lead runs up to six lookups between gates.
@@ -292,7 +292,7 @@ All scouts share one report contract, already used by `code-sense` and `web-head
 | `code-sense` (was `eyes`) | renamed; LSP dropped; navigates with `rg` and ranged reads, and takes the behavior questions that `code-lens` does not; cites paths from the repository root, because the ledger opens them |
 | `code-lens` (lens scout) | new: the `code-sense` contract over the navigate verbs `map`, `find` and `slice`, with a budget of tool output in place of five calls (section 8) |
 | `web-head` | the brief gains today's date |
-| `research-cell` (lab scout) | new: one experiment per dispatch in a worktree, returns the command and its output |
+| `lab-rat` (lab scout, was `research-cell`) | new: one experiment per dispatch in a worktree, returns the command and its output |
 | `peer-review` (skeptic) | new: tries to break each claim from its citation alone, against a four-question rubric. It is read-only, so the primary records its verdicts |
 
 Every agent file is rewritten against section 10 before it ships.
@@ -349,7 +349,7 @@ The strongest competitor is no tool. In the agentlens 0.2.0 evaluation (agentlen
 
 - `init` does not look for the tool, the board header does not show it and a lead's brief does not mention it. The case file's `navigation_tool` field is gone from new cases, and a `case.json` that still has it loads and renders.
 - `code-lens` runs only `bin/redthread-navigate` (named in the briefing as NAVIGATE) and `rg`, with a budget of 6,000 tokens of output a question. The primary or a lead, through `skills/investigate/SKILL.md`, sends it questions about the structure of code in the six languages. Questions about behavior still go to `code-sense`.
-- `skills/navigate` holds how to use navigate: the commands, addresses, output, recipes for common asks and every refusal with its next step. It is preloaded through the `skills` field into `code-lens`, `code-sense`, `research-cell` and `peer-review`, and each of them gets NAVIGATE in its brief. `code-lens` runs only navigate and `rg`; the other three use navigate first for structure in the six languages and keep their own tools for the rest.
+- `skills/agents/navigate` holds how to use navigate: the commands, addresses, output, recipes for common asks and every refusal with its next step. It is preloaded through the `skills` field into `code-lens`, `code-sense`, `lab-rat` and `peer-review`, and each of them gets NAVIGATE in its brief. `code-lens` runs only navigate and `rg`; the other three use navigate first for structure in the six languages and keep their own tools for the rest.
 - `map` prints each symbol's signature line and `find` prints each definition's address, kind and span with no line text, so the scout cites only lines it saw in `slice` or `rg -n` output.
 
 ### Why not the other routes
@@ -646,3 +646,13 @@ Made by the owner on 2026-11-25, in one dialog. The skill descends from `whats-b
 - The primary runs the reproduction command itself, once, in the checkout. Every experiment brief starts with `git checkout --detach SHA`, and the first experiment checks that the failure shows in a clean worktree at all.
 
 Platform fact checked on 2026-11-25 against the Claude Code docs (sub-agents and worktrees pages): a subagent's worktree branches from the repository's default branch, not from the session's HEAD, unless `worktree.baseRef` is set to `"head"`. Whether uncommitted changes reach it is not documented. The `root-cause` kind of `investigate` did not pin the commit in its `research-cell` briefs; since 2026-11-25 its reference file says to start EXPERIMENT with `git checkout --detach SHA` (decided by the owner).
+
+### 2026-11-25: the swarm layout
+
+Made by the owner on 2026-11-25. Earlier entries keep the old names and paths.
+
+| Decision | Choice and reason |
+| --- | --- |
+| Scout folder | the four scouts live in `agents/swarm/`. Claude Code makes a plugin agent's subfolder part of its name, so they are dispatched as `red-thread:swarm:<name>`. `research-lead` and `peer-review` stay in `agents/` |
+| Lab scout name | `research-cell` is now `lab-rat` |
+| Agent-only skills | `navigate` lives in `skills/agents/`, which `plugin.json` lists under `skills` because the default scan does not reach it |
