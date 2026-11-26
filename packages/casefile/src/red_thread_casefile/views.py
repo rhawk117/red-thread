@@ -20,8 +20,8 @@ NO_COMMIT = 'no commit'
 LEAD_FLAG_PREFIX = 'lead, '
 CITE_FLAG_PREFIX = 'citation '
 FAULT_ADVICE = (
-    'Correct an entry nobody has read yet where it stands. In a thread file you only append '
-    'to, append an entry whose supersedes names the faulty one instead.'
+    'Correct an entry where it stands until a gate or a report has shown it. After that, '
+    'append an entry whose supersedes names it instead.'
 )
 
 
