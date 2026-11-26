@@ -129,7 +129,8 @@ class TestMapAndRetiredFold:
 
         (found,) = list_sections(page)
         assert (found.title, found.count) == ('Map', None)
-        assert found.note
+        assert found.note is not None
+        assert found.note != ''
         assert 'data-kind' not in found.attributes
 
     def test_the_retired_fold_follows_the_map_is_closed_and_counts_its_entries(self) -> None:

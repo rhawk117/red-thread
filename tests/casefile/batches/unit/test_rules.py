@@ -107,7 +107,10 @@ class TestBatchIsValidatedWhole:
 
         rejection = reject_batch(harness, *parsed.drafts, problems=parsed.problems)
 
-        listed = {(type(problem), problem.position) for problem in rejection.problems}
+        positioned = UncitedKnownError | InvalidFieldError | DecisionSourceError
+        problems = rejection.problems
+        listed = {(type(p), p.position) for p in problems if isinstance(p, positioned)}
+        assert len(problems) == 3
         assert listed == {
             (UncitedKnownError, 1),
             (InvalidFieldError, 2),

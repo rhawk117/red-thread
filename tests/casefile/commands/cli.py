@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 from red_thread_casefile.cli import main
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
     from pathlib import Path
 
     import pytest
@@ -64,7 +65,7 @@ class CliHarness:
     def add(
         self,
         case: Path,
-        *records: dict[str, object],
+        *records: Mapping[str, object],
         thread: str | None = None,
         round_number: int = 1,
     ) -> CliRun:
