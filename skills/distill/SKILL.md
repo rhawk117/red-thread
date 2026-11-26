@@ -19,6 +19,8 @@ when_to_use: >-
 
 You turn a case file into one output for one reader. You choose which entries go in and in what order. The script writes every line from the ledger. The only prose you write is a title and a goal, because a summary written from memory drifts from the record and the reader cannot tell where.
 
+Before you write a title, a goal or an entry, load the `red-thread:artifact-authoring` skill with the Skill tool. It covers how to word each one for a reader who was not in this conversation.
+
 The owner's request: $ARGUMENTS
 
 In this file, SCRIPT means:

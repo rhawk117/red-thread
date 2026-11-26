@@ -45,6 +45,8 @@ If that line is empty, take the target from the conversation.
 
 The Agent tool lists them with the plugin prefix. The four scouts also carry their folder, as in `red-thread:swarm:code-sense`; `research-lead` and `peer-review` do not, as in `red-thread:research-lead`. Each one starts with no memory of this conversation, so a brief stands alone: use the field names above exactly, put one question in each brief, and say what to skip. TODAY is today's date; if you do not know it, run `date -u +%F`.
 
+Before the first dispatch of a case, load the `red-thread:meet-the-team` skill with the Skill tool. It has an example brief for each agent, each agent's budget and limits, and what to do with each verdict.
+
 Send a question about the structure of code in Python, JavaScript, TypeScript, Go, Rust or Terraform to `code-lens`, and give it NAVIGATE. Send every other code question, and every question about what the code does at run time, to `code-sense`.
 
 Depth follows the target:
@@ -87,6 +89,8 @@ EOF
 ```
 
 Fields: `kind` (`known`, `open`, `decision`, `hypothesis`, `ruled_out`, `resource`, `next`), `text` (one claim or question, as a sentence), `source` (the agent that found it, `primary` or `user`), `verdict`, `cite` (`path:line` from the repository root, a URL, or a command), `rests_on`, `refute`, `supersedes` (a list of earlier refs this entry retires), and `diagram` (mermaid source, for a flow or a structure that reads better drawn; only the HTML page shows it). Leave `quote` out for a `path:line` cite: the script records the line itself.
+
+Before the first `add` of a case, load the `red-thread:artifact-authoring` skill with the Skill tool. It covers how to word an entry, the summary at a gate and a handoff for a reader who was not in this conversation.
 
 The script validates a batch whole. When it rejects one it stores nothing and prints each problem with its fix, so apply the fixes and send the whole batch again. What it enforces:
 
