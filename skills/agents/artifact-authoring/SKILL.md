@@ -32,7 +32,7 @@ The reader acts on what you wrote, usually without checking with you. So an arti
 
 ## A case file entry
 
-An entry is read on the board, alone, by a later round or another session. Entries are append-only, so a vague one stays vague until someone spends an entry retiring it.
+An entry is read on the board, alone, by a later round or another session. Once a gate or a report has shown an entry it stays as written, so a vague one stays vague until someone spends an entry retiring it.
 
 - `text` is one claim or one question in one sentence, with its subject named in full. Keep one claim to an entry, so that a later entry can retire it without taking a true neighbour along.
 - State the fact and leave who found it to `source`. "The pool is sized from WORKERS, default 4" is a fact; "code-sense found the pool size setting" names a search.

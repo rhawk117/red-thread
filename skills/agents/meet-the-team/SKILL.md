@@ -117,7 +117,7 @@ A claim's status never improves on the way up: INFERRED stays inferred until a n
 
 ## research-lead (primary only)
 
-Runs one thread of a case. It splits the question, dispatches up to six scout jobs a round, stores the entries that bear on the question in its own thread of the case file, and returns a short report that points at them. Use one lead per independent thread and dispatch them in the same turn. For a single thread, dispatch the scouts yourself.
+Runs one thread of a case. It splits the question, dispatches up to six scout jobs a round, writes the entries that bear on the question into its own thread file of the case, and returns a short report that points at them. Use one lead per independent thread and dispatch them in the same turn. For a single thread, dispatch the scouts yourself.
 
 ```text
 QUESTION: Why does the export job stall under two workers?
@@ -137,7 +137,7 @@ Required: QUESTION, CASE, THREAD, SCRIPT, NAVIGATE. Give DECISION, ROUND and TOD
 
 - DECISION is what you will do with the answer. The lead stops when the evidence is good enough to act on it, so a vague DECISION buys a long, unfocused round.
 - The lead cannot ask you anything during a round. It takes the likeliest reading of an unclear brief and lists it under Assumptions.
-- Its report carries `status` (ANSWERED, PARTIAL, BLOCKED or HANDOFF), the entry refs it stored, and Answer, Evidence, Gaps, Assumptions and Next step. It has stored its own entries, so add none for it. Read the entries by rendering the case.
+- Its report carries `status` (ANSWERED, PARTIAL, BLOCKED or HANDOFF), the entry refs it wrote, and Answer, Evidence, Gaps, Assumptions and Next step. It has written its own entries, so write none for it. Read the entries by rendering the case.
 - It lives for two rounds. For the second, send the follow-up question and the new ROUND to the same lead with SendMessage. A third returns HANDOFF with a brief for a fresh lead.
 
 ## peer-review (primary only)

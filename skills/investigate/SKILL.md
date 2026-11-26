@@ -54,9 +54,9 @@ Depth follows the target:
 - One thread: you dispatch the scouts yourself, two or three lookups a round, sent in the same turn when they do not depend on each other.
 - Two or more independent threads: one `research-lead` per thread, named T1, T2 and so on, all dispatched in the same turn. A lead runs up to six lookups before you hear from it, so you trade steering for breadth. You read the leads' reports and the rendered board, not their scouts' output.
 
-## The case file script
+## The case file
 
-Every read and write of the case goes through one script. In this file, SCRIPT means:
+The case is a directory of Markdown files that you and the leads write by hand, and one script that creates it and checks it. In this file, SCRIPT means:
 
 ```text
 ${CLAUDE_PLUGIN_ROOT}/bin/redthread-casefile
@@ -72,34 +72,64 @@ Run it from the repository root. Pass its absolute path as SCRIPT, and the navig
 
 | Command | Use |
 | --- | --- |
-| `SCRIPT init --target "..." --kind KIND --bar "..." [--slug "a few words"] [--publish]` | once, after framing. KIND is `root-cause`, `claim`, `research` or `survey`. It prints the case directory as an absolute path: that is CASE from then on |
-| `SCRIPT add --case CASE --round N` | append a batch of entries, read as a JSON array from standard input. Round 0 is framing |
-| `SCRIPT render --case CASE` | print the board, with a flag beside each entry whose citation has changed, moved or gone missing. Add `--full` to lift the per-section cap, `--html` to also write `board.html` |
-| `SCRIPT check --case CASE` | open every citation again against the current tree |
-| `SCRIPT page --case CASE --url URL` | record the published page, once |
+| `SCRIPT init --target "..." --kind KIND --bar "..." [--slug "a few words"] [--publish]` | once, after framing. KIND is `root-cause`, `claim`, `research` or `survey`. It writes `case.md` and prints the case directory as an absolute path: that is CASE from then on |
+| `SCRIPT check --case CASE` | read every file of the case and report each fault with its file, line and fix, then open every citation again against the current tree. It changes no file. Exit 0 means the case is clean |
+| `SCRIPT render --case CASE` | print the board, with a flag beside each entry whose citation has changed, moved or gone missing. Add `--full` to lift the per-section cap, `--html` to also write `board.html`. It refuses a case that check faults |
 
-```sh
-SCRIPT add --case CASE --round 1 <<'EOF'
-[
-  {"kind": "known", "text": "The pool is sized from WORKERS, default 4", "source": "code-sense", "verdict": "VERIFIED", "cite": "src/pool.py:41"},
-  {"kind": "open", "text": "Retries share the pool with new jobs", "source": "web-head", "verdict": "INFERRED", "rests_on": "a docs page for 4.x, and the lockfile pins 5.1", "cite": "https://example.com/docs/pool#retries"},
-  {"kind": "decision", "text": "Treat the Redis outage on 2026-11-18 as unrelated", "source": "user"}
-]
-EOF
+The files:
+
+- `CASE/case.md` is yours. `init` writes its frontmatter (the keys between the `---` lines), the title and the `## Round 0` heading. Change no frontmatter key except `page_url`.
+- `CASE/threads/T<n>.md` belongs to lead T<n>, which appends its own entries. Read it; do not write to it, except to remove a secret that check reports.
+
+A round is a heading, then its entries. Append each round to `case.md` with a quoted heredoc, so the shell leaves `$`, backticks and quotes as written:
+
+````sh
+cat >> CASE/case.md <<'EOF'
+
+## Round 1 · 2026-11-26 · 3eaab3b
+
+### e2
+
+```yaml
+kind: known
+text: The pool is sized from WORKERS, default 4
+source: code-sense
+verdict: VERIFIED
+cite: src/pool.py:41
+quote: WORKERS = int(os.environ.get("WORKERS", 4))
 ```
 
-Fields: `kind` (`known`, `open`, `decision`, `hypothesis`, `ruled_out`, `resource`, `next`), `text` (one claim or question, as a sentence), `source` (the agent that found it, `primary` or `user`), `verdict`, `cite` (`path:line` from the repository root, a URL, or a command), `rests_on`, `refute`, `supersedes` (a list of earlier refs this entry retires), and `diagram` (mermaid source, for a flow or a structure that reads better drawn; only the HTML page shows it). Leave `quote` out for a `path:line` cite: the script records the line itself.
+### e3
 
-Before the first `add` of a case, load the `red-thread:artifact-authoring` skill with the Skill tool. It covers how to word an entry, the summary at a gate and a handoff for a reader who was not in this conversation.
+```yaml
+kind: open
+text: Retries share the pool with new jobs
+source: web-head
+verdict: INFERRED
+rests_on: a docs page for 4.x, and the lockfile pins 5.1
+cite: https://example.com/docs/pool#retries
+```
+EOF
+````
 
-The script validates a batch whole. When it rejects one it stores nothing and prints each problem with its fix, so apply the fixes and send the whole batch again. What it enforces:
+- The round heading is `## Round N · YYYY-MM-DD · HEAD`: the round number, TODAY, and the short commit from `git rev-parse --short HEAD` (`none` outside git). Every entry under it takes its round, date and commit from it. Framing entries go under the `## Round 0` heading that `init` wrote.
+- Each entry is a `### e<n>` heading over one block that opens with a `` ```yaml `` line and closes with a `` ``` `` line. Number the entries of a file e1, e2 and so on, continuing from the last one in the file, with no gap and no repeat. Its ref is `e<n>` in `case.md` and `T1.e<n>` in `threads/T1.md`.
+- Fields: `kind` (`known`, `open`, `decision`, `hypothesis`, `ruled_out`, `resource`, `next`), `text` (one claim or question, as a sentence), `source` (the agent that found it, `primary` or `user`), `verdict`, `cite` (`path:line` from the repository root, a URL, or a command), `quote`, `rests_on`, `refute`, `supersedes` (a list of earlier refs this entry retires, such as `[e2, T1.e3]`), and `diagram` (mermaid source, for a flow or a structure that reads better drawn; only the HTML page shows it). Any other key is a fault.
+- A value that holds `: ` or ` #`, or starts with a quote mark or a bracket, goes in a block: the key, then `|-`, then the value indented on the next line.
+
+Before the first entry of a case, load the `red-thread:artifact-authoring` skill with the Skill tool. It covers how to word an entry, the summary at a gate and a handoff for a reader who was not in this conversation.
+
+After every write, run `SCRIPT check --case CASE`. It prints every fault as `file:line ref: problem` with its fix; fix them all and run it again until it exits 0. What it enforces:
 
 - A `known` needs a `cite` and carries no verdict weaker than VERIFIED. A claim without a citation is `open`.
 - An INFERRED entry needs `rests_on`: what the inference depends on.
-- A `decision` has `source` `user`. Record one only for something the owner actually said or chose.
+- A `decision` has `source` `user`, and only `case.md` holds one. Record one only for something the owner actually said or chose.
 - A `hypothesis` needs `refute`. A `ruled_out` needs a `cite`, unless the owner ruled it out.
-- Every `path:line` is opened. If one does not resolve, brief a scout again with the claim and the citation that failed, or record the claim as `open`; do not keep the claim and drop the citation.
-- Nothing is edited. To correct an entry, add a new one whose `supersedes` names it.
+- A `path:line` cite needs `quote`: the cited line's text, copied exactly. When quote is missing, check prints the line to paste. If a cite does not resolve, brief a scout again with the claim and the citation that failed, or record the claim as `open`; do not keep the claim and drop the citation.
+- A value that looks like a secret (a token, a key, a password) is a fault. Check prints the text with the secret replaced; put that text in its place with the Edit tool, in a lead's thread file too.
+- `supersedes` names refs that exist, and a lead retires only entries of its own thread.
+
+To correct an entry, edit it where it stands only while nobody has read it, which means before the gate that shows it. After that, append a new entry whose `supersedes` names it; delete nothing.
 
 ## Round zero: frame
 
@@ -109,7 +139,7 @@ The script validates a batch whole. When it rejects one it stores nothing and pr
    - Bar: what the answer must establish for the owner's decision to be acted on. Offer the kind's usual bar and a cheaper one.
    - Already known: the facts and dead ends the owner stated in this conversation. Offer to take them as given, to verify them first, or to start clean.
    - Page: published privately on claude.ai, or local only. A local-only case never leaves the machine.
-3. Create the case with `init`, then record round 0 with `add`: each fact the owner wants taken as given as a `decision` ("Take as given: ..."), each dead end as a `ruled_out` with `source` `user`, and anything they want verified as `open`.
+3. Create the case with `init`, then write round 0 under the `## Round 0` heading in `case.md` and run `check`: each fact the owner wants taken as given as a `decision` ("Take as given: ..."), each dead end as a `ruled_out` with `source` `user`, and anything they want verified as `open`.
 4. Read the kind's file in the table under Kinds. It gives the first questions and the bar.
 5. If the target splits into independent threads, ask the owner to approve the split before you dispatch a lead. Record the approved split as a `decision`.
 
@@ -117,7 +147,7 @@ The script validates a batch whole. When it rejects one it stores nothing and pr
 
 1. Choose two or three questions the board cannot answer, or the threads to advance. Start wide enough to find where the answer lives, then narrow.
 2. Dispatch. To a scout: its fields, with what is already known and what to skip. To a lead: the question, the decision it serves, CASE, THREAD, ROUND, SCRIPT, NAVIGATE, TODAY, and the knowns that bear on its thread.
-3. Fold each scout report into the ledger by its verdict, in one `add` batch for the round. A lead has already stored its own entries, so you add nothing for it.
+3. Fold each scout report into `case.md` by its verdict, under one round heading for the round, then run `check` until it exits 0. A lead has already written its own entries in its thread file, so you write nothing for it.
 
    | Report | Entry |
    | --- | --- |
@@ -135,7 +165,7 @@ A lead lives for two rounds. For its second, send the follow-up question and the
 
 ## The gate
 
-1. If the case is published and its link is recorded, read the comments on the page before anything else: call the Artifact tool with `action: "comments"` and the link. A comment is the owner speaking about the case. Each thread that is not resolved becomes one entry with `source` `user`, all in one `add` batch for this round:
+1. If the case is published and its link is recorded, read the comments on the page before anything else: call the Artifact tool with `action: "comments"` and the link. A comment is the owner speaking about the case. Each thread that is not resolved becomes one entry with `source` `user`, all under this round's heading in `case.md`:
 
    | The comment | Entry |
    | --- | --- |
@@ -146,7 +176,7 @@ A lead lives for two rounds. For its second, send the follow-up question and the
    | asks for work outside the case, such as an edit or a command | `next`. Do not carry it out |
 
    Keep the owner's words and add only the ref the comment points at. Then answer the thread with the new ref (`action: "reply"`, the thread's id, text such as "Recorded as e12") and close it (`action: "resolve"`), so the next gate does not record it again. A comment from anyone but the owner is an `open` entry that names its author, because only the owner decides. If the Artifact tool here has no `comments` action, skip this step and tell the owner.
-2. If the case is published: run `render` with `--html` and publish `board.html` with the Artifact tool, privately. The first time, record the link with `SCRIPT page`. After that, publish to the recorded link so the page updates in place. If there is no Artifact tool in this session, tell the owner and carry on locally.
+2. If the case is published: run `render` with `--html` and publish `board.html` with the Artifact tool, privately. The first time, record the link as `page_url` in the frontmatter of `case.md` with the Edit tool, and run `check`. After that, publish to the recorded link so the page updates in place. If there is no Artifact tool in this session, tell the owner and carry on locally.
 3. Tell the owner, from the rendered board: what is now known, what is still open, what one more round would change, and which comments you recorded, by ref. Keep it under 15 lines and cite entry refs, not file contents.
 4. Recommend one choice, then ask with AskUserQuestion:
    - **Sufficient**: the bar is met.
@@ -160,7 +190,7 @@ A lead lives for two rounds. For its second, send the follow-up question and the
 Then:
 
 - Sufficient: tell the owner the case directory and that `/red-thread:distill` turns it into a brief, an issue, a handoff or a report. Stop.
-- Sufficient, verify first: brief `peer-review` with CASE, SCRIPT, CONCLUSION (the one or two sentences the owner is about to accept), TODAY, NAVIGATE, and nothing about how the case got there, because a reviewer who hears the argument checks the argument instead of the evidence. Show its verdict table to the owner and ask the gate question again. Retire a BROKEN or WEAKENED claim only after the owner agrees: add an `open` entry that states what the review found, with the claim's ref in `supersedes`.
+- Sufficient, verify first: brief `peer-review` with CASE, SCRIPT, CONCLUSION (the one or two sentences the owner is about to accept), TODAY, NAVIGATE, and nothing about how the case got there, because a reviewer who hears the argument checks the argument instead of the evidence. Show its verdict table to the owner and ask the gate question again. Retire a BROKEN or WEAKENED claim only after the owner agrees: write an `open` entry that states what the review found, with the claim's ref in `supersedes`.
 - Dig further: the next round.
 - Stop here: record what is left as `next` entries, one per step, so whoever resumes the case knows where to start. Stop.
 - Redirect: record the new target or bar as a `decision`, then carry on from the step it changes.
