@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
-from msgspec.structs import replace
 from red_thread_casefile.errors import MisquotedCiteError, SecretInEntryError
 from red_thread_core.redaction import create_secret_patterns
 
@@ -28,23 +27,23 @@ SCRUBBED_LINE = f'AWS_KEY = "{LEAK_MARK}"'
 
 
 def make_text_entry(text: str) -> Entry:
-    return replace(create_entry(), text=text)
+    return create_entry().replace_with(text=text)
 
 
 def make_cite_entry(text: str) -> Entry:
-    return replace(create_valid_entry('known'), cite=f'curl -H "Authorization: Bearer {text}"')
+    return create_valid_entry('known').replace_with(cite=f'curl -H "Authorization: Bearer {text}"')
 
 
 def make_rests_on_entry(text: str) -> Entry:
-    return replace(create_entry(), verdict='INFERRED', rests_on=f'a note with {text}')
+    return create_entry().replace_with(verdict='INFERRED', rests_on=f'a note with {text}')
 
 
 def make_refute_entry(text: str) -> Entry:
-    return replace(create_valid_entry('hypothesis'), refute=f'a log showing {text}')
+    return create_valid_entry('hypothesis').replace_with(refute=f'a log showing {text}')
 
 
 def make_quote_entry(text: str) -> Entry:
-    return replace(create_valid_entry('known'), cite='src/config.py:2', quote=text)
+    return create_valid_entry('known').replace_with(cite='src/config.py:2', quote=text)
 
 
 def list_secrets(problems: tuple[CaseFileError, ...]) -> list[SecretInEntryError]:
@@ -52,7 +51,7 @@ def list_secrets(problems: tuple[CaseFileError, ...]) -> list[SecretInEntryError
 
 
 def make_diagram_entry(text: str) -> Entry:
-    return replace(create_entry(), diagram=f'flowchart TD\n  A["{text}"] --> B\n  B --> C')
+    return create_entry().replace_with(diagram=f'flowchart TD\n  A["{text}"] --> B\n  B --> C')
 
 
 def secret_cases() -> pytest.MarkDecorator:
@@ -148,7 +147,7 @@ class TestSecretInAField:
 
     def test_clean_diagram_is_no_fault(self, harness: CaseHarness) -> None:
         diagram = 'flowchart TD\n  A["queue"] --> B["sleep"]'
-        harness.seed(None, replace(create_entry(), diagram=diagram))
+        harness.seed(None, create_entry().replace_with(diagram=diagram))
 
         assert harness.find_problems() == ()
 
@@ -169,7 +168,7 @@ class TestWhereASecretIsFound:
         assert harness.find_problems() == ()
 
     def test_every_field_holding_a_secret_is_its_own_fault(self, harness: CaseHarness) -> None:
-        entry = replace(make_refute_entry(LEAKED), text=f'key {LEAKED}')
+        entry = make_refute_entry(LEAKED).replace_with(text=f'key {LEAKED}')
         harness.seed(None, entry)
 
         secrets = list_secrets(harness.find_problems())
@@ -177,7 +176,7 @@ class TestWhereASecretIsFound:
         assert [secret.field for secret in secrets] == ['text', 'refute']
 
     def test_retired_entry_is_still_checked_for_secrets(self, harness: CaseHarness) -> None:
-        retiring = replace(create_entry(seq=2), supersedes=('e1',))
+        retiring = create_entry(seq=2).replace_with(supersedes=('e1',))
         harness.seed(None, make_text_entry(f'key {LEAKED}'), retiring)
 
         secrets = list_secrets(harness.find_problems())

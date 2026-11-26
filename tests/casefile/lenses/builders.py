@@ -3,7 +3,6 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
-from msgspec.structs import replace
 from red_thread_casefile.factory import CaseFiles
 from red_thread_casefile.lenses import Selection
 from red_thread_casefile.packaged import load_lens_book
@@ -123,7 +122,7 @@ class DirectoryPressHarness:
 
     def seed(self, *entries: Entry) -> None:
         head = self.directory.git.head
-        self.directory.seed(None, *(replace(entry, head=head) for entry in entries))
+        self.directory.seed(None, *(entry.replace_with(head=head) for entry in entries))
 
     def write_page_url(self, url: str) -> None:
         case_file = self.directory.case_file

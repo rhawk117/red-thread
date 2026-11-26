@@ -3,7 +3,6 @@
 from typing import TYPE_CHECKING
 
 import pytest
-from msgspec.structs import replace
 
 from tests.casefile.ledger.builders import create_case, create_entry
 from tests.casefile.lenses.builders import create_numbered_entries, seed_flag_scenario
@@ -95,7 +94,7 @@ class TestBoardPageFacts:
     def test_a_recorded_page_link_is_a_last_wide_fact_that_links(
         self, press_harness: PressHarness
     ) -> None:
-        press_harness.frame(replace(create_case(), page_url=PAGE_URL))
+        press_harness.frame(create_case().replace_with(page_url=PAGE_URL))
 
         facts = list_facts(draw_board(press_harness))
 
@@ -253,7 +252,7 @@ class TestBoardPageEntries:
     def test_ledger_text_and_the_case_fields_cannot_add_elements(
         self, press_harness: PressHarness
     ) -> None:
-        press_harness.frame(replace(create_case(), target=SCRIPT, bar=SCRIPT))
+        press_harness.frame(create_case().replace_with(target=SCRIPT, bar=SCRIPT))
         press_harness.seed(
             create_entry(
                 seq=1,

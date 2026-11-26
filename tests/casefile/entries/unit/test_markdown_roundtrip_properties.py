@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 import pytest
 from hypothesis import example, given
 from hypothesis import strategies as st
-from msgspec.structs import replace
 from red_thread_casefile.domain import CASE_FILE, LedgerSource
 from red_thread_casefile.schemas import read_case_file, write_case_file
 
@@ -74,13 +73,13 @@ class TestEntriesReadBack:
 
         [read] = read_files(files).ledger.entries
 
-        assert read == replace(entry, thread=thread)
+        assert read == entry.replace_with(thread=thread)
 
     @given(entry=entries, diagram=diagrams)
     def test_a_multi_line_diagram_reads_back_with_its_line_breaks(
         self, entry: Entry, diagram: str
     ) -> None:
-        with_diagram = replace(entry, diagram=diagram)
+        with_diagram = entry.replace_with(diagram=diagram)
 
         [read] = read_files({
             CASE_FILE: write_case_text(create_case(), [with_diagram])
@@ -92,7 +91,7 @@ class TestEntriesReadBack:
 class TestCaseFileOpening:
     @pytest.mark.regression
     @given(case=cases)
-    @example(case=replace(create_case(), target='why the queue\nstalls'))
+    @example(case=create_case().replace_with(target='why the queue\nstalls'))
     def test_the_frontmatter_reads_back_as_the_case_it_came_from(self, case: Case) -> None:
         reading = read_files({CASE_FILE: write_case_file(case)})
 

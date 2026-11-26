@@ -3,7 +3,6 @@
 from typing import TYPE_CHECKING
 
 import pytest
-from msgspec.structs import replace
 from red_thread_casefile.errors import UnresolvedCiteError
 
 from tests.casefile.citations.cases import SLEEP_CITE, SLEEP_LINE
@@ -58,7 +57,7 @@ class TestCitesAgainstRealFiles:
 
     def create_cited(self, harness: DirectoryHarness, cite: str, quote: str | None) -> Entry:
         head = harness.casefile.tree.get_head()
-        return replace(create_valid_entry('known'), cite=cite, quote=quote, head=head)
+        return create_valid_entry('known').replace_with(cite=cite, quote=quote, head=head)
 
     def cite_line_three(self, harness: DirectoryHarness) -> None:
         harness.seed(None, self.create_cited(harness, SLEEP_CITE, SLEEP_LINE))

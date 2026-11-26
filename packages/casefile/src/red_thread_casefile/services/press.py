@@ -1,6 +1,6 @@
 """The press: writes the board page and the lens outputs of a case file."""
 
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from red_thread_core.places import BOARD_PAGE
@@ -70,7 +70,9 @@ class Press:
     def export(self, request: ExportRequest) -> Exported:
         lens = self.book.get(request.lens)
         title = self.scrub(request.selection.title)
-        selection = replace(request.selection, title=title, goal=self.scrub(request.selection.goal))
+        selection = request.selection.replace_with(
+            title=title, goal=self.scrub(request.selection.goal)
+        )
         composer = Composer(
             lens=lens,
             selection=selection,

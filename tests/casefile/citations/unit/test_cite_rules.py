@@ -3,7 +3,6 @@
 from typing import TYPE_CHECKING
 
 import pytest
-from msgspec.structs import replace
 from red_thread_casefile.errors import MissingQuoteError, UnresolvedCiteError
 
 from tests.casefile.citations.cases import (
@@ -32,7 +31,7 @@ def unread_cite_cases() -> pytest.MarkDecorator:
 
 
 def create_cited(cite: str, quote: str | None, seq: int = 1) -> Entry:
-    return replace(create_valid_entry('known', seq), cite=cite, quote=quote)
+    return create_valid_entry('known', seq).replace_with(cite=cite, quote=quote)
 
 
 class TestCiteRules:
@@ -78,7 +77,7 @@ class TestCiteRules:
 
     def test_a_ruled_out_entry_is_held_to_its_cite_too(self, harness: CaseHarness) -> None:
         harness.seed(
-            None, replace(create_valid_entry('ruled_out'), cite='src/gone.py:1', quote='x')
+            None, create_valid_entry('ruled_out').replace_with(cite='src/gone.py:1', quote='x')
         )
 
         [problem] = harness.find_problems()

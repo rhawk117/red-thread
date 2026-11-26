@@ -3,7 +3,6 @@
 from typing import TYPE_CHECKING
 
 import pytest
-from msgspec.structs import replace
 from red_thread_casefile.errors import (
     MalformedBlockError,
     MalformedCaseError,
@@ -133,7 +132,7 @@ class TestDirectoryFiles:
     def test_entry_text_with_a_unicode_line_separator_is_read_back_whole(
         self, harness: DirectoryHarness, case: SeparatorCase
     ) -> None:
-        entry = replace(create_entry(seq=1), text=f'before{case.separator}after')
+        entry = create_entry(seq=1).replace_with(text=f'before{case.separator}after')
         harness.seed(None, entry)
 
         assert harness.casefile.load().ledger.entries == (entry,)

@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 
 from hypothesis import given
 from hypothesis import strategies as st
-from msgspec.structs import replace
 
 from tests.casefile.ledger.builders import create_entry
 from tests.casefile.services.fakes import create_service_harness
@@ -50,7 +49,7 @@ def create_retirement(ref: str) -> Entry:
 
 
 def write_next(harness: ServiceHarness, entry: Entry) -> None:
-    harness.seed(replace(entry, seq=len(harness.scribe.files[entry.thread]) + 1))
+    harness.seed(entry.replace_with(seq=len(harness.scribe.files[entry.thread]) + 1))
 
 
 class TestCheckProperties:

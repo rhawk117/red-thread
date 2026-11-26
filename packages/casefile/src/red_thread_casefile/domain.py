@@ -8,6 +8,7 @@ from pathlib import PurePosixPath
 from typing import Annotated, Literal
 
 import msgspec
+from red_thread_core.dto import DTO
 
 from red_thread_casefile.errors import InvalidTimestampError
 
@@ -172,7 +173,7 @@ class LedgerSource:
 
 
 class EntryRecord(
-    msgspec.Struct,
+    DTO,
     frozen=True,
     kw_only=True,
     gc=False,
@@ -193,7 +194,7 @@ class EntryRecord(
 
 
 class Entry(
-    msgspec.Struct,
+    DTO,
     frozen=True,
     kw_only=True,
     gc=False,
@@ -224,11 +225,11 @@ class Entry(
         return f'{self.thread}.e{self.seq}'
 
 
-class Capabilities(msgspec.Struct, frozen=True, kw_only=True, gc=False, forbid_unknown_fields=True):
+class Capabilities(DTO, frozen=True, kw_only=True, gc=False, forbid_unknown_fields=True):
     languages: tuple[str, ...] = ()
 
 
-class Case(msgspec.Struct, frozen=True, kw_only=True, gc=False, forbid_unknown_fields=True):
+class Case(DTO, frozen=True, kw_only=True, gc=False, forbid_unknown_fields=True):
     id: str
     target: str
     kind: CaseKind

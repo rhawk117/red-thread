@@ -3,7 +3,6 @@
 from typing import TYPE_CHECKING
 
 import pytest
-from msgspec.structs import replace
 from red_thread_casefile.errors import UnknownSupersededError
 
 from tests.casefile.ledger.builders import create_entry, create_valid_entry
@@ -57,7 +56,7 @@ class TestSupersedes:
         assert tuple(map(type, harness.find_problems())) == (case.error_type,)
 
     def test_retired_entry_skips_the_content_rules(self, framed_harness: CaseHarness) -> None:
-        uncited = replace(create_valid_entry('known', 1), cite=None)
+        uncited = create_valid_entry('known', 1).replace_with(cite=None)
         framed_harness.seed(None, uncited, create_entry(seq=2, supersedes=('e1',)))
 
         assert framed_harness.find_problems() == ()

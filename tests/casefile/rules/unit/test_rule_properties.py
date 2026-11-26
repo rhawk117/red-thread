@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING
 
 from hypothesis import given
 from hypothesis import strategies as st
-from msgspec.structs import replace
 from red_thread_casefile.domain import ENTRY_KINDS
 from red_thread_casefile.errors import (
     DecisionInThreadError,
@@ -37,15 +36,15 @@ def make_thread_name(number: int) -> str:
 
 
 def make_owner_entry(kind: EntryKind) -> Entry:
-    return replace(create_valid_entry(kind), source='user')
+    return create_valid_entry(kind).replace_with(source='user')
 
 
 def make_decision_from(source: str) -> Entry:
-    return replace(create_valid_entry('decision'), source=source)
+    return create_valid_entry('decision').replace_with(source=source)
 
 
 def make_uncited_ruled_out(source: str) -> Entry:
-    return replace(create_valid_entry('ruled_out'), cite=None, source=source)
+    return create_valid_entry('ruled_out').replace_with(cite=None, source=source)
 
 
 class TestRuleProperties:

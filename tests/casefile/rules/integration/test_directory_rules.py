@@ -3,7 +3,6 @@
 from typing import TYPE_CHECKING
 
 import pytest
-from msgspec.structs import replace
 from red_thread_casefile.errors import (
     OwnerInThreadError,
     SecretInEntryError,
@@ -26,9 +25,11 @@ class TestCheckOnADirectory:
     @pytest.fixture
     def faulty_harness(self, harness: DirectoryHarness) -> DirectoryHarness:
         harness.seed(
-            None, create_valid_entry('open', 1), replace(create_valid_entry('known', 2), cite=None)
+            None,
+            create_valid_entry('open', 1),
+            create_valid_entry('known', 2).replace_with(cite=None),
         )
-        harness.seed('T1', replace(create_valid_entry('open', 1), source='user'))
+        harness.seed('T1', create_valid_entry('open', 1).replace_with(source='user'))
         return harness
 
     def test_each_fault_is_named_by_the_file_that_holds_it(
@@ -78,8 +79,7 @@ class TestCheckOnADirectory:
         self, harness: DirectoryHarness
     ) -> None:
         harness.git.write('src/config.py', f'import os\nAWS_KEY = "{LEAKED}"\n')
-        entry = replace(
-            create_valid_entry('known'),
+        entry = create_valid_entry('known').replace_with(
             text=f'the key {LEAKED} is committed',
             cite='src/config.py:2',
             quote='AWS_KEY = "[REDACTED:aws-access-key]"',

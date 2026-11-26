@@ -3,8 +3,8 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
 
-import msgspec
 from red_thread_core.documents import Document, Paragraph, PointList, Section, parse_line
+from red_thread_core.dto import DTO
 from red_thread_core.util import squeeze
 
 from red_thread_casefile.documents import EntryBuilder, list_entries_block
@@ -30,20 +30,20 @@ type FixedPart = Literal['goal', 'pointers', 'reading']
 LENS_NAMES: tuple[LensName, ...] = ('brief', 'issue', 'handoff', 'report')
 
 
-class Part(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields=True, gc=False):
+class Part(DTO, frozen=True, kw_only=True, forbid_unknown_fields=True, gc=False):
     title: str
     kind: EntryKind | None = None
     fixed: FixedPart | None = None
 
 
-class Lens(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields=True, gc=False):
+class Lens(DTO, frozen=True, kw_only=True, forbid_unknown_fields=True, gc=False):
     name: LensName
     intro: str
     budget: int
     parts: tuple[Part, ...]
 
 
-class LensBook(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields=True, gc=False):
+class LensBook(DTO, frozen=True, kw_only=True, forbid_unknown_fields=True, gc=False):
     reading: tuple[str, ...]
     lenses: tuple[Lens, ...]
 
@@ -55,8 +55,7 @@ def count_lines(text: str) -> int:
     return sum(1 for line in text.splitlines() if line.strip())
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Selection:
+class Selection(DTO, frozen=True, kw_only=True, gc=False):
     title: str | None = None
     goal: str | None = None
     include: tuple[str, ...] | None = None

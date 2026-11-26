@@ -207,7 +207,7 @@ class LedgerReader:
             return (record, *rest)
 
         entry = Entry(
-            **msgspec.structs.asdict(record),
+            **record.as_dict(),
             seq=seq,
             round=stamp.number,
             at=stamp.day,

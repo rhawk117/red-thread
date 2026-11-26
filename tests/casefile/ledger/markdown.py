@@ -6,7 +6,6 @@ from itertools import groupby
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 import msgspec
-from msgspec.structs import replace
 from red_thread_casefile.domain import (
     BLOCK_CLOSE,
     BLOCK_OPEN,
@@ -44,16 +43,16 @@ def stamp_entry(entry: Entry) -> RoundStamp:
 def number_entries(written: Sequence[Entry], thread: str | None) -> list[Entry]:
     groups = groupby(written, key=stamp_entry)
     rounds = (
-        replace(entry, round=number)
+        entry.replace_with(round=number)
         for number, (_, group) in enumerate(groups, 1)
         for entry in group
     )
-    return [replace(entry, seq=seq, thread=thread) for seq, entry in enumerate(rounds, 1)]
+    return [entry.replace_with(seq=seq, thread=thread) for seq, entry in enumerate(rounds, 1)]
 
 
 def write_block(entry: Entry) -> str:
     fields = {name: getattr(entry, name) for name in EntryRecord.__struct_fields__}
-    record = msgspec.convert(fields, EntryRecord)
+    record = EntryRecord.convert(fields)
     return msgspec.yaml.encode(record).decode()
 
 
@@ -105,7 +104,7 @@ class CaseScribe:
         self.sink.write(CASE_FILE, write_case_text(case, self.files[None]))
 
     def seed(self, thread: str | None, *entries: Entry) -> None:
-        self.files[thread].extend(replace(entry, thread=thread) for entry in entries)
+        self.files[thread].extend(entry.replace_with(thread=thread) for entry in entries)
         held = self.files[thread]
         text = write_case_text(self.case, held) if thread is None else write_thread_text(held)
         self.sink.write(name_file(thread), text)

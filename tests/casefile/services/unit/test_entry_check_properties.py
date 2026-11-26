@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING
 
 from hypothesis import given
 from hypothesis import strategies as st
-from msgspec.structs import replace
 from red_thread_casefile.domain import THREAD_NAME
 from red_thread_casefile.errors import SecretInEntryError, StrayThreadFileError, UncitedKnownError
 
@@ -29,7 +28,7 @@ def is_not_thread_name(name: str) -> bool:
 
 def write_next(harness: ServiceHarness, entry: Entry) -> Entry:
     seq = len(harness.scribe.files[entry.thread]) + 1
-    numbered = replace(entry, seq=seq, round=seq)
+    numbered = entry.replace_with(seq=seq, round=seq)
     harness.seed(numbered)
     return numbered
 

@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
-from msgspec.structs import replace
 from red_thread_casefile.errors import (
     LensOverBudgetError,
     UnknownSelectionRefError,
@@ -48,7 +47,7 @@ SHIFTED_LINES = ('# header', *QUEUE_LINES)
 
 def create_cited_entry(position: int) -> Entry:
     known = create_valid_entry('known', position)
-    return replace(known, text=FINDING, cite=QUEUE_CITE, quote=QUEUE_QUOTE)
+    return known.replace_with(text=FINDING, cite=QUEUE_CITE, quote=QUEUE_QUOTE)
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -186,7 +185,7 @@ class TestExportOnDisk:
     def test_a_diagram_added_through_the_ledger_file_is_drawn_on_the_board_and_a_lens_page(
         self, harness: DirectoryPressHarness
     ) -> None:
-        harness.seed(replace(create_valid_entry('open', 4), diagram=DIAGRAM))
+        harness.seed(create_valid_entry('open', 4).replace_with(diagram=DIAGRAM))
 
         harness.press.draw()
         export(harness, 'brief', html=True)

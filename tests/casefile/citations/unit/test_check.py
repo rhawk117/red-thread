@@ -3,7 +3,6 @@
 from typing import TYPE_CHECKING
 
 import pytest
-from msgspec import structs
 from red_thread_casefile.policy import Finding
 
 from tests.casefile.citations.cases import (
@@ -65,7 +64,7 @@ class TestCheck:
         assert framed_harness.tree.reads == []
 
     def test_thread_entry_is_reported_under_its_thread_ref(self, harness: CaseHarness) -> None:
-        harness.seed('T3', structs.replace(self.cited, thread='T3'))
+        harness.seed('T3', self.cited.replace_with(thread='T3'))
         harness.tree.write(QUEUE_PATH, ('# top', *harness.tree.files[QUEUE_PATH]))
 
         states = {finding.ref: finding.state for finding in harness.check().findings}
@@ -75,7 +74,7 @@ class TestCheck:
     def test_only_live_entries_with_a_cite_are_checked(self, framed_harness: CaseHarness) -> None:
         framed_harness.seed(
             None,
-            structs.replace(self.cited, seq=1),
+            self.cited.replace_with(seq=1),
             create_entry(seq=2, kind='known', cite='src/gone.py:1', quote='x'),
             create_entry(seq=3, supersedes=('e2',)),
             create_entry(seq=4),

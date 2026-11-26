@@ -7,6 +7,7 @@ from itertools import chain
 from typing import TYPE_CHECKING, Literal
 
 import msgspec
+from red_thread_core.dto import DTO
 
 if TYPE_CHECKING:
     from red_thread_casefile.domain import EntryKind
@@ -25,12 +26,12 @@ REF = re.compile(r'\bC[1-9]\d*\.(?:T[1-9]\d*\.)?e[1-9]\d*\b')
 ACCEPTANCE = 'Acceptance'
 
 
-class Outline(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields=True, gc=False):
+class Outline(DTO, frozen=True, kw_only=True, forbid_unknown_fields=True, gc=False):
     sections: tuple[str, ...]
     required: tuple[str, ...]
 
 
-class Frontmatter(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields=True, gc=False):
+class Frontmatter(DTO, frozen=True, kw_only=True, forbid_unknown_fields=True, gc=False):
     id: str
     title: str
     status: Status = 'draft'

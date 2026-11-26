@@ -3,7 +3,6 @@
 from typing import TYPE_CHECKING
 
 import pytest
-from msgspec.structs import replace
 from red_thread_casefile.domain import ENTRY_KINDS
 from red_thread_casefile.errors import (
     CaseNotFoundError,
@@ -59,8 +58,8 @@ class TestCheckReportsEveryFault:
         framed_harness.seed(
             None,
             create_valid_entry('open', 1),
-            replace(create_valid_entry('known', 2), cite=None),
-            replace(create_valid_entry('hypothesis', 3), refute=None),
+            create_valid_entry('known', 2).replace_with(cite=None),
+            create_valid_entry('hypothesis', 3).replace_with(refute=None),
         )
         framed_harness.seed('T1', create_valid_entry('open', 1), create_valid_entry('decision', 2))
         return framed_harness

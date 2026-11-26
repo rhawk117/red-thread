@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from itertools import chain
 from typing import TYPE_CHECKING, Self
 
-import msgspec
+from red_thread_core.dto import DTO
 from red_thread_core.util import squeeze
 
 from red_thread_casefile.domain import EntryKind, is_current, shorten_head
@@ -25,7 +25,7 @@ FAULT_ADVICE = (
 )
 
 
-class Heading(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields=True, gc=False):
+class Heading(DTO, frozen=True, kw_only=True, forbid_unknown_fields=True, gc=False):
     kind: EntryKind
     title: str
     note: str

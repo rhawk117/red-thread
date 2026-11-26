@@ -3,7 +3,6 @@
 from typing import TYPE_CHECKING
 
 import pytest
-from msgspec.structs import replace
 
 from tests.casefile.ledger.builders import PAGE_URL, create_case, create_entry
 from tests.casefile.lenses.cases import lens_name_params
@@ -32,7 +31,7 @@ class TestPageUrlIsShown:
 
     @pytest.fixture
     def published(self, press_harness: PressHarness) -> PressHarness:
-        press_harness.frame(replace(create_case(), page_url=PAGE_URL))
+        press_harness.frame(create_case().replace_with(page_url=PAGE_URL))
         return seed_question(press_harness)
 
     def test_the_board_shows_the_link(self, published: PressHarness) -> None:

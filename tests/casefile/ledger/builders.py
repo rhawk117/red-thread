@@ -3,7 +3,6 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from msgspec.structs import replace
 from red_thread_casefile.domain import Case, Entry
 from red_thread_casefile.packaged import load_wording
 from red_thread_casefile.services import CaseFile
@@ -96,16 +95,16 @@ def create_entry(
 def create_valid_entry(kind: EntryKind, seq: int = 1) -> Entry:
     entry = create_entry(seq=seq, kind=kind, text=f'a {kind} about the queue')
     if kind == 'known':
-        return replace(entry, cite=URL_CITE, verdict='VERIFIED')
+        return entry.replace_with(cite=URL_CITE, verdict='VERIFIED')
 
     if kind == 'hypothesis':
-        return replace(entry, refute='the stall disappears when the sleep is removed')
+        return entry.replace_with(refute='the stall disappears when the sleep is removed')
 
     if kind == 'ruled_out':
-        return replace(entry, cite=URL_CITE)
+        return entry.replace_with(cite=URL_CITE)
 
     if kind == 'decision':
-        return replace(entry, source='user')
+        return entry.replace_with(source='user')
 
     return entry
 

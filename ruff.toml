@@ -106,7 +106,7 @@ parametrize-values-row-type = "tuple"
 
 [lint.flake8-type-checking]
 strict = true
-runtime-evaluated-base-classes = ["pydantic.BaseModel", "msgspec.Struct"]
+runtime-evaluated-base-classes = ["pydantic.BaseModel", "msgspec.Struct", "red_thread_core.dto.DTO"]
 
 # pro tip
 [lint.flake8-tidy-imports.banned-api]

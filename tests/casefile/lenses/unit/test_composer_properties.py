@@ -1,20 +1,14 @@
 """Selection and Composer: what a selection admits and how it orders the entries it selects."""
 
-from typing import TYPE_CHECKING
-
-import msgspec
 from hypothesis import given
 from hypothesis import strategies as st
-from red_thread_casefile.domain import ENTRY_KINDS, Ledger
+from red_thread_casefile.domain import ENTRY_KINDS, Entry, Ledger
 from red_thread_casefile.lenses import Composer, Edition, Selection, count_lines
 from red_thread_casefile.packaged import load_lens_book, load_wording
 
 from tests.casefile.entries.strategies import POOLED_REFS, optional, pooled_entries, words
 from tests.casefile.ledger.builders import create_entry
 from tests.casefile.services.fakes import CASE
-
-if TYPE_CHECKING:
-    from red_thread_casefile.domain import Entry
 
 
 def pick_refs(refs: tuple[str, ...]) -> st.SearchStrategy[tuple[str, ...]]:
@@ -38,9 +32,9 @@ class TestSelectionAdmits:
     pooled_refs = pick_refs(POOLED_REFS)
     selections = st.builds(Selection, include=optional(pooled_refs), blocking=optional(pooled_refs))
     open_selections = st.builds(Selection, include=st.none(), blocking=optional(pooled_refs))
-    decisions = st.builds(msgspec.structs.replace, pooled_entries, kind=st.just('decision'))
+    decisions = st.builds(Entry.replace_with, pooled_entries, kind=st.just('decision'))
     others = st.builds(
-        msgspec.structs.replace,
+        Entry.replace_with,
         pooled_entries,
         kind=st.sampled_from([kind for kind in ENTRY_KINDS if kind != 'decision']),
     )
