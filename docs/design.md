@@ -1,6 +1,6 @@
 # red-thread design
 
-Status on 2026-11-25: the direction is agreed, and steps 1 to 5 of the build order in section 11 are built. One real case ran from framing to a brief on 2026-11-21 (section 11, step 6). Planning is built through step 3 of its build order in section 13: the selection rename, the plan record with the `plan` command, and the plan page. **Decided** marks a choice the owner made in a dialog. **Proposed** marks the designer's intent that the owner has not confirmed.
+Status on 2026-11-26: the direction is agreed, and steps 1 to 5 of the build order in section 11 are built. One real case ran from framing to a brief on 2026-11-21 (section 11, step 6). Planning is built through step 3 of its build order in section 13: the selection rename, the plan record and the plan page. On 2026-11-26 the code was split into three packages (core, casefile and plans), lanes became worktrees, and plans and cases link to each other (section 12). **Decided** marks a choice the owner made in a dialog. **Proposed** marks the designer's intent that the owner has not confirmed.
 
 ## How to read this
 
@@ -97,7 +97,7 @@ Platform facts checked on 2026-11-21 against the Claude Code docs and one live p
 
 **Decided:** one Python script is the only writer and renderer of the case file. It replaces the MCP server, the database and the recorder hooks. Its one dependency is msgspec, which reads and writes every JSON record. That reverses the earlier choice of the standard library alone. The launcher asks uv for msgspec with `--with`, so nothing is installed into the project under investigation, and the first run on a machine downloads it.
 
-The code is the workspace package `packages/casefile`. The stored records (`Entry`, `Case` and `Capabilities`) are frozen msgspec Structs, so a ledger line or a `case.json` that does not match its type is refused with the file and the fault named. Batches and export selections keep their own validation, so `add` still reports every fault in a batch with its fix. The page's skeleton, styles, script and map header sit in `packages/casefile/assets/`, beside `src/`, where they are easy to find, and `assets.py` reads them by path from the module file. The package therefore runs from the source tree, which is how `bin/redthread-casefile` and an editable install run it; a built wheel would not carry the assets. The HTML fragments are Python 3.14 t-strings rendered through one escaping function. Imports inside the package are absolute.
+The code is the workspace package `packages/casefile`. The stored records (`Entry`, `Case` and `Capabilities`) are frozen msgspec Structs, so a ledger line or a `case.json` that does not match its type is refused with the file and the fault named. Batches and export selections keep their own validation, so `add` still reports every fault in a batch with its fix. Since 2026-11-26 the page's skeleton, styles and script sit in `packages/core/assets/` and the map header in `packages/casefile/assets/`, each beside its package's `src/`, where they are easy to find, and each package's `assets.py` reads them by path from the module file. The package therefore runs from the source tree, which is how `bin/redthread-casefile` and an editable install run it; a built wheel would not carry the assets. The HTML fragments are Python 3.14 t-strings rendered through one escaping function. Imports inside the package are absolute.
 
 | Command | What it does | Status |
 | --- | --- | --- |
@@ -107,7 +107,7 @@ The code is the workspace package `packages/casefile`. The stored records (`Entr
 | `check` | re-resolves every live citation against the current tree | Built |
 | `export` | assembles a lens output from the ledger and fails when it is over its line budget | Built |
 | `page` | records the link of the published board in `case.json` | Built |
-| `plan` | checks a plan whole (what each promise rests on, cycles, lane collisions), redacts secrets, stores it as the next revision and writes `plan.html` (section 13) | Built |
+| `plan` | moved on 2026-11-26 to its own package and launcher, `bin/redthread-plan` (section 13) | Moved |
 
 **Decided:** the script is the workspace package `packages/casefile`, run through `bin/redthread-casefile`, which starts it with `uv run --no-project --python 3.14 --with-editable` on the package. uv takes the dependencies from the package's own `pyproject.toml` and keeps the environment in its cache, so nothing is installed into the project under investigation and the launcher repeats no requirement. The primary passes the launcher's absolute path in each brief as `SCRIPT`, since a brief already carries everything a worker needs.
 
@@ -718,9 +718,27 @@ Made by the owner on 2026-11-25, in three dialogs.
 | Revisions | a new revision is synced to GitHub by ticket id: it edits the tickets it touches, adds new ones and closes dropped ones. Rejected: publishing once, after which the issue and the plan drift; and replacing issues, which churns the numbers pull requests point at |
 | Done when | the work after version 1 is planned as an epic with version 1 and run through plain sessions |
 
+### 2026-11-26: packages, worktrees and links
+
+Made by the owner on 2026-11-26, after reading the first plan page and finding it unclear: it had no grounding text, no account of what changed, and words such as "lane" that it never explained, and it was laid out for a phone only.
+
+| Decision | Choice |
+| --- | --- |
+| Packages | three: `packages/core` (`red_thread_core`) holds the document model, the page and Markdown writers, the page assets, redaction, the store protocols and where the pages sit; `packages/casefile` depends on core; `packages/plans` (`red_thread_plans`) depends on both. Rejected: keeping the plan inside casefile, which coupled the two records. The split went on top of the existing commits |
+| Plan home | beside the cases: `.red-thread/plans/<plan-id>/` holds `plan.json` (the id, title, the cases its revisions cited, and the epic and issue links), `rN.json` and `plan.html`. A plan never writes into a case directory |
+| Many cases | a plan names each case it rests on with an alias, and one plan can rest on many cases. A ref is `C1.e4`, or `C2.T1.e2` for an entry in a thread |
+| Acceptance | a criterion is `{criterion, required_by}`, replacing `{text, rests_on}`, so it is not confused with an entry's `rests_on` caveat |
+| Worktree | "lane" became "worktree" everywhere: one git worktree and one stack of pull requests |
+| Plan command | its own launcher, `bin/redthread-plan`, with `init`, `revise` and `render` |
+| The plan page | each criterion shows the text of every entry that requires it, linked to that entry on its board; a "What changed" section opens a revision after the first; each ticket shows its why, and a changed ticket shows each field as it was and as it is; every page ends its rail with a fold that explains its words |
+| Links | both ways: the plan page links each case's board, the epic and each issue, and reads "not published yet" until a publish step records them. Each board lists the plans that cite its case, read from `.red-thread/plans/*/plan.json` when the board is drawn, so nothing is written into the case |
+| Layout | every page: at 1280px and up, a rail with the title, facts, toolbar, contents and terms beside the content, where the kind sections or the worktrees sit in columns; on a phone the rail sits on top and the columns stack |
+
 ## 13. Planning
 
 Added 2026-11-25. Section 12 records what the owner decided. The build order at the end says which steps are built; everything else here is **Proposed**.
+
+**Changed 2026-11-26** (section 12): a plan lives in `.red-thread/plans/<plan-id>/`, not in a case, and rests on one or more cases through aliases. "Lane" is now "worktree", and an acceptance sentence is now a criterion `{criterion, required_by}`. The `plan` command is `bin/redthread-plan` with `init`, `revise` and `render`. The text below uses the new names.
 
 ### Version 1
 
@@ -743,7 +761,7 @@ red-thread ends at a published ticket and its briefs. The implementation plugin 
 
 | Artifact | Record | The owner reads | Read by |
 | --- | --- | --- | --- |
-| Plan | `plans/r<n>.json` in the case, one file per accepted revision | `plan.html`, published like the board | the owner and `peer-review` |
+| Plan | `.red-thread/plans/<plan-id>/r<n>.json`, one file per accepted revision, beside the cases it rests on | `plan.html`, published like the board | the owner and `peer-review` |
 | Epic | a parent issue | the issue and GitHub's sub-issue progress | the retrospective |
 | Ticket | a sub-issue: prose, then one fenced JSON block under a `red-thread ticket v1` summary | the issue | the implementation plugin, through `gh issue view` |
 | Brief | `briefs/T<n>.md` in the ticket's worktree: YAML frontmatter, then the body | the page when the ticket starts | the subagent the brief names |
@@ -753,32 +771,34 @@ Each record carries a schema version, so the two plugins release separately.
 
 ### The plan record
 
-The script stays the only writer. A `plan` command reads one JSON document on standard input, checks it whole as `add` checks a batch, and stores it as the next revision. A revision is never edited: the page shows the latest and what changed from the one before.
+The plans package is the only writer of a plan. `revise` reads one JSON document on standard input or from `--file`, checks it whole as `add` checks a batch, and stores it as the next revision. A revision is never edited: the page shows the latest and what changed from the one before.
 
-- Fields: intent, approach, invariants, non-goals, tickets and risks.
-- A ticket has an id, a title, acceptance sentences, the files it owns, the tickets it depends on, a lane and an optional interface.
-- An acceptance sentence states an outcome someone can observe, and names the live `decision` or `known` entries it rests on. The script refuses one that rests on nothing. This is the guard against "that is not what I asked for": every promise in the plan traces to something the owner decided or a scout verified.
-- The script refuses a dependency cycle, and refuses two tickets in different lanes that own the same file.
+- Fields: intent, approach, the cases it rests on, invariants, non-goals, tickets and risks.
+- A ticket has an id, a title, a why, acceptance criteria, the files it owns, the tickets it depends on, a worktree and an optional interface.
+- An acceptance criterion states an outcome someone can observe, and names the live `decision` or `known` entries that require it. The script refuses one that rests on nothing. This is the guard against "that is not what I asked for": every promise in the plan traces to something the owner decided or a scout verified.
+- The script refuses a dependency cycle, and refuses two tickets in different worktrees that own the same file.
 - "Plan" already named the JSON that `export` reads (section 6, `lenses.py`). That document is now the "selection", and `--plan` is `--selection` (built 2026-11-25).
 
 **Built 2026-11-25**, with the owner's approval of the record and its refusals:
 
-- A revision is `plans/r<n>.json`: the drafted fields, plus `schema` (`red-thread/plan@1`), `revision`, `at` and `head`, which the script stamps. It is created exclusively, so a stored revision is never overwritten.
-- A ticket's `id` and `lane` are lowercase slugs. An acceptance sentence is `{text, rests_on}`. The interface is `{language, source}`.
-- A risk has an `id` (`R1`, `R2`), `risk`, `signal`, the `tickets` it touches and a `handling` tagged by `kind`: `accept`; `mitigate` with the `ticket` that carries the change and an optional `criterion`, which must be one of that ticket's acceptance sentences word for word, or is left out when the ticket itself is the mitigation; or `you-intervene` with the `recut` tickets, which must be among the risk's own.
-- The drafter names each ticket's lane, and the script computes its position: a stable topological order of the lane's tickets, ties kept in drafted order. This settles section 12's "the plan computes lanes and stack order" against "the plan records only lane and position" below: the plan computes the stack and checks the lanes, and does not invent them.
-- A dependency on a ticket in another lane is refused (owner, 2026-11-25), because a lane is one stack.
-- Two lanes collide when some path, existing or not, matches an `owns` entry of each. The check is exact for `*` (any run of characters within one segment, a leading dot included), `?` and `**` (zero or more segments, or at least one at the end), the rules of `PurePosixPath.full_match`, and the refusal names a path both lanes could change. `dir/` means `dir/**`. An entry that is empty, absolute, climbs with `..` or uses a `[ ]` class is refused. Two tickets in one lane may own the same files.
-- A plan that cannot be read is refused at its first shape fault, with the JSON path. A readable plan is checked whole and every fault is named with its fix: blank text, no tickets, a ticket without acceptance or owns, a malformed or duplicate id, a sentence that rests on nothing or on a ref that is unknown, retired or not a decision or known, an unknown or cross-lane dependency, a cycle, a lane collision, and a risk that names an unknown ticket, a criterion the ticket does not have, or a recut that is empty or strays outside the risk. Text is checked as sent, then redacted, then stored.
+- A revision is `r<n>.json` in the plan directory: the drafted fields, plus `schema` (`red-thread/plan@1`), `revision`, `at` and `head`, which the script stamps. It is created exclusively, so a stored revision is never overwritten.
+- A ticket's `id` and `worktree` are lowercase slugs. An acceptance criterion is `{criterion, required_by}`, where each ref names a case alias. The interface is `{language, source}`.
+- A risk has an `id` (`R1`, `R2`), `risk`, `signal`, the `tickets` it touches and a `handling` tagged by `kind`: `accept`; `mitigate` with the `ticket` that carries the change and an optional `criterion`, which must be one of that ticket's criteria word for word, or is left out when the ticket itself is the mitigation; or `you-intervene` with the `recut` tickets, which must be among the risk's own.
+- The drafter names each ticket's worktree, and the script computes its position: a stable topological order of the worktree's tickets, ties kept in drafted order. This settles section 12's "the plan computes lanes and stack order" against "the plan records only lane and position" below: the plan computes the stack and checks the worktrees, and does not invent them.
+- A dependency on a ticket in another worktree is refused (owner, 2026-11-25), because a worktree is one stack.
+- Two worktrees collide when some path, existing or not, matches an `owns` entry of each. The check is exact for `*` (any run of characters within one segment, a leading dot included), `?` and `**` (zero or more segments, or at least one at the end), the rules of `PurePosixPath.full_match`, and the refusal names a path both worktrees could change. `dir/` means `dir/**`. An entry that is empty, absolute, climbs with `..` or uses a `[ ]` class is refused. Two tickets in one worktree may own the same files.
+- A plan that cannot be read is refused at its first shape fault, with the JSON path. A readable plan is checked whole and every fault is named with its fix: blank text, no tickets, a ticket without acceptance or owns, a malformed or duplicate id, no case or a case missing from `.red-thread/`, a ticket without a why, a criterion required by nothing or by a ref that is unknown, retired or not a decision or known, an unknown or cross-worktree dependency, a cycle, a worktree collision, and a risk that names an unknown ticket, a criterion the ticket does not have, or a recut that is empty or strays outside the risk. Text is checked as sent, then redacted, then stored.
 
-**The page, built 2026-11-25:**
+**The page, built 2026-11-25, rebuilt 2026-11-26:**
 
-- `plan` writes `plan.html` in the case each time it stores a revision, from that revision and the one before it. A refused plan writes nothing, and there is no separate command to redraw the page.
-- `PlanPage` (`plans/page.py`) is a composer beside `BoardPage`. Its sections are Approach, Invariants, Non-goals, one `Lane <name>` panel per lane with its stack bottom first, and Risks. The appendix holds the `Lanes` chart and, when tickets were dropped, a folded `Dropped` list. The facts are the revision, the date, the commit, the ticket and lane count, and the changes.
+- `revise` writes `plan.html` in the plan directory each time it stores a revision, from that revision, the one before it and the cases it rests on. A refused plan writes nothing. `render` draws it again from the latest revision.
+- `PlanPage` (`red_thread_plans/page.py`) composes the page. Its sections are What changed (from the second revision on: the tickets added, changed and dropped, then each plan field as it was and as it is), Approach, Cases (each alias linked to its board, with the case's question), Invariants, Non-goals, one `Worktree <name>` column per worktree with its stack bottom first, and Risks. The appendix holds the `Worktrees` chart and, when tickets were dropped, a folded `Dropped` list. The facts are the revision, the date, the commit, the ticket and worktree count, the changes and the epic.
+- A ticket shows its mark, its title, its why, its place, its dependencies, the paths it owns, its issue link or "not published yet", each criterion under "Done when" with every entry that requires it (its kind, its ref linked to `../../<case>/board.html#<ref>` and its text), its interface, and for a changed ticket a fold of each field as it was and as it is. A ref whose entry is gone reads "This entry is no longer in the case."
 - The status mark compares each ticket with the ticket of the same id in the revision before: `new` when it had none, `unchanged` when every field is equal, `changed` otherwise. Status from events stays after version 1.
-- `Flowchart` draws each lane as a subgraph, with an arrow from each dependency to its dependent and each node coloured by its mark (header `assets/lanes.mmd`).
-- `CodeListing` is a general block in the document model, written as `<pre class="listing">` on a page and as a fenced block in Markdown. The plan's own nodes, `TicketNode`, `Promise` and `TicketList`, live in `plans/nodes.py` and reach the writers through `BlockWriter.write_tickets`, as every other block does.
-- The toolbar adds lane and status chips beside the kind and thread chips. `page.js` now filters any entry that carries `data-kind` or `data-lane` on every chip group, so `Section.kind` stays an entry kind.
+- `Flowchart` draws each worktree as a subgraph, with an arrow from each dependency to its dependent and each node coloured by its mark (header `packages/plans/assets/worktrees.mmd`).
+- `CodeListing` is a general block in the document model, written as `<pre class="listing">` on a page and as a fenced block in Markdown. The plan's own nodes, `TicketNode`, `Promise`, `Ground`, `TicketList` and `ChangeList`, live in `red_thread_plans/nodes.py` and reach the writers through `BlockWriter.write_tickets`, as every other block does.
+- The toolbar adds worktree and status chips beside the kind and thread chips. `page.js` filters any entry that carries `data-kind` or `data-worktree` on every chip group, so `Section.kind` stays an entry kind. It also opens the folded section that holds the target of a `#ref` link, on load and when the hash changes.
+- The board lists the plans that cite its case as a `Plans` fact linking `../plans/<plan-id>/plan.html`, read from each `plan.json` when the board is drawn; a plan index that cannot be read is skipped. Each entry is an anchor named by its ref.
 
 ### The plan skill
 
@@ -802,11 +822,11 @@ The dialog offers only handlings a senior engineer could pick, states the cost o
 
 ### Review
 
-Optional, asked at step 5. One `peer-review` pass in a fresh context that gets the plan and the rendered case, not the conversation. It checks that each acceptance sentence follows from what it rests on, that no decision is left without a ticket, that lanes do not collide, and what the plan assumes without evidence. A finding without a ref or a `path:line` is dropped. The owner picks which findings change the plan. There is one pass and no debate round.
+Optional, asked at step 5. One `peer-review` pass in a fresh context that gets the plan and the rendered case, not the conversation. It checks that each criterion follows from the entries that require it, that no decision is left without a ticket, that worktrees do not collide, and what the plan assumes without evidence. A finding without a ref or a `path:line` is dropped. The owner picks which findings change the plan. There is one pass and no debate round.
 
 ### Interfaces
 
-Optional, per ticket, by a dedicated agent written for Opus 5.5 and not yet named. It writes the public surface only: signatures, types, error cases and the names of the tests. It type-checks them in a scratch worktree that is thrown away and returns the text for the plan record, so the preview is known to compile and nothing lands in the repository. The preview shows on the page and in the issue. A lane may open with a ticket that lands the interfaces and their failing tests, so the bottom pull request of the stack is the contract. Internals stay out, because detail fixed this early is wrong often enough to cost more than it saves.
+Optional, per ticket, by a dedicated agent written for Opus 5.5 and not yet named. It writes the public surface only: signatures, types, error cases and the names of the tests. It type-checks them in a scratch worktree that is thrown away and returns the text for the plan record, so the preview is known to compile and nothing lands in the repository. The preview shows on the page and in the issue. A worktree may open with a ticket that lands the interfaces and their failing tests, so the bottom pull request of the stack is the contract. Internals stay out, because detail fixed this early is wrong often enough to cost more than it saves.
 
 ### The epic on GitHub
 
@@ -818,9 +838,9 @@ Optional, per ticket, by a dedicated agent written for Opus 5.5 and not yet name
 - GitHub reports the rollup itself, as `sub_issues_summary.percent_completed`.
 - Closing is explicit. Closing keywords are read only when a pull request targets the default branch, and the stacked pull request pages say nothing about them, so a close step checks that each ticket's pull request has merged, runs `gh issue close` for the ticket and then the epic, and reports what it could not close. The step is part of the plan skill in version 1, and the retrospective takes it over.
 
-### Lanes and stacks
+### Worktrees and stacks
 
-A lane is one worktree and one stack. Tickets that depend on each other share a lane and become one pull request each, bottom up. Lanes that own disjoint files run in parallel. The plan records only `lane` and position. In version 1 the owner creates the worktrees and runs `gh stack`; later that belongs to the implementation plugin. A ticket that cannot keep its files apart from another lane joins that lane.
+A worktree is one git worktree and one stack (called a lane until 2026-11-26). Tickets that depend on each other share a worktree and become one pull request each, bottom up. Worktrees that own disjoint files run in parallel. The plan records only `worktree` and position. In version 1 the owner creates the worktrees and runs `gh stack`; later that belongs to the implementation plugin. A ticket that cannot keep its files apart from another worktree joins that worktree.
 
 ### Ticket start: briefs and routing
 
@@ -891,6 +911,7 @@ Build order for version 1:
 | 1. Rename the export plan to a selection | built 2026-11-25 |
 | 2. The plan record, the `plan` command and its checks: traceability, cycles and lane collisions | built 2026-11-25 |
 | 3. The plan page | built 2026-11-25 |
+| 3a. Core, casefile and plans packages; worktrees; criteria; cases by alias; `bin/redthread-plan`; the page's grounds, changes and terms; the rail and columns layout; links between plans and boards | built 2026-11-26 |
 | 4. The interface agent | not started |
 | 5. The plan skill: draft, the interface offer, the risk dialog, the optional review and the gate | not started |
 | 6. Publishing: the ticket body, issues, sub-issues and dependencies | not started |

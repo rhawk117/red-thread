@@ -40,4 +40,14 @@ An acceptance criterion is `{"criterion": "...", "required_by": ["C1.e4"]}`: an 
 
 ## The page
 
-`plan.html` opens with the revision, the date, the commit, the ticket count and what changed since the revision before, then the approach, the cases the plan rests on, the invariants and the non-goals. Each worktree is a panel of its tickets, bottom of the stack first: a ticket shows its status mark (`new`, `changed` or `unchanged` against the revision before), its title, its why, its place in the worktree, what it depends on, the paths it owns, each criterion with the entries that require it, and its interface as a code listing. The risks follow, each with its handling and its signal. A mermaid chart draws each worktree as a stack with an arrow from each dependency to its dependent, and a folded list names the tickets the revision before had and this one drops.
+`plan.html` is laid out like every red-thread page: at 1280px and up, a rail on the left holds the title, the facts, the filters, the list of sections and a fold that explains each word the page uses, and the worktrees sit side by side as columns; on a phone the rail sits on top and the columns stack.
+
+The facts are the revision, the date, the commit, the ticket count, what changed since the revision before and the epic, which reads "not published yet" until a publish step records it. From the second revision on, a "What changed" section comes first: the tickets added, changed and dropped, then each plan field that changed, as it was and as it is. The approach follows, then the cases the plan rests on, each alias linked to its board with the case's question, then the invariants and the non-goals.
+
+Each worktree is a column of its tickets, bottom of the stack first. A ticket shows its status mark (`new`, `changed` or `unchanged` against the revision before), its title, its why, its place in the worktree, what it depends on, the paths it owns and its issue link, or "not published yet". Under "Done when", each criterion lists every entry that requires it: the entry's kind, its ref linked to that entry on its case's board (`../../<case-id>/board.html#e4`) and its text, so the reason for the criterion is on the page. A ref whose entry is gone says so. A changed ticket has a fold with each changed field as it was and as it is, and an interface shows as a code listing.
+
+The risks follow, each with its handling and its signal. A mermaid chart draws each worktree as a stack with an arrow from each dependency to its dependent, and a folded list names the tickets the revision before had and this one drops.
+
+## Links back from the boards
+
+The plan never writes into a case directory. A case's `board.html` lists the plans that cite it under "Plans", linking `../plans/<plan-id>/plan.html`: the casefile package reads each `plan.json` in `.red-thread/plans/` when it draws the board, and skips one it cannot read. Run `render --html` on a case after a new plan cites it to add the link.
