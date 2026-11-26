@@ -86,6 +86,7 @@ def find_duplicates(values: Iterable[str]) -> tuple[str, ...]:
 class Grounds:
     live: Mapping[str, Entry]
     known: frozenset[str]
+    aliases: frozenset[str]
 
     def get_ref_problem(self, sentence: Sentence, ref: str) -> RestingProblem | None:
         if ref not in self.known:
@@ -113,8 +114,11 @@ class Grounds:
         return next(filter(None, found), None)
 
 
-def create_grounds(ledger: Ledger) -> Grounds:
-    return Grounds(live={entry.ref: entry for entry in ledger.live}, known=ledger.refs)
+def create_grounds(ledgers: Mapping[str, Ledger]) -> Grounds:
+    cited = ledgers.items()
+    live = {f'{alias}.{entry.ref}': entry for alias, ledger in cited for entry in ledger.live}
+    known = frozenset(f'{alias}.{ref}' for alias, ledger in cited for ref in ledger.refs)
+    return Grounds(live=live, known=known, aliases=frozenset(ledgers))
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)

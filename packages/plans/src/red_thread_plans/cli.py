@@ -1,4 +1,4 @@
-"""The command line that skills and agents call to store a plan: revise."""
+"""The command line that skills and agents call for a plan: init, revise and render."""
 
 import sys
 from dataclasses import dataclass
@@ -8,8 +8,10 @@ from typing import TYPE_CHECKING, Annotated
 
 from cyclopts import App, CycloptsError, Parameter
 from red_thread_casefile.cli import read_input
+from red_thread_casefile.domain import STATE_DIRECTORY, build_case_id
 from red_thread_casefile.errors import CaseFileError
 
+from red_thread_plans.domain import PLAN_HOME, Opening
 from red_thread_plans.errors import PlanShapeError
 from red_thread_plans.factory import Plans
 from red_thread_plans.schemas import decode_draft
@@ -23,7 +25,12 @@ EXIT_FAILED = 1
 EXIT_USAGE = 2
 
 type StrayTokens = Annotated[str, Parameter(show=False)]
-type CaseOption = Annotated[Path, Parameter(help='the case directory that init printed')]
+type PlanOption = Annotated[Path, Parameter(help='the plan directory that init printed')]
+type TitleOption = Annotated[str, Parameter(help='what the plan delivers, as one line')]
+type RootOption = Annotated[str, Parameter(help='the repository root, by default this directory')]
+type SlugOption = Annotated[
+    str | None, Parameter(help='words for the plan id, by default taken from the title')
+]
 type PlanFileOption = Annotated[
     str | None, Parameter(help='read the plan from this file instead of standard input')
 ]
@@ -31,9 +38,38 @@ type PlanFileOption = Annotated[
 
 @Parameter(name='*')
 @dataclass(slots=True, kw_only=True, frozen=True)
+class InitArguments:
+    title: TitleOption
+    root: RootOption = '.'
+    slug: SlugOption = None
+
+
+@Parameter(name='*')
+@dataclass(slots=True, kw_only=True, frozen=True)
 class ReviseArguments:
-    case: CaseOption
+    plan: PlanOption
     file: PlanFileOption = None
+
+
+@Parameter(name='*')
+@dataclass(slots=True, kw_only=True, frozen=True)
+class RenderArguments:
+    plan: PlanOption
+
+
+@dataclass(slots=True, kw_only=True, frozen=True)
+class InitCommand:
+    plans: Plans
+    name: str = 'init'
+    summary: str = 'start a plan beside the cases it will rest on'
+
+    def run(self, arguments: InitArguments) -> int:
+        plan_id = build_case_id(self.plans.clock.now(), arguments.slug or arguments.title)
+        directory = Path(arguments.root).joinpath(STATE_DIRECTORY, PLAN_HOME, plan_id)
+        opening = Opening(id=plan_id, title=arguments.title)
+        self.plans.open_planner(directory).open(opening)
+        print(f'created {directory.resolve()}')
+        return EXIT_OK
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -47,11 +83,22 @@ class ReviseCommand:
         if isinstance(draft, PlanShapeError):
             raise draft
 
-        stored = self.plans.open_planner(arguments.case).propose(draft)
+        stored = self.plans.open_planner(arguments.plan).propose(draft)
         print(f'stored revision {stored.plan.revision} at {stored.path}')
         print(f'wrote {stored.page}')
         if stored.redactions:
             print(f'redacted {stored.redactions} secrets before storing')
+        return EXIT_OK
+
+
+@dataclass(slots=True, kw_only=True, frozen=True)
+class RenderCommand:
+    plans: Plans
+    name: str = 'render'
+    summary: str = 'draw the plan page again from the latest revision'
+
+    def run(self, arguments: RenderArguments) -> int:
+        print(f'wrote {self.plans.open_planner(arguments.plan).redraw()}')
         return EXIT_OK
 
 
@@ -67,7 +114,11 @@ class CommandMenu:
 
 def create_app(plans: Plans | None = None) -> App:
     plans = plans or Plans()
-    commands = (ReviseCommand(plans=plans),)
+    commands = (
+        InitCommand(plans=plans),
+        ReviseCommand(plans=plans),
+        RenderCommand(plans=plans),
+    )
     app = App(
         name=PROGRAM,
         help='The red-thread plan.',

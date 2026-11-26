@@ -100,8 +100,8 @@ class UnknownRestingRefError(CaseFileError):
         self.sentence = sentence
         self.ref = ref
         super().__init__(
-            f'{sentence.label} is required by {ref}, which is not in this case. '
-            'Use a ref that render shows, such as e3 or T1.e3.'
+            f'{sentence.label} is required by {ref}, which is no entry of the cases the plan '
+            'names. Write the case alias, then a ref that render shows, such as C1.e3 or C1.T1.e3.'
         )
 
 
@@ -222,3 +222,39 @@ class RevisionExistsError(CaseFileError):
             f'{path} already exists, and a stored revision is never replaced. '
             'Send the plan again to store it as the next revision.'
         )
+
+
+class NoCasesError(CaseFileError):
+    def __init__(self) -> None:
+        super().__init__(
+            'the plan names no case. List in cases the investigations it rests on, such as '
+            '{"C1": "20261121-retry-queue-slowdown"}.'
+        )
+
+
+class UnknownCaseError(CaseFileError):
+    def __init__(self, *, alias: str, case_id: str) -> None:
+        self.alias = alias
+        self.case_id = case_id
+        super().__init__(
+            f'case {alias} is {case_id}, which is no case in .red-thread/. '
+            'Use the id that init printed for the case.'
+        )
+
+
+class PlanExistsError(CaseFileError):
+    def __init__(self, *, plan_id: str) -> None:
+        self.plan_id = plan_id
+        super().__init__(f'plan {plan_id} already exists. Revise it, or start one with a new slug.')
+
+
+class MissingPlanError(CaseFileError):
+    def __init__(self, *, path: Path) -> None:
+        self.path = path
+        super().__init__(f'{path} is not a plan. Pass the directory that init printed.')
+
+
+class NoRevisionError(CaseFileError):
+    def __init__(self, *, plan_id: str) -> None:
+        self.plan_id = plan_id
+        super().__init__(f'plan {plan_id} has no revision yet. Store one with revise first.')

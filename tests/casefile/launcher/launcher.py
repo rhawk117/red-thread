@@ -101,7 +101,12 @@ class Launcher:
     def on_case(self, command: str, case: Path, *extra: str) -> Finished:
         return self.run(command, '--case', str(case), *extra)
 
-    def revise(self, case: Path, plan: str) -> Finished:
+    def run_plan(self, *arguments: str, stdin: str = '') -> Finished:
         runner = ChildRunner(cwd=self.git.root, env=self.environment)
-        script = str(self.plugin.plan_script)
-        return runner.run('bash', script, 'revise', '--case', str(case), stdin=plan)
+        return runner.run('bash', str(self.plugin.plan_script), *arguments, stdin=stdin)
+
+    def init_plan(self) -> Path:
+        finished = self.run_plan('init', '--title', TARGET)
+        assert finished.code == 0, finished.err
+        created = finished.out.splitlines()[0].removeprefix('created ')
+        return self.git.root.joinpath(created).resolve()

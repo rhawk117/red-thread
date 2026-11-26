@@ -4,13 +4,16 @@ from dataclasses import dataclass
 from itertools import chain, combinations, product
 from typing import TYPE_CHECKING
 
-from red_thread_plans.domain import Claim
+from red_thread_plans.domain import CASE_ALIAS, Claim
 from red_thread_plans.errors import (
     BlankPlanTextError,
     CrossWorktreeDependencyError,
     DependencyCycleError,
     DuplicatePlanIdError,
+    InvalidPlanIdError,
+    NoCasesError,
     NoTicketsError,
+    UnknownCaseError,
     UnknownDependencyError,
     WorktreeCollisionError,
 )
@@ -28,6 +31,8 @@ if TYPE_CHECKING:
 
     from red_thread_plans.domain import PlanDraft, TicketDraft
     from red_thread_plans.policy.items import Grounds, Problems
+
+ALIAS_HINT = 'C1, C2 and so on'
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -114,6 +119,21 @@ class PlanPolicy:
         non_goals = get_blank_problems('non-goal', self.draft.non_goals)
         return (*filter(None, (intent, approach)), *invariants, *non_goals)
 
+    def get_case_problem(self, alias: str, case_id: str) -> CaseFileError | None:
+        if not CASE_ALIAS.fullmatch(alias):
+            return InvalidPlanIdError(field='case alias', value=alias, expected=ALIAS_HINT)
+
+        if alias not in self.grounds.aliases:
+            return UnknownCaseError(alias=alias, case_id=case_id)
+
+        return None
+
+    def get_case_issues(self) -> Problems:
+        if not self.draft.cases:
+            return (NoCasesError(),)
+        found = (self.get_case_problem(*item) for item in self.draft.cases.items())
+        return tuple(filter(None, found))
+
     def get_id_issues(self) -> Problems:
         empty = () if self.draft.tickets else (NoTicketsError(),)
         ticket_ids = find_duplicates(ticket.id for ticket in self.draft.tickets)
@@ -135,6 +155,7 @@ class PlanPolicy:
     def get_plan_issues(self) -> Problems:
         return (
             *self.get_text_issues(),
+            *self.get_case_issues(),
             *self.get_id_issues(),
             *self.get_item_issues(),
             *self.graph.get_graph_issues(),

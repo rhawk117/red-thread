@@ -167,6 +167,7 @@ class TestLayout:
 
         assert list_titles(document) == [
             'Approach',
+            'Cases',
             'Invariants',
             'Non-goals',
             'Worktree core',

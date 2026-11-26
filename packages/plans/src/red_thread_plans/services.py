@@ -1,27 +1,28 @@
-"""The planner: checks a drafted plan whole against the case, then stores the next revision."""
+"""The planner: opens a plan, checks a draft whole against its cases, stores the next revision."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 import msgspec
+from red_thread_casefile.services.casefile import EXCLUDED
+from red_thread_core.redaction import create_secret_patterns
 
-from red_thread_plans.domain import Plan, PlanDraft, Ticket
-from red_thread_plans.errors import PlanRejectedError
+from red_thread_plans.domain import Plan, PlanDraft, PlanIndex, Ticket, cite_cases
+from red_thread_plans.errors import NoRevisionError, PlanExistsError, PlanRejectedError
 from red_thread_plans.filters import render_plan_page
 from red_thread_plans.page import PlanChanges, PlanPage
 from red_thread_plans.policy import PlanPolicy, create_grounds
 from red_thread_plans.util import order_stack
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Iterable, Mapping
     from pathlib import Path
 
-    from red_thread_casefile.services.casefile import CaseFile
     from red_thread_core.redaction import SecretPatterns
-    from red_thread_core.store import PageStore
+    from red_thread_core.store import Clock, PageStore, SourceTree
 
-    from red_thread_plans.domain import TicketDraft
-    from red_thread_plans.store import PlanRepository
+    from red_thread_plans.domain import CaseRecord, Opening, TicketDraft
+    from red_thread_plans.store import CaseShelf, PlanRepository
 
 PLAN_PAGE = 'plan.html'
 
@@ -101,6 +102,7 @@ class RevisionStamp:
             non_goals=draft.non_goals,
             tickets=self.place(draft.tickets),
             risks=draft.risks,
+            cases=draft.cases,
         )
 
 
@@ -119,32 +121,55 @@ def find_previous(plans: tuple[Plan, ...], plan: Plan) -> Plan | None:
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class Planner:
-    record: CaseFile
+    shelf: CaseShelf
     plans: PlanRepository
     pages: PageStore
+    tree: SourceTree
+    clock: Clock
+    patterns: SecretPatterns = field(default_factory=create_secret_patterns)
 
     @property
     def next_revision(self) -> int:
         stored = self.plans.read_plans()
         return stored[-1].revision + 1 if stored else 1
 
+    def open(self, opening: Opening) -> PlanIndex:
+        if self.plans.exists():
+            raise PlanExistsError(plan_id=opening.id)
+
+        index = PlanIndex(id=opening.id, title=opening.title, at=self.clock.now())
+        self.tree.exclude(EXCLUDED)
+        self.plans.write_index(index)
+        return index
+
+    def gather(self, cases: Mapping[str, str]) -> dict[str, CaseRecord]:
+        found = ((alias, self.shelf.find(case_id)) for alias, case_id in cases.items())
+        return {alias: record for alias, record in found if record is not None}
+
     def propose(self, draft: PlanDraft) -> Stored:
-        ledger = self.record.repository.read_ledger()
-        policy = PlanPolicy(draft=draft, grounds=create_grounds(ledger))
+        index = self.plans.read_index()
+        ledgers = {alias: record.ledger for alias, record in self.gather(draft.cases).items()}
+        policy = PlanPolicy(draft=draft, grounds=create_grounds(ledgers))
         if problems := policy.get_plan_issues():
             raise PlanRejectedError(problems=problems)
 
-        clean, hits = PlanScrubber(patterns=self.record.patterns).scrub_draft(draft)
+        clean, hits = PlanScrubber(patterns=self.patterns).scrub_draft(draft)
         stamp = RevisionStamp(
-            revision=self.next_revision,
-            at=self.record.clock.now(),
-            head=self.record.tree.get_head(),
+            revision=self.next_revision, at=self.clock.now(), head=self.tree.get_head()
         )
         plan = stamp.apply(clean)
         path = self.plans.add(plan)
+        self.plans.write_index(cite_cases(index, plan.cases.values()))
         return Stored(plan=plan, path=path, page=self.draw(plan), redactions=hits)
 
     def draw(self, plan: Plan) -> Path:
         changes = PlanChanges(plan=plan, previous=find_previous(self.plans.read_plans(), plan))
-        page = PlanPage(case=self.record.repository.read_case(), changes=changes)
+        cases = {alias: record.case for alias, record in self.gather(plan.cases).items()}
+        page = PlanPage(index=self.plans.read_index(), cases=cases, changes=changes)
         return self.pages.write(PLAN_PAGE, render_plan_page(page.compose()))
+
+    def redraw(self) -> Path:
+        stored = self.plans.read_plans()
+        if not stored:
+            raise NoRevisionError(plan_id=self.plans.read_index().id)
+        return self.draw(stored[-1])

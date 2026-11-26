@@ -8,15 +8,21 @@ from typing import TYPE_CHECKING, Literal
 import msgspec
 
 if TYPE_CHECKING:
-    from red_thread_casefile.domain import EntryKind
+    from collections.abc import Iterable
+
+    from red_thread_casefile.domain import Case, EntryKind, Ledger
 
 type PlanSchema = Literal['red-thread/plan@1']
+type IndexSchema = Literal['red-thread/plan-index@1']
 type Handling = Accept | Mitigate | YouIntervene
 
 PLAN_SCHEMA: PlanSchema = 'red-thread/plan@1'
+INDEX_SCHEMA: IndexSchema = 'red-thread/plan-index@1'
+PLAN_HOME = 'plans'
 RESTING_KINDS: tuple[EntryKind, ...] = ('decision', 'known')
 SLUG = re.compile(r'[a-z][a-z0-9]*(?:-[a-z0-9]+)*')
 RISK_ID = re.compile(r'R[1-9]\d*')
+CASE_ALIAS = re.compile(r'C[1-9]\d*')
 
 
 class Interface(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields=True, gc=False):
@@ -88,6 +94,7 @@ class TicketDraft(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fiel
 class PlanDraft(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields=True, gc=False):
     intent: str
     approach: str
+    cases: dict[str, str] = msgspec.field(default_factory=dict)
     invariants: tuple[str, ...] = ()
     non_goals: tuple[str, ...] = ()
     tickets: tuple[TicketDraft, ...] = ()
@@ -113,6 +120,7 @@ class Plan(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields=True
     intent: str
     approach: str
     schema: PlanSchema = PLAN_SCHEMA
+    cases: dict[str, str] = msgspec.field(default_factory=dict)
     invariants: tuple[str, ...] = ()
     non_goals: tuple[str, ...] = ()
     tickets: tuple[Ticket, ...] = ()
@@ -128,6 +136,40 @@ class Plan(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields=True
 
     def find_ticket(self, ticket_id: str) -> Ticket | None:
         return next((ticket for ticket in self.tickets if ticket.id == ticket_id), None)
+
+
+class IssueLink(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields=True, gc=False):
+    ticket: str
+    url: str
+
+
+class PlanIndex(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields=True, gc=False):
+    id: str
+    title: str
+    at: str
+    schema: IndexSchema = INDEX_SCHEMA
+    cases: tuple[str, ...] = ()
+    epic: str | None = None
+    issues: tuple[IssueLink, ...] = ()
+
+    def find_issue(self, ticket_id: str) -> str | None:
+        return next((link.url for link in self.issues if link.ticket == ticket_id), None)
+
+
+def cite_cases(index: PlanIndex, case_ids: Iterable[str]) -> PlanIndex:
+    return msgspec.structs.replace(index, cases=tuple(dict.fromkeys((*index.cases, *case_ids))))
+
+
+@dataclass(slots=True, kw_only=True, frozen=True)
+class Opening:
+    id: str
+    title: str
+
+
+@dataclass(slots=True, kw_only=True, frozen=True)
+class CaseRecord:
+    case: Case
+    ledger: Ledger
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)

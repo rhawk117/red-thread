@@ -4,12 +4,12 @@ from typing import TYPE_CHECKING
 
 from msgspec.structs import replace
 from red_thread_casefile.domain import Ledger
-from red_thread_plans.domain import Acceptance, PlanDraft, TicketDraft
+from red_thread_plans.domain import Acceptance, PlanDraft, PlanIndex, TicketDraft
 from red_thread_plans.page import PlanChanges, PlanPage
 from red_thread_plans.policy import create_grounds
 from red_thread_plans.services import RevisionStamp
 
-from tests.casefile.ledger.builders import URL_CITE, create_case, create_entry
+from tests.casefile.ledger.builders import CASE_ID, URL_CITE, create_case, create_entry
 from tests.casefile.ledger.memory import HEAD, MOMENT
 
 if TYPE_CHECKING:
@@ -18,10 +18,13 @@ if TYPE_CHECKING:
     from red_thread_plans.policy import Grounds
 
 WORKTREES = ('core', 'docs', 'web')
-RESTING_REFS = ('e1', 'e2')
-OPEN_REF = 'e3'
-RETIRED_REF = 'e4'
-UNKNOWN_REF = 'e99'
+ALIAS = 'C1'
+RESTING_REFS = ('C1.e1', 'C1.e2')
+OPEN_REF = 'C1.e3'
+RETIRED_REF = 'C1.e4'
+UNKNOWN_REF = 'C1.e99'
+PLAN_ID = '20261121-give-a-case-a-plan'
+PLAN_INDEX = PlanIndex(id=PLAN_ID, title='give a case a plan', at=MOMENT)
 LOOP = ('loop-a', 'loop-b')
 INTRUDER = 'intruder'
 ROGUE_WORKTREE = 'rogue'
@@ -42,7 +45,7 @@ def create_resting_ledger() -> Ledger:
 
 
 def create_resting_grounds() -> Grounds:
-    return create_grounds(create_resting_ledger())
+    return create_grounds({ALIAS: create_resting_ledger()})
 
 
 def create_ticket_draft(ticket_id: str, worktree: str, owns: tuple[str, ...]) -> TicketDraft:
@@ -56,7 +59,7 @@ def create_ticket_draft(ticket_id: str, worktree: str, owns: tuple[str, ...]) ->
     )
 
 
-def create_valid_draft() -> PlanDraft:
+def create_valid_draft(case_id: str = CASE_ID) -> PlanDraft:
     record = create_ticket_draft('plan-record', 'core', ('core/plans/',))
     page = replace(
         create_ticket_draft('plan-page', 'core', ('core/pages/*.py',)),
@@ -66,6 +69,7 @@ def create_valid_draft() -> PlanDraft:
     return PlanDraft(
         intent='give a case a plan',
         approach='store it beside the ledger',
+        cases={ALIAS: case_id},
         invariants=('one writer',),
         non_goals=('publishing',),
         tickets=(record, page, docs),
@@ -107,4 +111,4 @@ def stamp_plan(draft: PlanDraft, revision: int = 1) -> Plan:
 
 def create_plan_document(plan: Plan, previous: Plan | None = None) -> Document:
     changes = PlanChanges(plan=plan, previous=previous)
-    return PlanPage(case=create_case(), changes=changes).compose()
+    return PlanPage(index=PLAN_INDEX, cases={ALIAS: create_case()}, changes=changes).compose()

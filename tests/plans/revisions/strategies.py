@@ -16,7 +16,8 @@ from red_thread_plans.domain import (
 )
 
 from tests.casefile.entries.strategies import words
-from tests.plans.revisions.builders import RESTING_REFS, WORKTREES
+from tests.casefile.ledger.builders import CASE_ID
+from tests.plans.revisions.builders import ALIAS, RESTING_REFS, WORKTREES
 
 type GlobMode = Literal['keep', 'star', 'any', 'tail', 'deep', 'skip', 'dir']
 type HandlingKind = Literal['accept', 'mitigate', 'criterion', 'recut']
@@ -154,6 +155,7 @@ def assemble_plan(
     return PlanDraft(
         intent=texts[0],
         approach=texts[-1],
+        cases={ALIAS: CASE_ID},
         invariants=tuple(texts[1:]),
         non_goals=tuple(texts[:1]),
         tickets=tickets,

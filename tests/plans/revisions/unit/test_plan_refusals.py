@@ -142,7 +142,7 @@ def grounding_refusal_cases() -> pytest.MarkDecorator:
             name='retired-ref', draft=rest_docs_on(RETIRED_REF), errors=(RetiredRestingRefError,)
         ),
         Refusal(
-            name='open-ref', draft=rest_docs_on('e1', OPEN_REF), errors=(UnfitRestingRefError,)
+            name='open-ref', draft=rest_docs_on('C1.e1', OPEN_REF), errors=(UnfitRestingRefError,)
         ),
         Refusal(
             name='blank-sentence',

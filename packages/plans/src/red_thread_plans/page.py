@@ -24,16 +24,19 @@ from red_thread_plans.domain import Mitigate, YouIntervene
 from red_thread_plans.nodes import TICKET_STATUSES, Promise, TicketList, TicketNode
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from red_thread_casefile.domain import Case
     from red_thread_core.documents import Line
 
-    from red_thread_plans.domain import Acceptance, Handling, Plan, Risk, Ticket
+    from red_thread_plans.domain import Acceptance, Handling, Plan, PlanIndex, Risk, Ticket
     from red_thread_plans.nodes import TicketStatus
 
 STACK_NOTE = 'Bottom of the stack first: each ticket is one pull request on the one before it.'
 MAP_NOTE = (
     'Each worktree as a stack, with an arrow from a ticket to each ticket that depends on it.'
 )
+CASES_NOTE = 'The investigations this plan rests on. A ref such as C1.e4 is entry e4 of case C1.'
 DROPPED_NOTE = 'Tickets the revision before had and this one leaves out.'
 
 
@@ -130,7 +133,8 @@ class WorktreeMap:
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class PlanPage:
-    case: Case
+    index: PlanIndex
+    cases: Mapping[str, Case]
     changes: PlanChanges
 
     @property
@@ -189,14 +193,25 @@ class PlanPage:
             Fact(label='Changes', value=to_line(self.changes.describe()), wide=True),
         )
 
+    def describe_case(self, alias: str) -> Line:
+        case_id = self.plan.cases[alias]
+        case = self.cases.get(alias)
+        target = '(not found in .red-thread/)' if case is None else case.target
+        return to_line(f'{alias}: {case_id}, {target}')
+
+    def compose_cases(self) -> Section:
+        points = PointList(points=tuple(map(self.describe_case, self.plan.cases)))
+        return Section(title='Cases', blocks=(points,), note=CASES_NOTE)
+
     def compose(self) -> Document:
         plan = self.plan
         return Document(
             title=squeeze(plan.intent),
-            summary=(to_line(f'Plan for case {self.case.id}: {self.case.target}'),),
+            summary=(to_line(f'Plan {self.index.id}: {self.index.title}'),),
             facts=self.list_facts(),
             sections=(
                 Section(title='Approach', blocks=(Paragraph(line=to_line(plan.approach)),)),
+                self.compose_cases(),
                 *compose_points('Invariants', plan.invariants),
                 *compose_points('Non-goals', plan.non_goals),
                 *map(self.compose_worktree, plan.worktrees),
