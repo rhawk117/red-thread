@@ -3,21 +3,24 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
 
+from red_thread_casefile.documents import (
+    Document,
+    EntryBuilder,
+    Note,
+    Paragraph,
+    PointList,
+    Section,
+    list_caveat_notes,
+    list_entries_block,
+    parse_line,
+)
 from red_thread_casefile.domain import PROGRAM, STATE_DIRECTORY, shorten_head
 from red_thread_casefile.errors import LensOverBudgetError, UnknownPlanRefError
 from red_thread_casefile.util import squeeze
-from red_thread_casefile.views import (
-    Annotator,
-    CheckReport,
-    Document,
-    Item,
-    Section,
-    describe_kind,
-    get_shown_verdict,
-    list_caveats,
-)
+from red_thread_casefile.views import Annotator, CheckReport, describe_kind
 
 if TYPE_CHECKING:
+    from red_thread_casefile.documents import EntryNode
     from red_thread_casefile.domain import Case, Entry, EntryKind, Ledger
     from red_thread_casefile.policy import Finding
 
@@ -26,10 +29,10 @@ type FixedPart = Literal['goal', 'pointers', 'reading']
 
 LENS_NAMES: tuple[LensName, ...] = ('brief', 'issue', 'handoff', 'report')
 READING = (
-    Item(text='Citations are pointers. Open the cited line before relying on a summary of it.'),
-    Item(text='An entry flagged as a lead was recorded at another commit. Verify it again first.'),
-    Item(text='An open entry is not established. Its rests on note names what it depends on.'),
-    Item(text='Square brackets hold the entry ref in the ledger, which has the full record.'),
+    'Citations are pointers. Open the cited line before relying on a summary of it.',
+    'An entry flagged as a lead was recorded at another commit. Verify it again first.',
+    'An open entry is not established. Its rests on note names what it depends on.',
+    'Square brackets hold the entry ref in the ledger, which has the full record.',
 )
 
 
@@ -188,31 +191,18 @@ class Composer:
         admitted = filter(self.plan.admits, self.edition.ledger.select(kind))
         return tuple(sorted(admitted, key=self.plan.rank))
 
-    def list_notes(self, entry: Entry) -> list[str]:
-        notes = list_caveats(entry)
+    def list_notes(self, entry: Entry) -> tuple[Note, ...]:
+        notes = list_caveat_notes(entry)
         if self.plan.blocking is None or entry.kind != 'open':
             return notes
         urgency = 'blocking' if self.plan.is_blocking(entry) else 'not blocking'
-        return [urgency, *notes]
+        return (Note(kind='urgency', value=urgency), *notes)
 
-    def create_item(self, entry: Entry) -> Item:
-        return Item(
-            text=squeeze(entry.text),
-            ref=entry.ref,
-            cite=entry.cite,
-            notes=tuple(self.list_notes(entry)),
-            flags=tuple(self.edition.annotator.list_lead_flags(entry)),
-            kind=entry.kind,
-            thread=entry.thread,
-            diagram=entry.diagram,
-            verdict=get_shown_verdict(entry),
-            round=entry.round,
-            at=entry.at,
-            quote=entry.quote,
-            finding=self.edition.annotator.find(entry),
-        )
+    def create_entry(self, entry: Entry) -> EntryNode:
+        builder = EntryBuilder(annotator=self.edition.annotator)
+        return builder.build(entry, self.list_notes(entry))
 
-    def list_pointers(self) -> tuple[Item, ...]:
+    def list_pointers(self) -> PointList:
         case = self.edition.case
         location = f'{STATE_DIRECTORY}/{case.id}'
         checked = CheckReport(findings=self.edition.findings).summary
@@ -223,28 +213,29 @@ class Composer:
         ]
         if case.page_url is not None:
             pointers.append(f'Board: {case.page_url}')
-        return tuple(Item(text=pointer) for pointer in pointers)
+        return PointList(points=tuple(map(parse_line, pointers)))
 
-    def write_goal(self) -> tuple[str, ...]:
+    def write_goal(self) -> Paragraph:
         case = self.edition.case
         if self.plan.goal is not None:
-            return (squeeze(self.plan.goal),)
-        return (f'{case.target} The bar for an answer: {case.bar}',)
+            return Paragraph(line=parse_line(squeeze(self.plan.goal)))
+        return Paragraph(line=parse_line(f'{case.target} The bar for an answer: {case.bar}'))
 
     def compose_part(self, part: Part) -> Section:
         if part.kind:
-            items = tuple(map(self.create_item, self.select(part.kind)))
-            return Section(
-                title=part.title, items=items, kind=part.kind, note=describe_kind(part.kind)
-            )
+            entries = tuple(map(self.create_entry, self.select(part.kind)))
+            blocks = list_entries_block(entries)
+            note = describe_kind(part.kind)
+            return Section(title=part.title, blocks=blocks, kind=part.kind, note=note)
 
         if part.fixed == 'goal':
-            return Section(title=part.title, prose=self.write_goal())
+            return Section(title=part.title, blocks=(self.write_goal(),))
 
         if part.fixed == 'reading':
-            return Section(title=part.title, items=READING)
+            reading = PointList(points=tuple(map(parse_line, READING)))
+            return Section(title=part.title, blocks=(reading,))
 
-        return Section(title=part.title, items=self.list_pointers())
+        return Section(title=part.title, blocks=(self.list_pointers(),))
 
     def compose(self) -> Document:
         case = self.edition.case
@@ -256,6 +247,6 @@ class Composer:
         )
         return Document(
             title=squeeze(self.plan.title or case.target),
-            summary=(summary,),
-            sections=tuple(section for section in sections if section.items or section.prose),
+            summary=(parse_line(summary),),
+            sections=tuple(section for section in sections if section.blocks),
         )

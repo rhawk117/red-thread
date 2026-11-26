@@ -3,6 +3,7 @@
 from typing import TYPE_CHECKING
 
 from red_thread_casefile.boards import BoardPage
+from red_thread_casefile.documents import Flowchart
 from red_thread_casefile.domain import Ledger
 from red_thread_casefile.lenses import Composer, Edition, Plan, get_lens
 from red_thread_casefile.views import Board
@@ -12,8 +13,8 @@ from tests.casefile.ledger.builders import create_case, create_entry
 from tests.casefile.ledger.memory import HEAD
 
 if TYPE_CHECKING:
+    from red_thread_casefile.documents import Document
     from red_thread_casefile.domain import Entry
-    from red_thread_casefile.views import Document
 
 DIAGRAM = 'flowchart TD\n  A --> B'
 
@@ -23,7 +24,15 @@ def create_board(*entries: Entry) -> Board:
 
 
 def list_item_diagrams(document: Document) -> list[str | None]:
-    return [item.diagram for section in document.sections for item in section.items]
+    return [entry.diagram for entry in document.entries]
+
+
+def list_map_lines(document: Document) -> tuple[str, ...]:
+    blocks = (block for section in document.appendix for block in section.blocks)
+    chart = next((block for block in blocks if isinstance(block, Flowchart)), None)
+    if chart is None:
+        return ()
+    return chart.lines[1:]
 
 
 class TestBoardMap:
@@ -34,7 +43,7 @@ class TestBoardMap:
             create_entry(seq=1, thread='T1', kind='known', text='deep'),
         )
 
-        drawn = read_map(BoardPage(board=board).compose().map_lines)
+        drawn = read_map(list_map_lines(BoardPage(board=board).compose()))
 
         assert [node.label.split(':')[0] for node in drawn.nodes] == [
             'e1 open',
@@ -45,7 +54,7 @@ class TestBoardMap:
         assert len(drawn.retirements) == 1
 
     def test_an_empty_ledger_has_no_map_lines(self) -> None:
-        assert BoardPage(board=create_board()).compose().map_lines == ()
+        assert list_map_lines(BoardPage(board=create_board()).compose()) == ()
 
 
 class TestDiagramOnItems:
@@ -73,7 +82,7 @@ class TestLensDocument:
     def test_a_lens_document_leaves_the_map_empty(self) -> None:
         composer = self.create_composer(create_entry(seq=1, kind='open', text='a question'))
 
-        assert composer.compose().map_lines == ()
+        assert list_map_lines(composer.compose()) == ()
 
     def test_a_lens_document_carries_each_entry_diagram(self) -> None:
         composer = self.create_composer(

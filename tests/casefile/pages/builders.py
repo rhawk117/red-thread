@@ -4,11 +4,23 @@ from dataclasses import replace
 from typing import TYPE_CHECKING, Literal, cast, get_args
 
 import pytest
+from red_thread_casefile.documents import (
+    Citation,
+    EntryList,
+    Fact,
+    Flowchart,
+    Note,
+    Section,
+    parse_line,
+    parse_value,
+)
 from red_thread_casefile.policy import Finding
-from red_thread_casefile.views import Document, Fact, Item, Section
+
+from tests.casefile.writers.builders import create_document, create_entry_node
 
 if TYPE_CHECKING:
     from _pytest.mark import ParameterSet
+    from red_thread_casefile.documents import Document, EntryNode
     from red_thread_casefile.domain import EntryKind, Verdict
     from red_thread_casefile.policy import CiteState
 
@@ -43,6 +55,7 @@ type DocumentField = Literal[
 DOCUMENT_FIELDS: tuple[DocumentField, ...] = get_args(DocumentField.__value__)
 STAMP_DAY = '2026-11-21'
 PLAIN_URL = 'https://example.invalid/docs'
+CITED_PATH = 'src/queue.py:3'
 SCRIPT = '<script>alert(1)</script>'
 DIAGRAM = 'flowchart TD\n  A["one"] --> B["two"]\n  B --> C'
 PAYLOADS = (
@@ -64,60 +77,79 @@ def payload_params() -> list[ParameterSet]:
     ]
 
 
-def create_marked_item(
-    *, ref: str = 'e1', kind: EntryKind | None = 'known', thread: str | None = None
-) -> Item:
-    return Item(text='a claim', ref=ref, kind=kind, thread=thread)
-
-
-def create_document(*items: Item, title: str = 'A case', prose: tuple[str, ...] = ()) -> Document:
-    section = Section(title='Findings', items=items, prose=prose)
-    return Document(title=title, summary=('Case summary line',), sections=(section,))
+def create_marked_entry(
+    *, ref: str = 'e1', kind: EntryKind = 'known', thread: str | None = None
+) -> EntryNode:
+    return replace(create_entry_node(ref=ref), kind=kind, thread=thread)
 
 
 def create_finding(state: str) -> Finding:
-    return Finding(ref='e1', cite='src/queue.py:3', state=cast('CiteState', state))
+    return Finding(ref='e1', cite=CITED_PATH, state=cast('CiteState', state))
+
+
+def create_cited_entry(citation: Citation) -> EntryNode:
+    return replace(create_marked_entry(thread='T1'), citation=citation)
+
+
+def create_appendix(title: str, entry: EntryNode) -> tuple[Section, ...]:
+    return (Section(title=title, blocks=(EntryList(entries=(entry,)),), folded=True),)
 
 
 def create_document_carrying(field: DocumentField, text: str) -> Document:
-    item = Item(
-        text='plain text',
-        ref='e1',
-        cite='src/queue.py:3',
-        notes=('rests on: plain',),
-        flags=('lead, recorded at 1111111',),
-        kind='known',
-        thread='T1',
+    citation = Citation(target=CITED_PATH)
+    entry = replace(
+        create_cited_entry(citation),
+        claim=parse_line('plain text'),
+        notes=(Note(kind='rests_on', value='plain'),),
+        lead='1111111',
     )
-    other = Item(text='other text', ref='e2', kind='open')
-    retired = Item(text='gone', ref='e9', kind='open')
-    base = create_document(item, other)
+    other = replace(create_entry_node('other text', 'e2'), kind='open')
+    retired = replace(create_entry_node('gone', 'e9'), kind='open')
+    base = create_document(entry, other)
     section = base.sections[0]
+    chart = Section(title='Map', blocks=(Flowchart(lines=(text,)),))
     variants = {
         'title': replace(base, title=text),
-        'summary': replace(base, summary=(text,)),
+        'summary': replace(base, summary=(parse_line(text),)),
         'section-title': replace(base, sections=(replace(section, title=text),)),
-        'prose': replace(base, sections=(replace(section, prose=(text,)),)),
-        'item-text': create_document(replace(item, text=text), other),
-        'item-cite': create_document(replace(item, cite=text), other),
-        'item-url-cite': create_document(replace(item, cite=f'{PLAIN_URL}/{text}'), other),
-        'item-ref': create_document(replace(item, ref=text), other),
-        'item-note': create_document(replace(item, notes=(text,)), other),
-        'item-flag': create_document(replace(item, flags=(text,)), other),
-        'item-kind': create_document(replace(item, kind=cast('EntryKind', text)), other),
-        'item-thread': create_document(replace(item, thread=text), other),
-        'item-diagram': create_document(replace(item, diagram=text), other),
-        'map-line': replace(base, map_lines=(text,)),
-        'item-verdict': create_document(replace(item, verdict=cast('Verdict', text)), other),
-        'item-at': create_document(replace(item, at=f'{STAMP_DAY}{text}'), other),
-        'item-quote': create_document(replace(item, quote=text), other),
-        'item-state': create_document(replace(item, finding=create_finding(text)), other),
+        'prose': create_document(entry, other, prose=(text,)),
+        'item-text': create_document(replace(entry, claim=parse_line(text)), other),
+        'item-cite': create_document(replace(entry, citation=Citation(target=text)), other),
+        'item-url-cite': create_document(
+            replace(entry, citation=Citation(target=f'{PLAIN_URL}/{text}')), other
+        ),
+        'item-ref': create_document(replace(entry, ref=text), other),
+        'item-note': create_document(
+            replace(entry, notes=(Note(kind='source', value=text),)), other
+        ),
+        'item-flag': create_document(replace(entry, lead=text), other),
+        'item-kind': create_document(replace(entry, kind=cast('EntryKind', text)), other),
+        'item-thread': create_document(replace(entry, thread=text), other),
+        'item-diagram': create_document(replace(entry, diagram=text), other),
+        'map-line': replace(base, appendix=(chart,)),
+        'item-verdict': create_document(replace(entry, verdict=cast('Verdict', text)), other),
+        'item-at': create_document(replace(entry, at=f'{STAMP_DAY}{text}'), other),
+        'item-quote': create_document(
+            replace(entry, citation=replace(citation, quote=text)), other
+        ),
+        'item-state': create_document(
+            replace(entry, citation=replace(citation, finding=create_finding(text))), other
+        ),
         'section-note': replace(base, sections=(replace(section, note=text),)),
         'section-kind': replace(base, sections=(replace(section, kind=cast('EntryKind', text)),)),
-        'fact-label': replace(base, facts=(Fact(label=text, value='plain'),)),
-        'fact-value': replace(base, facts=(Fact(label='Label', value=text),)),
-        'fact-url-value': replace(base, facts=(Fact(label='Label', value=f'{PLAIN_URL}/{text}'),)),
-        'retired-text': replace(base, retired=(replace(retired, text=text),)),
-        'retired-note': replace(base, retired=(replace(retired, notes=(text,)),)),
+        'fact-label': replace(base, facts=(Fact(label=text, value=parse_value('plain')),)),
+        'fact-value': replace(base, facts=(Fact(label='Label', value=parse_value(text)),)),
+        'fact-url-value': replace(
+            base, facts=(Fact(label='Label', value=parse_value(f'{PLAIN_URL}/{text}')),)
+        ),
+        'retired-text': replace(
+            base, appendix=create_appendix('Retired', replace(retired, claim=parse_line(text)))
+        ),
+        'retired-note': replace(
+            base,
+            appendix=create_appendix(
+                'Retired', replace(retired, notes=(Note(kind='source', value=text),))
+            ),
+        ),
     }
     return variants[field]

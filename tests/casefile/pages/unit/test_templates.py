@@ -7,13 +7,12 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 from red_thread_casefile.assets import read_asset
-from red_thread_casefile.pages import mark_up, render, render_part, render_value
+from red_thread_casefile.writers.markup import render, render_part, render_value
 
 from tests.casefile.pages.asset_names import ASSET_NAMES
+from tests.casefile.writers.reading import render_marked_up
 
 if TYPE_CHECKING:
-    from string.templatelib import Template
-
     from red_thread_casefile.assets import AssetName
 
 RAW_CHARACTERS = '<>"\''
@@ -24,10 +23,6 @@ code_text = st.text(text_characters, min_size=1)
 
 def create_marked_up(plain: str, code: str) -> str:
     return f'{plain}`{code}`'
-
-
-def render_all(templates: tuple[Template, ...]) -> str:
-    return ''.join(map(render, templates))
 
 
 def asset_cases() -> pytest.MarkDecorator:
@@ -105,27 +100,27 @@ class TestRender:
         assert render_part(closing) == '>'
 
 
-class TestMarkUp:
+class TestInlineMarkup:
     plain_runs = st.lists(st.tuples(plain_text, code_text), max_size=4)
 
     def test_a_code_span_becomes_a_code_element(self) -> None:
-        assert render_all(mark_up('see `time.sleep` here')) == 'see <code>time.sleep</code> here'
+        assert render_marked_up('see `time.sleep` here') == 'see <code>time.sleep</code> here'
 
     def test_text_inside_a_code_span_is_escaped(self) -> None:
-        assert render_all(mark_up('`<b>&`')) == '<code>&lt;b&gt;&amp;</code>'
+        assert render_marked_up('`<b>&`') == '<code>&lt;b&gt;&amp;</code>'
 
     def test_text_outside_a_code_span_is_escaped(self) -> None:
-        assert render_all(mark_up('a < b `c`')) == 'a &lt; b <code>c</code>'
+        assert render_marked_up('a < b `c`') == 'a &lt; b <code>c</code>'
 
     def test_a_single_backtick_stays_as_text(self) -> None:
-        assert render_all(mark_up('a `b')) == 'a `b'
+        assert render_marked_up('a `b') == 'a `b'
 
     def test_empty_text_renders_nothing(self) -> None:
-        assert render_all(mark_up('')) == ''
+        assert render_marked_up('') == ''
 
     @given(text=plain_text)
     def test_text_with_no_code_span_renders_as_the_escaped_text(self, text: str) -> None:
-        assert render_all(mark_up(text)) == escape(text)
+        assert render_marked_up(text) == escape(text)
 
     @given(runs=plain_runs, tail=plain_text)
     def test_every_code_span_is_one_code_element_and_the_rest_is_text(
@@ -134,7 +129,7 @@ class TestMarkUp:
         text = ''.join(create_marked_up(plain, code) for plain, code in runs) + tail
         expected = ''.join(f'{escape(plain)}<code>{escape(code)}</code>' for plain, code in runs)
 
-        assert render_all(mark_up(text)) == expected + escape(tail)
+        assert render_marked_up(text) == expected + escape(tail)
 
 
 class TestAssets:

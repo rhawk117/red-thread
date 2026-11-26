@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from itertools import chain
 from typing import TYPE_CHECKING, Self
 
-from red_thread_casefile.domain import Cite, shorten_head
+from red_thread_casefile.domain import shorten_head
 from red_thread_casefile.policy import CITE_STATES, FAILING_STATES, QUIET_STATES, tally_states
 from red_thread_casefile.util import squeeze
 
@@ -73,6 +73,10 @@ def list_caveats(entry: Entry) -> list[str]:
     return [f'{label}: {value}' for label, value in labelled if value is not None]
 
 
+def describe_lead(recorded: str) -> str:
+    return f'{LEAD_FLAG_PREFIX}recorded at {recorded}'
+
+
 def get_shown_verdict(entry: Entry) -> Verdict | None:
     return entry.verdict if entry.kind != 'known' else None
 
@@ -93,50 +97,6 @@ def list_cite_flags(finding: Finding | None) -> list[str]:
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
-class Item:
-    text: str
-    ref: str | None = None
-    cite: str | None = None
-    notes: tuple[str, ...] = ()
-    flags: tuple[str, ...] = ()
-    kind: EntryKind | None = None
-    thread: str | None = None
-    diagram: str | None = None
-    verdict: Verdict | None = None
-    round: int | None = None
-    at: str | None = None
-    quote: str | None = None
-    finding: Finding | None = None
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Section:
-    title: str
-    items: tuple[Item, ...] = ()
-    prose: tuple[str, ...] = ()
-    kind: EntryKind | None = None
-    note: str = ''
-    folded: bool = False
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Fact:
-    label: str
-    value: str
-    wide: bool = False
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Document:
-    title: str
-    summary: tuple[str, ...] = ()
-    sections: tuple[Section, ...] = ()
-    map_lines: tuple[str, ...] = ()
-    facts: tuple[Fact, ...] = ()
-    retired: tuple[Item, ...] = ()
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
 class Annotator:
     head: str | None = None
     findings: tuple[Finding, ...] = ()
@@ -144,11 +104,16 @@ class Annotator:
     def find(self, entry: Entry) -> Finding | None:
         return next((finding for finding in self.findings if finding.ref == entry.ref), None)
 
-    def list_lead_flags(self, entry: Entry) -> list[str]:
+    def get_recorded_head(self, entry: Entry) -> str | None:
         if entry.head == self.head:
+            return None
+        return shorten_head(entry.head, NO_COMMIT)
+
+    def list_lead_flags(self, entry: Entry) -> list[str]:
+        recorded = self.get_recorded_head(entry)
+        if recorded is None:
             return []
-        recorded = shorten_head(entry.head, NO_COMMIT)
-        return [f'{LEAD_FLAG_PREFIX}recorded at {recorded}']
+        return [describe_lead(recorded)]
 
     def list_flags(self, entry: Entry) -> list[str]:
         return [*self.list_lead_flags(entry), *list_cite_flags(self.find(entry))]
@@ -221,32 +186,6 @@ class Board:
     def render(self) -> str:
         sections = map(self.render_section, HEADINGS)
         return '\n'.join((*self.render_header(), *chain.from_iterable(sections)))
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class MarkdownWriter:
-    document: Document
-
-    def write_cite(self, cite: str) -> str:
-        if Cite(raw=cite).is_url:
-            return f' <{cite}>'
-        return f' `{cite}`'
-
-    def write_item(self, item: Item) -> str:
-        remarks = '; '.join((*item.flags, *list_cite_flags(item.finding), *item.notes))
-        noted = f' ({remarks})' if remarks else ''
-        cite = self.write_cite(item.cite) if item.cite is not None else ''
-        ref = f' [{item.ref}]' if item.ref is not None else ''
-        return f'- {item.text}{noted}{cite}{ref}'
-
-    def write_section(self, section: Section) -> list[str]:
-        items = map(self.write_item, section.items)
-        return ['', f'## {section.title}', '', *section.prose, *items]
-
-    def render(self) -> str:
-        sections = chain.from_iterable(map(self.write_section, self.document.sections))
-        lines = (f'# {self.document.title}', '', *self.document.summary, *sections)
-        return '\n'.join(lines) + '\n'
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
