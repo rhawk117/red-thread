@@ -6,8 +6,9 @@ from pathlib import PurePath
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from red_thread_casefile.store import DirectoryCaseRepository
+from red_thread_core.places import PLAN_HOME
 
-from red_thread_plans.domain import PLAN_HOME, CaseRecord
+from red_thread_plans.domain import CaseRecord
 from red_thread_plans.errors import CorruptPlanError, MissingPlanError, RevisionExistsError
 from red_thread_plans.schemas import index_from_text, plan_from_text, to_text
 

@@ -1,64 +1,47 @@
-"""The plan as a page: each worktree's stack of tickets, marked by what changed since the last."""
+"""The plan as a page: why, what changed, each worktree's tickets and the cases behind them."""
 
-from collections import Counter
 from dataclasses import dataclass
-from itertools import chain
 from typing import TYPE_CHECKING
 
 from red_thread_casefile.domain import date_of, shorten_head
-from red_thread_core.charts import clean_label
 from red_thread_core.documents import (
     CodeListing,
     Document,
     Fact,
     Flowchart,
+    Link,
     Paragraph,
     PointList,
     Section,
-    parse_line,
+    Text,
 )
+from red_thread_core.places import link_board
 from red_thread_core.util import squeeze
 
-from red_thread_plans.assets import read_asset
-from red_thread_plans.domain import Mitigate, YouIntervene
-from red_thread_plans.nodes import TICKET_STATUSES, Promise, TicketList, TicketNode
+from red_thread_plans.charts import WorktreeMap
+from red_thread_plans.nodes import ChangeList, Ground, Promise, TicketList, TicketNode
+from red_thread_plans.terms import PLAN_TERMS
+from red_thread_plans.wording import describe_risk, to_line
+from red_thread_plans.writers import NOT_PUBLISHED
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-    from red_thread_casefile.domain import Case
+    from red_thread_casefile.domain import Entry, Ledger
     from red_thread_core.documents import Line
 
-    from red_thread_plans.domain import Acceptance, Handling, Plan, PlanIndex, Risk, Ticket
-    from red_thread_plans.nodes import TicketStatus
+    from red_thread_plans.changes import PlanChanges
+    from red_thread_plans.domain import Acceptance, CaseRecord, Plan, PlanIndex, Ticket
 
 STACK_NOTE = 'Bottom of the stack first: each ticket is one pull request on the one before it.'
 MAP_NOTE = (
     'Each worktree as a stack, with an arrow from a ticket to each ticket that depends on it.'
 )
 CASES_NOTE = 'The investigations this plan rests on. A ref such as C1.e4 is entry e4 of case C1.'
+CHANGES_NOTE = 'What this revision adds, changes or drops against the revision before.'
 DROPPED_NOTE = 'Tickets the revision before had and this one leaves out.'
-
-
-def to_line(text: str) -> Line:
-    return parse_line(squeeze(text))
-
-
-def describe_handling(handling: Handling) -> str:
-    if isinstance(handling, Mitigate):
-        criterion = '' if handling.criterion is None else f' ({handling.criterion})'
-        return f'mitigated by ticket {handling.ticket}{criterion}'
-
-    if isinstance(handling, YouIntervene):
-        return f'you intervene, and {", ".join(handling.recut)} would be cut again'
-
-    return 'accepted'
-
-
-def describe_risk(risk: Risk) -> Line:
-    touched = ', '.join(risk.tickets) or 'no ticket'
-    handled = describe_handling(risk.handling)
-    return to_line(f'{risk.id}, {handled}: {risk.risk} Signal: {risk.signal} Touches {touched}.')
+MISSING_GROUND = 'This entry is no longer in the case.'
+MISSING_CASE = 'not found in .red-thread/'
 
 
 def compose_points(title: str, texts: tuple[str, ...]) -> tuple[Section, ...]:
@@ -67,79 +50,34 @@ def compose_points(title: str, texts: tuple[str, ...]) -> tuple[Section, ...]:
     return (Section(title=title, blocks=(PointList(points=tuple(map(to_line, texts))),)),)
 
 
-def create_promise(acceptance: Acceptance) -> Promise:
-    return Promise(criterion=to_line(acceptance.criterion), required_by=acceptance.required_by)
+def find_entry(ledger: Ledger, ref: str) -> Entry | None:
+    return next((entry for entry in ledger.entries if entry.ref == ref), None)
 
 
-def label_ticket(ticket: Ticket) -> str:
-    return f'{ticket.id}: {clean_label(ticket.title)}'
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class PlanChanges:
-    plan: Plan
-    previous: Plan | None = None
-
-    def mark(self, ticket: Ticket) -> TicketStatus:
-        before = self.previous.find_ticket(ticket.id) if self.previous is not None else None
-        if before is None:
-            return 'new'
-        return 'unchanged' if before == ticket else 'changed'
-
-    @property
-    def dropped(self) -> tuple[Ticket, ...]:
-        if self.previous is None:
-            return ()
-        kept = {ticket.id for ticket in self.plan.tickets}
-        return tuple(ticket for ticket in self.previous.tickets if ticket.id not in kept)
-
-    def describe(self) -> str:
-        if self.previous is None:
-            return 'first revision'
-        counted = Counter(map(self.mark, self.plan.tickets))
-        marks = ', '.join(f'{counted[status]} {status}' for status in TICKET_STATUSES)
-        return f'since revision {self.previous.revision}: {marks}, {len(self.dropped)} dropped'
+def create_link(url: str | None, label: str) -> Line:
+    if url is None:
+        return to_line(NOT_PUBLISHED)
+    return (Link(url=url, label=label),)
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
-class WorktreeMap:
-    changes: PlanChanges
-
-    @property
-    def names(self) -> dict[str, str]:
-        tickets = self.changes.plan.tickets
-        return {ticket.id: f'n{index}' for index, ticket in enumerate(tickets)}
-
-    def write_node(self, ticket: Ticket) -> str:
-        name = self.names[ticket.id]
-        return f'    {name}["{label_ticket(ticket)}"]:::s_{self.changes.mark(ticket)}'
-
-    def write_worktree(self, index: int, worktree: str) -> list[str]:
-        nodes = map(self.write_node, self.changes.plan.stack(worktree))
-        return [f'  subgraph l{index}["{worktree}"]', *nodes, '  end']
-
-    def write_dependencies(self, ticket: Ticket) -> list[str]:
-        names = self.names
-        return [f'  {names[need]} --> {names[ticket.id]}' for need in ticket.depends_on]
-
-    def render(self) -> tuple[str, ...]:
-        plan = self.changes.plan
-        worktrees = chain.from_iterable(
-            map(self.write_worktree, range(len(plan.worktrees)), plan.worktrees, strict=True)
-        )
-        edges = chain.from_iterable(map(self.write_dependencies, plan.tickets))
-        return (read_asset('worktrees.mmd').rstrip(), *worktrees, *edges)
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class PlanPage:
+class TicketComposer:
     index: PlanIndex
-    cases: Mapping[str, Case]
+    records: Mapping[str, CaseRecord]
     changes: PlanChanges
 
-    @property
-    def plan(self) -> Plan:
-        return self.changes.plan
+    def find_ground(self, ref: str) -> Ground:
+        alias, _, local = ref.partition('.')
+        record = self.records.get(alias)
+        entry = None if record is None else find_entry(record.ledger, local)
+        if record is None or entry is None:
+            return Ground(ref=ref, kind=None, claim=to_line(MISSING_GROUND))
+        url = link_board(record.case.id, local)
+        return Ground(ref=ref, kind=entry.kind, claim=to_line(entry.text), url=url)
+
+    def create_promise(self, acceptance: Acceptance) -> Promise:
+        grounds = tuple(map(self.find_ground, acceptance.required_by))
+        return Promise(criterion=to_line(acceptance.criterion), grounds=grounds)
 
     def create_ticket(self, ticket: Ticket) -> TicketNode:
         interface = ticket.interface
@@ -155,20 +93,47 @@ class PlanPage:
             worktree=ticket.worktree,
             position=ticket.position,
             status=self.changes.mark(ticket),
-            acceptance=tuple(map(create_promise, ticket.acceptance)),
+            acceptance=tuple(map(self.create_promise, ticket.acceptance)),
             owns=ticket.owns,
             depends_on=ticket.depends_on,
             interface=listing,
+            changes=self.changes.compare_ticket(ticket),
+            issue=self.index.find_issue(ticket.id),
         )
 
+
+@dataclass(slots=True, kw_only=True, frozen=True)
+class PlanPage:
+    index: PlanIndex
+    records: Mapping[str, CaseRecord]
+    changes: PlanChanges
+
+    @property
+    def plan(self) -> Plan:
+        return self.changes.plan
+
+    @property
+    def composer(self) -> TicketComposer:
+        return TicketComposer(index=self.index, records=self.records, changes=self.changes)
+
     def compose_worktree(self, worktree: str) -> Section:
-        tickets = TicketList(tickets=tuple(map(self.create_ticket, self.plan.stack(worktree))))
-        return Section(title=f'Worktree {worktree}', blocks=(tickets,), note=STACK_NOTE)
+        create = self.composer.create_ticket
+        tickets = TicketList(tickets=tuple(map(create, self.plan.stack(worktree))))
+        return Section(
+            title=f'Worktree {worktree}', blocks=(tickets,), note=STACK_NOTE, column=True
+        )
+
+    def compose_changes(self) -> tuple[Section, ...]:
+        if self.changes.previous is None:
+            return ()
+        moves = PointList(points=tuple(map(to_line, self.changes.list_moves())))
+        fields = ChangeList(changes=self.changes.compare_plan())
+        return (Section(title='What changed', blocks=(moves, fields), note=CHANGES_NOTE),)
 
     def compose_risks(self) -> tuple[Section, ...]:
         if not self.plan.risks:
             return ()
-        risks = PointList(points=tuple(map(describe_risk, self.plan.risks)))
+        risks = PointList(points=tuple(to_line(describe_risk(risk)) for risk in self.plan.risks))
         return (Section(title='Risks', blocks=(risks,)),)
 
     def compose_appendix(self) -> tuple[Section, ...]:
@@ -191,13 +156,16 @@ class PlanPage:
             Fact(label='Commit', value=to_line(shorten_head(plan.head))),
             Fact(label='Tickets', value=to_line(counted)),
             Fact(label='Changes', value=to_line(self.changes.describe()), wide=True),
+            Fact(label='Epic', value=create_link(self.index.epic, 'epic'), wide=True),
         )
 
     def describe_case(self, alias: str) -> Line:
         case_id = self.plan.cases[alias]
-        case = self.cases.get(alias)
-        target = '(not found in .red-thread/)' if case is None else case.target
-        return to_line(f'{alias}: {case_id}, {target}')
+        record = self.records.get(alias)
+        if record is None:
+            return to_line(f'{alias}: {case_id}, {MISSING_CASE}')
+        board = Link(url=link_board(case_id), label=case_id)
+        return (Text(value=f'{alias}: '), board, Text(value=f', {squeeze(record.case.target)}'))
 
     def compose_cases(self) -> Section:
         points = PointList(points=tuple(map(self.describe_case, self.plan.cases)))
@@ -210,6 +178,7 @@ class PlanPage:
             summary=(to_line(f'Plan {self.index.id}: {self.index.title}'),),
             facts=self.list_facts(),
             sections=(
+                *self.compose_changes(),
                 Section(title='Approach', blocks=(Paragraph(line=to_line(plan.approach)),)),
                 self.compose_cases(),
                 *compose_points('Invariants', plan.invariants),
@@ -218,4 +187,5 @@ class PlanPage:
                 *self.compose_risks(),
             ),
             appendix=self.compose_appendix(),
+            terms=PLAN_TERMS,
         )

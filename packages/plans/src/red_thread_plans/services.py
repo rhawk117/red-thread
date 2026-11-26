@@ -5,12 +5,14 @@ from typing import TYPE_CHECKING
 
 import msgspec
 from red_thread_casefile.services.casefile import EXCLUDED
+from red_thread_core.places import PLAN_PAGE
 from red_thread_core.redaction import create_secret_patterns
 
+from red_thread_plans.changes import PlanChanges
 from red_thread_plans.domain import Plan, PlanDraft, PlanIndex, Ticket, cite_cases
 from red_thread_plans.errors import NoRevisionError, PlanExistsError, PlanRejectedError
 from red_thread_plans.filters import render_plan_page
-from red_thread_plans.page import PlanChanges, PlanPage
+from red_thread_plans.page import PlanPage
 from red_thread_plans.policy import PlanPolicy, create_grounds
 from red_thread_plans.util import order_stack
 
@@ -23,8 +25,6 @@ if TYPE_CHECKING:
 
     from red_thread_plans.domain import CaseRecord, Opening, TicketDraft
     from red_thread_plans.store import CaseShelf, PlanRepository
-
-PLAN_PAGE = 'plan.html'
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -164,8 +164,8 @@ class Planner:
 
     def draw(self, plan: Plan) -> Path:
         changes = PlanChanges(plan=plan, previous=find_previous(self.plans.read_plans(), plan))
-        cases = {alias: record.case for alias, record in self.gather(plan.cases).items()}
-        page = PlanPage(index=self.plans.read_index(), cases=cases, changes=changes)
+        records = self.gather(plan.cases)
+        page = PlanPage(index=self.plans.read_index(), records=records, changes=changes)
         return self.pages.write(PLAN_PAGE, render_plan_page(page.compose()))
 
     def redraw(self) -> Path:

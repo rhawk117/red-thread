@@ -10,8 +10,9 @@ from cyclopts import App, CycloptsError, Parameter
 from red_thread_casefile.cli import read_input
 from red_thread_casefile.domain import STATE_DIRECTORY, build_case_id
 from red_thread_casefile.errors import CaseFileError
+from red_thread_core.places import PLAN_HOME
 
-from red_thread_plans.domain import PLAN_HOME, Opening
+from red_thread_plans.domain import Opening
 from red_thread_plans.errors import PlanShapeError
 from red_thread_plans.factory import Plans
 from red_thread_plans.schemas import decode_draft

@@ -95,8 +95,31 @@
   .verdict[data-verdict="BLOCKED"] { @apply border-transparent bg-flag-ground text-flag; }
   .status[data-status="new"] { @apply text-good; }
   .status[data-status="changed"] { @apply border-transparent bg-flag-ground text-flag; }
-  .promises { @apply mt-1.5 list-decimal space-y-1 pl-5 text-sm; }
-  .required { @apply font-mono text-xs text-quiet; }
+  .why { @apply mt-1 max-w-[65ch] text-sm; }
+  .label {
+    @apply mt-2.5 text-[0.7rem] font-semibold tracking-widest text-quiet uppercase;
+  }
+  .promises { @apply mt-1 list-decimal space-y-2 pl-5 text-sm; }
+  .criterion { @apply max-w-[65ch]; }
+  .grounds { @apply mt-1 flex flex-col gap-1 border-l-2 border-line pl-2.5 text-xs; }
+  .ground { @apply flex flex-wrap items-baseline gap-x-1.5 text-quiet; }
+  .ground::before { @apply size-2 shrink-0 self-center rounded-full bg-kind content-['']; }
+  .ground-ref { @apply font-mono text-thread tabular-nums; }
+  a.ground-ref { @apply hover:underline; }
+  .ground-kind { @apply font-semibold; }
+  .ground-text { @apply basis-full text-ink sm:basis-auto; }
+  .diff { @apply mt-2 rounded border border-line text-xs; }
+  .diff > summary { @apply cursor-pointer px-2.5 py-1.5 text-quiet; }
+  .diff > .changes { @apply border-t border-line px-2.5 py-2; }
+  .changes { @apply flex flex-col gap-2 text-sm; }
+  .section > .changes { @apply px-4 pb-3; }
+  .changes dt { @apply text-[0.7rem] font-semibold tracking-widest text-quiet uppercase; }
+  .changes dd { @apply flex flex-col gap-1; }
+  .changes del { @apply rounded bg-flag-ground px-1.5 text-flag; }
+  .changes ins { @apply rounded border border-line px-1.5 text-good no-underline; }
+  .changes del::before { content: "was: "; }
+  .changes ins::before { content: "now: "; }
+  .notes a { @apply underline; }
   .cite {
     @apply mt-1 flex flex-wrap items-baseline gap-2 font-mono text-xs text-quiet wrap-anywhere;
   }

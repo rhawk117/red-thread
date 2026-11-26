@@ -4,8 +4,9 @@ from typing import TYPE_CHECKING
 
 from msgspec.structs import replace
 from red_thread_casefile.domain import Ledger
-from red_thread_plans.domain import Acceptance, PlanDraft, PlanIndex, TicketDraft
-from red_thread_plans.page import PlanChanges, PlanPage
+from red_thread_plans.changes import PlanChanges
+from red_thread_plans.domain import Acceptance, CaseRecord, PlanDraft, PlanIndex, TicketDraft
+from red_thread_plans.page import PlanPage
 from red_thread_plans.policy import create_grounds
 from red_thread_plans.services import RevisionStamp
 
@@ -111,4 +112,5 @@ def stamp_plan(draft: PlanDraft, revision: int = 1) -> Plan:
 
 def create_plan_document(plan: Plan, previous: Plan | None = None) -> Document:
     changes = PlanChanges(plan=plan, previous=previous)
-    return PlanPage(index=PLAN_INDEX, cases={ALIAS: create_case()}, changes=changes).compose()
+    records = {ALIAS: CaseRecord(case=create_case(), ledger=create_resting_ledger())}
+    return PlanPage(index=PLAN_INDEX, records=records, changes=changes).compose()

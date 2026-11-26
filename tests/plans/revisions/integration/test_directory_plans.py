@@ -7,7 +7,7 @@ from hypothesis import given
 from msgspec.structs import replace
 from red_thread_casefile.factory import CaseFiles
 from red_thread_casefile.services import Framing
-from red_thread_plans.domain import PLAN_HOME
+from red_thread_core.places import PLAN_HOME
 from red_thread_plans.errors import CorruptPlanError, MissingPlanError, RevisionExistsError
 from red_thread_plans.schemas import plan_from_text
 from red_thread_plans.services import RevisionStamp

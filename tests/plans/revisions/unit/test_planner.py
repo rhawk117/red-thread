@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 import pytest
 from hypothesis import given
 from msgspec.structs import replace
+from red_thread_core.places import link_board
 from red_thread_plans.domain import CaseRecord, Opening, cite_cases
 from red_thread_plans.errors import (
     NoRevisionError,
@@ -164,7 +165,7 @@ class TestRedraw:
         page = harness.planner.redraw()
 
         assert page.name == 'plan.html'
-        assert 'C1: 20261121-retry-queue' in harness.pages.files['plan.html']
+        assert link_board(CASE_ID) in harness.pages.files['plan.html']
 
     def test_render_without_a_revision_is_refused(self, harness: PlannerHarness) -> None:
         with pytest.raises(NoRevisionError):

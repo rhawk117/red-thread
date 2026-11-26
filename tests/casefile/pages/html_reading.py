@@ -68,6 +68,8 @@ PAGE_TAGS = frozenset({
     'div',
     'code',
     'a',
+    'del',
+    'ins',
 })
 
 

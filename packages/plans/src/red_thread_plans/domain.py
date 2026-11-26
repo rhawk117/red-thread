@@ -18,7 +18,6 @@ type Handling = Accept | Mitigate | YouIntervene
 
 PLAN_SCHEMA: PlanSchema = 'red-thread/plan@1'
 INDEX_SCHEMA: IndexSchema = 'red-thread/plan-index@1'
-PLAN_HOME = 'plans'
 RESTING_KINDS: tuple[EntryKind, ...] = ('decision', 'known')
 SLUG = re.compile(r'[a-z][a-z0-9]*(?:-[a-z0-9]+)*')
 RISK_ID = re.compile(r'R[1-9]\d*')

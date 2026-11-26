@@ -11,7 +11,7 @@ from red_thread_plans.nodes import TicketList
 from tests.casefile.pages.builders import payload_params
 from tests.casefile.pages.html_reading import find_tags, list_code_spans, list_item_refs, list_spans
 from tests.casefile.writers.reading import render_markdown, render_page
-from tests.plans.page.builders import create_ticket_node
+from tests.plans.page.builders import BOARD_CASE, create_ticket_node
 
 if TYPE_CHECKING:
     from red_thread_core.documents import Block
@@ -36,7 +36,12 @@ class TestTicketMarkup:
 
         tickets = [item for item in find_tags(page, 'li') if 'data-worktree' in item]
         assert tickets == [
-            {'class': 'entry ticket', 'data-worktree': 'core', 'data-status': 'changed'}
+            {
+                'class': 'entry ticket',
+                'id': 'plan-page',
+                'data-worktree': 'core',
+                'data-status': 'changed',
+            }
         ]
         assert list_item_refs(page) == ['plan-page']
 
@@ -48,12 +53,19 @@ class TestTicketMarkup:
     def test_the_why_follows_the_title(self) -> None:
         page = render_tickets(create_ticket_node())
 
-        assert '<p class="why">Why: the owner reads the plan in a browser</p>' in page
+        assert '<p class="why">the owner reads the plan in a browser</p>' in page
 
-    def test_each_criterion_names_the_entries_that_require_it(self) -> None:
+    def test_each_criterion_shows_the_entries_that_require_it_with_their_text(self) -> None:
         page = render_tickets(create_ticket_node())
 
-        assert '<li>the page renders <span class="required">required by e1, e2</span></li>' in page
+        grounds = [
+            item['data-kind'] for item in find_tags(page, 'li') if item.get('class') == 'ground'
+        ]
+        links = [link['href'] for link in find_tags(page, 'a') if link.get('class') == 'ground-ref']
+        assert grounds == ['decision', 'missing']
+        assert links == [f'../../{BOARD_CASE}/board.html#e1']
+        assert '<span class="ground-text">pages open in a browser</span>' in page
+        assert '<span class="ground-ref">C1.e9</span>' in page
 
     def test_the_place_the_dependencies_and_the_owned_paths_are_notes(self) -> None:
         page = render_tickets(create_ticket_node())
@@ -86,16 +98,40 @@ class TestTicketMarkup:
         assert escape(payload) in page
 
 
+class TestTicketChanges:
+    def test_a_changed_ticket_shows_each_changed_field_as_it_was_and_as_it_is(self) -> None:
+        page = render_tickets(create_ticket_node())
+
+        assert find_tags(page, 'details')[-1] == {'class': 'diff'}
+        assert '<dt>title</dt><dd><del>draw it</del><ins>draw the plan</ins></dd>' in page
+
+    def test_an_unchanged_ticket_has_no_change_fold(self) -> None:
+        page = render_tickets(replace(create_ticket_node(), changes=()))
+
+        assert 'class="diff"' not in page
+
+    def test_an_issue_is_a_link_once_published_and_says_so_until_then(self) -> None:
+        published = replace(create_ticket_node(), issue='https://example.invalid/issues/7')
+
+        waiting = render_tickets(create_ticket_node())
+
+        assert '<li>issue not published yet</li>' in waiting
+        assert '<li><a href="https://example.invalid/issues/7" rel="noreferrer">issue</a></li>' in (
+            render_tickets(published)
+        )
+
+
 class TestTicketMarkdown:
     def test_a_ticket_is_its_title_status_and_place_then_its_promises(self) -> None:
         lines = render_markdown(
             create_worktree_document(TicketList(tickets=(create_ticket_node(),)))
         )
 
-        assert lines.splitlines()[-3:] == [
+        assert lines.splitlines()[-4:] == [
             '- draw the `plan` (changed; worktree core, position 2) [plan-page]',
             '  Why: the owner reads the plan in a browser',
-            '  - the page renders (required by e1, e2)',
+            '  - the page renders (required by C1.e1, C1.e9)',
+            '  Changed title: draw it -> draw the plan',
         ]
 
     def test_a_listing_is_a_fenced_block_tagged_with_its_language(self) -> None:
