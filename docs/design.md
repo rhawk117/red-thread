@@ -8,6 +8,7 @@ Status on 2026-11-21: the direction is agreed, and steps 1 to 5 of the build ord
 - Sections 4 to 7 are the contract for building it.
 - Section 8 describes `navigate`, the code navigation red-thread ships in `packages/navigate`, which replaced the external agentlens.
 - Section 9 lists the evidence, section 10 the prompting guidance for agent files, section 11 what is open and the build order, section 12 the decision log.
+- Section 13 describes planning: the plan, the epic and its tickets as GitHub issues, and what the implementation plugin reads. Most of it is proposed.
 
 ## 1. Purpose
 
@@ -26,6 +27,8 @@ Use cases:
 Out of scope: tickets, task tracking, code review, implementing changes, an MCP server and a database. Version 1 ships no hooks.
 
 **Changed 2026-11-25:** the `debug` skill applies a fix, and the guards the owner chooses, after the owner approves each at a gate (section 12). Implementing anything else stays out of scope.
+
+**Changed 2026-11-25:** planning is in scope (sections 12 and 13). red-thread turns a case into a plan, an epic and its tickets, and publishes them as GitHub issues. Executing a ticket, task state, code review and pull requests belong to a separate implementation plugin that reads what red-thread publishes. An MCP server and a database stay out of scope.
 
 The owner steers every investigation from experience and reviews on a phone through Remote Control, so every gate has to be readable there.
 
@@ -680,3 +683,200 @@ Made by the owner on 2026-11-25.
 | Shape | one file with no `references/`: a core that holds for every artifact, then a section per artifact that ends on a "Done when" line, so each has a completion criterion the writer can check |
 | Sources | the structure and several rules (completion criteria, single source of truth, the no-op test, stating the positive) are adapted from Matt Pocock's `writing-for-agents` skill, <https://github.com/mattpocock/skills/blob/main/skills/productivity/writing-for-agents/SKILL.md>, read on 2026-11-25. Its material on skill descriptions, invocation and progressive disclosure was left out with the prompt-file scope. The rest comes from the Anthropic sources in sections 9 and 10: reasons with instructions, plain wording, lightweight references passed back in place of copies, and steering the reader when something is truncated |
 | Test | `tests/plugin/artifact_skill` fails when the lead stops preloading the skill, when one of the three skills stops naming it, or when it stops pointing at `meet-the-team` for briefs |
+
+### 2026-11-25: the planning extension
+
+Made by the owner on 2026-11-25, in two dialogs and the messages between them. Section 13 holds the design.
+
+| Decision | Choice and reason |
+| --- | --- |
+| Plugin split | planning joins red-thread; implementation and review ship together as one separate plugin. Rejected: planning as its own plugin, because a plan keeps returning to the findings and that seam would carry a versioned contract at its busiest point; and four plugins, because review findings and per-task checks feed the same task state |
+| Transport | the GitHub issue body carries a ticket, with a machine-readable block, and the case keeps a local JSON copy. `.red-thread/` is untracked, so another worktree or a cloud session does not see it. Rejected: files under the shared git directory, which are invisible remotely; and committed plan files, which reverse the never-commit rule and leave stale plans in history |
+| Epics | one case can cut many tickets: a parent issue with one sub-issue per ticket. This reverses "tickets" in section 1's out-of-scope list. The case file stays the record of evidence, and the issue becomes the record of a ticket, which narrows "The case file is the only shared memory" in section 2 |
+| Task briefs | written per ticket when the ticket starts, against HEAD at that time. Rejected: every brief at plan time, because briefs for later tickets go stale as earlier ones land; and the first ticket only, which is two code paths for one step |
+| Progress | hooks stamp start and stop events, the page is republished at each transition, and GitHub shows the epic's rollup. Rejected: an MCP server pushing through channels, a research preview that must be named in `--channels` at every launch; and GitHub alone, which has no durations |
+| Risks | "Gate" becomes "You intervene", and the re-plan trigger goes: a signal changes how the affected tickets are cut, not the whole plan |
+| Visible plans | the plan is a page the owner reads, like the board |
+| Direction, designed in section 13 | worktrees and tickets in parallel; stacked pull requests; an optional adversarial review of the plan; smaller tasks whose briefs carry machine-readable frontmatter and may name any installed subagent, skill or MCP tool; an optional interface preview by a dedicated agent; a retrospective that replaces `prune-ticket` and closes the issues |
+
+### 2026-11-25: version 1 of planning
+
+Made by the owner on 2026-11-25, in three dialogs.
+
+| Decision | Choice and reason |
+| --- | --- |
+| Where version 1 stops | the plan and the epic: the plan record, the page, the plan skill, the interface agent, publishing, syncing a revision and a close step. Briefs, routing, events and the retrospective come after a real epic has run. Rejected: through ticket start, which fixes the brief schema before anything has consumed one; and everything, because three steps depend on a plugin that does not exist |
+| Who executes a ticket | a plain Claude Code session in a worktree, working from the issue alone, so a ticket has to stand as a prompt. Rejected: mightymodels as a stopgap, which shapes tickets around the harness being replaced and assumes one active ticket per branch; and building both plugins together, which holds version 1 until both work |
+| Brief cutter | a red-thread skill run in the ticket's worktree, built after version 1. Rejected: the implementation plugin, which would then own task decomposition and routing |
+| One ticket | the same plan skill; a plan with one ticket publishes one issue with no parent. Rejected: keeping the `distill` issue lens for small work, which leaves two issue formats; and a separate fast skill |
+| Ticket body | the script writes the entries each acceptance sentence rests on, in their own words with citations and the commit they were checked at, under a line budget. Rejected: pointers only, which makes the session derive again what the case established; and a link to the page, which a session cannot read through `gh` |
+| Interface agent | in version 1, written for Opus 5.5: it runs only when asked, and a wrong interface misleads every ticket above it in the lane. Rejected by the owner: the field and the page alone with the primary drafting. Rejected: Sonnet 5.5; and inheriting the session's model, because an agent file is written for one model |
+| Interface output | a checked preview: the agent type-checks its signatures in a scratch worktree that is thrown away, and returns text for the plan record. Rejected: unchecked text; and real stubs on a branch, which has red-thread committing code |
+| Lanes | the plan computes lanes and stack order, and each ticket states its branch, its base and its place in the stack. The owner starts the sessions and runs `gh stack`. Rejected: dependencies alone, which drops the check that makes parallel work safe; and a helper that creates worktrees |
+| Closing | a close step in version 1 checks that each ticket's pull request has merged, closes the sub-issues and then the epic, and reports what it could not close. The retrospective takes the step over later |
+| Revisions | a new revision is synced to GitHub by ticket id: it edits the tickets it touches, adds new ones and closes dropped ones. Rejected: publishing once, after which the issue and the plan drift; and replacing issues, which churns the numbers pull requests point at |
+| Done when | the work after version 1 is planned as an epic with version 1 and run through plain sessions |
+
+## 13. Planning
+
+Added 2026-11-25. Section 12 records what the owner decided. Everything else here is **Proposed**, and none of it is built.
+
+### Version 1
+
+Decided 2026-11-25 (section 12).
+
+| In version 1 | After version 1 |
+| --- | --- |
+| The plan record, the `plan` command and its checks | Briefs and the routing agent |
+| The plan page | Events, and status and elapsed time on the page |
+| The plan skill: draft, risks, the optional review, the gate | The retrospective |
+| The interface agent | The implementation plugin, a separate project |
+| Publishing an epic or a single ticket, and syncing a revision | |
+| The close step | |
+
+A plain Claude Code session in a worktree executes a ticket from the issue alone. It writes no events, so progress in version 1 is GitHub's rollup and the page as of the last revision.
+
+### What crosses the boundary
+
+red-thread ends at a published ticket and its briefs. The implementation plugin starts there and never reads `ledger.jsonl`. Whatever crosses a worktree goes through the issue, because the case directory exists in one checkout only.
+
+| Artifact | Record | The owner reads | Read by |
+| --- | --- | --- | --- |
+| Plan | `plans/r<n>.json` in the case, one file per accepted revision | `plan.html`, published like the board | the owner and `peer-review` |
+| Epic | a parent issue | the issue and GitHub's sub-issue progress | the retrospective |
+| Ticket | a sub-issue: prose, then one fenced JSON block under a `red-thread ticket v1` summary | the issue | the implementation plugin, through `gh issue view` |
+| Brief | `briefs/T<n>.md` in the ticket's worktree: YAML frontmatter, then the body | the page when the ticket starts | the subagent the brief names |
+| Events | a JSONL file the implementation plugin's hooks append to, summarised in an issue comment when the ticket closes | status and elapsed time on the page | the retrospective |
+
+Each record carries a schema version, so the two plugins release separately.
+
+### The plan record
+
+The script stays the only writer. A `plan` command reads one JSON document on standard input, checks it whole as `add` checks a batch, and stores it as the next revision. A revision is never edited: the page shows the latest and what changed from the one before.
+
+- Fields: intent, approach, invariants, non-goals, tickets and risks.
+- A ticket has an id, a title, acceptance sentences, the files it owns, the tickets it depends on, a lane and an optional interface.
+- An acceptance sentence states an outcome someone can observe, and names the live `decision` or `known` entries it rests on. The script refuses one that rests on nothing. This is the guard against "that is not what I asked for": every promise in the plan traces to something the owner decided or a scout verified.
+- The script refuses a dependency cycle, and refuses two tickets in different lanes that own the same file.
+- "Plan" already names the JSON that `export` reads (section 6, `lenses.py`). That document becomes the "selection", and `--plan` becomes `--selection`.
+- The page is a new composer over the document model. `Flowchart` draws the lanes. It needs a code listing block for interfaces and a status mark for tickets, and the filter chips assume entry kinds today.
+
+### The plan skill
+
+1. Start from a case. Run `check` first, as `distill` does, so a plan is not cut from changed citations.
+2. Draft the tickets from the case's decisions and knowns. Stay at intent, acceptance and ownership: task detail waits for the ticket to start.
+3. Offer the interface preview.
+4. Put each risk to the owner.
+5. Offer the review.
+6. Gate: the owner accepts, redirects or drops tickets. On acceptance the script stores the revision and the page is published.
+7. Publish the epic to GitHub after one approval that covers every issue it will create.
+
+### Risks
+
+Each risk states the risk, a signal someone can observe, and the tickets it touches. The handlings are:
+
+- **Accept**: proceed, and note the signal.
+- **Mitigate**: shown as the change itself, a criterion added to a named ticket or a new ticket, so the owner judges a diff and not a promise.
+- **You intervene**: work on the touched tickets stops when the signal appears and the owner decides. The plan names which tickets would be cut again.
+
+The dialog offers only handlings a senior engineer could pick, states the cost of each including the recommended one, and offers two when there are only two. mightymodels had the same rule in prose (`game-plan`, "Stack the options evenly") and a fixed list of four, and the list is what produced the padding.
+
+### Review
+
+Optional, asked at step 5. One `peer-review` pass in a fresh context that gets the plan and the rendered case, not the conversation. It checks that each acceptance sentence follows from what it rests on, that no decision is left without a ticket, that lanes do not collide, and what the plan assumes without evidence. A finding without a ref or a `path:line` is dropped. The owner picks which findings change the plan. There is one pass and no debate round.
+
+### Interfaces
+
+Optional, per ticket, by a dedicated agent written for Opus 5.5 and not yet named. It writes the public surface only: signatures, types, error cases and the names of the tests. It type-checks them in a scratch worktree that is thrown away and returns the text for the plan record, so the preview is known to compile and nothing lands in the repository. The preview shows on the page and in the issue. A lane may open with a ticket that lands the interfaces and their failing tests, so the bottom pull request of the stack is the contract. Internals stay out, because detail fixed this early is wrong often enough to cost more than it saves.
+
+### The epic on GitHub
+
+- The epic is a parent issue, and each ticket a sub-issue created with `gh issue create --parent`. Order is `--blocked-by`. Both need gh 2.94.0 or later.
+- A plan with one ticket publishes one issue with no parent.
+- The script assembles a ticket body: the goal, the acceptance sentences, the owned files, the branch, its base and its place in the stack, each "You intervene" signal as a condition to stop on, then the entries the acceptance rests on, in their own words with citations and the commit they were checked at. The body has a line budget.
+- A new revision is synced by ticket id: it edits the bodies of the tickets it touches, adds sub-issues for new tickets and closes dropped ones. The case keeps the map from ticket id to issue number.
+- Limits: 100 sub-issues per parent, eight levels, 50 links per dependency type.
+- GitHub reports the rollup itself, as `sub_issues_summary.percent_completed`.
+- Closing is explicit. Closing keywords are read only when a pull request targets the default branch, and the stacked pull request pages say nothing about them, so a close step checks that each ticket's pull request has merged, runs `gh issue close` for the ticket and then the epic, and reports what it could not close. The step is part of the plan skill in version 1, and the retrospective takes it over.
+
+### Lanes and stacks
+
+A lane is one worktree and one stack. Tickets that depend on each other share a lane and become one pull request each, bottom up. Lanes that own disjoint files run in parallel. The plan records only `lane` and position. In version 1 the owner creates the worktrees and runs `gh stack`; later that belongs to the implementation plugin. A ticket that cannot keep its files apart from another lane joins that lane.
+
+### Ticket start: briefs and routing
+
+After version 1. When a ticket starts, a red-thread skill run in the ticket's worktree cuts its tasks against HEAD. It reads the ticket from the issue, because the case directory is in another checkout. A task is one deliverable with one verification command: a function, a test file or a review.
+
+```yaml
+---
+schema: red-thread/brief@1
+ticket: 42
+task: T3
+depends_on: [T1]
+owns: [packages/casefile/src/red_thread_casefile/lenses.py]
+acceptance:
+  - export refuses a selection that names a retired ref
+verify: uv run pytest -q tests/casefile/lenses
+agent: python-harness:test-engineer
+skills: [python-harness:design-tests]
+mcp_tools: []
+---
+```
+
+A routing agent, the successor to `terry-toolchain`, fills `agent`, `skills` and `mcp_tools`. It reads the names and descriptions of what is installed, narrows the candidates by the language and paths of the owned files, and picks among the few that remain with one line of reason. With no match it names the implementation plugin's default implementer. The owner sees the choice with the brief and can change it. In mightymodels the survey never changed which worker a task went to: the choice was a fixed table, and `subagent_type` had to start with the plugin's own prefix. The implementation plugin must not carry that restriction.
+
+### Progress
+
+After version 1. red-thread ships no hook for this. The implementation plugin's hooks append one event per transition, with the time, the ticket, the task and what happened, and stamp the time themselves because `SubagentStop` carries none. The page shows each ticket's status and elapsed time and is republished at each transition.
+
+### Retrospective
+
+After version 1. Replaces `prune-ticket`. Friction is recorded when it happens: a blocked task, an escalation, a brief written again, a scope expansion, a "You intervene" that fired, and the owner saying the result is not what they asked for. The retrospective reads that record, says what slowed the work and where it left the plan, and classes each item as a plan gap, a brief gap, a routing miss or an environment problem. It proposes changes to instruction files, skills and hooks as diffs the owner approves, then closes the issues.
+
+### Evidence
+
+Read on 2026-11-25.
+
+| Claim | Source |
+| --- | --- |
+| A planner that fixes granular detail early passes its errors down; a contract for "done" is agreed before code | Anthropic, "Harness design for long-running apps" |
+| JSON for state an agent must not rewrite; one feature at a time | Anthropic, "Effective harnesses for long-running agents" |
+| A brief needs an objective, an output format, tool guidance and boundaries | Anthropic, "How we built our multi-agent research system" |
+| A fresh reviewer helps, and one asked to find problems always finds something | Claude Code docs, best practices |
+| Each parallel worker gets its own checkout and its own files | Claude Code docs, best practices and agent teams |
+| A server pushes into a session only through channels, a research preview | Claude Code docs, MCP and channels |
+| Stacked pull requests are generally available since 2026-10-06, with `gh stack` and a REST API | GitHub changelog and docs |
+| Closing keywords are ignored off the default branch | GitHub docs, "Linking a pull request to an issue" |
+| Specification and verification failures dominate multi-agent runs; a high-level verification step added 15.6% task success | MAST, arXiv 2503.13657 |
+| Self-correction without outside feedback can lower accuracy | Huang et al., arXiv 2310.01798 |
+| Interfaces first, and tests from a separate agent, raise pass rates | Parsel, arXiv 2212.10561; AgentCoder, arXiv 2312.13010 |
+| The best method finds the decisive failing step 14.2% of the time after the fact | Who&When, arXiv 2505.00212 |
+
+Not verified: no study was found of padded options in agent plans or of interface previews as a review aid, and the routing accuracy figures came from search summaries.
+
+### Open
+
+- Section 10 has no guidance for an agent file written for Opus 5.5.
+- How the interface agent's scratch worktree gets the project's toolchain, and what it checks in a language with no type checker.
+- The line budget for a ticket body.
+- Which session republishes the page, and from what, when the case directory is in another checkout.
+- Which plugin owns the retrospective. It reads execution events and reasons like an investigation.
+- Whether a skill can dispatch another plugin's subagent by name. The docs do not say; a run has to confirm it.
+- Whether a closing keyword takes effect after GitHub retargets a stacked pull request onto the default branch.
+- The names of the routing agent and the interface agent.
+
+Build order for version 1:
+
+| Step | Status |
+| --- | --- |
+| 1. Rename the export plan to a selection | not started |
+| 2. The plan record, the `plan` command and its checks: traceability, cycles and lane collisions | not started |
+| 3. The plan page | not started |
+| 4. The interface agent | not started |
+| 5. The plan skill: draft, the interface offer, the risk dialog, the optional review and the gate | not started |
+| 6. Publishing: the ticket body, issues, sub-issues and dependencies | not started |
+| 7. Syncing a revision | not started |
+| 8. The close step | not started |
+| 9. The first epic: plan the work below with version 1 and run it through plain sessions | not started |
+
+After version 1: ticket start with briefs and the routing agent, the event schema with status on the page, and the retrospective.
