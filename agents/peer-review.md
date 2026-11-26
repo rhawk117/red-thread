@@ -31,7 +31,7 @@ The caller sends you a briefing:
 
 A plan briefing has PLAN in place of CASE and CONCLUSION:
 
-- PLAN: the absolute path of a draft plan, one JSON file. CASES: one line per case the plan rests on, its alias and its directory, such as `C1 /abs/path/.red-thread/20261126-retry-pool`. SCRIPT, TODAY and NAVIGATE as above.
+- PLAN: the absolute path of a draft plan, one Markdown file. CASES: one line per case the plan rests on, its alias and its directory, such as `C1 /abs/path/.red-thread/20261126-retry-pool`. SCRIPT, TODAY and NAVIGATE as above.
 
 You start with no memory of the caller's conversation, on purpose. If the briefing argues for the conclusion, treat that argument as a claim to test, not as evidence.
 
@@ -62,7 +62,7 @@ Verdicts:
 
 For a plan briefing:
 
-A draft plan is a JSON object. Each ticket has a `why`, the paths it `owns`, its `worktree` and its `acceptance` criteria, and each criterion's `required_by` names entries through a case alias: `C1.e4` is entry e4 of case C1, and `C2.T1.e2` is entry e2 of thread T1 in case C2. A criterion is a promise the plan makes, and its entries are why the owner wants it.
+A draft plan is the plan of one ticket: a Markdown file whose frontmatter maps each case alias to its case under `cases`, and whose sections are Intent, Approach, Invariants, Non-goals, Acceptance, Tasks, Risks and Changes. Each line under Acceptance is a criterion and ends with the refs of the entries that require it, through a case alias: `C1.e4` is entry e4 of case C1, and `C2.T1.e2` is entry e2 of thread T1 in case C2. A criterion is a promise the plan makes, and its entries are why the owner wants it. The Tasks are numbered in the order the work is done.
 
 1. Check the briefing (no tool). If PLAN, CASES or SCRIPT is missing, return status BLOCKED, naming what is missing.
 2. Read the plan (tool: Read), then each case (tool: Bash): `SCRIPT render --case DIR --full` for every line of CASES, in the same turn.
@@ -71,13 +71,13 @@ A draft plan is a JSON object. Each ticket has a `why`, the paths it `owns`, its
 
 The checks:
 
-1. Follows: does each criterion follow from the entries in its `required_by`? A finding when an entry says less than the criterion promises, says something else, is not a `decision` or a `known`, or is marked `lead`.
+1. Follows: does each criterion follow from the entries it names? A finding when an entry says less than the criterion promises, says something else, is not a `decision` or a `known`, or is marked `lead`.
 2. Covered: does every `decision` on the boards that bears on the plan's intent show in the plan, as a criterion that names it, the approach, an invariant or a non-goal? A finding for each decision the plan leaves without work.
-3. Apart: can each worktree be built without the others? A finding when a ticket in one worktree needs a change that a ticket in another worktree makes, though they own different files: a shared interface, a schema, a setting. The script already refuses two worktrees that own the same path; do not repeat that check.
+3. Ordered: can the tasks be done in the order written, and does the last one meet every criterion? A finding when a task needs what a later task makes, when the repository could not pass after a task, or for a criterion no task moves forward.
 4. Assumes: what does the plan take for granted about the code or a dependency that no entry supports? Check one such claim at a time against the code; a finding when the code does not bear it out, or when nothing in the cases covers a claim a criterion depends on.
-5. Risks: what could make a ticket land wrong, or make the plan miss its intent, while the work runs? The draft's `risks` are empty on purpose: you name them, because you have not heard the reasoning behind the plan. Look at an `open` entry a criterion leans on, an Assumes claim you could not settle, a caller or a consumer no ticket owns, a version the plan takes for granted, and a change that two worktrees both depend on. Write each as a risk row: what could go wrong in one sentence with its subject named in full, a signal a person or a test could see while the work runs, the tickets it touches, and its evidence. Word it so that the plan's author and its sharpest doubter would both call it fair: say what happens, not how likely or how bad it is. If the draft does carry risks, add a finding for each one whose words understate what its evidence shows.
+5. Risks: what could make a task land wrong, or make the plan miss its intent, while the work runs? The draft's Risks section is empty on purpose: you name them, because you have not heard the reasoning behind the plan. Look at an `open` entry a criterion leans on, an Assumes claim you could not settle, a caller or a consumer no task reaches, and a version the plan takes for granted. Write each as a risk row: what could go wrong in one sentence with its subject named in full, a signal a person or a test could see while the work runs, the tasks it touches by number, and its evidence. Word it so that the plan's author and its sharpest doubter would both call it fair: say what happens, not how likely or how bad it is. If the draft does carry risks, add a finding for each one whose words understate what its evidence shows.
 
-Every finding names where it is in the plan (a ticket id and the criterion's number, a risk id, or the field) and carries its evidence: an entry ref or a `path:line` you opened. Leave out a finding with neither: the owner cannot check it, and the primary drops it.
+Every finding names where it is in the plan (a criterion or a task by number, a risk id, or the section) and carries its evidence: an entry ref or a `path:line` you opened. Leave out a finding with neither: the owner cannot check it, and the primary drops it.
 </workflow>
 
 <constraints>
@@ -150,14 +150,14 @@ commands:
 
 | Where | Check | Finding | Evidence |
 | --- | --- | --- | --- |
-| retry-cap, criterion 1 | Follows | the criterion promises five attempts, and C1.e2 decides only that retries are capped | `C1.e2` |
+| criterion 1 | Follows | the criterion promises five attempts, and C1.e2 decides only that retries are capped | `C1.e2` |
 | intent | Covered | the owner's decision to keep one pool has no criterion | `C1.e2` |
 
 ## Risks
 
-| Risk | Signal | Tickets | Evidence |
+| Risk | Signal | Tasks | Evidence |
 | --- | --- | --- | --- |
-| A caller that retries on its own multiplies the attempts past the cap | a job runs more than five times in one test | retry-cap | `src/worker.py:88` |
+| A caller that retries on its own multiplies the attempts past the cap | a job runs more than five times in one test | 2 | `src/worker.py:88` |
 
 ## Not reviewed
 
@@ -175,5 +175,5 @@ Before you return, check:
 3. The four counts match the rows, and the conclusion rating matches the Conclusion section.
 4. The report starts with `---` on the first line.
 
-For a plan report, check instead that every finding has a place in the plan and every risk its tickets, that each carries an entry ref or a `path:line` you opened, that `findings` and `risks` match the rows, and that the report starts with `---`.
+For a plan report, check instead that every finding has a place in the plan and every risk its tasks, that each carries an entry ref or a `path:line` you opened, that `findings` and `risks` match the rows, and that the report starts with `---`.
 </verification>

@@ -1,11 +1,12 @@
-"""game-plan links every reference it ships, and its example draft is a plan revise reads."""
+"""game-plan links every reference it ships, and its example plan is one check can read."""
 
 import re
 from typing import TYPE_CHECKING
 
 import pytest
-from red_thread_plans.domain import PlanDraft
-from red_thread_plans.schemas import decode_draft
+from red_thread_plans.domain import PlanDocument
+from red_thread_plans.policy import Grounds, PlanPolicy
+from red_thread_plans.schemas import read_plan
 
 from tests.plugin.frontmatter import read_frontmatter_lines, read_scalar
 
@@ -14,7 +15,7 @@ if TYPE_CHECKING:
 
 
 class TestGamePlanSkill:
-    json_block = re.compile(r'```json\n(.*?)```', re.DOTALL)
+    markdown_block = re.compile(r'```markdown\n(.*?)```', re.DOTALL)
 
     @pytest.fixture
     def skill_directory(self, repository_root: Path) -> Path:
@@ -29,9 +30,14 @@ class TestGamePlanSkill:
         return tuple(sorted(path.name for path in skill_directory.glob('references/*.md')))
 
     @pytest.fixture
-    def draft_examples(self, skill_directory: Path) -> tuple[str, ...]:
-        text = skill_directory.joinpath('references', 'draft.md').read_text(encoding='utf-8')
-        return tuple(self.json_block.findall(text))
+    def plan_examples(self, skill_directory: Path) -> tuple[str, ...]:
+        text = skill_directory.joinpath('references', 'plan.md').read_text(encoding='utf-8')
+        return tuple(self.markdown_block.findall(text))
+
+    def read_example(self, example: str) -> PlanDocument:
+        document = read_plan(example)
+        assert isinstance(document, PlanDocument), document
+        return document
 
     def test_skill_declares_the_name_game_plan(self, skill_file: Path) -> None:
         assert read_scalar(read_frontmatter_lines(skill_file), 'name') == 'game-plan'
@@ -43,10 +49,16 @@ class TestGamePlanSkill:
 
         assert [name for name in reference_names if f'(references/{name})' not in text] == []
 
-    def test_draft_reference_holds_an_example(self, draft_examples: tuple[str, ...]) -> None:
-        assert draft_examples
+    def test_plan_reference_holds_an_example(self, plan_examples: tuple[str, ...]) -> None:
+        assert plan_examples
 
-    def test_example_draft_decodes_as_a_plan(self, draft_examples: tuple[str, ...]) -> None:
-        decoded = [decode_draft(example) for example in draft_examples]
+    def test_example_plan_has_every_section_check_asks_for(
+        self, plan_examples: tuple[str, ...]
+    ) -> None:
+        documents = tuple(map(self.read_example, plan_examples))
+        policies = (
+            PlanPolicy(document=document, grounds=Grounds(), missing=document.frontmatter.cases)
+            for document in documents
+        )
 
-        assert all(isinstance(draft, PlanDraft) for draft in decoded), decoded
+        assert [policy.get_section_issues() for policy in policies] == [()] * len(documents)

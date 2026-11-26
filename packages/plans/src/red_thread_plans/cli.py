@@ -1,4 +1,4 @@
-"""The command line that skills and agents call for a plan: init, revise and render."""
+"""The command line for a ticket's plan: init writes plan.md, check reads it and changes nothing."""
 
 import sys
 from dataclasses import dataclass
@@ -7,15 +7,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
 
 from cyclopts import App, CycloptsError, Parameter
-from red_thread_casefile.cli import read_input
 from red_thread_casefile.domain import STATE_DIRECTORY, build_case_id
 from red_thread_casefile.errors import CaseFileError
-from red_thread_core.places import PLAN_HOME
 
-from red_thread_plans.domain import Opening
-from red_thread_plans.errors import PlanShapeError
+from red_thread_plans.domain import PLAN_FILE, TICKET_HOME, Opening
 from red_thread_plans.factory import Plans
-from red_thread_plans.schemas import decode_draft
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -26,14 +22,16 @@ EXIT_FAILED = 1
 EXIT_USAGE = 2
 
 type StrayTokens = Annotated[str, Parameter(show=False)]
-type PlanOption = Annotated[Path, Parameter(help='the plan directory that init printed')]
-type TitleOption = Annotated[str, Parameter(help='what the plan delivers, as one line')]
+type PlanOption = Annotated[
+    Path, Parameter(help='the plan.md that init printed, or the directory that holds it')
+]
+type TitleOption = Annotated[str, Parameter(help='what the ticket delivers, as one line')]
+type CaseOption = Annotated[
+    tuple[str, ...], Parameter(help='a case under .red-thread/ the plan rests on; repeat it')
+]
 type RootOption = Annotated[str, Parameter(help='the repository root, by default this directory')]
 type SlugOption = Annotated[
     str | None, Parameter(help='words for the plan id, by default taken from the title')
-]
-type PlanFileOption = Annotated[
-    str | None, Parameter(help='read the plan from this file instead of standard input')
 ]
 
 
@@ -41,65 +39,48 @@ type PlanFileOption = Annotated[
 @dataclass(slots=True, kw_only=True, frozen=True)
 class InitArguments:
     title: TitleOption
+    case: CaseOption = ()
     root: RootOption = '.'
     slug: SlugOption = None
 
 
 @Parameter(name='*')
 @dataclass(slots=True, kw_only=True, frozen=True)
-class ReviseArguments:
+class CheckArguments:
     plan: PlanOption
-    file: PlanFileOption = None
 
 
-@Parameter(name='*')
-@dataclass(slots=True, kw_only=True, frozen=True)
-class RenderArguments:
-    plan: PlanOption
+def locate_plan(path: Path) -> Path:
+    return path.joinpath(PLAN_FILE) if path.is_dir() else path
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class InitCommand:
     plans: Plans
     name: str = 'init'
-    summary: str = 'start a plan beside the cases it will rest on'
+    summary: str = "write a ticket's plan.md with its frontmatter, beside the cases it rests on"
 
     def run(self, arguments: InitArguments) -> int:
         plan_id = build_case_id(self.plans.clock.now(), arguments.slug or arguments.title)
-        directory = Path(arguments.root).joinpath(STATE_DIRECTORY, PLAN_HOME, plan_id)
-        opening = Opening(id=plan_id, title=arguments.title)
-        self.plans.open_planner(directory).open(opening)
-        print(f'created {directory.resolve()}')
+        root = Path(arguments.root)
+        path = root.joinpath(STATE_DIRECTORY, TICKET_HOME, plan_id, PLAN_FILE)
+        opening = Opening(id=plan_id, title=arguments.title, case_ids=arguments.case)
+        created = self.plans.open_planner(path).open(opening)
+        print(f'created {created}')
         return EXIT_OK
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
-class ReviseCommand:
+class CheckCommand:
     plans: Plans
-    name: str = 'revise'
-    summary: str = 'check a plan whole, then store it as the next revision'
+    name: str = 'check'
+    summary: str = 'read a plan and report every fault; writes nothing'
 
-    def run(self, arguments: ReviseArguments) -> int:
-        draft = decode_draft(read_input(arguments.file))
-        if isinstance(draft, PlanShapeError):
-            raise draft
-
-        stored = self.plans.open_planner(arguments.plan).propose(draft)
-        print(f'stored revision {stored.plan.revision} at {stored.path}')
-        print(f'wrote {stored.page}')
-        if stored.redactions:
-            print(f'redacted {stored.redactions} secrets before storing')
-        return EXIT_OK
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class RenderCommand:
-    plans: Plans
-    name: str = 'render'
-    summary: str = 'draw the plan page again from the latest revision'
-
-    def run(self, arguments: RenderArguments) -> int:
-        print(f'wrote {self.plans.open_planner(arguments.plan).redraw()}')
+    def run(self, arguments: CheckArguments) -> int:
+        path = locate_plan(arguments.plan)
+        checked = self.plans.open_planner(path).check()
+        counts = f'{checked.criteria} criteria rest on {checked.entries} entries'
+        print(f'checked {path.resolve()}: {counts}')
         return EXIT_OK
 
 
@@ -117,12 +98,11 @@ def create_app(plans: Plans | None = None) -> App:
     plans = plans or Plans()
     commands = (
         InitCommand(plans=plans),
-        ReviseCommand(plans=plans),
-        RenderCommand(plans=plans),
+        CheckCommand(plans=plans),
     )
     app = App(
         name=PROGRAM,
-        help='The red-thread plan.',
+        help="A ticket's plan in red-thread.",
         version_flags=(),
         default_parameter=Parameter(negative=()),
         exit_on_error=False,

@@ -763,7 +763,24 @@ Made by the owner on 2026-11-26, after reading the first build of the plan skill
 | The gate | four options, the most a dialog holds: Accept, Change tickets (drop or split, asked next), Redirect, Abandon. The first build had five |
 | Course-correction | a user-facing skill, `skills/course-correction/`, for a fork in the road while a plan's work runs. It names the divergence as expected against observed, first-hand; sends the scouts in parallel (`code-lens` or `code-sense`, `web-head`, `lab-rat`) on one to three hypotheses; classifies the cause as a plan gap, a false assumption, the environment, or an implementation slip, which goes to `debug`; and adapts. With the lights on the owner chooses, and a changed promise becomes a new revision. With the lights off only how the work is done changes, recorded as a `next` entry, and a fork that would change a promise is recorded as an `open` entry and waits. The name is the owner's |
 
+### 2026-11-26: one ticket per plan, in Markdown
+
+Made by the owner on 2026-11-26, after the game-plan build. The owner objected to two things: a plan that held several tickets, and a plan stored as JSON behind a command line that worked like an MCP server, with every write going through it. red-thread is moving away from that.
+
+| Decision | Choice and reason |
+| --- | --- |
+| Hierarchy | a plan is the plan of one ticket. An epic holds several tickets, and the skill that cuts an epic into tickets comes later. Until then, `game-plan` sizes the work by `break-it-down`, and when it is more than one ticket the owner picks the one this plan covers; the others are named under Non-goals as "a ticket of its own". Worktrees and stacks leave the plan and wait for the epic skill |
+| Format | a plan is one Markdown file, `.red-thread/tickets/<plan-id>/plan.md`. YAML frontmatter holds what a script reads (`id`, `title`, `status`, `revision`, `created`, `head`, `cases`, `lights`, `epic`, `issue`), and the body holds the sections a person reads: Intent, Approach, Invariants, Non-goals, Acceptance, Tasks, Risks and Changes. A criterion is a `- ` line under Acceptance that ends with its refs, such as `(C1.e1, C1.e2)`. Rejected: the JSON record, which the owner did not want to read or write |
+| Tooling | `bin/redthread-plan` has two verbs. `init --title T --case ID ...` writes the frontmatter and the section headings; the skill then writes the body by hand. `check --plan PATH` reads the plan and its cases and names every fault with its fix, and writes nothing. Rejected: a command that also rewrites the plan, which brings back the command-line-as-MCP shape |
+| Tasks | the body has ordered tasks, numbered in the order the work is done. Each one is a change a reviewer could check alone, and the repository passes after it |
+| Revisions | the plan is edited in place. After the owner accepts it, each change adds one to `revision` and a line under Changes. Rejected: one file per revision, which needs a command to write it |
+| Page | the Markdown file is the artifact. `plan.html` is gone, and boards no longer list or link plans |
+| YAML | PyYAML, through `msgspec.yaml`, decoding the frontmatter into a frozen Struct that refuses unknown keys. A bare `on` or `off` reads as a boolean, so `lights` is written with quotes and the refusal says so |
+| The case file | moves to Markdown with frontmatter next, by the same rule. Not started |
+
 ## 13. Planning
+
+**Changed 2026-11-26** (section 12, "one ticket per plan, in Markdown"): a plan is now the Markdown plan of one ticket, `.red-thread/tickets/<plan-id>/plan.md`, started by `redthread-plan init` and checked by `redthread-plan check`. "The plan file" below describes it. The JSON plan record, its revisions, the plan page, worktrees and stacks in a plan, and the board's links to plans described further down are superseded, and their code is gone. They stay here as the record of what was built.
 
 Added 2026-11-25. Section 12 records what the owner decided. The build order at the end says which steps are built; everything else here is **Proposed**.
 
@@ -790,7 +807,7 @@ red-thread ends at a published ticket and its briefs. The implementation plugin 
 
 | Artifact | Record | The owner reads | Read by |
 | --- | --- | --- | --- |
-| Plan | `.red-thread/plans/<plan-id>/r<n>.json`, one file per accepted revision, beside the cases it rests on | `plan.html`, published like the board | the owner and `peer-review` |
+| Plan | `.red-thread/tickets/<plan-id>/plan.md`, one Markdown file per ticket, edited in place, beside the cases it rests on (changed 2026-11-26; until then `.red-thread/plans/<plan-id>/r<n>.json`) | the file itself | the owner and `peer-review` |
 | Epic | a parent issue | the issue and GitHub's sub-issue progress | the retrospective |
 | Ticket | a sub-issue: prose, then one fenced JSON block under a `red-thread ticket v1` summary | the issue | the implementation plugin, through `gh issue view` |
 | Brief | `briefs/T<n>.md` in the ticket's worktree: YAML frontmatter, then the body | the page when the ticket starts | the subagent the brief names |
@@ -798,7 +815,14 @@ red-thread ends at a published ticket and its briefs. The implementation plugin 
 
 Each record carries a schema version, so the two plugins release separately.
 
-### The plan record
+### The plan file
+
+**Built 2026-11-26.** `red_thread_plans` is the only code that starts or checks a plan, and the skill writes the body by hand.
+
+- `init --title T --case ID [--case ID ...] [--slug S] [--root R]` refuses no case, a case that is not under `.red-thread/`, and a plan that exists already. Otherwise it writes `plan.md` with the frontmatter (`status: draft`, `revision: 1`, the date, the short HEAD, the cases as C1, C2 in the order given) and one heading per section, and prints `created` and the path. The plan id is the UTC date and a slug of the title, as for a case.
+- `check --plan PATH` takes the file or its directory. It refuses a file that does not open with `---`, has no closing `---`, or whose frontmatter does not decode, at the first fault. A readable plan is checked whole and every fault is named with its line: no case, a case missing from `.red-thread/`, an accepted or done plan with no `lights`, a section heading missing, Intent, Approach, Acceptance or Tasks left empty, no `- ` criterion, a criterion with no ref, a ref anywhere in the body that is not an entry of its case or was retired, and a criterion ref that is not a `decision` or `known`. Refs to a missing case are not checked twice. It prints `checked <path>: N criteria rest on M entries`.
+
+### The plan record (superseded 2026-11-26)
 
 The plans package is the only writer of a plan. `revise` reads one JSON document on standard input or from `--file`, checks it whole as `add` checks a batch, and stores it as the next revision. A revision is never edited: the page shows the latest and what changed from the one before.
 
@@ -818,7 +842,7 @@ The plans package is the only writer of a plan. `revise` reads one JSON document
 - Two worktrees collide when some path, existing or not, matches an `owns` entry of each. The check is exact for `*` (any run of characters within one segment, a leading dot included), `?` and `**` (zero or more segments, or at least one at the end), the rules of `PurePosixPath.full_match`, and the refusal names a path both worktrees could change. `dir/` means `dir/**`. An entry that is empty, absolute, climbs with `..` or uses a `[ ]` class is refused. Two tickets in one worktree may own the same files.
 - A plan that cannot be read is refused at its first shape fault, with the JSON path. A readable plan is checked whole and every fault is named with its fix: blank text, no tickets, a ticket without acceptance or owns, a malformed or duplicate id, no case or a case missing from `.red-thread/`, a ticket without a why, a criterion required by nothing or by a ref that is unknown, retired or not a decision or known, an unknown or cross-worktree dependency, a cycle, a worktree collision, and a risk that names an unknown ticket, a criterion the ticket does not have, or a recut that is empty or strays outside the risk. Text is checked as sent, then redacted, then stored.
 
-**The page, built 2026-11-25, rebuilt 2026-11-26:**
+**The page, built 2026-11-25, rebuilt 2026-11-26, removed 2026-11-26:**
 
 - `revise` writes `plan.html` in the plan directory each time it stores a revision, from that revision, the one before it and the cases it rests on. A refused plan writes nothing. `render` draws it again from the latest revision.
 - `PlanPage` (`red_thread_plans/page.py`) composes the page. Its sections are What changed (from the second revision on: the tickets added, changed and dropped, then each plan field as it was and as it is), Approach, Cases (each alias linked to its board, with the case's question), Invariants, Non-goals, one `Worktree <name>` column per worktree with its stack bottom first, and Risks. The appendix holds the `Worktrees` chart and, when tickets were dropped, a folded `Dropped` list. The facts are the revision, the date, the commit, the ticket and worktree count, the changes and the epic.
@@ -843,6 +867,8 @@ The plans package is the only writer of a plan. `revise` reads one JSON document
 
 **Changed 2026-11-26** (section 12, "game-plan, the review before the risks"): the order is now cases, check, the cross-examine interview on every run, the draft with no risks, the optional review that names the risks, the risk dialog, then the gate, which also asks whether the lights are on or off. Forks in the road during the work go to `course-correction`.
 
+**Changed 2026-11-26** (section 12, "one ticket per plan, in Markdown"): after the interview the skill sizes the work by `break-it-down`, and when it is more than one ticket the owner picks the one the plan covers. It runs `init`, writes the body into `plan.md` as `references/plan.md` says, and runs `check` with the consistency check. At the gate, Change tickets became Change the tasks. Accepting sets `status: accepted` and `lights` in the frontmatter and runs `check` again. No board is drawn again and nothing is published.
+
 ### Risks
 
 Each risk states the risk, a signal someone can observe, and the tickets it touches. The handlings are:
@@ -850,6 +876,8 @@ Each risk states the risk, a signal someone can observe, and the tickets it touc
 - **Accept**: proceed, and note the signal.
 - **Mitigate**: shown as the change itself, a criterion added to a named ticket or a new ticket, so the owner judges a diff and not a promise.
 - **You intervene**: work on the touched tickets stops when the signal appears and the owner decides. The plan names which tickets would be cut again.
+
+Since 2026-11-26 a risk touches tasks of the one ticket, by number, and a risk is a `- R<n>:` line under Risks with its signal, tasks and handling nested below it.
 
 The dialog offers only handlings a senior engineer could pick, states the cost of each including the recommended one, and offers two when there are only two. mightymodels had the same rule in prose (`game-plan`, "Stack the options evenly") and a fixed list of four, and the list is what produced the padding.
 
@@ -861,9 +889,13 @@ Optional, asked at step 5. One `peer-review` pass in a fresh context that gets t
 
 **Changed 2026-11-26** (section 12, "game-plan, the review before the risks"): the review runs before the risk dialog, on a draft whose `risks` are empty, and a fifth check, Risks, names the plan's risks with a signal, the tickets and the evidence of each, in a second table. `risk-register` starts from those risks in the reviewer's words, so the risks are defined by a party that did not write the plan. The review stays optional, and the skill asks every run.
 
+**Changed 2026-11-26** (section 12, "one ticket per plan, in Markdown"): PLAN is the `plan.md` file, and the third check, Apart, became Ordered: whether the tasks can be done in the order written and whether the last one meets every criterion.
+
 ### Course correction
 
 A fork in the road while a plan's work runs goes to `course-correction`, built 2026-11-26 (section 12). It reads the plan from the main checkout's `.red-thread/`, also from a worktree, names the divergence as expected against observed, sends the scouts in parallel on one to three hypotheses, and classifies the cause: a plan gap, a false assumption, the environment, or an implementation slip, which it hands to `debug`. The plan's `lights` decide who adapts: with the lights on the owner chooses and a changed promise is a new revision; with the lights off only how the work is done changes, and a fork that would change a promise waits as an `open` entry. It has not run on a real plan.
+
+**Changed 2026-11-26** (section 12, "one ticket per plan, in Markdown"): it finds `plan.md` under `.red-thread/tickets/` and edits it in place, adding one to `revision` and a line under Changes. The intent, the approach, the criteria, the invariants, the non-goals and the risks' handlings are what the plan promises; a change to the tasks that keeps them is how the work is done, so with the lights off it is written into the plan with its Changes line.
 
 ### Interfaces
 
@@ -880,6 +912,8 @@ Optional, per ticket, by a dedicated agent written for Opus 5.5 and not yet name
 - Closing is explicit. Closing keywords are read only when a pull request targets the default branch, and the stacked pull request pages say nothing about them, so a close step checks that each ticket's pull request has merged, runs `gh issue close` for the ticket and then the epic, and reports what it could not close. The step is part of the game-plan skill in version 1, and the retrospective takes it over.
 
 ### Worktrees and stacks
+
+**Changed 2026-11-26:** worktrees and stacks belong to the epic, whose skill is not built, and no longer to a plan.
 
 A worktree is one git worktree and one stack (called a lane until 2026-11-26). Tickets that depend on each other share a worktree and become one pull request each, bottom up. Worktrees that own disjoint files run in parallel. The plan records only `worktree` and position. In version 1 the owner creates the worktrees and runs `gh stack`; later that belongs to the implementation plugin. A ticket that cannot keep its files apart from another worktree joins that worktree.
 

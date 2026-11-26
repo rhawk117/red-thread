@@ -1,37 +1,31 @@
-"""redthread-plan init, revise and render, driven through main(argv) in a git repository."""
+"""redthread-plan init and check, driven through main(argv) in a git repository."""
 
 from typing import TYPE_CHECKING
 
-import msgspec
 import pytest
-from msgspec.structs import replace
-from red_thread_plans.schemas import index_from_text
 
 from tests.casefile.ledger.builders import KNOWN
-from tests.plans.revisions.builders import (
-    create_valid_draft,
-    plant_collision,
-    plant_cycle,
-    plant_groundless,
+from tests.plans.document.builders import (
+    CRITERION,
+    SOUND_SECTIONS,
+    TITLE,
+    edit_plan,
+    fill_plan,
+    find_line_number,
 )
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from red_thread_plans.domain import PlanDraft
-
-    from tests.casefile.commands.cli import CliHarness
+    from tests.casefile.commands.cli import CliHarness, CliRun
     from tests.plans.commands.cli import PlanHarness
 
-DECISION = {'kind': 'decision', 'text': 'keep one writer', 'source': 'user'}
+DECISION = {'kind': 'decision', 'text': 'cap each job at five attempts', 'source': 'user'}
 
 
-def encode(draft: PlanDraft) -> str:
-    return msgspec.json.encode(draft).decode()
-
-
-def list_revision_files(plan: Path) -> list[str]:
-    return sorted(path.name for path in plan.glob('r*.json'))
+def list_state(root: Path) -> list[str]:
+    state = root.joinpath('.red-thread')
+    return sorted(str(path.relative_to(state)) for path in state.rglob('*'))
 
 
 @pytest.fixture
@@ -42,101 +36,96 @@ def grounded(cli: CliHarness, case: Path) -> Path:
 
 
 @pytest.fixture
-def plan(cli: CliHarness, planner: PlanHarness) -> Path:
-    return planner.init(cli.git.root)
+def plan(planner: PlanHarness, grounded: Path) -> Path:
+    return planner.open(grounded.name)
 
 
 class TestInit:
-    def test_a_plan_is_created_beside_the_cases_with_an_index(
-        self, cli: CliHarness, plan: Path
-    ) -> None:
-        index = index_from_text(plan.joinpath('plan.json').read_text(encoding='utf-8'))
-
-        assert plan.parent == cli.git.root.joinpath('.red-thread', 'plans').resolve()
-        assert (index.id, index.title, index.cases) == (plan.name, 'give a case a plan', ())
-
-    def test_a_second_init_with_the_same_title_is_refused(
-        self, cli: CliHarness, planner: PlanHarness, plan: Path
-    ) -> None:
-        result = planner.run('init', '--root', str(cli.git.root), '--title', 'give a case a plan')
-
-        assert result.code == 1
-        assert f'plan {plan.name} already exists' in result.err
-
-
-class TestRevise:
-    def test_a_sound_plan_is_stored_as_revision_one_and_reported(
+    def test_the_plan_sits_under_tickets_with_its_case_as_c1(
         self, planner: PlanHarness, grounded: Path, plan: Path
     ) -> None:
-        result = planner.revise(plan, encode(create_valid_draft(grounded.name)))
+        text = plan.read_text(encoding='utf-8')
+
+        assert plan.parent.parent == planner.root.joinpath('.red-thread', 'tickets').resolve()
+        assert plan.name == 'plan.md'
+        assert text.startswith(f'---\nid: {plan.parent.name}\ntitle: {TITLE}\nstatus: draft\n')
+        assert f'  C1: {grounded.name}\n' in text
+
+    def test_a_plan_with_no_case_is_refused(self, planner: PlanHarness) -> None:
+        result = planner.init()
+
+        assert result.code == 1
+        assert 'the plan names no case' in result.err
+
+    def test_a_plan_on_an_unknown_case_is_refused_and_nothing_written(
+        self, planner: PlanHarness, grounded: Path
+    ) -> None:
+        before = list_state(planner.root)
+
+        result = planner.init(grounded.name, '20261126-no-such-case')
+
+        assert result.code == 1
+        assert 'case 20261126-no-such-case is not under .red-thread/' in result.err
+        assert list_state(planner.root) == before
+
+    @pytest.mark.usefixtures('plan')
+    def test_a_second_plan_with_the_same_id_is_refused(
+        self, planner: PlanHarness, grounded: Path
+    ) -> None:
+        result = planner.init(grounded.name)
+
+        assert result.code == 1
+        assert 'already exists' in result.err
+
+
+class TestCheck:
+    @pytest.fixture
+    def written(self, plan: Path) -> Path:
+        plan.write_text(fill_plan(plan.read_text(encoding='utf-8'), SOUND_SECTIONS), 'utf-8')
+        return plan
+
+    def check_edited(self, planner: PlanHarness, plan: Path, *edits: tuple[str, str]) -> CliRun:
+        plan.write_text(edit_plan(plan.read_text(encoding='utf-8'), edits), 'utf-8')
+        return planner.check(plan)
+
+    def test_a_written_plan_passes_and_counts_its_grounds(
+        self, planner: PlanHarness, written: Path
+    ) -> None:
+        result = planner.check(written)
 
         assert result.code == 0, result.err
-        assert result.out.startswith('stored revision 1 at ')
-        assert result.out.splitlines()[1] == f'wrote {plan.joinpath("plan.html")}'
-        assert list_revision_files(plan) == ['r1.json']
+        assert result.out == f'checked {written}: 1 criteria rest on 2 entries\n'
 
-    def test_a_stored_plan_lists_its_case_in_the_index(
-        self, planner: PlanHarness, grounded: Path, plan: Path
+    def test_the_directory_of_a_plan_is_checked_as_its_plan(
+        self, planner: PlanHarness, written: Path
     ) -> None:
-        planner.revise(plan, encode(create_valid_draft(grounded.name)))
+        assert planner.check(written.parent).code == 0
 
-        index = index_from_text(plan.joinpath('plan.json').read_text(encoding='utf-8'))
-
-        assert index.cases == (grounded.name,)
-
-    def test_a_second_plan_is_stored_beside_the_first_as_revision_two(
-        self, planner: PlanHarness, grounded: Path, plan: Path
-    ) -> None:
-        draft = create_valid_draft(grounded.name)
-        planner.revise(plan, encode(draft))
-
-        result = planner.revise_from_file(plan, encode(replace(draft, intent='again')))
-
-        assert result.code == 0, result.err
-        assert result.out.startswith('stored revision 2 at ')
-        assert list_revision_files(plan) == ['r1.json', 'r2.json']
-
-    def test_a_plan_with_three_faults_is_refused_with_each_named_and_nothing_stored(
-        self, planner: PlanHarness, grounded: Path, plan: Path
-    ) -> None:
-        sound = create_valid_draft(grounded.name)
-        faulty = plant_collision(plant_cycle(plant_groundless(sound, 2)), 0)
-
-        result = planner.revise(plan, encode(faulty))
+    def test_a_fresh_plan_names_each_empty_section(self, planner: PlanHarness, plan: Path) -> None:
+        result = planner.check(plan)
 
         assert result.code == 1
-        assert 'no revision was stored' in result.err
-        assert 'ticket docs, acceptance 1 is required by nothing' in result.err
-        assert 'in a cycle: loop-a -> loop-b -> loop-a' in result.err
-        assert 'worktrees core and rogue can both change core/plans/' in result.err
-        assert list_revision_files(plan) == []
-        assert not plan.joinpath('plan.html').exists()
+        assert all(f'"## {title}" is empty' in result.err for title in ('Intent', 'Tasks'))
 
-    def test_a_plan_that_is_not_json_is_refused_before_any_check(
-        self, planner: PlanHarness, plan: Path
-    ) -> None:
-        result = planner.revise(plan, '{"intent": ')
+    def test_an_unfit_ref_is_named_with_its_line(self, planner: PlanHarness, written: Path) -> None:
+        edited = CRITERION.replace('C1.e2', 'C1.e9')
+        result = self.check_edited(planner, written, (CRITERION, edited))
+        line = find_line_number(written.read_text(encoding='utf-8'), edited)
 
         assert result.code == 1
-        assert 'the plan cannot be read: it is not JSON' in result.err
-        assert list_revision_files(plan) == []
+        assert f'line {line}: C1.e9 is not an entry of its case' in result.err
 
-
-class TestRender:
-    def test_render_redraws_the_plan_page(
-        self, planner: PlanHarness, grounded: Path, plan: Path
+    def test_a_bare_lights_value_is_refused_with_the_quotes_to_add(
+        self, planner: PlanHarness, written: Path
     ) -> None:
-        planner.revise(plan, encode(create_valid_draft(grounded.name)))
-        plan.joinpath('plan.html').unlink()
-
-        result = planner.render(plan)
-
-        assert result.code == 0, result.err
-        assert result.out == f'wrote {plan.joinpath("plan.html")}\n'
-        assert plan.joinpath('plan.html').is_file()
-
-    def test_render_before_any_revision_is_refused(self, planner: PlanHarness, plan: Path) -> None:
-        result = planner.render(plan)
+        result = self.check_edited(planner, written, ('lights: null', 'lights: on'))
 
         assert result.code == 1
-        assert 'has no revision yet' in result.err
+        assert 'write lights: "on" or lights: "off" with the quotes' in result.err
+
+    def test_check_writes_nothing(self, planner: PlanHarness, written: Path) -> None:
+        before = written.read_bytes()
+
+        planner.check(written)
+
+        assert written.read_bytes() == before

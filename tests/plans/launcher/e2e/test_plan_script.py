@@ -3,63 +3,52 @@
 import json
 from typing import TYPE_CHECKING
 
-import msgspec
 import pytest
 
 from tests.casefile.launcher.launcher import list_tree
 from tests.casefile.ledger.builders import KNOWN
-from tests.plans.revisions.builders import create_valid_draft
+from tests.plans.document.builders import SOUND_SECTIONS, edit_plan, fill_plan
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests.casefile.launcher.children import Finished
     from tests.casefile.launcher.launcher import Launcher
 
-DECISION = {'kind': 'decision', 'text': 'keep one writer', 'source': 'user'}
+DECISION = {'kind': 'decision', 'text': 'cap each job at five attempts', 'source': 'user'}
 GROUNDS = json.dumps([KNOWN, DECISION])
 
 
 class TestPlanScript:
     @pytest.fixture
-    def grounded(self, launcher: Launcher) -> Path:
+    def plan(self, launcher: Launcher) -> Path:
         case = launcher.init()
         added = launcher.add(case, GROUNDS)
         assert added.code == 0, added.err
-        return case
+        return launcher.init_plan(case)
 
     @pytest.fixture
-    def plan(self, launcher: Launcher) -> Path:
-        return launcher.init_plan()
+    def written(self, plan: Path) -> Path:
+        plan.write_text(fill_plan(plan.read_text(encoding='utf-8'), SOUND_SECTIONS), 'utf-8')
+        return plan
 
-    def revise(self, launcher: Launcher, plan: Path, text: str) -> Finished:
-        return launcher.run_plan('revise', '--plan', str(plan), stdin=text)
-
-    def encode_plan(self, case: Path) -> str:
-        return msgspec.json.encode(create_valid_draft(case.name)).decode()
-
-    def test_a_sound_plan_is_stored_and_its_page_written(
-        self, launcher: Launcher, grounded: Path, plan: Path
-    ) -> None:
-        finished = self.revise(launcher, plan, self.encode_plan(grounded))
-        rendered = launcher.run_plan('render', '--plan', str(plan))
+    def test_a_written_plan_passes_its_check(self, launcher: Launcher, written: Path) -> None:
+        finished = launcher.run_plan('check', '--plan', str(written))
 
         assert finished.code == 0, finished.err
-        assert finished.out.startswith('stored revision 1 at ')
-        assert rendered.code == 0, rendered.err
-        assert plan.joinpath('plan.html').is_file()
+        assert finished.out.startswith(f'checked {written}: ')
 
-    def test_a_plan_that_is_not_json_keeps_its_exit_code_and_its_reason(
-        self, launcher: Launcher, plan: Path
+    def test_a_plan_without_its_closing_fence_keeps_its_exit_code_and_its_reason(
+        self, launcher: Launcher, written: Path
     ) -> None:
-        finished = self.revise(launcher, plan, '{"intent": ')
+        text = edit_plan(written.read_text(encoding='utf-8'), (('---\n\n#', '\n#'),))
+        written.write_text(text, encoding='utf-8')
+
+        finished = launcher.run_plan('check', '--plan', str(written))
 
         assert finished.code == 1
-        assert 'the plan cannot be read: it is not JSON' in finished.err
+        assert 'its frontmatter has no closing --- line' in finished.err
 
-    def test_the_plugin_is_left_as_it_was(
-        self, launcher: Launcher, grounded: Path, plan: Path
-    ) -> None:
-        self.revise(launcher, plan, self.encode_plan(grounded))
+    def test_the_plugin_is_left_as_it_was(self, launcher: Launcher, written: Path) -> None:
+        launcher.run_plan('check', '--plan', str(written))
 
         assert list_tree(launcher.plugin.root) == list(launcher.plugin.files)

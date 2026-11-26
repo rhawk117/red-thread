@@ -3,8 +3,6 @@
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from red_thread_core.mentions import DirectoryMentionShelf
-from red_thread_core.places import PLAN_HOME
 from red_thread_core.store import DirectoryPageStore, GitSourceTree, SystemClock
 
 from red_thread_casefile.services import CaseFile, Press
@@ -35,5 +33,4 @@ class CaseFiles:
         return Press(
             record=self.bind(resolved),
             pages=DirectoryPageStore(directory=resolved),
-            mentions=DirectoryMentionShelf(directory=resolved.parent.joinpath(PLAN_HOME)),
         )

@@ -1,7 +1,7 @@
 [project]
 name = "red-thread-plans"
 version = "0.1.0"
-description = "The plans behind red-thread: a cut of tickets drawn from investigations, checked whole and stored by revision"
+description = "The plans behind red-thread: the Markdown plan of one ticket, started and checked against its investigations"
 readme = "README.md"
 authors = [
     { name = "rhawk117", email = "noplaceLike127dot0dot0dot1@proton.me" },
@@ -10,6 +10,7 @@ requires-python = ">=3.14"
 dependencies = [
     "cyclopts==5.5.3",
     "msgspec>=0.22.0",
+    "pyyaml>=6.0.2",
     "red-thread-casefile",
     "red-thread-core",
 ]

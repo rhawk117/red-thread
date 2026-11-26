@@ -53,11 +53,4 @@ BOARD_TERMS = (
             ' the bottom.'
         ),
     ),
-    Term(
-        word='Plans',
-        meaning=(
-            'The plans that rest on this case, each a page of tickets that cite its entries. The'
-            ' list is read from .red-thread/plans/ every time the board is drawn.'
-        ),
-    ),
 )

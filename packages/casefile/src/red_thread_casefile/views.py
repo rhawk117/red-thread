@@ -11,8 +11,6 @@ from red_thread_casefile.domain import shorten_head
 from red_thread_casefile.policy import CITE_STATES, FAILING_STATES, QUIET_STATES, tally_states
 
 if TYPE_CHECKING:
-    from red_thread_core.mentions import PlanMention
-
     from red_thread_casefile.domain import Case, Entry, EntryKind, Ledger, Verdict
     from red_thread_casefile.policy import Finding
 
@@ -136,7 +134,6 @@ class Board:
     case: Case
     ledger: Ledger
     head: str | None = None
-    plans: tuple[PlanMention, ...] = ()
     options: BoardOptions = field(default_factory=BoardOptions)
     findings: tuple[Finding, ...] = ()
 

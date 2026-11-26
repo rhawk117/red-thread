@@ -1,54 +1,21 @@
-"""The board's links: the plans that cite the case, an anchor per entry, columns and its words."""
+"""The board's links: an anchor per entry, columns and its words."""
 
-from dataclasses import replace
 from html import escape
 from typing import TYPE_CHECKING
 
 import pytest
 from red_thread_casefile.terms import BOARD_TERMS
-from red_thread_core.mentions import MemoryMentionShelf, PlanMention
 
-from tests.casefile.ledger.builders import create_case, create_entry
-from tests.casefile.pages.html_reading import find_entries, list_facts, list_item_refs
+from tests.casefile.ledger.builders import create_entry
+from tests.casefile.pages.html_reading import find_entries, list_item_refs
 
 if TYPE_CHECKING:
     from tests.casefile.lenses.builders import PressHarness
-
-CUT = PlanMention(id='20261126-cut', title='Cut the work', cases=(create_case().id,))
-SHIP = PlanMention(id='20261127-ship', title='Ship it', cases=(create_case().id,))
-ELSEWHERE = PlanMention(id='20261128-other', title='Other work', cases=('another-case',))
 
 
 def draw_board(harness: PressHarness) -> str:
     harness.press.draw()
     return harness.pages.files['board.html']
-
-
-def cite_case(harness: PressHarness, *mentions: PlanMention) -> PressHarness:
-    shelf = MemoryMentionShelf(mentions=mentions)
-    return replace(harness, press=replace(harness.press, mentions=shelf))
-
-
-class TestBoardPlans:
-    def test_each_plan_that_cites_the_case_is_a_link_to_its_page(
-        self, press_harness: PressHarness
-    ) -> None:
-        page = draw_board(cite_case(press_harness, CUT, ELSEWHERE))
-
-        plans = list_facts(page)[-1]
-        assert (plans.label, plans.value, plans.wide) == ('Plans', 'Cut the work', True)
-        assert plans.link == '../plans/20261126-cut/plan.html'
-
-    def test_several_plans_are_listed_in_order(self, press_harness: PressHarness) -> None:
-        page = draw_board(cite_case(press_harness, CUT, SHIP))
-
-        assert list_facts(page)[-1].value == 'Cut the work, Ship it'
-        assert 'href="../plans/20261127-ship/plan.html"' in page
-
-    def test_a_case_no_plan_cites_has_no_plans_fact(self, press_harness: PressHarness) -> None:
-        page = draw_board(cite_case(press_harness, ELSEWHERE))
-
-        assert 'Plans' not in [fact.label for fact in list_facts(page)]
 
 
 class TestBoardLayout:

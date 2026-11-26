@@ -1,191 +1,109 @@
-"""The plan record as drafted on standard input and as stored, one revision per file."""
+"""A ticket's plan: the frontmatter the scripts read and write, and the parts of its body."""
 
 import re
 from dataclasses import dataclass
-from operator import attrgetter
+from datetime import date
+from itertools import chain
 from typing import TYPE_CHECKING, Literal
 
 import msgspec
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
-
     from red_thread_casefile.domain import Case, EntryKind, Ledger
 
-type PlanSchema = Literal['red-thread/plan@1']
-type IndexSchema = Literal['red-thread/plan-index@1']
-type Handling = Accept | Mitigate | YouIntervene
+type Status = Literal['draft', 'accepted', 'done']
 type Lights = Literal['on', 'off']
 
-PLAN_SCHEMA: PlanSchema = 'red-thread/plan@1'
-INDEX_SCHEMA: IndexSchema = 'red-thread/plan-index@1'
+TICKET_HOME = 'tickets'
+PLAN_FILE = 'plan.md'
+FENCE = '---'
+HEADING = '## '
+ITEM = '- '
 RESTING_KINDS: tuple[EntryKind, ...] = ('decision', 'known')
-SLUG = re.compile(r'[a-z][a-z0-9]*(?:-[a-z0-9]+)*')
-RISK_ID = re.compile(r'R[1-9]\d*')
-CASE_ALIAS = re.compile(r'C[1-9]\d*')
+SETTLED: tuple[Status, ...] = ('accepted', 'done')
+REF = re.compile(r'\bC[1-9]\d*\.(?:T[1-9]\d*\.)?e[1-9]\d*\b')
+SECTIONS = (
+    'Intent',
+    'Approach',
+    'Invariants',
+    'Non-goals',
+    'Acceptance',
+    'Tasks',
+    'Risks',
+    'Changes',
+)
+REQUIRED_SECTIONS = ('Intent', 'Approach', 'Acceptance', 'Tasks')
+ACCEPTANCE = 'Acceptance'
 
 
-class Interface(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields=True, gc=False):
-    language: str
-    source: str
-
-
-class Acceptance(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields=True, gc=False):
-    criterion: str
-    required_by: tuple[str, ...] = ()
-
-
-class Accept(
-    msgspec.Struct,
-    frozen=True,
-    kw_only=True,
-    forbid_unknown_fields=True,
-    gc=False,
-    tag='accept',
-    tag_field='kind',
-):
-    pass
-
-
-class Mitigate(
-    msgspec.Struct,
-    frozen=True,
-    kw_only=True,
-    forbid_unknown_fields=True,
-    gc=False,
-    tag='mitigate',
-    tag_field='kind',
-):
-    ticket: str
-    criterion: str | None = None
-
-
-class YouIntervene(
-    msgspec.Struct,
-    frozen=True,
-    kw_only=True,
-    forbid_unknown_fields=True,
-    gc=False,
-    tag='you-intervene',
-    tag_field='kind',
-):
-    recut: tuple[str, ...] = ()
-
-
-class Risk(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields=True, gc=False):
-    id: str
-    risk: str
-    signal: str
-    handling: Handling
-    tickets: tuple[str, ...] = ()
-
-
-class TicketDraft(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields=True, gc=False):
+class Frontmatter(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields=True, gc=False):
     id: str
     title: str
-    why: str
-    worktree: str
-    acceptance: tuple[Acceptance, ...] = ()
-    owns: tuple[str, ...] = ()
-    depends_on: tuple[str, ...] = ()
-    interface: Interface | None = None
-
-
-class PlanDraft(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields=True, gc=False):
-    intent: str
-    approach: str
+    status: Status = 'draft'
+    revision: int = 1
+    created: date
+    head: str | None = None
     cases: dict[str, str] = msgspec.field(default_factory=dict)
-    invariants: tuple[str, ...] = ()
-    non_goals: tuple[str, ...] = ()
-    tickets: tuple[TicketDraft, ...] = ()
-    risks: tuple[Risk, ...] = ()
     lights: Lights | None = None
+    epic: str | None = None
+    issue: str | None = None
 
 
-class Ticket(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields=True, gc=False):
-    id: str
-    title: str
-    why: str
-    worktree: str
-    position: int
-    acceptance: tuple[Acceptance, ...] = ()
-    owns: tuple[str, ...] = ()
-    depends_on: tuple[str, ...] = ()
-    interface: Interface | None = None
-
-
-class Plan(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields=True, gc=False):
-    revision: int
-    at: str
-    head: str | None
-    intent: str
-    approach: str
-    schema: PlanSchema = PLAN_SCHEMA
-    cases: dict[str, str] = msgspec.field(default_factory=dict)
-    invariants: tuple[str, ...] = ()
-    non_goals: tuple[str, ...] = ()
-    tickets: tuple[Ticket, ...] = ()
-    risks: tuple[Risk, ...] = ()
-    lights: Lights | None = None
+@dataclass(slots=True, kw_only=True, frozen=True)
+class BodyLine:
+    number: int
+    text: str
 
     @property
-    def worktrees(self) -> tuple[str, ...]:
-        return tuple(dict.fromkeys(ticket.worktree for ticket in self.tickets))
+    def is_item(self) -> bool:
+        return self.text.startswith(ITEM)
 
-    def stack(self, worktree: str) -> tuple[Ticket, ...]:
-        in_worktree = (ticket for ticket in self.tickets if ticket.worktree == worktree)
-        return tuple(sorted(in_worktree, key=attrgetter('position')))
-
-    def find_ticket(self, ticket_id: str) -> Ticket | None:
-        return next((ticket for ticket in self.tickets if ticket.id == ticket_id), None)
+    @property
+    def refs(self) -> tuple[str, ...]:
+        return tuple(match.group() for match in REF.finditer(self.text))
 
 
-class IssueLink(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields=True, gc=False):
-    ticket: str
-    url: str
-
-
-class PlanIndex(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields=True, gc=False):
-    id: str
+@dataclass(slots=True, kw_only=True, frozen=True)
+class Section:
     title: str
-    at: str
-    schema: IndexSchema = INDEX_SCHEMA
-    cases: tuple[str, ...] = ()
-    epic: str | None = None
-    issues: tuple[IssueLink, ...] = ()
+    number: int
+    lines: tuple[BodyLine, ...] = ()
 
-    def find_issue(self, ticket_id: str) -> str | None:
-        return next((link.url for link in self.issues if link.ticket == ticket_id), None)
+    @property
+    def is_empty(self) -> bool:
+        return not any(line.text.strip() for line in self.lines)
+
+    @property
+    def items(self) -> tuple[BodyLine, ...]:
+        return tuple(line for line in self.lines if line.is_item)
 
 
-def cite_cases(index: PlanIndex, case_ids: Iterable[str]) -> PlanIndex:
-    return msgspec.structs.replace(index, cases=tuple(dict.fromkeys((*index.cases, *case_ids))))
+@dataclass(slots=True, kw_only=True, frozen=True)
+class PlanDocument:
+    frontmatter: Frontmatter
+    sections: tuple[Section, ...] = ()
+
+    def find_section(self, title: str) -> Section | None:
+        return next((section for section in self.sections if section.title == title), None)
+
+    @property
+    def lines(self) -> tuple[BodyLine, ...]:
+        return tuple(chain.from_iterable(section.lines for section in self.sections))
+
+    @property
+    def criteria(self) -> tuple[BodyLine, ...]:
+        acceptance = self.find_section(ACCEPTANCE)
+        return () if acceptance is None else acceptance.items
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class Opening:
     id: str
     title: str
+    case_ids: tuple[str, ...]
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class CaseRecord:
     case: Case
     ledger: Ledger
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Sentence:
-    ticket: str
-    number: int
-
-    @property
-    def label(self) -> str:
-        return f'ticket {self.ticket}, acceptance {self.number}'
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Claim:
-    worktree: str
-    ticket: str
-    owned: str
