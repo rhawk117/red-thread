@@ -41,7 +41,7 @@ class TestSupersedePolicyProperties:
             draft=create_draft(refs), known_refs=known, thread=thread
         ).get_supersede_problem()
 
-        assert problem is None
+        assert not problem
 
     @given(thread=threads, before=any_refs, after=any_refs, known=known_sets)
     def test_the_first_unknown_ref_is_named_even_when_another_ref_is_foreign(

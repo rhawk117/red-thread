@@ -1,29 +1,24 @@
 """The board as a page: each live entry with its details, the case facts and what was retired."""
 
-from collections import Counter
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from red_thread_casefile.charts import create_case_map
-from red_thread_casefile.policy import CITE_STATES
+from red_thread_casefile.domain import NO_HEAD, date_of, shorten_head
+from red_thread_casefile.policy import CITE_STATES, tally_states
 from red_thread_casefile.util import squeeze
 from red_thread_casefile.views import (
-    SECTIONS,
-    SHORT_HEAD,
+    HEADINGS,
     Document,
     Fact,
     Item,
     Section,
-    describe_kind,
     get_shown_verdict,
 )
 
 if TYPE_CHECKING:
-    from red_thread_casefile.domain import Entry, EntryKind
-    from red_thread_casefile.views import Board
-
-DATE_WIDTH = 10
-NOTHING = 'none'
+    from red_thread_casefile.domain import Entry
+    from red_thread_casefile.views import Board, Heading
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -56,29 +51,28 @@ class BoardPage:
             finding=annotator.find(entry),
         )
 
-    def compose_section(self, kind: EntryKind, title: str) -> Section:
-        items = tuple(map(self.create_item, self.board.ledger.select(kind)))
-        return Section(title=title, items=items, kind=kind, note=describe_kind(kind))
+    def compose_section(self, heading: Heading) -> Section:
+        items = tuple(map(self.create_item, self.board.ledger.select(heading.kind)))
+        return Section(title=heading.title, items=items, kind=heading.kind, note=heading.note)
 
     def count_states(self) -> str:
-        counted = Counter(finding.state for finding in self.board.findings)
+        counted = tally_states(self.board.findings)
         states = (f'{counted[state]} {state}' for state in CITE_STATES if counted[state])
-        return ', '.join(states) or NOTHING
+        return ', '.join(states) or NO_HEAD
 
     def list_facts(self) -> tuple[Fact, ...]:
         case = self.board.case
         ledger = self.board.ledger
         live = len(ledger.live)
-        threads = ', '.join(f'{name} ({ledger.count_in(name)})' for name in ledger.threads)
         facts = [
             Fact(label='Bar', value=case.bar, wide=True),
             Fact(label='Kind', value=case.kind),
             Fact(label='Round', value=str(ledger.last_round)),
-            Fact(label='Commit', value=(self.board.head or NOTHING)[:SHORT_HEAD]),
-            Fact(label='Created', value=case.created[:DATE_WIDTH]),
-            Fact(label='Languages', value=', '.join(case.capabilities.languages) or NOTHING),
+            Fact(label='Commit', value=shorten_head(self.board.head)),
+            Fact(label='Created', value=date_of(case.created)),
+            Fact(label='Languages', value=', '.join(case.capabilities.languages) or NO_HEAD),
             Fact(label='Entries', value=f'{live} live, {len(ledger.entries) - live} retired'),
-            Fact(label='Threads', value=threads or NOTHING),
+            Fact(label='Threads', value=ledger.describe_threads() or NO_HEAD),
             Fact(label='Citations', value=self.count_states(), wide=True),
         ]
         if case.page_url is not None:
@@ -87,7 +81,7 @@ class BoardPage:
 
     def compose(self) -> Document:
         ledger = self.board.ledger
-        sections = (self.compose_section(kind, title) for kind, title in SECTIONS)
+        sections = map(self.compose_section, HEADINGS)
         retired = (entry for entry in ledger.entries if entry.ref in ledger.retired)
         return Document(
             title=self.board.case.target,

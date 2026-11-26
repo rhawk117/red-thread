@@ -3,7 +3,7 @@
 from dataclasses import asdict, dataclass, field, replace
 from typing import TYPE_CHECKING
 
-from red_thread_casefile.domain import THREAD_NAME, Capabilities, Case, Cite, Entry
+from red_thread_casefile.domain import STATE_DIRECTORY, THREAD_NAME, Capabilities, Case, Cite, Entry
 from red_thread_casefile.errors import (
     BatchRejectedError,
     CaseExistsError,
@@ -13,6 +13,7 @@ from red_thread_casefile.errors import (
 )
 from red_thread_casefile.policy import CiteCheck, DraftPolicy, Finding, SupersedePolicy
 from red_thread_casefile.redaction import create_secret_patterns
+from red_thread_casefile.schemas import TEXT_FIELDS
 from red_thread_casefile.util import rank_languages
 from red_thread_casefile.views import Board, BoardOptions
 
@@ -24,8 +25,7 @@ if TYPE_CHECKING:
 
 type CiteProblem = UnresolvedCiteError | MisquotedCiteError
 
-TEXT_FIELDS = ('text', 'cite', 'quote', 'addr', 'rests_on', 'refute', 'diagram')
-EXCLUDED = '.red-thread/'
+EXCLUDED = f'{STATE_DIRECTORY}/'
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -93,7 +93,7 @@ class Intake:
 
     def get_cite_problem(self, draft: Draft) -> CiteProblem | None:
         probe = self.probe(draft)
-        if probe is None:
+        if not probe:
             return None
 
         if probe.cited_line is None:
@@ -118,11 +118,11 @@ class Intake:
 
     def find_problems(self) -> tuple[CaseFileError, ...]:
         found = map(self.find_problem, self.batch.drafts)
-        return tuple(problem for problem in found if problem is not None)
+        return tuple(filter(None, found))
 
     def quote(self, draft: Draft) -> Draft:
         probe = self.probe(draft)
-        if probe is None or draft.quote is not None:
+        if not probe or draft.quote is not None:
             return draft
         return replace(draft, quote=probe.cited_line)
 
@@ -161,7 +161,7 @@ class CaseFile:
         return case
 
     def add(self, batch: Batch) -> Added:
-        if batch.thread is not None and THREAD_NAME.fullmatch(batch.thread) is None:
+        if batch.thread is not None and not THREAD_NAME.fullmatch(batch.thread):
             raise InvalidThreadError(thread=batch.thread)
 
         ledger = self.repository.read_ledger()
@@ -185,7 +185,7 @@ class CaseFile:
         lines = self.tree.read_lines(path)
         if lines is None:
             return None
-        return tuple(self.patterns.scrub(line).text for line in lines)
+        return tuple(map(self.patterns.scrub_text, lines))
 
     def inspect(self, entry: Entry) -> Finding:
         cite = Cite(raw=entry.cite or '')

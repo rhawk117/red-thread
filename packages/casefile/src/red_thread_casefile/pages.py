@@ -11,8 +11,8 @@ from typing import TYPE_CHECKING, Literal
 
 from red_thread_casefile.assets import read_asset
 from red_thread_casefile.charts import MAIN_LEDGER
-from red_thread_casefile.domain import Cite
-from red_thread_casefile.views import SECTIONS, Section
+from red_thread_casefile.domain import Cite, date_of
+from red_thread_casefile.views import HEADINGS, Section
 
 if TYPE_CHECKING:
     from red_thread_casefile.policy import Finding
@@ -22,7 +22,6 @@ type FilterName = Literal['kind', 'thread']
 
 CODE_SPAN = re.compile(r'`([^`]+)`')
 MIN_CHIPS = 2
-DATE_WIDTH = 10
 STATE_TITLE = 'The citation at the last check'
 MAP_NOTE = (
     'Each thread as a line of its entries, with an arrow from an entry to the one it retired.'
@@ -107,7 +106,7 @@ def label_state(finding: Finding) -> str:
 
 
 def write_state(finding: Finding | None) -> Template:
-    if finding is None:
+    if not finding:
         return t''
     marks = t'class="state" data-state="{finding.state}" title="{STATE_TITLE}"'
     return t'<span {marks}>{label_state(finding)}</span>'
@@ -132,7 +131,7 @@ def write_stamps(item: Item) -> tuple[Template, ...]:
     rounds = (t'<li class="stamp">round {item.round}</li>',) if item.round is not None else ()
     if item.at is None:
         return rounds
-    day = item.at[:DATE_WIDTH]
+    day = date_of(item.at)
     return (*rounds, t'<li class="stamp"><time datetime="{item.at}">{day}</time></li>')
 
 
@@ -146,7 +145,7 @@ def write_notes(item: Item) -> Template:
 
 
 def write_claim(item: Item) -> Template:
-    if item.verdict is None:
+    if not item.verdict:
         return t'<p class="claim">{mark_up(item.text)}</p>'
     badge = t'<span class="verdict" data-verdict="{item.verdict}">{item.verdict}</span>'
     return t'<p class="claim">{badge} {mark_up(item.text)}</p>'
@@ -184,7 +183,7 @@ def write_listing(section: Section) -> Template:
 def write_fold(section: Section, body: Template) -> Template:
     count = t'<span class="count">{len(section.items)}</span>' if is_threaded(section) else t''
     note = t'<span class="about">{section.note}</span>' if section.note else t''
-    kind = t' data-kind="{section.kind}"' if section.kind is not None else t''
+    kind = t' data-kind="{section.kind}"' if section.kind else t''
     state = t'' if section.folded else t' open'
     heading = t'<summary><h2>{section.title}</h2>{count}{note}</summary>'
     return t'<details class="section"{kind}{state}>\n{heading}\n{body}\n</details>\n'
@@ -207,9 +206,14 @@ class HtmlWriter:
     def list_kind_chips(self) -> list[Chip]:
         counted = Counter(item.kind for item in self.entries)
         return [
-            Chip(group='kind', value=kind, label=title, count=counted[kind])
-            for kind, title in SECTIONS
-            if counted[kind]
+            Chip(
+                group='kind',
+                value=heading.kind,
+                label=heading.title,
+                count=counted[heading.kind],
+            )
+            for heading in HEADINGS
+            if counted[heading.kind]
         ]
 
     def list_thread_chips(self) -> list[Chip]:

@@ -112,7 +112,7 @@ class CoverageSummary:
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class SummaryContext:
-    random_seed: str
+    random_seed: int
     workers: str
 
 
@@ -374,7 +374,7 @@ def create_parser() -> argparse.ArgumentParser:
 
     summarize_parser = verbs.add_parser('summarize', help='print step summary Markdown')
     summarize_parser.add_argument('--junit-report', type=Path, required=True)
-    summarize_parser.add_argument('--random-seed', required=True)
+    summarize_parser.add_argument('--random-seed', type=int, required=True)
     summarize_parser.add_argument('--workers', required=True)
 
     return parser

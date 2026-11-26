@@ -9,6 +9,7 @@ import pytest
 from hypothesis import example, given
 from hypothesis import strategies as st
 from red_thread_casefile.cli import main, read_input
+from red_thread_casefile.domain import PROGRAM
 from red_thread_casefile.errors import UnreadableInputError
 
 if TYPE_CHECKING:
@@ -55,6 +56,6 @@ class TestMissingInputFile:
 
         assert code == 1
         assert out == ''
-        assert err.startswith('casefile: ')
+        assert err.startswith(f'{PROGRAM}: ')
         assert 'cannot be read' in err
         assert str(path) in err

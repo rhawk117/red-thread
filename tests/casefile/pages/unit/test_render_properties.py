@@ -32,7 +32,7 @@ def test_render_value_escapes_every_html_metacharacter_in_any_text(text: str) ->
     rendered = render_value(text)
 
     assert not any(character in rendered for character in METACHARACTERS)
-    assert BARE_AMPERSAND.search(rendered) is None
+    assert not BARE_AMPERSAND.search(rendered)
     assert unescape(rendered) == text
     assert rendered == escape(text)
 

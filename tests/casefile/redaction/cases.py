@@ -5,10 +5,13 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from tests.params import as_params
+
 if TYPE_CHECKING:
     from _pytest.mark import ParameterSet
     from red_thread_casefile.redaction import PatternName
 
+LEAKED = 'AKIAIOSFODNN7EXAMPLE'
 PRIVATE_KEY = (
     '-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEAx3f9\nabcdefghijklmnop\n'
     '-----END RSA PRIVATE KEY-----'
@@ -21,18 +24,15 @@ class SecretCase:
     text: str
     leaked: str
     pattern: PatternName
-
-    @property
-    def param(self) -> ParameterSet:
-        return pytest.param(self, id=self.name)
+    marks: tuple[pytest.MarkDecorator, ...] = ()
 
 
 def secret_params() -> list[ParameterSet]:
     cases = [
         SecretCase(
             name='aws-access-key',
-            text='key AKIAIOSFODNN7EXAMPLE in use',
-            leaked='AKIAIOSFODNN7EXAMPLE',
+            text=f'key {LEAKED} in use',
+            leaked=LEAKED,
             pattern='aws-key',
         ),
         SecretCase(
@@ -102,7 +102,7 @@ def secret_params() -> list[ParameterSet]:
             pattern='private-key',
         ),
     ]
-    return [case.param for case in cases]
+    return as_params(cases)
 
 
 def ordinary_text_params() -> list[ParameterSet]:

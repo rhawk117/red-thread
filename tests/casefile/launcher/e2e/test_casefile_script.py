@@ -1,11 +1,13 @@
-"""scripts/casefile.sh from outside the plugin: a child process in a temporary git repository."""
+"""bin/redthread-casefile from outside the plugin: a child process in a temporary git repository."""
 
 import json
 from typing import TYPE_CHECKING
 
 import pytest
+from red_thread_casefile.domain import PROGRAM
 
 from tests.casefile.launcher.launcher import hostile_uv_config_params, list_tree, snapshot
+from tests.casefile.ledger.builders import KNOWN
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -13,12 +15,6 @@ if TYPE_CHECKING:
     from tests.casefile.launcher.launcher import Launcher
 
 OPEN = {'kind': 'open', 'text': 'what stalls the queue', 'source': 'scout'}
-KNOWN = {
-    'kind': 'known',
-    'text': 'the sleep blocks the queue',
-    'source': 'scout',
-    'cite': 'src/queue.py:3',
-}
 BATCH = json.dumps([OPEN, KNOWN])
 CASE_HOME = '.red-thread'
 
@@ -61,7 +57,7 @@ class TestCasefileScript:
         rejected = launcher.add(case, 'not a batch')
 
         assert (rejected.code, rejected.out) == (1, '')
-        assert 'casefile: the batch is not usable' in rejected.err
+        assert f'{PROGRAM}: the batch is not usable' in rejected.err
 
     def test_a_second_run_prints_nothing_on_standard_error(self, launcher: Launcher) -> None:
         case = launcher.init()

@@ -14,7 +14,12 @@ from red_thread_navigate.budget import (
     fit_to_budget,
 )
 
-lines_strategy = st.lists(st.text(max_size=2000).filter(lambda s: '\n' not in s), max_size=40)
+
+def is_one_line(text: str) -> bool:
+    return '\n' not in text
+
+
+lines_strategy = st.lists(st.text(max_size=2000).filter(is_one_line), max_size=40)
 rungs_strategy = st.lists(lines_strategy.map(tuple), min_size=1, max_size=3)
 
 
@@ -36,7 +41,7 @@ class TestFitToBudget:
         assert estimate_tokens(fitted.text) <= budget
 
     def test_first_rung_that_fits_is_returned_whole(self) -> None:
-        rungs = [tuple('x' * 40 for _ in range(20)), ('summary line',), ('3 files',)]
+        rungs = [('x' * 40,) * 20, ('summary line',), ('3 files',)]
 
         fitted = fit_to_budget(rungs, budget=100)
 
@@ -74,7 +79,7 @@ class TestFitToBudget:
         assert fitted.kept == 0
 
     def test_minimum_budget_holds_the_footer_for_a_huge_rung(self) -> None:
-        fitted = fit_to_budget([tuple('y' * 50 for _ in range(10_000))], budget=MIN_BUDGET)
+        fitted = fit_to_budget([('y' * 50,) * 10_000], budget=MIN_BUDGET)
 
         assert estimate_tokens(fitted.text) <= MIN_BUDGET
         assert fitted.text.endswith('of 10000, raise --budget')
@@ -90,6 +95,6 @@ class TestFitNotes:
 
 class TestPrintedFit:
     def test_fitted_text_with_its_newline_is_not_cut_again(self) -> None:
-        fitted = fit_to_budget([tuple('x' * 20 for _ in range(30))], budget=MIN_BUDGET)
+        fitted = fit_to_budget([('x' * 20,) * 30], budget=MIN_BUDGET)
 
         assert cut_to_budget(fitted.text, MIN_BUDGET) == fitted.text

@@ -4,17 +4,17 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
+from red_thread_casefile.domain import PROGRAM
 
+from tests.casefile.ledger.builders import PAGE_URL
 from tests.casefile.ledger.cases import corrupt_case_params
+from tests.params import as_params
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from _pytest.mark import ParameterSet
-
     from tests.casefile.commands.cli import CliHarness, CliRun
 
-URL = 'https://claude.ai/artifact/retry-queue'
 BATCH = '[{"kind": "open", "text": "who owns the queue", "source": "scout"}]'
 BROKEN_LINE = 'this is not a ledger entry'
 
@@ -26,10 +26,7 @@ class CommandCall:
     stdin: str
     reads_case: bool
     reads_ledger: bool
-
-    @property
-    def param(self) -> ParameterSet:
-        return pytest.param(self, id=self.name)
+    marks: tuple[pytest.MarkDecorator, ...] = ()
 
 
 def create_calls() -> list[CommandCall]:
@@ -51,19 +48,23 @@ def create_calls() -> list[CommandCall]:
             reads_ledger=True,
         ),
         CommandCall(
-            name='page', argv=('page', '--url', URL), stdin='', reads_case=True, reads_ledger=False
+            name='page',
+            argv=('page', '--url', PAGE_URL),
+            stdin='',
+            reads_case=True,
+            reads_ledger=False,
         ),
     ]
 
 
 def case_command_cases() -> pytest.MarkDecorator:
     calls = [call for call in create_calls() if call.reads_case]
-    return pytest.mark.parametrize('call', [call.param for call in calls])
+    return pytest.mark.parametrize('call', as_params(calls))
 
 
 def ledger_command_cases() -> pytest.MarkDecorator:
     calls = [call for call in create_calls() if call.reads_ledger]
-    return pytest.mark.parametrize('call', [call.param for call in calls])
+    return pytest.mark.parametrize('call', as_params(calls))
 
 
 def corrupt_case_cases() -> pytest.MarkDecorator:
@@ -86,7 +87,7 @@ class TestCorruptCaseFile:
 
         assert result.code == 1
         assert result.out == ''
-        assert result.err.startswith(f'casefile: {case_file} is not a case record (')
+        assert result.err.startswith(f'{PROGRAM}: {case_file} is not a case record (')
         assert 'Traceback' not in result.err
         assert result.err.count('\n') == 1
 
@@ -119,7 +120,7 @@ class TestCorruptLedgerLine:
 
         assert result.code == 1
         assert result.out == ''
-        assert result.err.startswith(f'casefile: {ledger} line 1 is not a ledger entry')
+        assert result.err.startswith(f'{PROGRAM}: {ledger} line 1 is not a ledger entry')
         assert 'Traceback' not in result.err
 
     @ledger_command_cases()

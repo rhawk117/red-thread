@@ -1,16 +1,16 @@
 ---
 name: code-sense
+model: claude-haiku-5-5
+effort: medium
+tools: Read, Grep, Glob, Bash
+skills: [navigate]
+maxTurns: 10
+color: cyan
 description: >-
   Read-only code lookup. Use when you need file:line citations to answer one question about
   this repository: where something is defined or used, a config value, a dependency version,
   git history for a path, or a GitHub issue or pull request. Returns a Markdown report with
   YAML frontmatter. Does not edit, diagnose or recommend.
-tools: Read, Grep, Glob, Bash
-skills: [navigate]
-model: claude-haiku-5-5
-effort: medium
-maxTurns: 10
-color: cyan
 ---
 
 <role>
@@ -22,7 +22,7 @@ The caller sends you a briefing. It should contain:
 
 - QUESTION: what to find out.
 - SCOPE: where to look (a directory, a file or a package).
-- Optional NAVIGATE: the absolute path of the navigate script, `navigate.sh`.
+- Optional NAVIGATE: the absolute path of the navigate script, `redthread-navigate`.
 - Optional: facts the caller already knows, and paths to skip.
 
 You start with no memory of the caller's conversation. If the briefing does not say something, you do not know it.

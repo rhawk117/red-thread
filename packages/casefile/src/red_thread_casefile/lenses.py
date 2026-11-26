@@ -3,10 +3,10 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
 
+from red_thread_casefile.domain import PROGRAM, STATE_DIRECTORY, shorten_head
 from red_thread_casefile.errors import LensOverBudgetError, UnknownPlanRefError
 from red_thread_casefile.util import squeeze
 from red_thread_casefile.views import (
-    SHORT_HEAD,
     Annotator,
     CheckReport,
     Document,
@@ -40,6 +40,11 @@ class Part:
     fixed: FixedPart | None = None
 
 
+GOAL_SUMMARY = Part(title='Summary', fixed='goal')
+POINTERS = Part(title='Pointers', fixed='pointers')
+HOW_TO_READ = Part(title='How to read', fixed='reading')
+
+
 @dataclass(slots=True, kw_only=True, frozen=True)
 class Lens:
     name: LensName
@@ -59,8 +64,8 @@ LENSES = (
             Part(title='Constraints', kind='known'),
             Part(title='Ruled out', kind='ruled_out'),
             Part(title='Open', kind='open'),
-            Part(title='Pointers', fixed='pointers'),
-            Part(title='How to read', fixed='reading'),
+            POINTERS,
+            HOW_TO_READ,
         ),
     ),
     Lens(
@@ -68,13 +73,13 @@ LENSES = (
         intro='Raised from',
         budget=80,
         parts=(
-            Part(title='Summary', fixed='goal'),
+            GOAL_SUMMARY,
             Part(title='Findings', kind='known'),
             Part(title='Open questions', kind='open'),
             Part(title='Ruled out', kind='ruled_out'),
             Part(title='Next steps', kind='next'),
             Part(title='References', kind='resource'),
-            Part(title='Pointers', fixed='pointers'),
+            POINTERS,
         ),
     ),
     Lens(
@@ -87,8 +92,8 @@ LENSES = (
             Part(title='Start here', kind='next'),
             Part(title='Open', kind='open'),
             Part(title='Hypotheses', kind='hypothesis'),
-            Part(title='Pointers', fixed='pointers'),
-            Part(title='How to read', fixed='reading'),
+            POINTERS,
+            HOW_TO_READ,
         ),
     ),
     Lens(
@@ -96,7 +101,7 @@ LENSES = (
         intro='Report on',
         budget=200,
         parts=(
-            Part(title='Summary', fixed='goal'),
+            GOAL_SUMMARY,
             Part(title='Decided', kind='decision'),
             Part(title='Findings', kind='known'),
             Part(title='Hypotheses', kind='hypothesis'),
@@ -104,8 +109,8 @@ LENSES = (
             Part(title='Open', kind='open'),
             Part(title='Next steps', kind='next'),
             Part(title='Resources', kind='resource'),
-            Part(title='Pointers', fixed='pointers'),
-            Part(title='How to read', fixed='reading'),
+            POINTERS,
+            HOW_TO_READ,
         ),
     ),
 )
@@ -153,7 +158,7 @@ class Edition:
 
     @property
     def short_head(self) -> str:
-        return (self.head or 'none')[:SHORT_HEAD]
+        return shorten_head(self.head)
 
     @property
     def annotator(self) -> Annotator:
@@ -209,12 +214,12 @@ class Composer:
 
     def list_pointers(self) -> tuple[Item, ...]:
         case = self.edition.case
-        location = f'.red-thread/{case.id}'
+        location = f'{STATE_DIRECTORY}/{case.id}'
         checked = CheckReport(findings=self.edition.findings).summary
         pointers = [
             f'Ledger: `{location}/ledger.jsonl`, with one file per thread under `threads/`.',
             f'Citations checked at commit {self.edition.short_head}: {checked}.',
-            f'Check again with the red-thread plugin: `casefile.sh check --case {location}`',
+            f'Check again with the red-thread plugin: `{PROGRAM} check --case {location}`',
         ]
         if case.page_url is not None:
             pointers.append(f'Board: {case.page_url}')
@@ -227,7 +232,7 @@ class Composer:
         return (f'{case.target} The bar for an answer: {case.bar}',)
 
     def compose_part(self, part: Part) -> Section:
-        if part.kind is not None:
+        if part.kind:
             items = tuple(map(self.create_item, self.select(part.kind)))
             return Section(
                 title=part.title, items=items, kind=part.kind, note=describe_kind(part.kind)

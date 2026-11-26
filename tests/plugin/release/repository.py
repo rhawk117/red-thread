@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from tests.casefile.launcher.children import ChildRunner
+from tests.git import GIT_SETTINGS
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -17,7 +18,6 @@ if TYPE_CHECKING:
 REQUIRED_TOOLS = ('git', 'jq', 'uv')
 VERSION = '0.1.0'
 PYPROJECT = f'[project]\nname = "red-thread-plugin"\nversion = "{VERSION}"\n'
-GIT_SETTINGS = ('-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null')
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)

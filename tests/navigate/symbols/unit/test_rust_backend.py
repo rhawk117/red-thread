@@ -1,6 +1,5 @@
 """The Rust backend turns a source file into symbols, with impl methods addressed by type."""
 
-from importlib import resources
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
 
@@ -9,7 +8,7 @@ from red_thread_navigate.map.views import RankedFile, RankedSymbol, symbol_line
 from red_thread_navigate.symbols.store import backend_for
 from red_thread_navigate.walk import SourceFile
 
-from tests.navigate.symbols.samples import RUST_SAMPLE
+from tests.navigate.symbols.samples import RUST_SAMPLE, spans_of
 
 if TYPE_CHECKING:
     from red_thread_navigate.symbols import FileSymbols
@@ -18,21 +17,13 @@ if TYPE_CHECKING:
 
 def backend_at(path: PurePosixPath) -> Backend:
     backend = backend_for(path)
-    assert backend is not None
+    assert backend
     return backend
 
 
 def parse(text: str) -> FileSymbols:
     return backend_at(PurePosixPath('src/lib.rs')).parse(
         SourceFile(path=PurePosixPath('src/lib.rs'), text=text)
-    )
-
-
-def spans_of(parsed: FileSymbols, qualified_name: str) -> list[tuple[str, int, int]]:
-    return sorted(
-        (symbol.kind, symbol.start_line, symbol.end_line)
-        for symbol in parsed.symbols
-        if symbol.qualified_name == qualified_name
     )
 
 
@@ -85,18 +76,6 @@ class TestSymbols:
 
     def test_rust_files_pick_the_rust_backend(self) -> None:
         assert backend_at(PurePosixPath('a/b.rs')).language == 'rust'
-
-
-class TestQuery:
-    def test_query_carries_the_upstream_notice_and_loads_as_a_resource(self) -> None:
-        text = (
-            resources
-            .files('red_thread_navigate.symbols.store')
-            .joinpath('queries', 'rust.scm')
-            .read_text(encoding='utf-8')
-        )
-        assert 'Copyright (c) 2017 Maxim Sokolov' in text
-        assert 'The MIT License (MIT)' in text
 
 
 TRAIT_USES_SAMPLE = """\

@@ -12,7 +12,7 @@ from red_thread_casefile.policy import CITE_STATES, Finding
 from red_thread_casefile.views import Document, Fact, Item, Section
 
 from tests.casefile.entries.strategies import optional
-from tests.casefile.pages.builders import PAYLOADS, create_document_carrying
+from tests.casefile.pages.builders import STAMP_DAY, create_document_carrying, payload_params
 from tests.casefile.pages.html_reading import (
     find_tags,
     list_cited_quotes,
@@ -29,18 +29,10 @@ if TYPE_CHECKING:
 
 URL_PREFIX = ('http://', 'https://')
 CITED_PATH = 'src/queue.py:3'
-DAY_WIDTH = 10
 
 
 def render(document: Document) -> str:
     return HtmlWriter(document=document).render()
-
-
-def payload_cases() -> pytest.MarkDecorator:
-    return pytest.mark.parametrize(
-        'payload',
-        [pytest.param(payload, id=f'payload-{number}') for number, payload in enumerate(PAYLOADS)],
-    )
 
 
 def is_not_url(text: str) -> bool:
@@ -56,6 +48,10 @@ def label_state(finding: Finding) -> str:
 def list_all_items(document: Document) -> list[Item]:
     shown = [item for section in document.sections for item in section.items]
     return [*shown, *document.retired]
+
+
+def payload_cases() -> pytest.MarkDecorator:
+    return pytest.mark.parametrize('payload', payload_params())
 
 
 class TestNewFieldsLandAsText:
@@ -80,8 +76,8 @@ class TestNewFieldsLandAsText:
     ) -> None:
         page = self.read('item-at', payload)
 
-        assert find_tags(page, 'time') == [{'datetime': payload}]
-        assert ('stamp', payload[:DAY_WIDTH]) in list_note_rows(page)[0]
+        assert find_tags(page, 'time') == [{'datetime': f'{STAMP_DAY}{payload}'}]
+        assert ('stamp', STAMP_DAY) in list_note_rows(page)[0]
 
     @payload_cases()
     def test_a_quote_is_the_text_of_one_pre_element_after_the_cite(self, payload: str) -> None:
@@ -181,10 +177,10 @@ class TestNewFieldsRoundTrip:
 
         items = list_all_items(document)
         assert [span.body for span in list_spans(page, 'verdict')] == [
-            item.verdict for item in items if item.verdict is not None
+            item.verdict for item in items if item.verdict
         ]
         assert [span.body for span in list_spans(page, 'state')] == [
-            label_state(item.finding) for item in items if item.finding is not None
+            label_state(item.finding) for item in items if item.finding
         ]
 
     @given(document=documents)

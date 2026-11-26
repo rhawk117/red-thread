@@ -9,7 +9,8 @@ from red_thread_casefile.domain import ENTRY_KINDS, Ledger
 from red_thread_casefile.lenses import Composer, Edition, Plan, count_lines, get_lens
 
 from tests.casefile.entries.strategies import POOLED_REFS, optional, pooled_entries, words
-from tests.casefile.services.fakes import CASE, create_entry
+from tests.casefile.ledger.builders import create_entry
+from tests.casefile.services.fakes import CASE
 
 if TYPE_CHECKING:
     from red_thread_casefile.domain import Entry

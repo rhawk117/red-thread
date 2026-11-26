@@ -4,32 +4,13 @@ from typing import TYPE_CHECKING
 
 import pytest
 from red_thread_navigate.budget import estimate_tokens, fit_notes
-from red_thread_navigate.cli import create_navigator
 
+from tests.navigate.samples import BIG_BUDGET, CLIENT, CORE, NAVIGATOR
 from tests.navigate.symbols.samples import SourceDir
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-CORE = """\
-def helper():
-    return 1
-
-
-class Widget:
-    def render(self):
-        return helper()
-"""
-CLIENT = """\
-from core import helper
-
-
-def run():
-    helper()
-    helper()
-"""
-BIG_BUDGET = 10_000
-NAVIGATOR = create_navigator()
 SMALL_BUDGET = 40
 
 

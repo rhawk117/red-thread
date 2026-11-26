@@ -12,7 +12,8 @@ from red_thread_casefile.lenses import LENS_NAMES, Plan, count_lines, get_lens
 from red_thread_casefile.services import ExportRequest
 
 from tests.casefile.entries.strategies import entry_kinds
-from tests.casefile.services.fakes import create_entry, create_service_harness
+from tests.casefile.ledger.builders import create_entry
+from tests.casefile.services.fakes import create_service_harness
 
 if TYPE_CHECKING:
     from red_thread_casefile.domain import EntryKind
@@ -36,7 +37,7 @@ def retiring(index: int, retires: bool) -> tuple[str, ...]:
 def list_named_refs(markdown: str) -> list[str]:
     items = (line for line in markdown.split('\n') if line.startswith('- '))
     found = (NAMED_REF.search(line) for line in items)
-    return [match[1] for match in found if match is not None]
+    return [match[1] for match in found if match]
 
 
 class TestExportProperties:

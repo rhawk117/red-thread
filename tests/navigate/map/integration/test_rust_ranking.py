@@ -3,8 +3,8 @@
 from typing import TYPE_CHECKING
 
 import pytest
-from red_thread_navigate.cli import create_navigator
 
+from tests.navigate.samples import BIG_BUDGET, NAVIGATOR
 from tests.navigate.symbols.samples import SourceDir
 
 if TYPE_CHECKING:
@@ -31,8 +31,6 @@ pub fn keep(value: Shared) -> Shared {
     value
 }
 """
-BIG_BUDGET = 10_000
-NAVIGATOR = create_navigator()
 
 
 class TestRustRanking:

@@ -10,22 +10,15 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 from red_thread_navigate import main
 from red_thread_navigate.budget import MIN_BUDGET, estimate_tokens
+from red_thread_navigate.cli import PROGRAM
+
+from tests.navigate.samples import CORE
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-CORE = """\
-def helper():
-    return 1
-
-
-class Widget:
-    def render(self):
-        return helper()
-"""
 IDENTIFIER = r'[A-Za-z_][A-Za-z0-9_]{0,40}'
 SUFFIXES = ('.py', '.js', '.go', '.rs', '.tf', '.txt')
-BIG_BUDGET = 10_000
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -90,7 +83,7 @@ class TestVerbs:
     def test_version_prints_the_package_version(self, repository: Path) -> None:
         printed = run_in(repository, '--version')
 
-        assert (printed.code, printed.out.startswith('red-thread-navigate ')) == (0, True)
+        assert (printed.code, printed.out.startswith(f'{PROGRAM} ')) == (0, True)
 
 
 class TestRefusals:
@@ -145,8 +138,7 @@ class TestUsage:
 
         assert (printed.code, printed.out) == (2, '')
         assert flag in printed.err
-        assert '--budget' in printed.err
-        assert '--version' in printed.err
+        assert 'valid options are --budget, --version, --help, -h' in printed.err
 
     @empty_path_cases()
     def test_an_empty_path_exits_two(self, repository: Path, argv: tuple[str, ...]) -> None:
@@ -179,13 +171,28 @@ def contents() -> st.SearchStrategy[str]:
     return st.one_of(st.text(max_size=400), names.map(definitions))
 
 
+@dataclass(slots=True, kw_only=True, frozen=True)
+class AddressForms:
+    file_name: str
+
+    def name_symbol(self, symbol: str) -> str:
+        return f'{self.file_name}#{symbol}'
+
+    def name_lines(self, line: int) -> str:
+        return f'{self.file_name}#L{line}-L{line + 20}'
+
+    def nest_under(self, path: str) -> str:
+        return f'{path}/{self.file_name}#x'
+
+
 def addresses(file_name: str) -> st.SearchStrategy[str]:
     name = st.from_regex(IDENTIFIER, fullmatch=True)
+    forms = AddressForms(file_name=file_name)
     return st.one_of(
-        name.map(lambda symbol: f'{file_name}#{symbol}'),
-        st.integers(1, 40).map(lambda line: f'{file_name}#L{line}-L{line + 20}'),
+        name.map(forms.name_symbol),
+        st.integers(1, 40).map(forms.name_lines),
         st.text(max_size=120),
-        st.text(alphabet='abcd/.', max_size=150).map(lambda path: f'{path}/{file_name}#x'),
+        st.text(alphabet='abcd/.', max_size=150).map(forms.nest_under),
     )
 
 

@@ -1,14 +1,13 @@
 """The page's structure: sections, entry marks, diagrams, the map and the toolbar."""
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
 import pytest
 from red_thread_casefile.assets import read_asset
 from red_thread_casefile.pages import HtmlWriter
 from red_thread_casefile.views import Document, Item, Section
 
-from tests.casefile.pages.builders import create_document, create_marked_item
+from tests.casefile.pages.builders import DIAGRAM, create_document, create_marked_item
 from tests.casefile.pages.html_reading import (
     find_buttons,
     find_entries,
@@ -17,11 +16,8 @@ from tests.casefile.pages.html_reading import (
     list_mermaid,
     list_section_titles,
 )
+from tests.params import as_params
 
-if TYPE_CHECKING:
-    from _pytest.mark import ParameterSet
-
-DIAGRAM = 'flowchart TD\n  A["one"] --> B["two"]\n  B --> C'
 MAP_LINES = ('  subgraph main["main ledger"]', '    n0["e1 known: a claim"]:::k_known', '  end')
 
 
@@ -34,10 +30,7 @@ class ChipRule:
     name: str
     items: tuple[Item, ...]
     groups: tuple[str, ...]
-
-    @property
-    def param(self) -> ParameterSet:
-        return pytest.param(self, id=self.name)
+    marks: tuple[pytest.MarkDecorator, ...] = ()
 
 
 def chip_rule_cases() -> pytest.MarkDecorator:
@@ -67,7 +60,7 @@ def chip_rule_cases() -> pytest.MarkDecorator:
             groups=('kind', 'thread'),
         ),
     ]
-    return pytest.mark.parametrize('rule', [rule.param for rule in rules])
+    return pytest.mark.parametrize('rule', as_params(rules))
 
 
 class TestSections:

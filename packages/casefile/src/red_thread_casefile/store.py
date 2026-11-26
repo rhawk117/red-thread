@@ -48,6 +48,12 @@ class Clock(Protocol):
     def now(self) -> str: ...
 
 
+def append_text(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open('a', encoding='utf-8') as target:
+        target.write(text)
+
+
 @dataclass(slots=True, kw_only=True, frozen=True)
 class LedgerLine:
     path: Path
@@ -93,11 +99,8 @@ class LedgerFiles:
         return Ledger(entries=tuple(chain.from_iterable(map(self.read, files))))
 
     def append(self, thread: str | None, entries: tuple[Entry, ...]) -> None:
-        path = self.locate(thread)
-        path.parent.mkdir(parents=True, exist_ok=True)
         lines = ''.join(f'{entry_to_line(entry)}\n' for entry in entries)
-        with path.open('a', encoding='utf-8') as ledger:
-            ledger.write(lines)
+        append_text(self.locate(thread), lines)
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -119,9 +122,14 @@ class DirectoryCaseRepository:
         self.directory.joinpath('threads').mkdir(parents=True, exist_ok=True)
         self.write_case(case)
 
+    def get_case_problem(self) -> CaseNotFoundError | None:
+        if self.exists():
+            return None
+        return CaseNotFoundError(path=self.directory)
+
     def read_case(self) -> Case:
-        if not self.exists():
-            raise CaseNotFoundError(path=self.directory)
+        if problem := self.get_case_problem():
+            raise problem
         try:
             return case_from_text(self.case_file.read_text(encoding='utf-8'))
         except ValueError as error:
@@ -131,8 +139,8 @@ class DirectoryCaseRepository:
         self.case_file.write_text(case_to_text(case), encoding='utf-8')
 
     def read_ledger(self) -> Ledger:
-        if not self.exists():
-            raise CaseNotFoundError(path=self.directory)
+        if problem := self.get_case_problem():
+            raise problem
         return self.ledgers.read_all()
 
     def append(self, thread: str | None, entries: tuple[Entry, ...]) -> None:
@@ -177,9 +185,7 @@ class GitSourceTree:
         if pattern in existing.split('\n'):
             return
         gap = '\n' if existing and not existing.endswith('\n') else ''
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with path.open('a', encoding='utf-8') as exclusions:
-            exclusions.write(f'{gap}{pattern}\n')
+        append_text(path, f'{gap}{pattern}\n')
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)

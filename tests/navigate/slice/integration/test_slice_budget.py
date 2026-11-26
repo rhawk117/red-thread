@@ -4,28 +4,18 @@ from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
 
 import pytest
-from red_thread_navigate.budget import estimate_tokens, fit_to_budget
-from red_thread_navigate.cli import create_navigator
-from red_thread_navigate.slice import WINDOW_LINES, SliceError
+from red_thread_navigate.budget import MIN_BUDGET, estimate_tokens, fit_to_budget
+from red_thread_navigate.slice import SliceError
 from red_thread_navigate.slice.policy import Refused, refusal_text
 from red_thread_navigate.slice.views import Found, symbol_rungs
 from red_thread_navigate.symbols import Symbol
 
+from tests.navigate.samples import CORE, NAVIGATOR, long_class
 from tests.navigate.symbols.samples import SourceDir
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-SHORT = """\
-def helper():
-    return 1
-
-
-class Widget:
-    def render(self):
-        return helper()
-"""
-MIN_BUDGET = 32
 LONG_DIRS = '/'.join(f'directory{number}' for number in range(14))
 LONG_PATH = f'{LONG_DIRS}/{"x" * 26}target_module.py'
 LONG_NAME = ('a_very_long_symbol_name_' * 4)[:80]
@@ -35,20 +25,6 @@ TWENTY_NAME = f'{"f" * 17}.py'
 TWENTY_TEXT = f'{"t" * 16}.txt'
 TWENTY_BLOB = f'{"b" * 17}.py'
 TWENTY_MISSING = f'{"m" * 17}.py'
-NAVIGATOR = create_navigator()
-
-
-def long_class() -> str:
-    body = '\n'.join(f'        total += {number}' for number in range(WINDOW_LINES))
-    return (
-        'class Big:\n'
-        '    """A long class."""\n\n'
-        '    def first(self):\n'
-        f'        total = 0\n{body}\n'
-        '        return total\n\n'
-        '    def second(self):\n'
-        '        return 2\n'
-    )
 
 
 def symbol_budget_cases() -> pytest.MarkDecorator:
@@ -140,7 +116,7 @@ class TestRefusalPaths:
         root = SourceDir(root=tmp_path / 'root')
         root.write(LONG_PATH, NEAR_NAMES)
         root.write(f'{LONG_DIRS}/notes.txt', 'plain\n')
-        outside = SourceDir(root=tmp_path).write('secret.py', SHORT)
+        outside = SourceDir(root=tmp_path).write('secret.py', CORE)
         root.root.joinpath(f'{LONG_DIRS}/link.py').symlink_to(outside)
         root.root.joinpath(f'{LONG_DIRS}/blob.py').write_bytes(b'\x00\x01\x02')
         return root
@@ -200,7 +176,7 @@ class TestRefusalPaths:
     def test_a_twenty_character_file_name_survives_whole_under_a_long_directory(
         self, twenty: SourceDir, address: str
     ) -> None:
-        file_name = address.split('#', maxsplit=1)[0].rsplit('/', 1)[-1]
+        file_name = PurePosixPath(address.split('#', maxsplit=1)[0]).name
         assert len(file_name) == 20
 
         message = refuse(twenty, address)

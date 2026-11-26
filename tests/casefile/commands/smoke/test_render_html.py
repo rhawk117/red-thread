@@ -2,6 +2,7 @@
 
 from typing import TYPE_CHECKING
 
+from tests.casefile.pages.builders import SCRIPT
 from tests.casefile.pages.html_reading import list_item_refs, list_spans
 from tests.casefile.pages.promises import assert_page_holds_only_its_own_markup
 
@@ -9,8 +10,6 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from tests.casefile.commands.cli import CliHarness
-
-SCRIPT = '<script>alert(1)</script>'
 
 
 def create_open_records(count: int) -> list[dict[str, object]]:

@@ -14,7 +14,8 @@ from red_thread_casefile.schemas import entry_to_line
 from red_thread_casefile.store import DirectoryCaseRepository
 
 from tests.casefile.entries.strategies import POOLED_THREADS, entries
-from tests.casefile.services.fakes import CASE, create_entry
+from tests.casefile.ledger.builders import create_entry
+from tests.casefile.services.fakes import CASE
 
 if TYPE_CHECKING:
     from pathlib import Path

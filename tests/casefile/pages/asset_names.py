@@ -1,8 +1,7 @@
-"""The page assets by name, typed as the reader takes them."""
+"""The page assets by name, read from the Literal the asset reader takes."""
 
-from typing import TYPE_CHECKING
+from typing import get_args
 
-if TYPE_CHECKING:
-    from red_thread_casefile.assets import AssetName
+from red_thread_casefile.assets import AssetName
 
-ASSET_NAMES: tuple[AssetName, ...] = ('page.html', 'page.css', 'tailwind.css', 'page.js', 'map.mmd')
+ASSET_NAMES: tuple[AssetName, ...] = get_args(AssetName.__value__)

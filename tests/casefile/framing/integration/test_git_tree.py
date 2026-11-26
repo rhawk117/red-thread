@@ -3,7 +3,7 @@
 from typing import TYPE_CHECKING
 
 import pytest
-from red_thread_casefile.services import CaseFile, Framing
+from red_thread_casefile.services import EXCLUDED, CaseFile, Framing
 from red_thread_casefile.store import DirectoryCaseRepository, GitSourceTree
 
 from tests.casefile.ledger.directory import create_directory_harness
@@ -15,7 +15,6 @@ if TYPE_CHECKING:
     from tests.casefile.ledger.directory import DirectoryHarness
     from tests.casefile.ledger.git_repository import GitRepository
 
-EXCLUDED = '.red-thread/'
 FRAMING = Framing(
     id='20261121-retry-queue-slowdown',
     target='why the retry queue stalls',

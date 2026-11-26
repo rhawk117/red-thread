@@ -1,11 +1,13 @@
 """The navigate command line: parse the arguments, run one verb and print its output."""
 
-import argparse
 import sys
-from dataclasses import dataclass
+from collections.abc import Callable
+from dataclasses import dataclass, replace
 from importlib.metadata import version
 from pathlib import Path
-from typing import NoReturn, override
+from typing import Annotated, Literal
+
+from cyclopts import App, CycloptsError, Parameter
 
 from red_thread_navigate.address import AddressError
 from red_thread_navigate.budget import MIN_BUDGET, cut_to_budget
@@ -14,17 +16,29 @@ from red_thread_navigate.slice import SliceError
 from red_thread_navigate.symbols.store import RegistryBackends
 from red_thread_navigate.walk import DiskTree, PathMissingError
 
-PROGRAM = 'red-thread-navigate'
+PROGRAM = 'redthread-navigate'
+DISTRIBUTION = 'red-thread-navigate'
 DEFAULT_BUDGET = 2000
-VALID_OPTIONS = '--budget N, --version, --help'
 EXIT_OK = 0
 EXIT_REFUSED = 1
 EXIT_USAGE = 2
 
+type VerbName = Literal['map', 'find', 'slice']
+type Tokens = Annotated[str, Parameter(show=False, allow_leading_hyphen=True)]
+type Budget = Annotated[
+    int,
+    Parameter(help=f'the most tokens to print, at least {MIN_BUDGET} (default {DEFAULT_BUDGET})'),
+]
+
 
 class UsageError(ValueError):
     def __init__(self, *, problem: str) -> None:
-        super().__init__(f'{problem}; valid options are {VALID_OPTIONS}')
+        super().__init__(problem)
+
+
+class MissingVerbError(UsageError):
+    def __init__(self, *, verbs: str) -> None:
+        super().__init__(problem=f'a verb is required: {verbs}')
 
 
 class EmptyPathError(UsageError):
@@ -39,74 +53,149 @@ class BudgetTooSmallError(UsageError):
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class Request:
-    verb: str
-    budget: int
+    verb: VerbName
+    budget: int = DEFAULT_BUDGET
     target: str
     path: str | None = None
 
+    @property
+    def searched(self) -> str:
+        return (self.path or '') if self.verb == 'find' else self.target
 
-class Parser(argparse.ArgumentParser):
-    @override
-    def error(self, message: str) -> NoReturn:
-        raise UsageError(problem=message)
+    def get_usage_problem(self) -> UsageError | None:
+        if self.budget < MIN_BUDGET:
+            return BudgetTooSmallError(budget=self.budget)
+
+        if self.verb != 'slice' and not self.searched:
+            return EmptyPathError(verb=self.verb)
+
+        return None
 
 
-def build_parser() -> Parser:
-    parser = Parser(prog=PROGRAM, allow_abbrev=False)
-    parser.add_argument('--version', action='store_true', help='print the version and exit')
-    parser.add_argument(
-        '--budget',
-        type=int,
-        default=DEFAULT_BUDGET,
-        metavar='N',
-        help=f'the most tokens to print, at least {MIN_BUDGET} (default {DEFAULT_BUDGET})',
+def request_map(path: str, /) -> Request:
+    return Request(verb='map', target=path)
+
+
+def request_find(name: str, path: str, /) -> Request:
+    return Request(verb='find', target=name, path=path)
+
+
+def request_slice(address: str, /) -> Request:
+    return Request(verb='slice', target=address)
+
+
+def describe_version() -> str:
+    return f'{PROGRAM} {version(DISTRIBUTION)}'
+
+
+@dataclass(slots=True, kw_only=True, frozen=True)
+class Launcher:
+    verbs: App
+
+    def launch(self, *tokens: Tokens, budget: Budget = DEFAULT_BUDGET) -> Request | None:
+        if not tokens:
+            raise MissingVerbError(verbs=describe_verbs())
+
+        request = self.verbs(tokens)
+        if not isinstance(request, Request):
+            return None
+
+        request = replace(request, budget=budget)
+        if problem := request.get_usage_problem():
+            raise problem
+
+        return request
+
+
+def build_app() -> App:
+    verbs = App(
+        name=PROGRAM,
+        version=describe_version,
+        exit_on_error=False,
+        print_error=False,
+        result_action='return_value',
     )
-    verbs = parser.add_subparsers(dest='verb', metavar='VERB')
-    verbs.add_parser('map', help='list the files and symbols under PATH').add_argument('target')
-    finder = verbs.add_parser('find', help='list the definitions and references of NAME under PATH')
-    finder.add_argument('target', metavar='NAME')
-    finder.add_argument('path', metavar='PATH')
-    verbs.add_parser('slice', help='print the code ADDRESS names').add_argument(
-        'target', metavar='ADDRESS'
-    )
-    return parser
+    for name, verb in create_verbs().items():
+        verbs.command(verb.parse, name=name, help=verb.help)
+    verbs.meta.default(Launcher(verbs=verbs).launch)
+    return verbs
 
 
-def parse_request(argv: list[str]) -> Request:
-    parsed = build_parser().parse_args(argv)
-    if parsed.version:
-        return Request(verb='version', budget=DEFAULT_BUDGET, target='')
-    if parsed.verb is None:
-        message = 'a verb is required: map, find or slice'
-        raise UsageError(problem=message)
-    if parsed.budget < MIN_BUDGET:
-        raise BudgetTooSmallError(budget=parsed.budget)
-    path = getattr(parsed, 'path', None)
-    searched = path if parsed.verb == 'find' else parsed.target
-    if parsed.verb != 'slice' and not searched:
-        raise EmptyPathError(verb=parsed.verb)
-    return Request(
-        verb=parsed.verb,
-        budget=parsed.budget,
-        target=parsed.target,
-        path=path,
-    )
+def describe_options(verbs: App) -> str:
+    arguments = verbs.meta.assemble_argument_collection()
+    shown = (name for argument in arguments if argument.show for name in argument.names)
+    return ', '.join((*shown, *verbs.version_flags, *verbs.help_flags))
+
+
+def parse_request(verbs: App, argv: list[str]) -> Request | None:
+    try:
+        parsed = verbs.meta(argv)
+    except CycloptsError as error:
+        raise UsageError(problem=str(error).rstrip('.')) from error
+    return parsed if isinstance(parsed, Request) else None
 
 
 def create_navigator() -> Navigator:
     return Navigator(tree=DiskTree(), backends=RegistryBackends())
 
 
-def run_verb(navigator: Navigator, request: Request) -> str:
-    verbs = {
-        'version': lambda: f'{PROGRAM} {version("red-thread-navigate")}',
-        'map': lambda: navigator.map(Path(request.target), budget=request.budget),
-        'find': lambda: navigator.find(
-            request.target, Path(request.path or ''), budget=request.budget
+@dataclass(slots=True, kw_only=True, frozen=True)
+class VerbRunner:
+    navigator: Navigator
+    request: Request
+
+    def map_target(self) -> str:
+        return self.navigator.map(Path(self.request.target), budget=self.request.budget)
+
+    def find_name(self) -> str:
+        path = Path(self.request.path or '')
+        return self.navigator.find(self.request.target, path, budget=self.request.budget)
+
+    def slice_address(self) -> str:
+        return self.navigator.slice(
+            self.request.target, root=Path.cwd(), budget=self.request.budget
+        )
+
+
+type RequestParser = Callable[..., Request]
+type VerbRun = Callable[[VerbRunner], str]
+
+
+@dataclass(slots=True, kw_only=True, frozen=True)
+class Verb:
+    help: str
+    parse: RequestParser
+    run: VerbRun
+
+
+def create_verbs() -> dict[VerbName, Verb]:
+    return {
+        'map': Verb(
+            help='list the files and symbols under PATH',
+            parse=request_map,
+            run=VerbRunner.map_target,
         ),
-        'slice': lambda: navigator.slice(request.target, root=Path.cwd(), budget=request.budget),
+        'find': Verb(
+            help='list the definitions and references of NAME under PATH',
+            parse=request_find,
+            run=VerbRunner.find_name,
+        ),
+        'slice': Verb(
+            help='print the code ADDRESS names',
+            parse=request_slice,
+            run=VerbRunner.slice_address,
+        ),
     }
-    return verbs[request.verb]()
+
+
+def describe_verbs() -> str:
+    *first, last = create_verbs()
+    return f'{", ".join(first)} or {last}'
+
+
+def run_verb(navigator: Navigator, request: Request) -> str:
+    runner = VerbRunner(navigator=navigator, request=request)
+    return create_verbs()[request.verb].run(runner)
 
 
 def navigate(navigator: Navigator, request: Request) -> int:
@@ -120,9 +209,14 @@ def navigate(navigator: Navigator, request: Request) -> int:
 
 
 def run(argv: list[str]) -> int:
+    verbs = build_app()
     try:
-        request = parse_request(argv)
+        request = parse_request(verbs, argv)
     except UsageError as error:
-        print(f'{PROGRAM}: {error}', file=sys.stderr)
+        print(f'{PROGRAM}: {error}; valid options are {describe_options(verbs)}', file=sys.stderr)
         return EXIT_USAGE
+
+    if not request:
+        return EXIT_OK
+
     return navigate(create_navigator(), request)

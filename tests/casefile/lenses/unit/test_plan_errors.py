@@ -8,11 +8,10 @@ from red_thread_casefile.errors import UnknownPlanRefError
 from red_thread_casefile.lenses import Plan
 
 from tests.casefile.ledger.builders import create_entry
-from tests.casefile.lenses.builders import create_numbered_entries
+from tests.casefile.lenses.builders import create_numbered_entries, export
+from tests.params import as_params
 
 if TYPE_CHECKING:
-    from _pytest.mark import ParameterSet
-
     from tests.casefile.lenses.builders import PressHarness
 
 PREVIOUS = 'a brief written by an earlier export\n'
@@ -23,10 +22,7 @@ class RefScenario:
     name: str
     plan: Plan
     unknown: str
-
-    @property
-    def param(self) -> ParameterSet:
-        return pytest.param(self, id=self.name)
+    marks: tuple[pytest.MarkDecorator, ...] = ()
 
 
 def plan_ref_cases() -> pytest.MarkDecorator:
@@ -49,7 +45,7 @@ def plan_ref_cases() -> pytest.MarkDecorator:
             unknown='e77',
         ),
     ]
-    return pytest.mark.parametrize('scenario', [scenario.param for scenario in scenarios])
+    return pytest.mark.parametrize('scenario', as_params(scenarios))
 
 
 class TestUnknownPlanRef:
@@ -68,7 +64,7 @@ class TestUnknownPlanRef:
     ) -> UnknownPlanRefError:
         before = harness.snapshot()
         with pytest.raises(UnknownPlanRefError) as raised:
-            harness.export('brief', plan, html=html)
+            export(harness, 'brief', plan, html=html)
         assert harness.snapshot() == before
         return raised.value
 
@@ -86,6 +82,6 @@ class TestUnknownPlanRef:
         assert 'out/brief.html' not in harness.pages.files
 
     def test_a_plan_naming_only_live_entries_exports(self, harness: PressHarness) -> None:
-        harness.export('brief', Plan(include=('e2', 'e3'), blocking=('e3',)))
+        export(harness, 'brief', Plan(include=('e2', 'e3'), blocking=('e3',)))
 
         assert harness.read_markdown('brief') != PREVIOUS

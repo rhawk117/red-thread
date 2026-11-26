@@ -34,7 +34,6 @@ QUOTE = re.compile(r'<pre class="quote"><code>(.*?)</code></pre>', re.DOTALL)
 CITED_QUOTE = re.compile(
     r'<p class="cite">(?:(?!</p>).)*</p>\s*<pre class="quote"><code>(.*?)</code></pre>', re.DOTALL
 )
-CLAIM_MARKUP = re.compile(r'<p class="claim">(.*?)</p>', re.DOTALL)
 NOTE_LIST = re.compile(r'<ul class="notes">(.*?)</ul>', re.DOTALL)
 NOTE_ROW = re.compile(r'<li(?: class="(\w+)")?>(.*?)</li>', re.DOTALL)
 ANY_TAG = re.compile(r'<[^>]*>')
@@ -100,6 +99,10 @@ class SectionReading:
     count: int | None
     note: str | None
     body: str
+
+
+def read_all(pattern: re.Pattern[str], page: str) -> list[str]:
+    return list(map(unescape, pattern.findall(page)))
 
 
 def read_attributes(text: str) -> dict[str, str]:
@@ -168,11 +171,11 @@ def list_copy_values(page: str) -> list[str]:
 
 
 def list_mermaid(page: str) -> list[str]:
-    return [unescape(source) for source in MERMAID.findall(page)]
+    return read_all(MERMAID, page)
 
 
 def list_section_titles(page: str) -> list[str]:
-    return [unescape(title) for title in SECTION_HEAD.findall(page)]
+    return read_all(SECTION_HEAD, page)
 
 
 def list_cite_blocks(page: str) -> list[str]:
@@ -184,15 +187,15 @@ def list_claims(page: str) -> list[str]:
 
 
 def list_code_spans(page: str) -> list[str]:
-    return [unescape(span) for span in CODE_SPAN.findall(page)]
+    return read_all(CODE_SPAN, page)
 
 
 def list_item_refs(page: str) -> list[str]:
-    return [unescape(ref) for ref in ITEM_REF.findall(page)]
+    return read_all(ITEM_REF, page)
 
 
 def list_flags(page: str) -> list[str]:
-    return [unescape(flag) for flag in FLAG.findall(page)]
+    return read_all(FLAG, page)
 
 
 def list_facts(page: str) -> list[FactReading]:
@@ -230,15 +233,15 @@ def list_spans(page: str, role: str) -> list[Element]:
 
 
 def list_quotes(page: str) -> list[str]:
-    return [unescape(quote) for quote in QUOTE.findall(page)]
+    return read_all(QUOTE, page)
 
 
 def list_cited_quotes(page: str) -> list[str]:
-    return [unescape(quote) for quote in CITED_QUOTE.findall(page)]
+    return read_all(CITED_QUOTE, page)
 
 
 def list_claim_markup(page: str) -> list[str]:
-    return CLAIM_MARKUP.findall(page)
+    return CLAIM.findall(page)
 
 
 def list_note_rows(page: str) -> list[list[tuple[str, str]]]:

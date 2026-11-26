@@ -5,19 +5,10 @@ from typing import TYPE_CHECKING
 
 from red_thread_casefile.store import GitSourceTree
 
+from tests.git import GIT_SETTINGS
+
 if TYPE_CHECKING:
     from pathlib import Path
-
-GIT_SETTINGS = (
-    '-c',
-    'user.name=test',
-    '-c',
-    'user.email=test@example.invalid',
-    '-c',
-    'commit.gpgsign=false',
-    '-c',
-    'core.hooksPath=/dev/null',
-)
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)

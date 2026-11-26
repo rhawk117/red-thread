@@ -1,7 +1,8 @@
 ---
 name: navigate
-description: How red-thread scouts read code structure with the navigate script (map, find, slice). Preloaded into the scouts; not for direct use.
 user-invocable: false
+description: >-
+  How red-thread scouts read code structure with the navigate script (map, find, slice). Preloaded into the scouts; not for direct use.
 ---
 
 # navigate

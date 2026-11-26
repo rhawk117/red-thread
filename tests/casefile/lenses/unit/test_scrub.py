@@ -8,12 +8,12 @@ from hypothesis import given
 from hypothesis import strategies as st
 from red_thread_casefile.lenses import Plan
 
-from tests.casefile.lenses.builders import create_press_harness
+from tests.casefile.lenses.builders import create_press_harness, export
 from tests.casefile.lenses.cases import lens_name_params, lens_shapes
 from tests.casefile.lenses.reading import list_section_lines
+from tests.params import as_params
 
 if TYPE_CHECKING:
-    from _pytest.mark import ParameterSet
     from red_thread_casefile.lenses import LensName
 
     from tests.casefile.lenses.builders import PressHarness
@@ -31,10 +31,7 @@ class SecretScenario:
     name: str
     secret: str
     marker: str
-
-    @property
-    def param(self) -> ParameterSet:
-        return pytest.param(self, id=self.name)
+    marks: tuple[pytest.MarkDecorator, ...] = ()
 
 
 def secret_cases() -> pytest.MarkDecorator:
@@ -42,7 +39,7 @@ def secret_cases() -> pytest.MarkDecorator:
         SecretScenario(name='aws-key', secret=AWS_KEY, marker='[REDACTED:aws-key]'),
         SecretScenario(name='github-token', secret=GITHUB_TOKEN, marker='[REDACTED:github-token]'),
     ]
-    return pytest.mark.parametrize('scenario', [scenario.param for scenario in scenarios])
+    return pytest.mark.parametrize('scenario', as_params(scenarios))
 
 
 class TestPlanScrub:
@@ -72,7 +69,7 @@ class TestPlanScrub:
     def test_every_lens_scrubs_the_plan(self, press_harness: PressHarness, lens: LensName) -> None:
         plan = Plan(title=f'About {AWS_KEY}', goal=f'Rotate {AWS_KEY}')
 
-        press_harness.export(lens, plan, html=True)
+        export(press_harness, lens, plan, html=True)
 
         written = press_harness.snapshot()
         assert set(written) == {f'out/{lens}.md', f'out/{lens}.html'}
@@ -101,7 +98,7 @@ class TestPlanScrubProperty:
         harness = create_press_harness()
         plan = Plan(title=f'{before} {key} {after}', goal=f'{after} {key} {before}')
 
-        harness.export(lens, plan, html=True)
+        export(harness, lens, plan, html=True)
 
         written = harness.snapshot()
         assert set(written) == {f'out/{lens}.md', f'out/{lens}.html'}

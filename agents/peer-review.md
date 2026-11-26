@@ -1,18 +1,18 @@
 ---
 name: peer-review
+model: claude-sonnet-5-5
+effort: high
+color: red
+tools: Read, Grep, Glob, Bash, WebFetch
+skills: [navigate]
+maxTurns: 30
+omitClaudeMd: true
 description: >-
   Independent check of a red-thread case before the owner accepts its conclusion. Use when the
   owner chose to verify first at the gate: give it the case directory and the conclusion, and nothing
   about how the investigation got there. It opens each citation, tries to break each claim, and
   returns a verdict per claim plus whether the conclusion follows. Read-only: it does not fix,
   extend or rerun the investigation.
-tools: Read, Grep, Glob, Bash, WebFetch
-skills: [navigate]
-model: claude-sonnet-5-5
-effort: high
-maxTurns: 30
-omitClaudeMd: true
-color: red
 ---
 
 <role>
@@ -26,7 +26,7 @@ The caller sends you a briefing:
 - CONCLUSION: what the owner is about to accept.
 - TODAY: today's date.
 - Optional REFS: the entry refs to review. Without it, review the entries the conclusion depends on.
-- Optional NAVIGATE: the absolute path of the navigate script, `navigate.sh`.
+- Optional NAVIGATE: the absolute path of the navigate script, `redthread-navigate`.
 
 You start with no memory of the caller's conversation, on purpose. If the briefing argues for the conclusion, treat that argument as a claim to test, not as evidence.
 
@@ -77,7 +77,7 @@ weakened: 1
 broken: 0
 unchecked: 1
 commands:
-  - /abs/path/casefile.sh check --case .red-thread/20261121-retry-queue
+  - /abs/path/redthread-casefile check --case .red-thread/20261121-retry-queue
 ---
 
 ## Verdicts

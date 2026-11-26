@@ -3,13 +3,15 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-import pytest
 from red_thread_casefile.errors import (
     ForeignSupersededError,
     UnknownSupersededError,
 )
 
+from tests.params import as_params
+
 if TYPE_CHECKING:
+    import pytest
     from _pytest.mark import ParameterSet
     from red_thread_casefile.errors import CaseFileError
 
@@ -20,10 +22,7 @@ class SupersedeCase:
     thread: str | None
     refs: tuple[str, ...]
     error_type: type[CaseFileError] | None
-
-    @property
-    def param(self) -> ParameterSet:
-        return pytest.param(self, id=self.name)
+    marks: tuple[pytest.MarkDecorator, ...] = ()
 
 
 def supersede_params() -> list[ParameterSet]:
@@ -101,7 +100,7 @@ def supersede_params() -> list[ParameterSet]:
             error_type=UnknownSupersededError,
         ),
     ]
-    return [case.param for case in cases]
+    return as_params(cases)
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -110,10 +109,7 @@ class SeqCase:
     thread: str | None
     count: int
     refs: tuple[str, ...]
-
-    @property
-    def param(self) -> ParameterSet:
-        return pytest.param(self, id=self.name)
+    marks: tuple[pytest.MarkDecorator, ...] = ()
 
 
 def seq_params() -> list[ParameterSet]:
@@ -131,4 +127,4 @@ def seq_params() -> list[ParameterSet]:
         SeqCase(name='new-thread-starts-at-one', thread='T2', count=2, refs=('T2.e1', 'T2.e2')),
         SeqCase(name='thread-ten-starts-at-one', thread='T10', count=1, refs=('T10.e1',)),
     ]
-    return [case.param for case in cases]
+    return as_params(cases)

@@ -11,9 +11,13 @@ if TYPE_CHECKING:
     from red_thread_navigate.walk import SkipKind
 
 
+def create_memory_root() -> Path:
+    return Path('memory')
+
+
 @dataclass(slots=True, kw_only=True, frozen=True)
 class MemoryTree:
-    root: Path = field(default_factory=lambda: Path('memory'))
+    root: Path = field(default_factory=create_memory_root)
     texts: dict[str, str] = field(default_factory=dict)
 
     def walk(self, root: Path) -> Walk:

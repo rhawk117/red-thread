@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Runs the red-thread case file command line through redthread::run_package.
+# The first run on a machine downloads the dependencies.
+
+setup_environment() {
+  set -euo pipefail
+  local bin_dir
+  bin_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
+  # shellcheck source=bin/redthread-lib
+  source "${bin_dir}/redthread-lib"
+}
+
+main() {
+  setup_environment
+  redthread::run_package casefile "$@"
+}
+
+main "$@"

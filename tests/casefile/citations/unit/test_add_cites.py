@@ -38,7 +38,7 @@ class TestCiteResolvedWhenAdded:
     ) -> None:
         draft = replace(create_valid_draft('known'), cite=case.cite, quote=case.quote)
 
-        if case.error_type is not None:
+        if case.error_type:
             rejection = reject_batch(harness, draft)
             [problem] = rejection.problems
             assert type(problem) is case.error_type

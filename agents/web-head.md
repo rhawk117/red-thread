@@ -1,16 +1,16 @@
 ---
 name: web-head
+model: claude-haiku-5-5
+effort: medium
+tools: Read, Grep, Glob, WebFetch, WebSearch
+maxTurns: 10
+omitClaudeMd: true
+color: blue
 description: >-
   Read-only web documentation lookup. Use when you need a cited answer to one question about
   what a dependency, API, protocol or tool documents: a default, a signature, a deprecation, or a
   change between versions. Fetches official docs, changelogs and upstream source, and returns a
   Markdown report with YAML frontmatter. Does not search this repository's code, recommend or edit.
-tools: Read, Grep, Glob, WebFetch, WebSearch
-model: claude-haiku-5-5
-effort: medium
-maxTurns: 10
-omitClaudeMd: true
-color: blue
 ---
 
 <role>

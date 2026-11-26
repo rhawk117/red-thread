@@ -1,10 +1,11 @@
-"""scripts/navigate.sh from outside the plugin: a child process in a fixture repository."""
+"""bin/redthread-navigate from outside the plugin: a child process in a fixture repository."""
 
 import shutil
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
+from red_thread_navigate.budget import MIN_BUDGET
 
 from tests.casefile.launcher.children import ChildRunner
 from tests.casefile.launcher.launcher import (
@@ -13,21 +14,13 @@ from tests.casefile.launcher.launcher import (
     read_outside_environment,
     snapshot,
 )
+from tests.navigate.samples import CORE
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from tests.casefile.launcher.children import Finished
 
-CORE = """\
-def helper():
-    return 1
-
-
-class Widget:
-    def render(self):
-        return helper()
-"""
 CLIENT = """\
 from core import helper
 
@@ -44,7 +37,7 @@ class Navigator:
 
     def run(self, *arguments: str) -> Finished:
         runner = ChildRunner(cwd=self.repository, env=read_outside_environment())
-        return runner.run('sh', str(self.script), *arguments)
+        return runner.run('bash', str(self.script), *arguments)
 
 
 @pytest.fixture(scope='session')
@@ -57,8 +50,8 @@ def navigate_script(pytestconfig: pytest.Config, tmp_path_factory: pytest.TempPa
         copy.root.joinpath('packages', 'navigate'),
         ignore=skipped,
     )
-    shutil.copy2(source.joinpath('scripts', 'navigate.sh'), copy.root.joinpath('scripts'))
-    return copy.root.joinpath('scripts', 'navigate.sh')
+    shutil.copy2(source.joinpath('bin', 'redthread-navigate'), copy.root.joinpath('bin'))
+    return copy.root.joinpath('bin', 'redthread-navigate')
 
 
 @pytest.fixture
@@ -120,7 +113,7 @@ class TestNavigateScript:
         finished = navigator.run('--budget', '5', 'map', '.')
 
         assert (finished.code, finished.out) == (2, '')
-        assert 'minimum of 32' in finished.err
+        assert f'minimum of {MIN_BUDGET}' in finished.err
 
     def test_a_refusal_exits_one_on_standard_error(self, navigator: Navigator) -> None:
         finished = navigator.run('slice', 'core.py#Missing')

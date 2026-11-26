@@ -8,6 +8,7 @@ from msgspec.structs import replace
 from tests.casefile.ledger.builders import create_case, create_entry
 from tests.casefile.lenses.builders import create_numbered_entries, seed_flag_scenario
 from tests.casefile.lenses.cases import QUEUE_CITE, QUEUE_QUOTE, flag_params
+from tests.casefile.pages.builders import DIAGRAM, SCRIPT, STAMP_DAY
 from tests.casefile.pages.html_reading import (
     find_tags,
     list_chip_groups,
@@ -31,8 +32,6 @@ if TYPE_CHECKING:
     from tests.casefile.lenses.builders import PressHarness
     from tests.casefile.lenses.cases import FlagScenario
 
-SCRIPT = '<script>alert(1)</script>'
-DIAGRAM = 'flowchart TD\n  A["one"] --> B["two"]\n  B --> C'
 PAGE_URL = 'https://claude.ai/artifact/retry-queue'
 FACT_LABELS = [
     'Bar',
@@ -263,7 +262,7 @@ class TestBoardPageEntries:
                 cite=f'https://example.invalid/"{SCRIPT}',
                 rests_on=SCRIPT,
                 source=SCRIPT,
-                at=SCRIPT,
+                at=f'{STAMP_DAY}{SCRIPT}',
             ),
             create_entry(seq=2, kind='known', text=SCRIPT, cite=QUEUE_CITE, quote=SCRIPT),
         )

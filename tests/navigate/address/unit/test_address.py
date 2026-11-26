@@ -17,8 +17,9 @@ from red_thread_navigate.address import (
     parse_address,
 )
 
+from tests.params import as_params
+
 if TYPE_CHECKING:
-    from _pytest.mark import ParameterSet
     from red_thread_navigate.address import Target
 
 ROOT = Path('/work/repo')
@@ -30,10 +31,7 @@ class FormCase:
     text: str
     path: str
     target: Target
-
-    @property
-    def param(self) -> ParameterSet:
-        return pytest.param(self, id=self.name)
+    marks: tuple[pytest.MarkDecorator, ...] = ()
 
 
 def address_form_cases() -> pytest.MarkDecorator:
@@ -81,7 +79,7 @@ def address_form_cases() -> pytest.MarkDecorator:
             target=SymbolTarget(parts=('run',)),
         ),
     ]
-    return pytest.mark.parametrize('case', [case.param for case in cases])
+    return pytest.mark.parametrize('case', as_params(cases))
 
 
 def malformed_address_cases() -> pytest.MarkDecorator:
@@ -130,13 +128,17 @@ def under_root(steps: list[str]) -> bool:
     return parts[: len(root_parts)] == root_parts and len(parts) > len(root_parts)
 
 
+def outside_root(steps: list[str]) -> bool:
+    return not under_root(steps)
+
+
 class TestParseAddress:
     segments = st.sampled_from(('a', 'b', 'src', 'x.py'))
     escaping_depths = st.integers(min_value=0, max_value=4)
     outside_roots = st.sampled_from(('/etc', '/work/repo2', '/work', '/'))
     steps = st.lists(st.sampled_from(('a', 'b', '..', '.')), max_size=8)
     inside_steps = steps.filter(under_root)
-    other_steps = steps.filter(lambda chosen: not under_root(chosen))
+    other_steps = steps.filter(outside_root)
 
     @address_form_cases()
     def test_each_form_parses_to_its_parts(self, case: FormCase) -> None:

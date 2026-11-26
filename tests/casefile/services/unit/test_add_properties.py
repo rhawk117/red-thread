@@ -35,7 +35,7 @@ def create_batch(thread: str | None, texts: list[str], round_number: int) -> Bat
 
 
 def is_not_thread_name(name: str) -> bool:
-    return THREAD_NAME.fullmatch(name) is None
+    return not THREAD_NAME.fullmatch(name)
 
 
 def insert_uncited_known(batch: Batch, index: int) -> Batch:

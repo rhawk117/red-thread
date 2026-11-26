@@ -1,6 +1,5 @@
 """The TypeScript and TSX backends turn a source file into symbols."""
 
-from importlib import resources
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
 
@@ -8,7 +7,7 @@ import pytest
 from red_thread_navigate.symbols.store import backend_for
 from red_thread_navigate.walk import SourceFile
 
-from tests.navigate.symbols.samples import TSX_SAMPLE, TYPESCRIPT_SAMPLE
+from tests.navigate.symbols.samples import TSX_SAMPLE, TYPESCRIPT_SAMPLE, spans_of
 
 if TYPE_CHECKING:
     from red_thread_navigate.symbols import FileSymbols
@@ -17,7 +16,7 @@ if TYPE_CHECKING:
 
 def backend_at(suffix: str) -> Backend:
     backend = backend_for(PurePosixPath(f'web/sample{suffix}'))
-    assert backend is not None
+    assert backend
     return backend
 
 
@@ -41,14 +40,6 @@ function work() {
   let again = 2
 }
 """
-
-
-def spans_of(parsed: FileSymbols, qualified_name: str) -> list[tuple[str, int, int]]:
-    return sorted(
-        (symbol.kind, symbol.start_line, symbol.end_line)
-        for symbol in parsed.symbols
-        if symbol.qualified_name == qualified_name
-    )
 
 
 def symbol_cases() -> pytest.MarkDecorator:
@@ -224,16 +215,6 @@ class TestLookup:
 
     def test_backend_for_finds_tsx(self) -> None:
         assert backend_at('.tsx').language == 'tsx'
-
-    def test_query_loads_with_the_upstream_license_notice(self) -> None:
-        query = (
-            resources
-            .files('red_thread_navigate.symbols.store')
-            .joinpath('queries', 'typescript.scm')
-            .read_text(encoding='utf-8')
-        )
-        assert 'Max Brunsfeld' in query
-        assert 'MIT License' in query
 
 
 class TestGeneratorConstants:

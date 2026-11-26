@@ -9,6 +9,7 @@ from red_thread_navigate.walk import walk
 from red_thread_navigate.walk.domain import tally_skips
 
 from tests.casefile.launcher.children import ChildRunner
+from tests.git import GIT_SETTINGS
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -16,16 +17,6 @@ if TYPE_CHECKING:
 
     from red_thread_navigate.walk import Walk
 
-GIT_SETTINGS = (
-    '-c',
-    'user.name=test',
-    '-c',
-    'user.email=test@example.invalid',
-    '-c',
-    'commit.gpgsign=false',
-    '-c',
-    'core.hooksPath=/dev/null',
-)
 OVER_LIMIT = 1024 * 1024 + 1
 
 
@@ -191,6 +182,22 @@ class TestSymlinksOutsideTheRoot:
 
         assert paths_of(result) == ['inner_link.py', 'real.py']
         assert result.skipped == tally_skips(('outside_root', 'outside_root'))
+
+
+class TestSymlinksInsideTheRoot:
+    @pytest.fixture
+    def looped(self, tree: Tree) -> Tree:
+        tree.write('pkg/a.py')
+        tree.root.joinpath('pkg_link').symlink_to(
+            tree.root.joinpath('pkg'), target_is_directory=True
+        )
+        return tree
+
+    def test_a_directory_walk_does_not_follow_a_linked_directory(self, looped: Tree) -> None:
+        result = walk(looped.root)
+
+        assert paths_of(result) == ['pkg/a.py']
+        assert result.note is None
 
 
 class TestUnreadableEntries:

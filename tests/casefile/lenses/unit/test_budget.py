@@ -6,7 +6,7 @@ import pytest
 from red_thread_casefile.errors import LensOverBudgetError
 from red_thread_casefile.lenses import count_lines
 
-from tests.casefile.lenses.builders import create_numbered_entries, create_press_harness
+from tests.casefile.lenses.builders import create_numbered_entries, create_press_harness, export
 from tests.casefile.lenses.cases import lens_shape_params
 
 if TYPE_CHECKING:
@@ -18,7 +18,7 @@ SECTION_HEADING_LINES = 1
 
 
 def measure_empty_output(shape: LensShape) -> int:
-    return create_press_harness().export(shape.name).lines
+    return export(create_press_harness(), shape.name).lines
 
 
 def lens_shape_cases() -> pytest.MarkDecorator:
@@ -40,7 +40,7 @@ class TestBudgetBoundary:
     ) -> None:
         self.fill_to(harness, shape, shape.budget)
 
-        exported = harness.export(shape.name)
+        exported = export(harness, shape.name)
 
         text = harness.read_markdown(shape.name)
         assert (exported.lines, exported.budget) == (shape.budget, shape.budget)
@@ -54,7 +54,7 @@ class TestBudgetBoundary:
         self.fill_to(harness, shape, shape.budget + 1)
 
         with pytest.raises(LensOverBudgetError) as raised:
-            harness.export(shape.name)
+            export(harness, shape.name)
 
         error = raised.value
         assert (error.lens, error.lines, error.budget) == (
@@ -72,7 +72,7 @@ class TestBudgetBoundary:
         before = harness.snapshot()
 
         with pytest.raises(LensOverBudgetError):
-            harness.export(shape.name, html=True)
+            export(harness, shape.name, html=True)
 
         assert harness.snapshot() == before
 
@@ -81,11 +81,11 @@ class TestBudgetBoundary:
     ) -> None:
         harness.seed(*create_numbered_entries('known', 50))
 
-        report = harness.export('report')
+        report = export(harness, 'report')
 
         assert report.budget == 200
         with pytest.raises(LensOverBudgetError):
-            harness.export('brief')
+            export(harness, 'brief')
 
 
 class TestCountLines:

@@ -3,12 +3,12 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-import pytest
+from tests.casefile.ledger.memory import MOMENT
+from tests.params import as_params
 
 if TYPE_CHECKING:
+    import pytest
     from _pytest.mark import ParameterSet
-
-CREATED = '2026-11-21T09:30:00+00:00'
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -17,41 +17,38 @@ class CaseIdCase:
     created: str
     label: str
     expected: str
-
-    @property
-    def param(self) -> ParameterSet:
-        return pytest.param(self, id=self.name)
+    marks: tuple[pytest.MarkDecorator, ...] = ()
 
 
 def case_id_params() -> list[ParameterSet]:
     cases = [
         CaseIdCase(
             name='date-and-slug',
-            created=CREATED,
+            created=MOMENT,
             label='retry queue slowdown',
             expected='20261121-retry-queue-slowdown',
         ),
         CaseIdCase(
             name='exactly-five-words',
-            created=CREATED,
+            created=MOMENT,
             label='one two three four five',
             expected='20261121-one-two-three-four-five',
         ),
         CaseIdCase(
             name='six-words-keep-five',
-            created=CREATED,
+            created=MOMENT,
             label='one two three four five six',
             expected='20261121-one-two-three-four-five',
         ),
         CaseIdCase(
             name='long-sentence-keeps-the-first-five',
-            created=CREATED,
+            created=MOMENT,
             label='Retry queue slowdown in the worker pool after deploy',
             expected='20261121-retry-queue-slowdown-in-the',
         ),
         CaseIdCase(
             name='case-and-punctuation-are-flattened',
-            created=CREATED,
+            created=MOMENT,
             label='Why does Retry-Queue stall?!',
             expected='20261121-why-does-retry-queue-stall',
         ),
@@ -63,12 +60,12 @@ def case_id_params() -> list[ParameterSet]:
         ),
         CaseIdCase(
             name='single-word',
-            created=CREATED,
+            created=MOMENT,
             label='latency',
             expected='20261121-latency',
         ),
     ]
-    return [case.param for case in cases]
+    return as_params(cases)
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -76,10 +73,7 @@ class LanguageCase:
     name: str
     files: tuple[str, ...]
     languages: tuple[str, ...]
-
-    @property
-    def param(self) -> ParameterSet:
-        return pytest.param(self, id=self.name)
+    marks: tuple[pytest.MarkDecorator, ...] = ()
 
 
 def count_files(**counts: int) -> tuple[str, ...]:
@@ -113,4 +107,4 @@ def language_params() -> list[ParameterSet]:
             languages=('Python', 'Go', 'Rust', 'Ruby', 'Java'),
         ),
     ]
-    return [case.param for case in cases]
+    return as_params(cases)

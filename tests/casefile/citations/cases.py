@@ -7,6 +7,7 @@ import pytest
 from red_thread_casefile.errors import MisquotedCiteError, UnresolvedCiteError
 
 from tests.casefile.ledger.builders import QUEUE_LINES, QUEUE_PATH, URL_CITE
+from tests.params import as_params
 
 if TYPE_CHECKING:
     from _pytest.mark import ParameterSet
@@ -26,10 +27,7 @@ class AddCiteCase:
     error_type: type[CaseFileError] | None
     stored_quote: str | None = None
     found_at: int | None = None
-
-    @property
-    def param(self) -> ParameterSet:
-        return pytest.param(self, id=self.name)
+    marks: tuple[pytest.MarkDecorator, ...] = ()
 
 
 def add_cite_params() -> list[ParameterSet]:
@@ -116,7 +114,7 @@ def add_cite_params() -> list[ParameterSet]:
             found_at=None,
         ),
     ]
-    return [case.param for case in cases]
+    return as_params(cases)
 
 
 def unread_cite_params() -> list[ParameterSet]:
@@ -137,10 +135,7 @@ class CheckCase:
     after: tuple[str, ...] | None
     state: CiteState
     moved_to: int | None = None
-
-    @property
-    def param(self) -> ParameterSet:
-        return pytest.param(self, id=self.name)
+    marks: tuple[pytest.MarkDecorator, ...] = ()
 
 
 def check_state_params() -> list[ParameterSet]:
@@ -180,7 +175,7 @@ def check_state_params() -> list[ParameterSet]:
             state='missing',
         ),
     ]
-    return [case.param for case in cases]
+    return as_params(cases)
 
 
 def unchecked_cite_params() -> list[ParameterSet]:

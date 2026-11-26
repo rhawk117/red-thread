@@ -1,15 +1,13 @@
 """load_plan and PlanRecord: what a plan file may hold and what it becomes."""
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
 import pytest
 from red_thread_casefile.errors import MalformedPlanError
 from red_thread_casefile.lenses import Plan
 from red_thread_casefile.schemas import PlanRecord, load_plan
 
-if TYPE_CHECKING:
-    from _pytest.mark import ParameterSet
+from tests.params import as_params
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -17,10 +15,7 @@ class MalformedPlan:
     name: str
     text: str
     reason_names: str
-
-    @property
-    def param(self) -> ParameterSet:
-        return pytest.param(self, id=self.name)
+    marks: tuple[pytest.MarkDecorator, ...] = ()
 
 
 def malformed_plan_cases() -> pytest.MarkDecorator:
@@ -52,7 +47,7 @@ def malformed_plan_cases() -> pytest.MarkDecorator:
             name='blocking-holds-null', text='{"blocking": [null]}', reason_names='blocking'
         ),
     ]
-    return pytest.mark.parametrize('scenario', [scenario.param for scenario in scenarios])
+    return pytest.mark.parametrize('scenario', as_params(scenarios))
 
 
 def find_plan_problem(text: str) -> MalformedPlanError | None:
@@ -93,7 +88,7 @@ class TestUsablePlans:
         ],
     )
     def test_plan_has_no_problem(self, text: str) -> None:
-        assert find_plan_problem(text) is None
+        assert not find_plan_problem(text)
 
     def test_empty_or_blank_text_is_the_empty_plan(self) -> None:
         assert read_plan('') == Plan()

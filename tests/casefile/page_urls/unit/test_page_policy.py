@@ -1,7 +1,6 @@
 """get_page_problem: which links the board's page may be recorded as."""
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
 import pytest
 from hypothesis import given
@@ -9,8 +8,7 @@ from hypothesis import strategies as st
 from red_thread_casefile.errors import InvalidPageUrlError
 from red_thread_casefile.policy import get_page_problem
 
-if TYPE_CHECKING:
-    from _pytest.mark import ParameterSet
+from tests.params import as_params
 
 WHITESPACE = (
     ' ',
@@ -30,10 +28,7 @@ class UrlScenario:
     name: str
     url: str
     accepted: bool
-
-    @property
-    def param(self) -> ParameterSet:
-        return pytest.param(self, id=self.name)
+    marks: tuple[pytest.MarkDecorator, ...] = ()
 
 
 def page_url_cases() -> pytest.MarkDecorator:
@@ -58,7 +53,7 @@ def page_url_cases() -> pytest.MarkDecorator:
         UrlScenario(name='leading-space', url=' https://example.invalid/a', accepted=False),
         UrlScenario(name='trailing-space', url='https://example.invalid/a ', accepted=False),
     ]
-    return pytest.mark.parametrize('scenario', [scenario.param for scenario in scenarios])
+    return pytest.mark.parametrize('scenario', as_params(scenarios))
 
 
 class TestPageUrlPolicy:
@@ -70,13 +65,13 @@ class TestPageUrlPolicy:
         problem = get_page_problem(scenario.url)
 
         assert (problem is None) is scenario.accepted
-        if problem is not None:
+        if problem:
             assert isinstance(problem, InvalidPageUrlError)
             assert problem.url == scenario.url
 
     @given(tail=visible)
     def test_any_https_link_without_whitespace_is_accepted(self, tail: str) -> None:
-        assert get_page_problem(f'https://{tail}') is None
+        assert not get_page_problem(f'https://{tail}')
 
     @given(head=visible, gap=whitespace, tail=visible)
     def test_whitespace_anywhere_after_the_scheme_is_rejected(

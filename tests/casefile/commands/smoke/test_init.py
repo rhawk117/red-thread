@@ -4,6 +4,8 @@ import json
 import re
 from typing import TYPE_CHECKING
 
+from red_thread_casefile.domain import PROGRAM
+
 if TYPE_CHECKING:
     from tests.casefile.commands.cli import CliHarness
 
@@ -75,7 +77,7 @@ class TestInit:
 
         assert result.code == 1
         assert result.out == ''
-        assert result.err.startswith('casefile: ')
+        assert result.err.startswith(f'{PROGRAM}: ')
         assert 'already exists' in result.err
         assert case.joinpath('case.json').read_bytes() == before
 

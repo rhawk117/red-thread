@@ -10,7 +10,7 @@ from hypothesis import strategies as st
 from red_thread_casefile.redaction import create_secret_patterns
 
 from tests.casefile.ledger.builders import create_draft, create_valid_draft
-from tests.casefile.redaction.cases import ordinary_text_params, secret_params
+from tests.casefile.redaction.cases import LEAKED, ordinary_text_params, secret_params
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -20,7 +20,6 @@ if TYPE_CHECKING:
     from tests.casefile.ledger.builders import CaseHarness
     from tests.casefile.redaction.cases import SecretCase
 
-LEAKED = 'AKIAIOSFODNN7EXAMPLE'
 LEAK_MARK = '[REDACTED:aws-key]'
 LEAK_LINE = f'AWS_KEY = "{LEAKED}"'
 

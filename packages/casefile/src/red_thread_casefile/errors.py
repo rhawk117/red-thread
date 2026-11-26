@@ -7,6 +7,10 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
+def entry_prefix(position: int) -> str:
+    return f'entry {position}:'
+
+
 class CaseFileError(Exception):
     pass
 
@@ -27,7 +31,7 @@ class UnknownFieldError(CaseFileError):
         self.allowed = tuple(allowed)
         fields = ', '.join(self.allowed)
         super().__init__(
-            f'entry {position}: {field} is not an entry field. The fields are {fields}.'
+            f'{entry_prefix(position)} {field} is not an entry field. The fields are {fields}.'
         )
 
 
@@ -36,7 +40,7 @@ class InvalidFieldError(CaseFileError):
         self.position = position
         self.field = field
         self.expected = expected
-        super().__init__(f'entry {position}: {field} must be {expected}.')
+        super().__init__(f'{entry_prefix(position)} {field} must be {expected}.')
 
 
 class UpgradedVerdictError(CaseFileError):
@@ -44,7 +48,7 @@ class UpgradedVerdictError(CaseFileError):
         self.position = position
         self.verdict = verdict
         super().__init__(
-            f'entry {position}: a report with verdict {verdict} cannot be stored as known. '
+            f'{entry_prefix(position)} a report with verdict {verdict} cannot be stored as known. '
             'Store it as kind open, and for INFERRED say what it depends on in rests_on.'
         )
 
@@ -53,7 +57,7 @@ class UncitedKnownError(CaseFileError):
     def __init__(self, *, position: int) -> None:
         self.position = position
         super().__init__(
-            f'entry {position}: a known needs a cite: path:line, a URL or the command that '
+            f'{entry_prefix(position)} a known needs a cite: path:line, a URL or the command that '
             'showed it. Store a claim you cannot cite as kind open.'
         )
 
@@ -62,7 +66,7 @@ class MissingRestsOnError(CaseFileError):
     def __init__(self, *, position: int) -> None:
         self.position = position
         super().__init__(
-            f'entry {position}: an INFERRED entry needs rests_on, the caveat the inference '
+            f'{entry_prefix(position)} an INFERRED entry needs rests_on, the caveat the inference '
             'depends on, such as "a docs page for another version".'
         )
 
@@ -72,7 +76,7 @@ class DecisionInThreadError(CaseFileError):
         self.position = position
         self.thread = thread
         super().__init__(
-            f'entry {position}: thread {thread} cannot store a decision. '
+            f'{entry_prefix(position)} thread {thread} cannot store a decision. '
             'Return it to the primary as an open question for the owner.'
         )
 
@@ -82,7 +86,7 @@ class DecisionSourceError(CaseFileError):
         self.position = position
         self.source = source
         super().__init__(
-            f'entry {position}: a decision comes only from the owner, and its source is '
+            f'{entry_prefix(position)} a decision comes only from the owner, and its source is '
             f'{source!r}. Ask the owner, then store the answer with source user.'
         )
 
@@ -92,8 +96,8 @@ class OwnerInThreadError(CaseFileError):
         self.position = position
         self.thread = thread
         super().__init__(
-            f'entry {position}: thread {thread} cannot store an entry from the owner, because '
-            'only the primary talks to the owner. Use your own agent name as source.'
+            f'{entry_prefix(position)} thread {thread} cannot store an entry from the owner, '
+            'because only the primary talks to the owner. Use your own agent name as source.'
         )
 
 
@@ -101,7 +105,7 @@ class MissingRefuteError(CaseFileError):
     def __init__(self, *, position: int) -> None:
         self.position = position
         super().__init__(
-            f'entry {position}: a hypothesis needs refute, the observation that would prove '
+            f'{entry_prefix(position)} a hypothesis needs refute, the observation that would prove '
             'it wrong.'
         )
 
@@ -110,8 +114,8 @@ class UncitedRuledOutError(CaseFileError):
     def __init__(self, *, position: int) -> None:
         self.position = position
         super().__init__(
-            f'entry {position}: a ruled_out entry needs a cite, or source user when the owner '
-            'ruled it out.'
+            f'{entry_prefix(position)} a ruled_out entry needs a cite, or source user when the '
+            'owner ruled it out.'
         )
 
 
@@ -120,7 +124,7 @@ class UnknownSupersededError(CaseFileError):
         self.position = position
         self.ref = ref
         super().__init__(
-            f'entry {position}: supersedes names {ref}, which is not in this case. '
+            f'{entry_prefix(position)} supersedes names {ref}, which is not in this case. '
             'Use a ref that render shows, such as e3 or T1.e3.'
         )
 
@@ -131,7 +135,7 @@ class ForeignSupersededError(CaseFileError):
         self.ref = ref
         self.thread = thread
         super().__init__(
-            f'entry {position}: thread {thread} can retire only its own entries, and {ref} '
+            f'{entry_prefix(position)} thread {thread} can retire only its own entries, and {ref} '
             'is not one of them. Report the conflict to the primary instead.'
         )
 
@@ -141,7 +145,7 @@ class UnresolvedCiteError(CaseFileError):
         self.position = position
         self.cite = cite
         super().__init__(
-            f'entry {position}: {cite} does not resolve to a line in this tree. '
+            f'{entry_prefix(position)} {cite} does not resolve to a line in this tree. '
             'Open the file and cite a line you read.'
         )
 
@@ -154,7 +158,7 @@ class MisquotedCiteError(CaseFileError):
         advice = 'Read the line again, or leave quote out and the line is recorded for you.'
         if found_at is not None:
             advice = f'The quoted text is at line {found_at}; cite that line.'
-        super().__init__(f'entry {position}: {cite} does not hold the quoted text. {advice}')
+        super().__init__(f'{entry_prefix(position)} {cite} does not hold the quoted text. {advice}')
 
 
 class BatchRejectedError(CaseFileError):
@@ -236,6 +240,15 @@ class LensOverBudgetError(CaseFileError):
         super().__init__(
             f'the {lens} came to {lines} lines and its budget is {budget}, so nothing was '
             'written. Send a plan whose include lists fewer entries, most important first.'
+        )
+
+
+class InvalidTimestampError(CaseFileError):
+    def __init__(self, *, timestamp: str) -> None:
+        self.timestamp = timestamp
+        super().__init__(
+            f'{timestamp!r} does not start with a YYYY-MM-DD date. Restore the entry from git, '
+            'or record the claim again with add.'
         )
 
 

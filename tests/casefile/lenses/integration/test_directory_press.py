@@ -8,6 +8,7 @@ from red_thread_casefile.errors import InvalidPageUrlError, LensOverBudgetError,
 from red_thread_casefile.lenses import Plan
 
 from tests.casefile.ledger.builders import QUEUE_LINES, QUEUE_PATH, create_draft, create_valid_draft
+from tests.casefile.lenses.builders import export
 from tests.casefile.lenses.reading import find_item, list_headings, list_refs, list_remarks
 from tests.casefile.pages.html_reading import (
     list_item_refs,
@@ -19,9 +20,9 @@ from tests.casefile.pages.promises import (
     assert_page_shows_flag_kinds,
     assert_page_shows_flags,
 )
+from tests.params import as_params
 
 if TYPE_CHECKING:
-    from _pytest.mark import ParameterSet
     from red_thread_casefile.domain import Draft
 
     from tests.casefile.ledger.git_repository import GitRepository
@@ -44,10 +45,7 @@ class DiskChange:
     queue_lines: tuple[str, ...] | None = QUEUE_LINES
     advance_head: bool = False
     flags: tuple[str, ...] = ()
-
-    @property
-    def param(self) -> ParameterSet:
-        return pytest.param(self, id=self.name)
+    marks: tuple[pytest.MarkDecorator, ...] = ()
 
     def apply(self, git: GitRepository) -> tuple[str, ...]:
         recorded = git.head[:7]
@@ -82,7 +80,7 @@ def disk_change_cases() -> pytest.MarkDecorator:
             flags=('lead, recorded at {recorded}', 'citation changed'),
         ),
     ]
-    return pytest.mark.parametrize('change', [change.param for change in changes])
+    return pytest.mark.parametrize('change', as_params(changes))
 
 
 class TestExportOnDisk:
@@ -98,7 +96,7 @@ class TestExportOnDisk:
     def test_export_writes_out_lens_md_inside_the_case_directory(
         self, harness: DirectoryPressHarness
     ) -> None:
-        exported = harness.export('brief')
+        exported = export(harness, 'brief')
 
         written = harness.out_file('out/brief.md')
         assert exported.paths == (written,)
@@ -114,23 +112,23 @@ class TestExportOnDisk:
     def test_entries_come_through_the_real_ledger_with_text_cite_and_ref(
         self, harness: DirectoryPressHarness
     ) -> None:
-        harness.export('brief')
+        export(harness, 'brief')
 
         text = harness.out_file('out/brief.md').read_text(encoding='utf-8')
         assert find_item(text, 'e2') == f'- {FINDING} `src/queue.py:3` [e2]'
         assert list_refs(text, 'Decided') == ['e1']
 
     def test_exporting_again_replaces_the_file(self, harness: DirectoryPressHarness) -> None:
-        harness.export('brief')
+        export(harness, 'brief')
 
-        harness.export('brief', Plan(title='A second title', include=()))
+        export(harness, 'brief', Plan(title='A second title', include=()))
 
         text = harness.out_file('out/brief.md').read_text(encoding='utf-8')
         assert text.splitlines()[0] == '# A second title'
         assert 'Constraints' not in list_headings(text)
 
     def test_html_is_written_beside_the_markdown(self, harness: DirectoryPressHarness) -> None:
-        exported = harness.export('brief', html=True)
+        exported = export(harness, 'brief', html=True)
 
         assert exported.paths == (
             harness.out_file('out/brief.md'),
@@ -145,7 +143,7 @@ class TestExportOnDisk:
     ) -> None:
         expected = list(change.apply(harness.directory.git))
 
-        harness.export('brief', html=True)
+        export(harness, 'brief', html=True)
 
         text = harness.out_file('out/brief.md').read_text(encoding='utf-8')
         page = harness.out_file('out/brief.html').read_text(encoding='utf-8')
@@ -169,7 +167,7 @@ class TestExportOnDisk:
         harness.directory.add(replace(create_draft(4, kind='open'), diagram=DIAGRAM))
 
         harness.press.draw()
-        harness.export('brief', html=True)
+        export(harness, 'brief', html=True)
 
         board = harness.out_file('board.html').read_text(encoding='utf-8')
         brief = harness.out_file('out/brief.html').read_text(encoding='utf-8')
@@ -198,19 +196,19 @@ class TestRefusalsOnDisk:
 
     def test_an_unknown_ref_writes_nothing(self, harness: DirectoryPressHarness) -> None:
         with pytest.raises(UnknownPlanRefError):
-            harness.export('brief', Plan(include=('e9',)), html=True)
+            export(harness, 'brief', Plan(include=('e9',)), html=True)
 
         assert not harness.out_file('out').exists()
 
     def test_an_over_budget_output_leaves_the_earlier_file_byte_for_byte(
         self, harness: DirectoryPressHarness
     ) -> None:
-        harness.export('brief')
+        export(harness, 'brief')
         earlier = harness.out_file('out/brief.md').read_bytes()
         harness.directory.add(*(create_draft(number, kind='open') for number in range(3, 73)))
 
         with pytest.raises(LensOverBudgetError) as raised:
-            harness.export('brief', html=True)
+            export(harness, 'brief', html=True)
 
         assert (raised.value.lens, raised.value.budget) == ('brief', 60)
         assert raised.value.lines > 60
@@ -223,7 +221,7 @@ class TestRefusalsOnDisk:
         harness.directory.add(*(create_draft(number, kind='open') for number in range(3, 73)))
 
         with pytest.raises(LensOverBudgetError):
-            harness.export('brief')
+            export(harness, 'brief')
 
         assert not harness.out_file('out').exists()
 
@@ -282,7 +280,7 @@ class TestRecordPageOnDisk:
     ) -> None:
         harness.press.record_page(PAGE_URL)
 
-        harness.export('brief')
+        export(harness, 'brief')
 
         text = harness.out_file('out/brief.md').read_text(encoding='utf-8')
         assert f'- Board: {PAGE_URL}' in text.splitlines()

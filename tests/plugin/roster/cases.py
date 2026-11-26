@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from tests.params import as_params
+
 if TYPE_CHECKING:
     from _pytest.mark import ParameterSet
 
@@ -26,18 +28,14 @@ class Pairing:
     callee: object
     marks: tuple[pytest.MarkDecorator, ...] = ()
 
-    @property
-    def param(self) -> ParameterSet:
-        return pytest.param(self, id=self.name, marks=self.marks)
-
 
 def allowed_pairing_params() -> list[ParameterSet]:
     by_the_lead = [
-        Pairing(name=f'lead-to-{scout.partition(":")[2]}', caller=LEAD, callee=scout)
+        Pairing(name=f'lead-to-{scout.removeprefix("red-thread:")}', caller=LEAD, callee=scout)
         for scout in SCOUTS
     ]
     by_the_primary = [
-        Pairing(name=f'primary-to-{agent.partition(":")[2]}', caller=None, callee=agent)
+        Pairing(name=f'primary-to-{agent.removeprefix("red-thread:")}', caller=None, callee=agent)
         for agent in (LEAD, SKEPTIC, *SCOUTS)
     ]
     untouched = [
@@ -50,7 +48,7 @@ def allowed_pairing_params() -> list[ParameterSet]:
         ),
     ]
     pairings = (*by_the_lead, *by_the_primary, *untouched)
-    return [pairing.param for pairing in pairings]
+    return as_params(pairings)
 
 
 def refused_pairing_params() -> list[ParameterSet]:
@@ -61,11 +59,13 @@ def refused_pairing_params() -> list[ParameterSet]:
         Pairing(name='lead-under-its-bare-name', caller='research-lead', callee=SKEPTIC),
     ]
     by_the_silent = [
-        Pairing(name=f'{agent.partition(":")[2]}-to-a-scout', caller=agent, callee=SCOUTS[0])
+        Pairing(
+            name=f'{agent.removeprefix("red-thread:")}-to-a-scout', caller=agent, callee=SCOUTS[0]
+        )
         for agent in SILENT
     ]
     pairings = (*by_the_lead, *by_the_silent)
-    return [pairing.param for pairing in pairings]
+    return as_params(pairings)
 
 
 def unreadable_input_params() -> list[ParameterSet]:

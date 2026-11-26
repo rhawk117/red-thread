@@ -2,7 +2,7 @@
 
 import json
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from red_thread_casefile.factory import CaseFiles
 from red_thread_casefile.lenses import Plan
@@ -38,6 +38,19 @@ def create_numbered_entries(
 FLAGGED_TEXT = 'the sleep blocks the queue'
 
 
+@runtime_checkable
+class Pressing(Protocol):
+    @property
+    def press(self) -> Press: ...
+
+
+def export(
+    harness: Pressing, lens: LensName, plan: Plan | None = None, *, html: bool = False
+) -> Exported:
+    request = ExportRequest(lens=lens, plan=plan or Plan(), html=html)
+    return harness.press.export(request)
+
+
 @dataclass(slots=True, kw_only=True, frozen=True)
 class PressHarness:
     case: CaseHarness
@@ -53,12 +66,8 @@ class PressHarness:
     def frame(self, case: Case) -> None:
         self.case.repository.write_case(case)
 
-    def export(self, lens: LensName, plan: Plan | None = None, *, html: bool = False) -> Exported:
-        request = ExportRequest(lens=lens, plan=plan or Plan(), html=html)
-        return self.press.export(request)
-
     def export_markdown(self, lens: LensName, plan: Plan | None = None) -> str:
-        self.export(lens, plan)
+        export(self, lens, plan)
         return self.read_markdown(lens)
 
     def read_markdown(self, lens: LensName) -> str:
@@ -106,10 +115,6 @@ class DirectoryPressHarness:
 
     def out_file(self, name: str) -> Path:
         return self.case_directory.joinpath(name)
-
-    def export(self, lens: LensName, plan: Plan | None = None, *, html: bool = False) -> Exported:
-        request = ExportRequest(lens=lens, plan=plan or Plan(), html=html)
-        return self.press.export(request)
 
     def read_case_record(self) -> dict[str, object]:
         text = self.out_file('case.json').read_text(encoding='utf-8')

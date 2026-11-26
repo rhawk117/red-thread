@@ -10,6 +10,8 @@ from red_thread_casefile.domain import (
     Entry,
 )
 
+from tests.casefile.ledger.memory import MOMENT
+
 LINE_BREAKERS = '\x0b\x0c\x1c\x1d\x1e\x85\N{LINE SEPARATOR}\N{PARAGRAPH SEPARATOR}'
 POOLED_THREADS = (None, 'T1', 'T2', 'T10')
 POOLED_REFS = ('e1', 'e2', 'e3', 'T1.e1', 'T1.e2', 'T1.e3', 'T2.e1', 'T10.e1', 'T10.e2')
@@ -55,7 +57,7 @@ pooled_entries = st.builds(
     kind=entry_kinds,
     text=words,
     source=st.just('scout'),
-    at=st.just('2026-11-21T09:30:00+00:00'),
+    at=st.just(MOMENT),
     supersedes=st.builds(tuple, st.lists(st.sampled_from(POOLED_REFS), max_size=3)),
     thread=st.sampled_from(POOLED_THREADS),
 )

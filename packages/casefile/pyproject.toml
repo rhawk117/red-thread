@@ -8,11 +8,12 @@ authors = [
 ]
 requires-python = ">=3.14"
 dependencies = [
+    "cyclopts==5.5.3",
     "msgspec>=0.22.0",
 ]
 
 [project.scripts]
-red-thread-casefile = "red_thread_casefile:main"
+redthread-casefile = "red_thread_casefile:main"
 
 [build-system]
 requires = ["uv_build>=0.13.1,<0.14.0"]

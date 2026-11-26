@@ -114,15 +114,15 @@ repos:
         name: shfmt
         language: system
         entry: uv run shfmt -w -i 2 -ci
-        files: \.sh$
+        files: (\.sh$|^bin/)
         groups: [shell, format]
         priority: 20
 
       - id: shellcheck
         name: shellcheck
         language: system
-        entry: uv run shellcheck
-        files: \.sh$
+        entry: uv run shellcheck -x
+        files: (\.sh$|^bin/)
         groups: [shell, lint]
         priority: lint
 

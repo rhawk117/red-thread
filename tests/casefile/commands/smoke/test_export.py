@@ -4,7 +4,9 @@ import json
 from typing import TYPE_CHECKING
 
 import pytest
+from red_thread_casefile.domain import PROGRAM
 
+from tests.casefile.ledger.builders import KNOWN
 from tests.casefile.lenses.reading import list_headings, list_refs
 
 if TYPE_CHECKING:
@@ -12,12 +14,6 @@ if TYPE_CHECKING:
 
     from tests.casefile.commands.cli import CliHarness
 
-KNOWN = {
-    'kind': 'known',
-    'text': 'the sleep blocks the queue',
-    'source': 'scout',
-    'cite': 'src/queue.py:3',
-}
 DECISION = {'kind': 'decision', 'text': 'keep the retries', 'source': 'user'}
 
 
@@ -143,7 +139,7 @@ class TestExportRefusals:
 
         assert result.code == 1
         assert result.out == ''
-        assert result.err.startswith('casefile: ')
+        assert result.err.startswith(f'{PROGRAM}: ')
         assert not case.joinpath('out').exists()
         return result.err
 
@@ -209,4 +205,4 @@ class TestExportRefusals:
         result = cli.export(cli.git.root.joinpath('.red-thread', 'nothing-here'), 'brief')
 
         assert result.code == 1
-        assert result.err.startswith('casefile: ')
+        assert result.err.startswith(f'{PROGRAM}: ')
