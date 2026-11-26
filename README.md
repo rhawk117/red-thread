@@ -35,12 +35,21 @@ Then, in a session opened in the repository you want to investigate:
 
 `/red-thread:investigate` also resumes a case that already exists for the target.
 
+When something is broken and you want it working, start from the failure instead:
+
+```text
+/red-thread:debug tests/test_pool.py::test_starvation fails since the retry change
+```
+
+`debug` reproduces the failure, tests rival hypotheses by experiment, and applies a fix only after you approve it. It then reports why the defect was introduced and why nothing caught it, prices the guards that would have, and offers an investigation of any technical debt behind it. You decide which of those are worth building.
+
 ## What the plugin holds
 
 | Path | What it is |
 | --- | --- |
 | `skills/investigate` | the investigation loop and its gate |
 | `skills/distill` | the four outputs, one reference file per output |
+| `skills/debug` | a failure taken to a confirmed cause, a fix you approve and a decision on preventing it; one reference file for failure shapes and one for the escape analysis |
 | `skills/navigate` | how the scouts use the navigate script; preloaded into them, not a command you run |
 | `agents/` | `research-lead`, which runs one thread of a case, the scouts `code-sense`, `code-lens`, `web-head` and `research-cell`, and the skeptic `peer-review` |
 | `hooks/roster.py` | a hook that denies a red-thread agent's dispatch outside its roster |

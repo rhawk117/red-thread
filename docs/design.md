@@ -21,8 +21,11 @@ Use cases:
 2. Large research worth several agents: security research, or learning how a system works.
 3. Produce a hand-off, meaning a pointer to context that is useful to a person and to an agent, and a GitHub issue.
 4. Troubleshoot to a root cause, or survey a codebase for technical debt: what it is, why it happened and what to do.
+5. Debug a failure to a fix the owner approves, then say why it broke, why nothing caught it and what preventing it would cost (added 2026-11-25).
 
 Out of scope: tickets, task tracking, code review, implementing changes, an MCP server and a database. Version 1 ships no hooks.
+
+**Changed 2026-11-25:** the `debug` skill applies a fix, and the guards the owner chooses, after the owner approves each at a gate (section 12). Implementing anything else stays out of scope.
 
 The owner steers every investigation from experience and reviews on a phone through Remote Control, so every gate has to be readable there.
 
@@ -209,6 +212,8 @@ Routes not chosen:
 ## 5. The investigate skill
 
 **Decided:** two user-facing skills, `investigate` and `distill`, plus the preloaded `navigate` support skill (see section 8). Use cases are kinds and lenses, each a small reference file loaded on demand. There is no skill per use case and no pickup skill.
+
+**Changed 2026-11-25:** a third user-facing skill, `debug`, takes a failure to a fix. It keeps its record in a `root-cause` case and hands technical debt back to `investigate` (section 12).
 
 ### Round zero
 
@@ -475,6 +480,7 @@ Open:
 - Both skills pre-approve `bin/redthread-casefile` through `allowed-tools`. The docs say `${CLAUDE_PLUGIN_ROOT}` is substituted in Bash rules there, and that the grant lasts for the invoking turn only. Whether it reaches a subagent is not documented, so step 6 must confirm it. The real case could not: it ran in `auto` permission mode, where sandboxed Bash never asks. It needs a session where Bash asks.
 - Owner comments are read at the gate (section 4). No published page has carried a comment through that step yet, so the shape of what the Artifact tool returns for a thread is untested.
 - The restyled page has not been looked at in a browser from this machine, which has none, and its Tailwind block has not been compiled outside a browser. The owner checks a sample board. Since 2026-11-21 the tests run the page's script under Node (`tests/casefile/pages/integration`), against a small fake DOM and a stand-in for mermaid in `tests/casefile/pages/dom_harness.js`: the filters, the fold button, copying, and drawing and redrawing diagrams. That checks the script's logic and not what a browser or the real mermaid does with it.
+- The `debug` skill is written and validated, and has not run on a real failure. Untested: the worktree check in its phase 2, `git bisect` inside a `research-cell` worktree, proving a guard against the unfixed commit, and loading `investigate` from its close.
 
 Build order:
 
@@ -618,3 +624,25 @@ Made by the owner on 2026-11-25.
 | Output model | one typed tree of frozen dataclass nodes, one entry builder and two writer Protocols (`InlineWriter`, `BlockWriter`) with a method per node kind, so a new kind of content has one place to start and ty names every writer that lacks it (section 4, The document model) |
 | Who draws the page | Python, through the t-string `render`; no Jinja and no TypeScript, so no new dependency and no build step, and the page still carries every entry in its HTML |
 | Scope | the board page and the Markdown lens output; the text board keeps its own path for now |
+
+### 2026-11-25: the debug skill
+
+Made by the owner on 2026-11-25, in one dialog. The skill descends from `whats-broken` in mightymodels and is written for red-thread's agents and case file.
+
+| Decision | Choice and reason |
+| --- | --- |
+| Fix path | the skill applies a fix after the owner approves it at a gate: the session writes a regression test that fails first, then the smallest change. This reverses "implementing changes" in section 1 for an approved fix and an approved guard, and for nothing else. Rejected: stopping at the cause, which leaves the failure in place and the prevention advice resting on a fix nobody ran; and proving the patch in a worktree first, which needs `research-cell` to fix |
+| Record | a case file of kind `root-cause`, so the ledger, the board, the citation check, `peer-review` and `distill` work unchanged and the package gains no kind |
+| Name | `debug`, as `/red-thread:debug` |
+| Evaluation | validation only (`vibe-code skill validate` and the repository's checks); the owner drives the first real failure by hand. No eval cases, because a headless run has no AskUserQuestion and the gates are the skill |
+
+**Proposed**, as written into the skill and not yet confirmed by a run:
+
+- Seven phases: frame, reproduce, evidence, hypotheses, fix, escape, close. No fix is proposed before a hypothesis has survived a test that could have refuted it.
+- At least two rival hypotheses, as in the `root-cause` kind. Independent rivals are tested in the same turn, one `research-cell` each, and one experiment answers for one hypothesis.
+- A failed fix is recorded as a `ruled_out` entry that starts "Fix attempt N:", so the count survives a compaction. At three the skill stops and asks the owner what they see.
+- The escape phase answers why the defect was introduced and why no guard caught it, gives each guard a verdict (absent, not run, blind, ignored), and classes each finding as a slip, a gap or debt. Each candidate guard is priced by what it catches, what it costs to build and what it costs to keep, and the owner chooses in a dialog. "None: the regression test is enough" is always an option.
+- A debt finding is not sized in the debugging case. The skill offers to load `investigate` on it, which opens a case of its own.
+- The primary runs the reproduction command itself, once, in the checkout. Every experiment brief starts with `git checkout --detach SHA`, and the first experiment checks that the failure shows in a clean worktree at all.
+
+Platform fact checked on 2026-11-25 against the Claude Code docs (sub-agents and worktrees pages): a subagent's worktree branches from the repository's default branch, not from the session's HEAD, unless `worktree.baseRef` is set to `"head"`. Whether uncommitted changes reach it is not documented. The `root-cause` kind of `investigate` did not pin the commit in its `research-cell` briefs; since 2026-11-25 its reference file says to start EXPERIMENT with `git checkout --detach SHA` (decided by the owner).

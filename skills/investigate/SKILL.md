@@ -12,8 +12,8 @@ when_to_use: >-
   Use when the user wants to understand before changing: "why does X happen", "find the root
   cause", "is it true that", "how does X work", "research X before we plan", "survey the tech debt
   in", "look into", or when a plan would rest on facts nobody has checked. Also use to resume a
-  case that already exists under .red-thread/. Not for making the change itself, and not for
-  writing up a finished case (that is distill).
+  case that already exists under .red-thread/. Not for making the change itself, not for a failure
+  the user wants fixed now (that is debug), and not for writing up a finished case (that is distill).
 ---
 
 # Investigate
