@@ -1,4 +1,4 @@
-"""The filters a plan page offers: its tickets by lane and by status."""
+"""The filters a plan page offers: its tickets by worktree and by status."""
 
 from collections import Counter
 from itertools import chain
@@ -21,10 +21,11 @@ def list_tickets(document: Document) -> tuple[TicketNode, ...]:
     return tuple(chain.from_iterable(lists))
 
 
-def list_lane_chips(tickets: tuple[TicketNode, ...]) -> ChipRow:
-    counted = Counter(ticket.lane for ticket in tickets)
+def list_worktree_chips(tickets: tuple[TicketNode, ...]) -> ChipRow:
+    counted = Counter(ticket.worktree for ticket in tickets)
     return tuple(
-        Chip(group='lane', value=lane, label=lane, count=counted[lane]) for lane in counted
+        Chip(group='worktree', value=worktree, label=worktree, count=counted[worktree])
+        for worktree in counted
     )
 
 
@@ -39,7 +40,7 @@ def list_status_chips(tickets: tuple[TicketNode, ...]) -> ChipRow:
 
 def list_ticket_filters(document: Document) -> tuple[ChipRow, ...]:
     tickets = list_tickets(document)
-    return (list_lane_chips(tickets), list_status_chips(tickets))
+    return (list_worktree_chips(tickets), list_status_chips(tickets))
 
 
 def render_plan_page(document: Document) -> str:

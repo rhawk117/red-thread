@@ -17,14 +17,14 @@ if TYPE_CHECKING:
     from red_thread_plans.domain import Plan
     from red_thread_plans.policy import Grounds
 
-LANES = ('core', 'docs', 'web')
+WORKTREES = ('core', 'docs', 'web')
 RESTING_REFS = ('e1', 'e2')
 OPEN_REF = 'e3'
 RETIRED_REF = 'e4'
 UNKNOWN_REF = 'e99'
 LOOP = ('loop-a', 'loop-b')
 INTRUDER = 'intruder'
-ROGUE_LANE = 'rogue'
+ROGUE_WORKTREE = 'rogue'
 
 
 def create_resting_ledger() -> Ledger:
@@ -45,12 +45,13 @@ def create_resting_grounds() -> Grounds:
     return create_grounds(create_resting_ledger())
 
 
-def create_ticket_draft(ticket_id: str, lane: str, owns: tuple[str, ...]) -> TicketDraft:
+def create_ticket_draft(ticket_id: str, worktree: str, owns: tuple[str, ...]) -> TicketDraft:
     return TicketDraft(
         id=ticket_id,
         title=f'build {ticket_id}',
-        lane=lane,
-        acceptance=(Acceptance(text=f'{ticket_id} holds', rests_on=RESTING_REFS),),
+        why=f'the plan needs {ticket_id}',
+        worktree=worktree,
+        acceptance=(Acceptance(criterion=f'{ticket_id} holds', required_by=RESTING_REFS),),
         owns=owns,
     )
 
@@ -82,22 +83,22 @@ def replace_ticket(draft: PlanDraft, index: int, ticket: TicketDraft) -> PlanDra
 
 def plant_groundless(draft: PlanDraft, index: int) -> PlanDraft:
     ticket = draft.tickets[index]
-    first = replace(ticket.acceptance[0], rests_on=())
+    first = replace(ticket.acceptance[0], required_by=())
     return replace_ticket(draft, index, replace(ticket, acceptance=(first, *ticket.acceptance[1:])))
 
 
 def plant_cycle(draft: PlanDraft) -> PlanDraft:
     first, second = LOOP
     looped = (
-        replace(create_ticket_draft(first, LANES[0], ('core/loop/a',)), depends_on=(second,)),
-        replace(create_ticket_draft(second, LANES[0], ('core/loop/b',)), depends_on=(first,)),
+        replace(create_ticket_draft(first, WORKTREES[0], ('core/loop/a',)), depends_on=(second,)),
+        replace(create_ticket_draft(second, WORKTREES[0], ('core/loop/b',)), depends_on=(first,)),
     )
     return add_tickets(draft, *looped)
 
 
 def plant_collision(draft: PlanDraft, index: int) -> PlanDraft:
     owned = draft.tickets[index].owns[-1]
-    return add_tickets(draft, create_ticket_draft(INTRUDER, ROGUE_LANE, (owned,)))
+    return add_tickets(draft, create_ticket_draft(INTRUDER, ROGUE_WORKTREE, (owned,)))
 
 
 def stamp_plan(draft: PlanDraft, revision: int = 1) -> Plan:

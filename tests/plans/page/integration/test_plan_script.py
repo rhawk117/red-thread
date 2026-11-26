@@ -1,4 +1,4 @@
-"""The page script on a plan page: lane and status chips hide tickets and the lanes they empty."""
+"""The page script on a plan page: worktree and status chips hide tickets and empty worktrees."""
 
 from typing import TYPE_CHECKING
 
@@ -40,28 +40,28 @@ def list_hidden_sections(state: PageState) -> list[str]:
 
 
 class TestPlanFilters:
-    def test_a_lane_chip_hides_that_lanes_tickets_and_its_section(
+    def test_a_worktree_chip_hides_that_worktrees_tickets_and_its_section(
         self, script: ScriptHarness
     ) -> None:
-        state = script.play(click_chip('lane', 'docs'))
+        state = script.play(click_chip('worktree', 'docs'))
 
         assert list_hidden_refs(state) == ['docs']
-        assert list_hidden_sections(state) == ['Lane docs']
+        assert list_hidden_sections(state) == ['Worktree docs']
 
     def test_a_status_chip_hides_the_tickets_with_that_mark(self, script: ScriptHarness) -> None:
         state = script.play(click_chip('status', 'unchanged'))
 
         assert list_hidden_refs(state) == ['plan-record', 'plan-page']
-        assert list_hidden_sections(state) == ['Lane core']
+        assert list_hidden_sections(state) == ['Worktree core']
 
-    def test_lane_and_status_chips_add_up(self, script: ScriptHarness) -> None:
-        state = script.play(click_chip('lane', 'core'), click_chip('status', 'changed'))
+    def test_worktree_and_status_chips_add_up(self, script: ScriptHarness) -> None:
+        state = script.play(click_chip('worktree', 'core'), click_chip('status', 'changed'))
 
         assert list_hidden_refs(state) == ['plan-record', 'plan-page', 'docs']
-        assert list_hidden_sections(state) == ['Lane core', 'Lane docs']
+        assert list_hidden_sections(state) == ['Worktree core', 'Worktree docs']
 
-    def test_a_second_click_shows_the_lane_again(self, script: ScriptHarness) -> None:
-        state = script.play(click_chip('lane', 'docs'), click_chip('lane', 'docs'))
+    def test_a_second_click_shows_the_worktree_again(self, script: ScriptHarness) -> None:
+        state = script.play(click_chip('worktree', 'docs'), click_chip('worktree', 'docs'))
 
         assert list_hidden_refs(state) == []
         assert list_hidden_sections(state) == []

@@ -22,20 +22,22 @@ def payload_cases() -> pytest.MarkDecorator:
     return pytest.mark.parametrize('payload', payload_params())
 
 
-def create_lane_document(*blocks: Block) -> Document:
-    return Document(title='A plan', sections=(Section(title='Lane core', blocks=blocks),))
+def create_worktree_document(*blocks: Block) -> Document:
+    return Document(title='A plan', sections=(Section(title='Worktree core', blocks=blocks),))
 
 
 def render_tickets(*tickets: TicketNode) -> str:
-    return render_page(create_lane_document(TicketList(tickets=tickets)))
+    return render_page(create_worktree_document(TicketList(tickets=tickets)))
 
 
 class TestTicketMarkup:
-    def test_a_ticket_is_an_entry_marked_with_its_lane_and_status(self) -> None:
+    def test_a_ticket_is_an_entry_marked_with_its_worktree_and_status(self) -> None:
         page = render_tickets(create_ticket_node())
 
-        tickets = [item for item in find_tags(page, 'li') if 'data-lane' in item]
-        assert tickets == [{'class': 'entry ticket', 'data-lane': 'core', 'data-status': 'changed'}]
+        tickets = [item for item in find_tags(page, 'li') if 'data-worktree' in item]
+        assert tickets == [
+            {'class': 'entry ticket', 'data-worktree': 'core', 'data-status': 'changed'}
+        ]
         assert list_item_refs(page) == ['plan-page']
 
     def test_the_status_is_a_badge_before_the_title(self) -> None:
@@ -43,15 +45,20 @@ class TestTicketMarkup:
 
         assert (status.attributes['data-status'], status.body) == ('changed', 'changed')
 
-    def test_each_promise_names_the_entries_it_rests_on(self) -> None:
+    def test_the_why_follows_the_title(self) -> None:
         page = render_tickets(create_ticket_node())
 
-        assert '<li>the page renders <span class="rests">rests on e1, e2</span></li>' in page
+        assert '<p class="why">Why: the owner reads the plan in a browser</p>' in page
+
+    def test_each_criterion_names_the_entries_that_require_it(self) -> None:
+        page = render_tickets(create_ticket_node())
+
+        assert '<li>the page renders <span class="required">required by e1, e2</span></li>' in page
 
     def test_the_place_the_dependencies_and_the_owned_paths_are_notes(self) -> None:
         page = render_tickets(create_ticket_node())
 
-        assert '<li class="stamp">lane core, position 2</li>' in page
+        assert '<li class="stamp">worktree core, position 2</li>' in page
         assert '<li>depends on: plan-record</li>' in page
         assert list_code_spans(page) == ['plan', 'core/pages/*.py', 'draw(plan) -> Path']
 
@@ -81,16 +88,19 @@ class TestTicketMarkup:
 
 class TestTicketMarkdown:
     def test_a_ticket_is_its_title_status_and_place_then_its_promises(self) -> None:
-        lines = render_markdown(create_lane_document(TicketList(tickets=(create_ticket_node(),))))
+        lines = render_markdown(
+            create_worktree_document(TicketList(tickets=(create_ticket_node(),)))
+        )
 
-        assert lines.splitlines()[-2:] == [
-            '- draw the `plan` (changed; lane core, position 2) [plan-page]',
-            '  - the page renders (rests on e1, e2)',
+        assert lines.splitlines()[-3:] == [
+            '- draw the `plan` (changed; worktree core, position 2) [plan-page]',
+            '  Why: the owner reads the plan in a browser',
+            '  - the page renders (required by e1, e2)',
         ]
 
     def test_a_listing_is_a_fenced_block_tagged_with_its_language(self) -> None:
         listing = CodeListing(language='go', source='func A()\nfunc B()')
 
-        lines = render_markdown(create_lane_document(listing)).splitlines()
+        lines = render_markdown(create_worktree_document(listing)).splitlines()
 
         assert lines[-4:] == ['```go', 'func A()', 'func B()', '```']

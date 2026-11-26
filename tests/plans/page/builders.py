@@ -10,10 +10,11 @@ def create_ticket_node(
     return TicketNode(
         id='plan-page',
         title=parse_line(title),
-        lane='core',
+        why=parse_line('the owner reads the plan in a browser'),
+        worktree='core',
         position=2,
         status='changed',
-        acceptance=(Promise(text=parse_line('the page renders'), rests_on=('e1', 'e2')),),
+        acceptance=(Promise(criterion=parse_line('the page renders'), required_by=('e1', 'e2')),),
         owns=('core/pages/*.py',),
         depends_on=('plan-record',),
         interface=CodeListing(language='python', source=source),

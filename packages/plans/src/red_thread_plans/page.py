@@ -1,4 +1,4 @@
-"""The plan as a page: each lane's stack of tickets, marked by what changed since the last cut."""
+"""The plan as a page: each worktree's stack of tickets, marked by what changed since the last."""
 
 from collections import Counter
 from dataclasses import dataclass
@@ -31,7 +31,9 @@ if TYPE_CHECKING:
     from red_thread_plans.nodes import TicketStatus
 
 STACK_NOTE = 'Bottom of the stack first: each ticket is one pull request on the one before it.'
-MAP_NOTE = 'Each lane as a stack, with an arrow from a ticket to each ticket that depends on it.'
+MAP_NOTE = (
+    'Each worktree as a stack, with an arrow from a ticket to each ticket that depends on it.'
+)
 DROPPED_NOTE = 'Tickets the revision before had and this one leaves out.'
 
 
@@ -63,7 +65,7 @@ def compose_points(title: str, texts: tuple[str, ...]) -> tuple[Section, ...]:
 
 
 def create_promise(acceptance: Acceptance) -> Promise:
-    return Promise(text=to_line(acceptance.text), rests_on=acceptance.rests_on)
+    return Promise(criterion=to_line(acceptance.criterion), required_by=acceptance.required_by)
 
 
 def label_ticket(ticket: Ticket) -> str:
@@ -97,7 +99,7 @@ class PlanChanges:
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
-class LaneMap:
+class WorktreeMap:
     changes: PlanChanges
 
     @property
@@ -109,9 +111,9 @@ class LaneMap:
         name = self.names[ticket.id]
         return f'    {name}["{label_ticket(ticket)}"]:::s_{self.changes.mark(ticket)}'
 
-    def write_lane(self, index: int, lane: str) -> list[str]:
-        nodes = map(self.write_node, self.changes.plan.stack(lane))
-        return [f'  subgraph l{index}["{lane}"]', *nodes, '  end']
+    def write_worktree(self, index: int, worktree: str) -> list[str]:
+        nodes = map(self.write_node, self.changes.plan.stack(worktree))
+        return [f'  subgraph l{index}["{worktree}"]', *nodes, '  end']
 
     def write_dependencies(self, ticket: Ticket) -> list[str]:
         names = self.names
@@ -119,11 +121,11 @@ class LaneMap:
 
     def render(self) -> tuple[str, ...]:
         plan = self.changes.plan
-        lanes = chain.from_iterable(
-            map(self.write_lane, range(len(plan.lanes)), plan.lanes, strict=True)
+        worktrees = chain.from_iterable(
+            map(self.write_worktree, range(len(plan.worktrees)), plan.worktrees, strict=True)
         )
         edges = chain.from_iterable(map(self.write_dependencies, plan.tickets))
-        return (read_asset('lanes.mmd').rstrip(), *lanes, *edges)
+        return (read_asset('worktrees.mmd').rstrip(), *worktrees, *edges)
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -145,7 +147,8 @@ class PlanPage:
         return TicketNode(
             id=ticket.id,
             title=to_line(ticket.title),
-            lane=ticket.lane,
+            why=to_line(ticket.why),
+            worktree=ticket.worktree,
             position=ticket.position,
             status=self.changes.mark(ticket),
             acceptance=tuple(map(create_promise, ticket.acceptance)),
@@ -154,9 +157,9 @@ class PlanPage:
             interface=listing,
         )
 
-    def compose_lane(self, lane: str) -> Section:
-        tickets = TicketList(tickets=tuple(map(self.create_ticket, self.plan.stack(lane))))
-        return Section(title=f'Lane {lane}', blocks=(tickets,), note=STACK_NOTE)
+    def compose_worktree(self, worktree: str) -> Section:
+        tickets = TicketList(tickets=tuple(map(self.create_ticket, self.plan.stack(worktree))))
+        return Section(title=f'Worktree {worktree}', blocks=(tickets,), note=STACK_NOTE)
 
     def compose_risks(self) -> tuple[Section, ...]:
         if not self.plan.risks:
@@ -165,19 +168,19 @@ class PlanPage:
         return (Section(title='Risks', blocks=(risks,)),)
 
     def compose_appendix(self) -> tuple[Section, ...]:
-        chart = Flowchart(lines=LaneMap(changes=self.changes).render())
-        lanes = Section(title='Lanes', blocks=(chart,), note=MAP_NOTE)
+        chart = Flowchart(lines=WorktreeMap(changes=self.changes).render())
+        worktrees = Section(title='Worktrees', blocks=(chart,), note=MAP_NOTE)
         dropped = tuple(to_line(f'{ticket.id}: {ticket.title}') for ticket in self.changes.dropped)
         if not dropped:
-            return (lanes,)
+            return (worktrees,)
         gone = Section(
             title='Dropped', blocks=(PointList(points=dropped),), note=DROPPED_NOTE, folded=True
         )
-        return (lanes, gone)
+        return (worktrees, gone)
 
     def list_facts(self) -> tuple[Fact, ...]:
         plan = self.plan
-        counted = f'{len(plan.tickets)} in {len(plan.lanes)} lanes'
+        counted = f'{len(plan.tickets)} in {len(plan.worktrees)} worktrees'
         return (
             Fact(label='Revision', value=to_line(str(plan.revision))),
             Fact(label='Stored', value=to_line(date_of(plan.at))),
@@ -196,7 +199,7 @@ class PlanPage:
                 Section(title='Approach', blocks=(Paragraph(line=to_line(plan.approach)),)),
                 *compose_points('Invariants', plan.invariants),
                 *compose_points('Non-goals', plan.non_goals),
-                *map(self.compose_lane, plan.lanes),
+                *map(self.compose_worktree, plan.worktrees),
                 *self.compose_risks(),
             ),
             appendix=self.compose_appendix(),

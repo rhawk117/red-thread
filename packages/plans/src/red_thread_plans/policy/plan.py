@@ -1,4 +1,4 @@
-"""What makes a whole drafted plan storable: its ids, its dependencies, its lanes and every item."""
+"""What makes a whole drafted plan storable: its ids, dependencies, worktrees and items."""
 
 from dataclasses import dataclass
 from itertools import chain, combinations, product
@@ -7,12 +7,12 @@ from typing import TYPE_CHECKING
 from red_thread_plans.domain import Claim
 from red_thread_plans.errors import (
     BlankPlanTextError,
-    CrossLaneDependencyError,
+    CrossWorktreeDependencyError,
     DependencyCycleError,
     DuplicatePlanIdError,
-    LaneCollisionError,
     NoTicketsError,
     UnknownDependencyError,
+    WorktreeCollisionError,
 )
 from red_thread_plans.policy.items import (
     RiskPolicy,
@@ -39,8 +39,8 @@ class GraphPolicy:
         return {ticket.id: ticket for ticket in self.drafted}
 
     @property
-    def lanes(self) -> tuple[str, ...]:
-        return tuple(dict.fromkeys(ticket.lane for ticket in self.drafted))
+    def worktrees(self) -> tuple[str, ...]:
+        return tuple(dict.fromkeys(ticket.worktree for ticket in self.drafted))
 
     def get_dependency_problem(self, ticket: TicketDraft) -> CaseFileError | None:
         tickets = self.tickets
@@ -49,10 +49,12 @@ class GraphPolicy:
             return UnknownDependencyError(ticket=ticket.id, dependency=unknown)
 
         dependencies = (tickets[name] for name in ticket.depends_on)
-        crossing = next((other for other in dependencies if other.lane != ticket.lane), None)
+        crossing = next(
+            (other for other in dependencies if other.worktree != ticket.worktree), None
+        )
         if crossing is None:
             return None
-        return CrossLaneDependencyError(ticket=ticket, dependency=crossing)
+        return CrossWorktreeDependencyError(ticket=ticket, dependency=crossing)
 
     def get_cycle_problem(self) -> DependencyCycleError | None:
         tickets = self.tickets
@@ -65,35 +67,35 @@ class GraphPolicy:
             return None
         return DependencyCycleError(cycle=cycle)
 
-    def list_claims(self, lane: str) -> tuple[Claim, ...]:
-        in_lane = (ticket for ticket in self.drafted if ticket.lane == lane)
+    def list_claims(self, worktree: str) -> tuple[Claim, ...]:
+        in_worktree = (ticket for ticket in self.drafted if ticket.worktree == worktree)
         return tuple(
-            Claim(lane=lane, ticket=ticket.id, owned=owned)
-            for ticket in in_lane
+            Claim(worktree=worktree, ticket=ticket.id, owned=owned)
+            for ticket in in_worktree
             for owned in ticket.owns
             if describe_owned_fault(owned) is None
         )
 
-    def get_collision_problem(self, first: str, second: str) -> LaneCollisionError | None:
+    def get_collision_problem(self, first: str, second: str) -> WorktreeCollisionError | None:
         pairs = product(self.list_claims(first), self.list_claims(second))
         found = ((left, right, find_shared_path(left.owned, right.owned)) for left, right in pairs)
         return next(
             (
-                LaneCollisionError(first=left, second=right, example=example)
+                WorktreeCollisionError(first=left, second=right, example=example)
                 for left, right, example in found
                 if example is not None
             ),
             None,
         )
 
-    def get_lane_issues(self) -> Problems:
-        found = (self.get_collision_problem(*pair) for pair in combinations(self.lanes, 2))
+    def get_worktree_issues(self) -> Problems:
+        found = (self.get_collision_problem(*pair) for pair in combinations(self.worktrees, 2))
         return tuple(filter(None, found))
 
     def get_graph_issues(self) -> Problems:
         dependencies = map(self.get_dependency_problem, self.drafted)
         found = (*dependencies, self.get_cycle_problem())
-        return (*filter(None, found), *self.get_lane_issues())
+        return (*filter(None, found), *self.get_worktree_issues())
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)

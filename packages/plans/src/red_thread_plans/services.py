@@ -65,7 +65,8 @@ def create_ticket(draft: TicketDraft, position: int) -> Ticket:
     return Ticket(
         id=draft.id,
         title=draft.title,
-        lane=draft.lane,
+        why=draft.why,
+        worktree=draft.worktree,
         position=position,
         acceptance=draft.acceptance,
         owns=draft.owns,
@@ -81,9 +82,10 @@ class RevisionStamp:
     head: str | None
 
     def place(self, tickets: tuple[TicketDraft, ...]) -> tuple[Ticket, ...]:
-        lanes = dict.fromkeys(ticket.lane for ticket in tickets)
+        worktrees = dict.fromkeys(ticket.worktree for ticket in tickets)
         stacks = (
-            order_stack([ticket for ticket in tickets if ticket.lane == lane]) for lane in lanes
+            order_stack([ticket for ticket in tickets if ticket.worktree == worktree])
+            for worktree in worktrees
         )
         positions = {name: index for stack in stacks for index, name in enumerate(stack, 1)}
         return tuple(create_ticket(ticket, positions[ticket.id]) for ticket in tickets)

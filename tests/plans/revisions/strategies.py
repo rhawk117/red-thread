@@ -16,7 +16,7 @@ from red_thread_plans.domain import (
 )
 
 from tests.casefile.entries.strategies import words
-from tests.plans.revisions.builders import LANES, RESTING_REFS
+from tests.plans.revisions.builders import RESTING_REFS, WORKTREES
 
 type GlobMode = Literal['keep', 'star', 'any', 'tail', 'deep', 'skip', 'dir']
 type HandlingKind = Literal['accept', 'mitigate', 'criterion', 'recut']
@@ -79,15 +79,16 @@ owned_globs = st.builds(
     st.booleans(),
 )
 glob_modes = st.lists(st.sampled_from(GLOB_MODES), min_size=MAX_PARTS, max_size=MAX_PARTS)
-lane_tails = st.lists(
+worktree_tails = st.lists(
     st.sampled_from(('**', '*', '*.py', 'a?', 'src', 'x.md', 'docs/')), min_size=1, max_size=3
 ).map(join_parts)
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class TicketSeed:
-    lane: int
+    worktree: int
     title: str
+    why: str
     picks: tuple[int, ...]
     tails: tuple[str, ...]
     sentences: tuple[Acceptance, ...]
@@ -105,8 +106,8 @@ def name_ticket(index: int) -> str:
 
 
 def pick_dependencies(seeds: list[TicketSeed], index: int) -> tuple[str, ...]:
-    lane = seeds[index].lane
-    earlier = [name_ticket(number) for number in range(index) if seeds[number].lane == lane]
+    worktree = seeds[index].worktree
+    earlier = [name_ticket(number) for number in range(index) if seeds[number].worktree == worktree]
     if not earlier:
         return ()
     return tuple(dict.fromkeys(earlier[pick % len(earlier)] for pick in seeds[index].picks))
@@ -114,13 +115,14 @@ def pick_dependencies(seeds: list[TicketSeed], index: int) -> tuple[str, ...]:
 
 def create_seeded_ticket(seeds: list[TicketSeed], index: int) -> TicketDraft:
     seed = seeds[index]
-    lane = LANES[seed.lane]
+    worktree = WORKTREES[seed.worktree]
     return TicketDraft(
         id=name_ticket(index),
         title=seed.title,
-        lane=lane,
+        why=seed.why,
+        worktree=worktree,
         acceptance=seed.sentences,
-        owns=tuple(f'{lane}/{tail}' for tail in seed.tails),
+        owns=tuple(f'{worktree}/{tail}' for tail in seed.tails),
         depends_on=pick_dependencies(seeds, index),
     )
 
@@ -130,7 +132,7 @@ def create_seeded_risk(seed: RiskSeed, number: int, tickets: tuple[TicketDraft, 
     handlings = {
         'accept': Accept(),
         'mitigate': Mitigate(ticket=ticket.id),
-        'criterion': Mitigate(ticket=ticket.id, criterion=ticket.acceptance[0].text),
+        'criterion': Mitigate(ticket=ticket.id, criterion=ticket.acceptance[0].criterion),
         'recut': YouIntervene(recut=(ticket.id,)),
     }
     return Risk(
@@ -161,17 +163,18 @@ def assemble_plan(
 
 sentences = st.builds(
     Acceptance,
-    text=words,
-    rests_on=st.lists(st.sampled_from(RESTING_REFS), min_size=1, max_size=2, unique=True).map(
+    criterion=words,
+    required_by=st.lists(st.sampled_from(RESTING_REFS), min_size=1, max_size=2, unique=True).map(
         tuple
     ),
 )
 ticket_seeds = st.builds(
     TicketSeed,
-    lane=st.integers(min_value=0, max_value=len(LANES) - 1),
+    worktree=st.integers(min_value=0, max_value=len(WORKTREES) - 1),
     title=words,
+    why=words,
     picks=st.lists(st.integers(min_value=0, max_value=9), max_size=3).map(tuple),
-    tails=st.lists(lane_tails, min_size=1, max_size=3).map(tuple),
+    tails=st.lists(worktree_tails, min_size=1, max_size=3).map(tuple),
     sentences=st.lists(sentences, min_size=1, max_size=3).map(tuple),
 )
 risk_seeds = st.builds(

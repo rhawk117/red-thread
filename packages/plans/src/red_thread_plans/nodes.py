@@ -18,15 +18,16 @@ TICKET_STATUSES: tuple[TicketStatus, ...] = ('new', 'changed', 'unchanged')
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class Promise:
-    text: Line
-    rests_on: tuple[str, ...]
+    criterion: Line
+    required_by: tuple[str, ...]
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class TicketNode:
     id: str
     title: Line
-    lane: str
+    why: Line
+    worktree: str
     position: int
     status: TicketStatus
     acceptance: tuple[Promise, ...] = ()

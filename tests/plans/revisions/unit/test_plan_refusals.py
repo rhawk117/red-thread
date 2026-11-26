@@ -14,14 +14,13 @@ from red_thread_plans.domain import (
 )
 from red_thread_plans.errors import (
     BlankPlanTextError,
-    CrossLaneDependencyError,
+    CrossWorktreeDependencyError,
     DependencyCycleError,
     DuplicatePlanIdError,
     EmptyRecutError,
     GroundlessAcceptanceError,
     InvalidOwnedPathError,
     InvalidPlanIdError,
-    LaneCollisionError,
     MissingAcceptanceError,
     MissingOwnsError,
     NoTicketsError,
@@ -32,6 +31,7 @@ from red_thread_plans.errors import (
     UnknownRestingRefError,
     UnknownRiskTicketError,
     UnlistedCriterionError,
+    WorktreeCollisionError,
 )
 from red_thread_plans.policy import PlanPolicy
 
@@ -70,7 +70,9 @@ def change_docs(**fields: object) -> PlanDraft:
 
 
 def rest_docs_on(*refs: str) -> PlanDraft:
-    return change_docs(acceptance=(Acceptance(text='the design names each field', rests_on=refs),))
+    return change_docs(
+        acceptance=(Acceptance(criterion='the design names each field', required_by=refs),)
+    )
 
 
 def add_risk(**fields: object) -> PlanDraft:
@@ -93,9 +95,12 @@ def ticket_refusal_cases() -> pytest.MarkDecorator:
             name='id-not-a-slug', draft=change_docs(id='Docs_Page'), errors=(InvalidPlanIdError,)
         ),
         Refusal(
-            name='lane-not-a-slug', draft=change_docs(lane='the docs'), errors=(InvalidPlanIdError,)
+            name='worktree-not-a-slug',
+            draft=change_docs(worktree='the docs'),
+            errors=(InvalidPlanIdError,),
         ),
         Refusal(name='blank-title', draft=change_docs(title=' '), errors=(BlankPlanTextError,)),
+        Refusal(name='blank-why', draft=change_docs(why=' '), errors=(BlankPlanTextError,)),
         Refusal(
             name='duplicate-id',
             draft=add_tickets(
@@ -141,7 +146,7 @@ def grounding_refusal_cases() -> pytest.MarkDecorator:
         ),
         Refusal(
             name='blank-sentence',
-            draft=change_docs(acceptance=(Acceptance(text='  ', rests_on=('e1',)),)),
+            draft=change_docs(acceptance=(Acceptance(criterion='  ', required_by=('e1',)),)),
             errors=(BlankPlanTextError,),
         ),
         Refusal(
@@ -166,9 +171,9 @@ def graph_refusal_cases() -> pytest.MarkDecorator:
             errors=(UnknownDependencyError,),
         ),
         Refusal(
-            name='cross-lane',
+            name='cross-worktree',
             draft=change_docs(depends_on=('plan-record',)),
-            errors=(CrossLaneDependencyError,),
+            errors=(CrossWorktreeDependencyError,),
         ),
         Refusal(
             name='self-dependency',
@@ -181,14 +186,14 @@ def graph_refusal_cases() -> pytest.MarkDecorator:
         Refusal(
             name='collision',
             draft=plant_collision(create_valid_draft(), 0),
-            errors=(LaneCollisionError,),
+            errors=(WorktreeCollisionError,),
         ),
         Refusal(
             name='collision-by-glob',
             draft=add_tickets(
                 create_valid_draft(), create_ticket_draft('lint', 'tooling', ('**/*.md',))
             ),
-            errors=(LaneCollisionError, LaneCollisionError),
+            errors=(WorktreeCollisionError, WorktreeCollisionError),
         ),
     )
     return pytest.mark.parametrize('refusal', as_params(errors))
@@ -229,7 +234,7 @@ def plan_acceptance_cases() -> pytest.MarkDecorator:
     accepted = (
         Refusal(name='valid', draft=create_valid_draft(), errors=()),
         Refusal(
-            name='same-lane-overlap',
+            name='same-worktree-overlap',
             draft=add_tickets(
                 create_valid_draft(), create_ticket_draft('plan-tests', 'core', ('core/**',))
             ),

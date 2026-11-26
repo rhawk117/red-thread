@@ -25,8 +25,8 @@ class Interface(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields
 
 
 class Acceptance(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields=True, gc=False):
-    text: str
-    rests_on: tuple[str, ...] = ()
+    criterion: str
+    required_by: tuple[str, ...] = ()
 
 
 class Accept(
@@ -77,7 +77,8 @@ class Risk(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields=True
 class TicketDraft(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields=True, gc=False):
     id: str
     title: str
-    lane: str
+    why: str
+    worktree: str
     acceptance: tuple[Acceptance, ...] = ()
     owns: tuple[str, ...] = ()
     depends_on: tuple[str, ...] = ()
@@ -96,7 +97,8 @@ class PlanDraft(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields
 class Ticket(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields=True, gc=False):
     id: str
     title: str
-    lane: str
+    why: str
+    worktree: str
     position: int
     acceptance: tuple[Acceptance, ...] = ()
     owns: tuple[str, ...] = ()
@@ -117,12 +119,12 @@ class Plan(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields=True
     risks: tuple[Risk, ...] = ()
 
     @property
-    def lanes(self) -> tuple[str, ...]:
-        return tuple(dict.fromkeys(ticket.lane for ticket in self.tickets))
+    def worktrees(self) -> tuple[str, ...]:
+        return tuple(dict.fromkeys(ticket.worktree for ticket in self.tickets))
 
-    def stack(self, lane: str) -> tuple[Ticket, ...]:
-        in_lane = (ticket for ticket in self.tickets if ticket.lane == lane)
-        return tuple(sorted(in_lane, key=attrgetter('position')))
+    def stack(self, worktree: str) -> tuple[Ticket, ...]:
+        in_worktree = (ticket for ticket in self.tickets if ticket.worktree == worktree)
+        return tuple(sorted(in_worktree, key=attrgetter('position')))
 
     def find_ticket(self, ticket_id: str) -> Ticket | None:
         return next((ticket for ticket in self.tickets if ticket.id == ticket_id), None)
@@ -140,6 +142,6 @@ class Sentence:
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class Claim:
-    lane: str
+    worktree: str
     ticket: str
     owned: str

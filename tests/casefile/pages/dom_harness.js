@@ -349,11 +349,11 @@ const describe = (document) => {
       value: chip.dataset.value,
       pressed: chip.getAttribute('aria-pressed') === 'true',
     })),
-    entries: document.querySelectorAll('.entry[data-kind], .entry[data-lane]').map((entry) => ({
+    entries: document.querySelectorAll('.entry[data-kind], .entry[data-worktree]').map((entry) => ({
       ref: entry.querySelector('.ref').textContent,
       kind: entry.dataset.kind,
       thread: entry.dataset.thread,
-      lane: entry.dataset.lane,
+      worktree: entry.dataset.worktree,
       status: entry.dataset.status,
       hidden: entry.hidden,
     })),

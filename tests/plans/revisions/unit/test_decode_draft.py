@@ -32,7 +32,7 @@ def describe_tickets(tickets: list[dict[str, object]]) -> str:
 
 
 def plan_shape_fault_cases() -> pytest.MarkDecorator:
-    ticket = {'id': 'a', 'title': 'A', 'lane': 'core'}
+    ticket = {'id': 'a', 'title': 'A', 'worktree': 'core'}
     risk = {'id': 'R1', 'risk': 'r', 'signal': 's', 'handling': {'kind': 'maybe'}}
     faults = (
         ShapeFault(name='empty', text='  ', reason='it is empty'),

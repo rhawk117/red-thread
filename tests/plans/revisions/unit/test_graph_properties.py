@@ -17,7 +17,9 @@ NODES = ('t0', 't1', 't2', 't3', 't4')
 
 
 def create_node(ticket_id: str, depends_on: list[str]) -> TicketDraft:
-    return TicketDraft(id=ticket_id, title=ticket_id, lane='core', depends_on=tuple(depends_on))
+    return TicketDraft(
+        id=ticket_id, title=ticket_id, why=ticket_id, worktree='core', depends_on=tuple(depends_on)
+    )
 
 
 def create_graph(edges: list[list[str]]) -> tuple[TicketDraft, ...]:
@@ -51,7 +53,8 @@ def test_a_stack_holds_every_ticket_once_after_its_dependencies(plan: PlanDraft)
 @given(plan=valid_plans)
 def test_tickets_without_dependencies_keep_the_order_they_were_drafted_in(plan: PlanDraft) -> None:
     free = tuple(
-        TicketDraft(id=ticket.id, title=ticket.title, lane=ticket.lane) for ticket in plan.tickets
+        TicketDraft(id=ticket.id, title=ticket.title, why=ticket.why, worktree=ticket.worktree)
+        for ticket in plan.tickets
     )
 
     assert order_stack(free) == tuple(ticket.id for ticket in plan.tickets)

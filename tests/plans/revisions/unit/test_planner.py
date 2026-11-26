@@ -45,8 +45,8 @@ def create_planner_harness() -> PlannerHarness:
     return PlannerHarness(plans=plans, pages=pages, planner=planner)
 
 
-def list_lane_positions(plan: Plan, lane: str) -> list[int]:
-    return [ticket.position for ticket in plan.stack(lane)]
+def list_worktree_positions(plan: Plan, worktree: str) -> list[int]:
+    return [ticket.position for ticket in plan.stack(worktree)]
 
 
 class TestPlanner:
@@ -98,14 +98,14 @@ class TestPlanner:
         assert harness.pages.files['plan.html'] == drawn
 
     @given(plan=valid_plans)
-    def test_each_lane_is_numbered_from_one_in_stack_order(self, plan: PlanDraft) -> None:
+    def test_each_worktree_is_numbered_from_one_in_stack_order(self, plan: PlanDraft) -> None:
         stored = create_planner_harness().planner.propose(plan)
 
-        for lane in stored.plan.lanes:
-            in_lane = tuple(ticket for ticket in plan.tickets if ticket.lane == lane)
-            stack = tuple(ticket.id for ticket in stored.plan.stack(lane))
-            assert stack == order_stack(in_lane)
-            assert list_lane_positions(stored.plan, lane) == list(range(1, len(stack) + 1))
+        for worktree in stored.plan.worktrees:
+            in_worktree = tuple(ticket for ticket in plan.tickets if ticket.worktree == worktree)
+            stack = tuple(ticket.id for ticket in stored.plan.stack(worktree))
+            assert stack == order_stack(in_worktree)
+            assert list_worktree_positions(stored.plan, worktree) == list(range(1, len(stack) + 1))
 
     @given(planted=planted_secrets)
     def test_a_secret_in_the_plan_is_redacted_before_it_is_stored(self, planted: Planted) -> None:

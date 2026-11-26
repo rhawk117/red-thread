@@ -7,14 +7,14 @@ from hypothesis import strategies as st
 from red_thread_plans.errors import (
     DependencyCycleError,
     GroundlessAcceptanceError,
-    LaneCollisionError,
+    WorktreeCollisionError,
 )
 from red_thread_plans.policy import PlanPolicy
 
 from tests.plans.revisions.builders import (
     INTRUDER,
     LOOP,
-    ROGUE_LANE,
+    ROGUE_WORKTREE,
     create_resting_grounds,
     plant_collision,
     plant_cycle,
@@ -62,15 +62,18 @@ class TestPlanPolicyProperties:
         assert issue.cycle in {(*LOOP, LOOP[0]), (LOOP[1], LOOP[0], LOOP[1])}
 
     @given(plan=valid_plans, pick=picks)
-    def test_two_lanes_owning_one_path_are_named_with_a_path_both_own(
+    def test_two_worktrees_owning_one_path_are_named_with_a_path_both_own(
         self, plan: PlanDraft, pick: int
     ) -> None:
         index = pick % len(plan.tickets)
 
         issue = self.find_only(plant_collision(plan, index))
 
-        assert isinstance(issue, LaneCollisionError)
-        assert {issue.first.lane, issue.second.lane} == {plan.tickets[index].lane, ROGUE_LANE}
+        assert isinstance(issue, WorktreeCollisionError)
+        assert {issue.first.worktree, issue.second.worktree} == {
+            plan.tickets[index].worktree,
+            ROGUE_WORKTREE,
+        }
         assert INTRUDER in {issue.first.ticket, issue.second.ticket}
         assert matches_owned(issue.example, issue.first.owned)
         assert matches_owned(issue.example, issue.second.owned)
@@ -82,4 +85,4 @@ class TestPlanPolicyProperties:
 
         named = {type(issue) for issue in self.find_issues(faulty)}
 
-        assert named == {GroundlessAcceptanceError, DependencyCycleError, LaneCollisionError}
+        assert named == {GroundlessAcceptanceError, DependencyCycleError, WorktreeCollisionError}

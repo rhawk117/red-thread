@@ -72,9 +72,9 @@ class TestRevise:
 
         assert result.code == 1
         assert 'no revision was stored' in result.err
-        assert 'ticket docs, acceptance 1 rests on nothing' in result.err
+        assert 'ticket docs, acceptance 1 is required by nothing' in result.err
         assert 'in a cycle: loop-a -> loop-b -> loop-a' in result.err
-        assert 'lanes core and rogue can both change core/plans/' in result.err
+        assert 'worktrees core and rogue can both change core/plans/' in result.err
         assert list_revision_files(grounded) == []
         assert not grounded.joinpath('plan.html').exists()
 

@@ -74,7 +74,7 @@
   .status[data-status="new"] { @apply text-good; }
   .status[data-status="changed"] { @apply border-transparent bg-flag-ground text-flag; }
   .promises { @apply mt-1.5 list-decimal space-y-1 pl-5 text-sm; }
-  .rests { @apply font-mono text-xs text-quiet; }
+  .required { @apply font-mono text-xs text-quiet; }
   .cite {
     @apply mt-1 flex flex-wrap items-baseline gap-2 font-mono text-xs text-quiet wrap-anywhere;
   }

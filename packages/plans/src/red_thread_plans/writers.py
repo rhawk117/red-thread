@@ -12,25 +12,30 @@ if TYPE_CHECKING:
 
 
 def write_ticket_notes(ticket: TicketNode) -> Template:
-    place = t'<li class="stamp">lane {ticket.lane}, position {ticket.position}</li>'
+    place = t'<li class="stamp">worktree {ticket.worktree}, position {ticket.position}</li>'
     after = ', '.join(ticket.depends_on)
     depends = t'<li>depends on: {after}</li>' if after else t''
     owned = tuple(t'<li><code>{owned}</code></li>' for owned in ticket.owns)
     return t'<ul class="notes">{place}{depends}{owned}</ul>'
 
 
+def list_refs(promise: Promise) -> str:
+    return ', '.join(promise.required_by)
+
+
 def write_promise(promise: Promise) -> Template:
-    rests = t'<span class="rests">rests on {", ".join(promise.rests_on)}</span>'
-    return t'<li>{write_line(promise.text)} {rests}</li>'
+    required = t'<span class="required">required by {list_refs(promise)}</span>'
+    return t'<li>{write_line(promise.criterion)} {required}</li>'
 
 
 def write_ticket(ticket: TicketNode) -> Template:
     mark = t'<span class="status" data-status="{ticket.status}">{ticket.status}</span>'
     claim = t'<p class="claim">{mark} {write_line(ticket.title)}</p>'
+    why = t'<p class="why">Why: {write_line(ticket.why)}</p>'
     listed = t'<ol class="promises">{tuple(map(write_promise, ticket.acceptance))}</ol>'
     details = t'{write_ticket_notes(ticket)}{listed}{write_listing(ticket.interface)}'
-    body = t'<div>{claim}{details}</div>'
-    marks = t'data-lane="{ticket.lane}" data-status="{ticket.status}"'
+    body = t'<div>{claim}{why}{details}</div>'
+    marks = t'data-worktree="{ticket.worktree}" data-status="{ticket.status}"'
     return t'<li class="entry ticket" {marks}>{write_ref(ticket.id)}{body}</li>'
 
 
@@ -42,9 +47,10 @@ def write_tickets(tickets: tuple[TicketNode, ...]) -> Template:
 
 def write_markdown_ticket(ticket: TicketNode) -> tuple[str, ...]:
     title = write_markdown_line(ticket.title)
-    place = f'{ticket.status}; lane {ticket.lane}, position {ticket.position}'
+    place = f'{ticket.status}; worktree {ticket.worktree}, position {ticket.position}'
     promises = (
-        f'  - {write_markdown_line(promise.text)} (rests on {", ".join(promise.rests_on)})'
+        f'  - {write_markdown_line(promise.criterion)} (required by {list_refs(promise)})'
         for promise in ticket.acceptance
     )
-    return (f'- {title} ({place}) [{ticket.id}]', *promises)
+    why = f'  Why: {write_markdown_line(ticket.why)}'
+    return (f'- {title} ({place}) [{ticket.id}]', why, *promises)

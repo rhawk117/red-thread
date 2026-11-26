@@ -1,4 +1,4 @@
-"""What makes a drafted plan storable: every promise traced, no cycle, no two lanes on one file."""
+"""What makes a drafted plan storable: every criterion traced, no cycle, no shared file."""
 
 from red_thread_plans.policy.items import (
     Grounds,

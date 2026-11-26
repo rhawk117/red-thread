@@ -103,13 +103,13 @@ class Grounds:
     def get_sentence_problem(
         self, sentence: Sentence, acceptance: Acceptance
     ) -> CaseFileError | None:
-        if not acceptance.text.strip():
+        if not acceptance.criterion.strip():
             return BlankPlanTextError(field=sentence.label)
 
-        if not acceptance.rests_on:
+        if not acceptance.required_by:
             return GroundlessAcceptanceError(sentence=sentence)
 
-        found = (self.get_ref_problem(sentence, ref) for ref in acceptance.rests_on)
+        found = (self.get_ref_problem(sentence, ref) for ref in acceptance.required_by)
         return next(filter(None, found), None)
 
 
@@ -126,11 +126,16 @@ class TicketPolicy:
         if not SLUG.fullmatch(self.ticket.id):
             return InvalidPlanIdError(field='ticket id', value=self.ticket.id, expected=SLUG_HINT)
 
-        if not SLUG.fullmatch(self.ticket.lane):
-            return InvalidPlanIdError(field='lane', value=self.ticket.lane, expected=SLUG_HINT)
+        if not SLUG.fullmatch(self.ticket.worktree):
+            return InvalidPlanIdError(
+                field='worktree', value=self.ticket.worktree, expected=SLUG_HINT
+            )
 
         if not self.ticket.title.strip():
             return BlankPlanTextError(field=f'ticket {self.ticket.id} title')
+
+        if not self.ticket.why.strip():
+            return BlankPlanTextError(field=f'ticket {self.ticket.id} why')
 
         return None
 
@@ -182,7 +187,7 @@ class RiskPolicy:
             return problem
 
         criterion = handling.criterion
-        texts = {item.text for item in self.tickets[handling.ticket].acceptance}
+        texts = {item.criterion for item in self.tickets[handling.ticket].acceptance}
         if criterion is None or criterion in texts:
             return None
         return UnlistedCriterionError(

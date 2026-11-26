@@ -1,4 +1,4 @@
-"""PlanPage: each lane's stack of tickets, marked against the revision before it."""
+"""PlanPage: each worktree's stack of tickets, marked against the revision before it."""
 
 from dataclasses import dataclass
 from itertools import chain
@@ -125,20 +125,22 @@ class TestMarks:
 
         facts = read_facts(document)
         assert (facts['Revision'], facts['Changes']) == ('1', 'first revision')
-        assert facts['Tickets'] == '3 in 2 lanes'
+        assert facts['Tickets'] == '3 in 2 worktrees'
         assert 'Dropped' not in list_titles(document)
 
 
 class TestMarkProperties:
     @given(draft=valid_plans)
-    def test_each_ticket_is_shown_once_in_its_lane_in_stack_order(self, draft: PlanDraft) -> None:
+    def test_each_ticket_is_shown_once_in_its_worktree_in_stack_order(
+        self, draft: PlanDraft
+    ) -> None:
         plan = stamp_plan(draft)
 
         document = create_plan_document(plan)
 
-        for lane in plan.lanes:
-            shown = list_section_tickets(find_section(document, f'Lane {lane}'))
-            assert [ticket.id for ticket in shown] == [ticket.id for ticket in plan.stack(lane)]
+        for worktree in plan.worktrees:
+            shown = list_section_tickets(find_section(document, f'Worktree {worktree}'))
+            assert [ticket.id for ticket in shown] == [ticket.id for ticket in plan.stack(worktree)]
         assert len(list_tickets(document)) == len(plan.tickets)
 
     @given(draft=valid_plans)
@@ -160,22 +162,22 @@ class TestMarkProperties:
 class TestLayout:
     draft = create_valid_draft()
 
-    def test_the_plan_comes_first_then_a_section_per_lane_then_the_chart(self) -> None:
+    def test_the_plan_comes_first_then_a_section_per_worktree_then_the_chart(self) -> None:
         document = create_plan_document(stamp_plan(self.draft))
 
         assert list_titles(document) == [
             'Approach',
             'Invariants',
             'Non-goals',
-            'Lane core',
-            'Lane docs',
-            'Lanes',
+            'Worktree core',
+            'Worktree docs',
+            'Worktrees',
         ]
 
     def test_a_risk_is_a_point_naming_its_handling_and_its_signal(self) -> None:
         document = create_plan_document(stamp_plan(replace(self.draft, risks=(RISK,))))
 
-        assert list_titles(document)[-2:] == ['Risks', 'Lanes']
+        assert list_titles(document)[-2:] == ['Risks', 'Worktrees']
         assert (
             '- R1, mitigated by ticket plan-record (a property pins it): The glob may miss a path.'
             ' Signal: A collision is stored. Touches plan-record.'
@@ -190,10 +192,10 @@ class TestLayout:
         assert listings['plan-page'] == CodeListing(language='python', source=INTERFACE.source)
         assert listings['docs'] is None
 
-    def test_the_chart_draws_each_lane_and_an_arrow_from_each_dependency(self) -> None:
+    def test_the_chart_draws_each_worktree_and_an_arrow_from_each_dependency(self) -> None:
         document = create_plan_document(stamp_plan(self.draft))
 
-        (chart,) = find_section(document, 'Lanes').blocks
+        (chart,) = find_section(document, 'Worktrees').blocks
         assert isinstance(chart, Flowchart)
         lines = chart.lines
         assert [line for line in lines if 'subgraph' in line] == [
@@ -203,7 +205,7 @@ class TestLayout:
         assert [line for line in lines if '-->' in line] == ['  n0 --> n1']
         assert '    n2["docs: build docs"]:::s_new' in lines
 
-    def test_the_toolbar_counts_the_tickets_by_lane_and_by_status(self) -> None:
+    def test_the_toolbar_counts_the_tickets_by_worktree_and_by_status(self) -> None:
         docs = replace(self.draft.tickets[DOCS], title='write the docs again')
         revised = stamp_plan(replace_ticket(self.draft, DOCS, docs), 2)
 
@@ -211,8 +213,8 @@ class TestLayout:
 
         chips = chain.from_iterable(list_chip_groups(page))
         assert [(chip.group, chip.value, chip.count) for chip in chips] == [
-            ('lane', 'core', 2),
-            ('lane', 'docs', 1),
+            ('worktree', 'core', 2),
+            ('worktree', 'docs', 1),
             ('status', 'changed', 1),
             ('status', 'unchanged', 2),
         ]

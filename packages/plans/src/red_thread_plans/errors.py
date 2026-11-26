@@ -55,8 +55,8 @@ class MissingOwnsError(CaseFileError):
     def __init__(self, *, ticket: str) -> None:
         self.ticket = ticket
         super().__init__(
-            f'ticket {ticket} owns no files. List the paths or globs it changes, so its lane can '
-            'be checked against the others.'
+            f'ticket {ticket} owns no files. List the paths or globs it changes, so its '
+            'worktree can be checked against the others.'
         )
 
 
@@ -90,8 +90,8 @@ class GroundlessAcceptanceError(CaseFileError):
     def __init__(self, *, sentence: Sentence) -> None:
         self.sentence = sentence
         super().__init__(
-            f'{sentence.label} rests on nothing. Name in rests_on the live decision or known '
-            'entries it follows from. With none, ask the owner and record the answer first.'
+            f'{sentence.label} is required by nothing. List in required_by the live decision or '
+            'known entries that require it. With none, ask the owner and record the answer first.'
         )
 
 
@@ -100,7 +100,7 @@ class UnknownRestingRefError(CaseFileError):
         self.sentence = sentence
         self.ref = ref
         super().__init__(
-            f'{sentence.label} rests on {ref}, which is not in this case. '
+            f'{sentence.label} is required by {ref}, which is not in this case. '
             'Use a ref that render shows, such as e3 or T1.e3.'
         )
 
@@ -110,7 +110,7 @@ class RetiredRestingRefError(CaseFileError):
         self.sentence = sentence
         self.ref = ref
         super().__init__(
-            f'{sentence.label} rests on {ref}, which a later entry retired. '
+            f'{sentence.label} is required by {ref}, which a later entry retired. '
             'Rest it on the entry that replaced it.'
         )
 
@@ -121,8 +121,8 @@ class UnfitRestingRefError(CaseFileError):
         self.ref = ref
         self.kind = kind
         super().__init__(
-            f'{sentence.label} rests on {ref}, which is a {kind}. A promise rests only on a '
-            f'decision or a known: settle the {kind} first, or ask the owner.'
+            f'{sentence.label} is required by {ref}, which is a {kind}. Only a decision or a known '
+            f'can require a criterion: settle the {kind} first, or ask the owner.'
         )
 
 
@@ -145,25 +145,26 @@ class DependencyCycleError(CaseFileError):
         )
 
 
-class CrossLaneDependencyError(CaseFileError):
+class CrossWorktreeDependencyError(CaseFileError):
     def __init__(self, *, ticket: TicketDraft, dependency: TicketDraft) -> None:
         self.ticket = ticket.id
         self.dependency = dependency.id
         super().__init__(
-            f'ticket {ticket.id} in lane {ticket.lane} depends on {dependency.id} in lane '
-            f'{dependency.lane}. Tickets that depend on each other share a lane: move one.'
+            f'ticket {ticket.id} in worktree {ticket.worktree} depends on {dependency.id} in '
+            f'worktree {dependency.worktree}. Tickets that depend on each other share a '
+            'worktree: move one.'
         )
 
 
-class LaneCollisionError(CaseFileError):
+class WorktreeCollisionError(CaseFileError):
     def __init__(self, *, first: Claim, second: Claim, example: str) -> None:
         self.first = first
         self.second = second
         self.example = example
         super().__init__(
-            f'lanes {first.lane} and {second.lane} can both change {example}: ticket '
+            f'worktrees {first.worktree} and {second.worktree} can both change {example}: ticket '
             f'{first.ticket} owns {first.owned} and ticket {second.ticket} owns {second.owned}. '
-            'Narrow the paths, or put the two tickets in one lane.'
+            'Narrow the paths, or put the two tickets in one worktree.'
         )
 
 

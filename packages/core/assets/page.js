@@ -3,7 +3,7 @@
 (() => {
   const root = document.documentElement;
   const status = document.getElementById('status');
-  const FILTERED = '.entry[data-kind], .entry[data-lane]';
+  const FILTERED = '.entry[data-kind], .entry[data-worktree]';
   const off = {};
   const listSections = () => [...document.querySelectorAll('details.section')];
 

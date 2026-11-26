@@ -4,7 +4,7 @@ from typing import Literal
 
 from red_thread_core.assets import read_package_asset
 
-type AssetName = Literal['lanes.mmd']
+type AssetName = Literal['worktrees.mmd']
 
 
 def read_asset(name: AssetName) -> str:

@@ -1,4 +1,4 @@
-"""Pure helpers of the plan checks: where two owned globs meet, cycles and a lane's stack order."""
+"""Pure helpers of the plan checks: where two owned globs meet, cycles and stack order."""
 
 from functools import cache
 from graphlib import CycleError, TopologicalSorter
