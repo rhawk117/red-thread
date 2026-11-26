@@ -51,6 +51,8 @@ When something is broken and you want it working, start from the failure instead
 | `skills/distill` | the four outputs, one reference file per output |
 | `skills/debug` | a failure taken to a confirmed cause, a fix you approve and a decision on preventing it; one reference file for failure shapes and one for the escape analysis |
 | `skills/agents/navigate` | how the scouts use the navigate script; preloaded into them, not a command you run |
+| `skills/agents/meet-the-team` | who the agents are and how to brief each one; preloaded into `research-lead` and loaded by name from `investigate` and `debug`, not a command you run |
+| `skills/agents/artifact-authoring` | how an agent words what it writes for a reader who was not there: entries, reports, gate summaries, distill titles and handoffs; preloaded into `research-lead` and loaded by name from `investigate`, `debug` and `distill`, not a command you run |
 | `agents/` | `research-lead`, which runs one thread of a case, the scouts in `agents/swarm/` (`code-sense`, `code-lens`, `web-head` and `lab-rat`), and the skeptic `peer-review` |
 | `hooks/roster.py` | a hook that denies a red-thread agent's dispatch outside its roster |
 | `packages/casefile` | the only writer and renderer of a case file: `init`, `add`, `render`, `check`, `export` and `page` |

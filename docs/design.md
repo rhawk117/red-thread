@@ -656,3 +656,27 @@ Made by the owner on 2026-11-25. Earlier entries keep the old names and paths.
 | Scout folder | the four scouts live in `agents/swarm/`. Claude Code makes a plugin agent's subfolder part of its name, so they are dispatched as `red-thread:swarm:<name>`. `research-lead` and `peer-review` stay in `agents/` |
 | Lab scout name | `research-cell` is now `lab-rat` |
 | Agent-only skills | `navigate` lives in `skills/agents/`, which `plugin.json` lists under `skills` because the default scan does not reach it |
+
+### 2026-11-25: the meet-the-team skill
+
+Made by the owner on 2026-11-25.
+
+| Decision | Choice and reason |
+| --- | --- |
+| Team guide | `skills/agents/meet-the-team` introduces the six agents to whoever dispatches them: who may dispatch whom, which agent takes which question, an example brief and the required fields for each, budgets and limits, and what to do with each verdict. It is one file so that briefing guidance is not rewritten in every caller. Like `navigate` it is `user-invocable: false` |
+| Lead | `research-lead` preloads it through `skills`. The lead's own file keeps only what is the lead's: the names of its team, that a follow-up is a new briefing, and that judgment is its job |
+| Primary | `investigate` and `debug` keep their brief-field tables, which must be in context at every dispatch, and tell the primary to load the skill by name (`red-thread:meet-the-team`) before its first dispatch, for the detail. A relative link was tried first and `vibe-code skill validate` refuses a reference that leaves the skill directory. The tables and the skill overlap on field names, which the owner accepted in place of a required skill load. `tests/plugin/team_skill` fails when the skill stops naming an agent on the roster, when the lead stops preloading it, or when either skill stops naming it |
+
+### 2026-11-25: the artifact-authoring skill
+
+Made by the owner on 2026-11-25.
+
+| Decision | Choice and reason |
+| --- | --- |
+| Writing guide | `skills/agents/artifact-authoring` says how to word what an agent writes for a reader who was not there. Like `navigate` and `meet-the-team` it is `user-invocable: false` |
+| Scope | runtime handoffs only: a case file entry, a report up the chain, the gate summary, a distill title and goal, and a handoff. Writing the plugin's own agent and skill files is out of scope, because that reader is a contributor's session and not a shipped agent |
+| Readers | `research-lead` preloads it through `skills`. `investigate`, `debug` and `distill` tell the primary to load `red-thread:artifact-authoring` before the first `add`, or before the title and goal. The scouts do not load it: their report format is fixed in their own files, and section 10 keeps a Haiku 5.5 prompt short |
+| Briefs | `meet-the-team` stays the one place for writing a brief. This skill points at it and adds only what a handoff carries |
+| Shape | one file with no `references/`: a core that holds for every artifact, then a section per artifact that ends on a "Done when" line, so each has a completion criterion the writer can check |
+| Sources | the structure and several rules (completion criteria, single source of truth, the no-op test, stating the positive) are adapted from Matt Pocock's `writing-for-agents` skill, <https://github.com/mattpocock/skills/blob/main/skills/productivity/writing-for-agents/SKILL.md>, read on 2026-11-25. Its material on skill descriptions, invocation and progressive disclosure was left out with the prompt-file scope. The rest comes from the Anthropic sources in sections 9 and 10: reasons with instructions, plain wording, lightweight references passed back in place of copies, and steering the reader when something is truncated |
+| Test | `tests/plugin/artifact_skill` fails when the lead stops preloading the skill, when one of the three skills stops naming it, or when it stops pointing at `meet-the-team` for briefs |

@@ -1,10 +1,11 @@
 """Every agent that navigates preloads the navigate skill, and the skill declares that name."""
 
 import json
-import re
 from typing import TYPE_CHECKING
 
 import pytest
+
+from tests.plugin.frontmatter import read_flow_list, read_frontmatter_lines, read_scalar
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -13,27 +14,6 @@ if TYPE_CHECKING:
 def navigating_agent_cases() -> pytest.MarkDecorator:
     names = ('swarm/code-lens', 'swarm/code-sense', 'swarm/lab-rat', 'peer-review')
     return pytest.mark.parametrize('agent', [pytest.param(name, id=name) for name in names])
-
-
-def read_frontmatter_lines(file: Path) -> tuple[str, ...]:
-    lines = file.read_text(encoding='utf-8').splitlines()
-    assert lines[0] == '---'
-    closing = lines.index('---', 1)
-    return tuple(lines[1:closing])
-
-
-def read_scalar(lines: tuple[str, ...], key: str) -> str | None:
-    values = [line.partition(':')[2].strip() for line in lines if line.startswith(f'{key}:')]
-    return next(iter(values), None)
-
-
-def read_flow_list(lines: tuple[str, ...], key: str) -> tuple[str, ...]:
-    value = read_scalar(lines, key) or ''
-    items = re.fullmatch(r'\[(.*)\]', value)
-    if not items:
-        return ()
-
-    return tuple(item.strip() for item in items.group(1).split(',') if item.strip())
 
 
 class TestNavigatePreload:
