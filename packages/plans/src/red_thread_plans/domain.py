@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 type PlanSchema = Literal['red-thread/plan@1']
 type IndexSchema = Literal['red-thread/plan-index@1']
 type Handling = Accept | Mitigate | YouIntervene
+type Lights = Literal['on', 'off']
 
 PLAN_SCHEMA: PlanSchema = 'red-thread/plan@1'
 INDEX_SCHEMA: IndexSchema = 'red-thread/plan-index@1'
@@ -98,6 +99,7 @@ class PlanDraft(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields
     non_goals: tuple[str, ...] = ()
     tickets: tuple[TicketDraft, ...] = ()
     risks: tuple[Risk, ...] = ()
+    lights: Lights | None = None
 
 
 class Ticket(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields=True, gc=False):
@@ -124,6 +126,7 @@ class Plan(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields=True
     non_goals: tuple[str, ...] = ()
     tickets: tuple[Ticket, ...] = ()
     risks: tuple[Risk, ...] = ()
+    lights: Lights | None = None
 
     @property
     def worktrees(self) -> tuple[str, ...]:

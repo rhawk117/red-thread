@@ -21,7 +21,7 @@ from red_thread_core.util import squeeze
 from red_thread_plans.charts import WorktreeMap
 from red_thread_plans.nodes import ChangeList, Ground, Promise, TicketList, TicketNode
 from red_thread_plans.terms import PLAN_TERMS
-from red_thread_plans.wording import describe_risk, to_line
+from red_thread_plans.wording import describe_lights, describe_risk, to_line
 from red_thread_plans.writers import NOT_PUBLISHED
 
 if TYPE_CHECKING:
@@ -155,6 +155,7 @@ class PlanPage:
             Fact(label='Stored', value=to_line(date_of(plan.at))),
             Fact(label='Commit', value=to_line(shorten_head(plan.head))),
             Fact(label='Tickets', value=to_line(counted)),
+            Fact(label='Lights', value=to_line(describe_lights(plan.lights)), wide=True),
             Fact(label='Changes', value=to_line(self.changes.describe()), wide=True),
             Fact(label='Epic', value=create_link(self.index.epic, 'epic'), wide=True),
         )

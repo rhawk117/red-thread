@@ -10,7 +10,7 @@ from msgspec.structs import replace
 from red_thread_core.documents import CodeListing, Flowchart
 from red_thread_plans.domain import Interface, Mitigate, Risk
 from red_thread_plans.filters import list_tickets, render_plan_page
-from red_thread_plans.nodes import TicketList
+from red_thread_plans.nodes import ChangeList, FieldChange, TicketList
 
 from tests.casefile.pages.html_reading import list_chip_groups, list_facts
 from tests.casefile.writers.reading import render_markdown, render_page
@@ -27,7 +27,7 @@ from tests.plans.revisions.strategies import valid_plans
 
 if TYPE_CHECKING:
     from red_thread_core.documents import Document, Section
-    from red_thread_plans.domain import PlanDraft
+    from red_thread_plans.domain import Lights, PlanDraft
     from red_thread_plans.nodes import TicketNode, TicketStatus
 
 PAGE = 1
@@ -48,6 +48,21 @@ class Revised:
     draft: PlanDraft
     statuses: dict[str, TicketStatus]
     marks: tuple[pytest.MarkDecorator, ...] = ()
+
+
+def plan_lights_cases() -> pytest.MarkDecorator:
+    cases = (
+        pytest.param(
+            'on', 'on: the owner is in the loop and decides each fork in the road', id='on'
+        ),
+        pytest.param(
+            'off',
+            'off: the owner is away, so a fork that changes a promise waits for them',
+            id='off',
+        ),
+        pytest.param(None, 'not asked', id='not-asked'),
+    )
+    return pytest.mark.parametrize(('lights', 'shown'), cases)
 
 
 def ticket_revision_cases() -> pytest.MarkDecorator:
@@ -127,6 +142,26 @@ class TestMarks:
         assert (facts['Revision'], facts['Changes']) == ('1', 'first revision')
         assert facts['Tickets'] == '3 in 2 worktrees'
         assert 'Dropped' not in list_titles(document)
+
+
+class TestLights:
+    @plan_lights_cases()
+    def test_the_facts_say_whether_the_owner_is_in_the_loop(
+        self, lights: Lights | None, shown: str
+    ) -> None:
+        document = create_plan_document(stamp_plan(replace(create_valid_draft(), lights=lights)))
+
+        assert read_facts(document)['Lights'] == shown
+
+    def test_turning_the_lights_off_is_a_change_since_the_revision_before(self) -> None:
+        first = stamp_plan(replace(create_valid_draft(), lights='on'))
+        second = stamp_plan(replace(create_valid_draft(), lights='off'), 2)
+
+        document = create_plan_document(second, first)
+
+        (_, fields) = find_section(document, 'What changed').blocks
+        assert isinstance(fields, ChangeList)
+        assert FieldChange(field='lights', removed=('on',), added=('off',)) in fields.changes
 
 
 class TestMarkProperties:

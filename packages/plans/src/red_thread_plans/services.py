@@ -103,6 +103,7 @@ class RevisionStamp:
             tickets=self.place(draft.tickets),
             risks=draft.risks,
             cases=draft.cases,
+            lights=draft.lights,
         )
 
 

@@ -69,6 +69,14 @@ PLAN_TERMS = (
         ),
     ),
     Term(
+        word='Lights on and off',
+        meaning=(
+            'Whether the owner is in the loop while the tickets are built. With the lights on,'
+            ' they decide each fork in the road as it comes; with the lights off, they are away,'
+            ' and a fork that would change what a ticket promises waits for them.'
+        ),
+    ),
+    Term(
         word='Epic and issue',
         meaning=(
             'Where the plan and each ticket are published in the tracker. They read "not'

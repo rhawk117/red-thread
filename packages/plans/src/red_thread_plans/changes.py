@@ -38,6 +38,7 @@ def describe_plan(plan: Plan) -> Described:
         'invariants': plan.invariants,
         'non-goals': plan.non_goals,
         'risks': tuple(map(describe_risk, plan.risks)),
+        'lights': () if plan.lights is None else (plan.lights,),
     }
 
 

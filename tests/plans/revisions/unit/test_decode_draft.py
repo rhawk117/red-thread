@@ -59,6 +59,11 @@ def plan_shape_fault_cases() -> pytest.MarkDecorator:
             text=encode({'intent': 'x', 'approach': 'y', 'risks': [risk]}),
             reason='$.risks[0].handling',
         ),
+        ShapeFault(
+            name='unknown-lights',
+            text=encode({'intent': 'x', 'approach': 'y', 'lights': 'dim'}),
+            reason='$.lights',
+        ),
     )
     return pytest.mark.parametrize('fault', as_params(faults))
 

@@ -10,7 +10,7 @@ from red_thread_plans.domain import Mitigate, YouIntervene
 if TYPE_CHECKING:
     from red_thread_core.documents import Line
 
-    from red_thread_plans.domain import Acceptance, Handling, Risk
+    from red_thread_plans.domain import Acceptance, Handling, Lights, Risk
 
 
 def to_line(text: str) -> Line:
@@ -32,6 +32,16 @@ def describe_risk(risk: Risk) -> str:
     touched = ', '.join(risk.tickets) or 'no ticket'
     handled = describe_handling(risk.handling)
     return f'{risk.id}, {handled}: {risk.risk} Signal: {risk.signal} Touches {touched}.'
+
+
+def describe_lights(lights: Lights | None) -> str:
+    if lights == 'on':
+        return 'on: the owner is in the loop and decides each fork in the road'
+
+    if lights == 'off':
+        return 'off: the owner is away, so a fork that changes a promise waits for them'
+
+    return 'not asked'
 
 
 def describe_criterion(acceptance: Acceptance) -> str:
