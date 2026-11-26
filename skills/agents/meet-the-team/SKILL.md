@@ -2,7 +2,7 @@
 name: meet-the-team
 user-invocable: false
 description: >-
-  Who the red-thread agents are and how to brief each one: which agent takes which question, the brief fields each needs, what it returns and what to do with each verdict. Read before dispatching a red-thread agent. The investigate, debug and plan skills refer to it and research-lead uses it; not a command you run.
+  Who the red-thread agents are and how to brief each one: which agent takes which question, the brief fields each needs, what it returns and what to do with each verdict. Read before dispatching a red-thread agent. The investigate, debug and game-plan skills refer to it and research-lead uses it; not a command you run.
 ---
 
 # Meet the team
@@ -159,7 +159,7 @@ Required: CASE, SCRIPT, CONCLUSION. Give TODAY and NAVIGATE as well. REFS is opt
 - A claim cited by a command it may not run comes back UNCHECKED. It does not rerun experiments.
 - It records nothing. Retiring a claim it broke is the primary's step, after the owner agrees.
 
-For a draft plan, the plan skill sends PLAN and CASES in place of CASE and CONCLUSION:
+For a draft plan, the game-plan skill sends PLAN and CASES in place of CASE and CONCLUSION:
 
 ```text
 PLAN: /abs/path/.red-thread/plans/20261126-cap-retries/draft.json
@@ -171,4 +171,4 @@ TODAY: 2026-11-26
 NAVIGATE: /abs/path/bin/redthread-navigate
 ```
 
-Required: PLAN, CASES, SCRIPT. It checks that each criterion follows from the entries that require it, that no decision on the boards is left without work, that each worktree can be built without the others, and what the plan assumes without evidence. It returns a table of findings, each with where it is in the plan and an entry ref or a `path:line`; drop any that has neither. Say nothing about how the plan was reached.
+Required: PLAN, CASES, SCRIPT. It checks that each criterion follows from the entries that require it, that no decision on the boards is left without work, that each worktree can be built without the others, and what the plan assumes without evidence, and it names the plan's risks itself, because the draft reaches it with none. It returns a table of findings, each with where it is in the plan, and a table of risks, each with a signal and the tickets it touches; each row carries an entry ref or a `path:line`, and you drop any that has neither. Say nothing about how the plan was reached: a reviewer who hears the argument checks the argument, and its risks come out in your framing.

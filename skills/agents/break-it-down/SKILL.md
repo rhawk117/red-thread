@@ -2,7 +2,7 @@
 name: break-it-down
 user-invocable: false
 description: >-
-  How to cut planned work into tickets a reviewer can hold in their head: one pull request each, cut where the work already has a seam, stacked in worktrees that never share a file, with the repository passing after each ticket. Also how to put a split of one ticket to the owner. Loaded by name from plan; not a command you run.
+  How to cut planned work into tickets a reviewer can hold in their head: one pull request each, cut where the work already has a seam, stacked in worktrees that never share a file, with the repository passing after each ticket. Also how to put a split of one ticket to the owner. Loaded by name from game-plan and course-correction; not a command you run.
 ---
 
 # Break it down

@@ -1,4 +1,4 @@
-"""The plan skill links every reference it ships, and its example draft is a plan revise reads."""
+"""game-plan links every reference it ships, and its example draft is a plan revise reads."""
 
 import re
 from typing import TYPE_CHECKING
@@ -13,12 +13,12 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-class TestPlanSkill:
+class TestGamePlanSkill:
     json_block = re.compile(r'```json\n(.*?)```', re.DOTALL)
 
     @pytest.fixture
     def skill_directory(self, repository_root: Path) -> Path:
-        return repository_root.joinpath('skills', 'plan')
+        return repository_root.joinpath('skills', 'game-plan')
 
     @pytest.fixture
     def skill_file(self, skill_directory: Path) -> Path:
@@ -33,8 +33,8 @@ class TestPlanSkill:
         text = skill_directory.joinpath('references', 'draft.md').read_text(encoding='utf-8')
         return tuple(self.json_block.findall(text))
 
-    def test_skill_declares_the_name_plan(self, skill_file: Path) -> None:
-        assert read_scalar(read_frontmatter_lines(skill_file), 'name') == 'plan'
+    def test_skill_declares_the_name_game_plan(self, skill_file: Path) -> None:
+        assert read_scalar(read_frontmatter_lines(skill_file), 'name') == 'game-plan'
 
     def test_skill_links_every_reference(
         self, skill_file: Path, reference_names: tuple[str, ...]

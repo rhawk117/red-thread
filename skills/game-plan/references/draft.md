@@ -12,7 +12,8 @@ The draft is one JSON object in `PLAN/draft.json`. `PLANNER revise` reads it at 
 | `invariants` | what must stay true after every ticket lands, each with what shows it |
 | `non_goals` | what the plan leaves out, each with its reason |
 | `tickets` | the work, below |
-| `risks` | what could go wrong, below |
+| `risks` | what could go wrong, below. Empty until the review and the risk dialog |
+| `lights` | `"on"` when the owner is in the loop while the work runs, `"off"` when they are away. Asked at the gate; leave it out until then |
 
 A ticket has an `id` and a `worktree` (lowercase slugs such as `retry-cap`), a `title`, a `why`, its `acceptance` criteria, the paths or globs it `owns` and the tickets it `depends_on`. A criterion is `{"criterion": "...", "required_by": [...]}`, where each ref names a live `decision` or `known` entry through its case's alias: `C1.e4`, or `C2.T1.e2` for an entry in thread T1. Leave `interface` out: the agent that writes it is not built yet.
 
@@ -60,7 +61,8 @@ A risk has an `id` (`R1`, `R2`), the `risk`, a `signal`, the `tickets` it touche
       "tickets": ["retry-cap"],
       "handling": {"kind": "mitigate", "ticket": "retry-cap", "criterion": "A job dropped after its last attempt is logged with its id."}
     }
-  ]
+  ],
+  "lights": "on"
 }
 ```
 
@@ -81,7 +83,7 @@ From mightymodels `game-plan`. Lift what the cross-examine interview settled int
 
 - A decision becomes the approach, an invariant, a non-goal, or a criterion of the ticket it bears on. A decision that fits none of these is a ticket.
 - A verified fact becomes ground a criterion rests on, through its ref.
-- An open question or an assumption becomes a risk, as risk-register describes.
+- An open question or an assumption goes on a list for the risk dialog, which adds it after the reviewer's risks, as risk-register describes. It stays out of the draft until then.
 
 Cut the tickets by the rules in `red-thread:break-it-down`.
 
@@ -92,11 +94,11 @@ From mightymodels `game-plan`. Run it on every draft before the owner sees it. E
 - Every ticket has a why and one to four criteria, and each criterion is an observable outcome sentence.
 - Each criterion follows from the entries in its `required_by`: read each one on the board. An entry that says less than the criterion promises means a narrower criterion or a question for the owner.
 - Every decision on the boards that bears on the intent shows in the plan as the approach, an invariant, a non-goal or a criterion, and nothing in the plan contradicts one.
-- Every open question and assumption from the cross-examine interview is a risk.
+- Once risk-register has run, every open question and assumption from the cross-examine interview is a risk.
 - No two tickets do the same thing, and no ticket does what a non-goal excludes.
 - Every `depends_on` names a ticket in the same worktree, and no two worktrees own a path in common.
 - Every invariant says what shows it, and every non-goal its reason.
-- Every risk has a signal someone can see while the work runs, the tickets it touches, and, once risk-register has run, the handling the owner chose.
+- Before the review, `risks` is empty and `lights` is absent. After risk-register, every risk has a signal someone can see while the work runs, the tickets it touches, and the handling the owner chose.
 - No ticket has an `interface`, and no plan text carries a `path:line`.
 
 ## Showing the plan

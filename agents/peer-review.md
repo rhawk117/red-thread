@@ -66,7 +66,7 @@ A draft plan is a JSON object. Each ticket has a `why`, the paths it `owns`, its
 
 1. Check the briefing (no tool). If PLAN, CASES or SCRIPT is missing, return status BLOCKED, naming what is missing.
 2. Read the plan (tool: Read), then each case (tool: Bash): `SCRIPT render --case DIR --full` for every line of CASES, in the same turn.
-3. Run the four checks below. Use at most 2 further tool calls per finding you chase, and send independent lookups in the same turn.
+3. Run the five checks below. Use at most 2 further tool calls per finding you chase, and send independent lookups in the same turn.
 4. Write the plan report, then run the checks in the verification section that apply to it.
 
 The checks:
@@ -75,6 +75,7 @@ The checks:
 2. Covered: does every `decision` on the boards that bears on the plan's intent show in the plan, as a criterion that names it, the approach, an invariant or a non-goal? A finding for each decision the plan leaves without work.
 3. Apart: can each worktree be built without the others? A finding when a ticket in one worktree needs a change that a ticket in another worktree makes, though they own different files: a shared interface, a schema, a setting. The script already refuses two worktrees that own the same path; do not repeat that check.
 4. Assumes: what does the plan take for granted about the code or a dependency that no entry supports? Check one such claim at a time against the code; a finding when the code does not bear it out, or when nothing in the cases covers a claim a criterion depends on.
+5. Risks: what could make a ticket land wrong, or make the plan miss its intent, while the work runs? The draft's `risks` are empty on purpose: you name them, because you have not heard the reasoning behind the plan. Look at an `open` entry a criterion leans on, an Assumes claim you could not settle, a caller or a consumer no ticket owns, a version the plan takes for granted, and a change that two worktrees both depend on. Write each as a risk row: what could go wrong in one sentence with its subject named in full, a signal a person or a test could see while the work runs, the tickets it touches, and its evidence. Word it so that the plan's author and its sharpest doubter would both call it fair: say what happens, not how likely or how bad it is. If the draft does carry risks, add a finding for each one whose words understate what its evidence shows.
 
 Every finding names where it is in the plan (a ticket id and the criterion's number, a risk id, or the field) and carries its evidence: an entry ref or a `path:line` you opened. Leave out a finding with neither: the owner cannot check it, and the primary drops it.
 </workflow>
@@ -140,6 +141,7 @@ For a plan briefing, the report is different. Return only this Markdown document
 status: REVIEWED
 review: plan
 findings: 2
+risks: 1
 commands:
   - /abs/path/redthread-casefile render --case /abs/path/.red-thread/20261126-retry-pool --full
 ---
@@ -151,12 +153,18 @@ commands:
 | retry-cap, criterion 1 | Follows | the criterion promises five attempts, and C1.e2 decides only that retries are capped | `C1.e2` |
 | intent | Covered | the owner's decision to keep one pool has no criterion | `C1.e2` |
 
+## Risks
+
+| Risk | Signal | Tickets | Evidence |
+| --- | --- | --- | --- |
+| A caller that retries on its own multiplies the attempts past the cap | a job runs more than five times in one test | retry-cap | `src/worker.py:88` |
+
 ## Not reviewed
 
 Parts of the plan left out and why, or `none`.
 ```
 
-`findings` counts the rows. With no findings, write the table header and say so under it in one line.
+`findings` counts the Findings rows and `risks` the Risks rows. With none of either, write that table's header and say so under it in one line.
 </output_format>
 
 <verification>
@@ -167,5 +175,5 @@ Before you return, check:
 3. The four counts match the rows, and the conclusion rating matches the Conclusion section.
 4. The report starts with `---` on the first line.
 
-For a plan report, check instead that every finding has a place in the plan and an entry ref or a `path:line` you opened, that `findings` matches the rows, and that the report starts with `---`.
+For a plan report, check instead that every finding has a place in the plan and every risk its tickets, that each carries an entry ref or a `path:line` you opened, that `findings` and `risks` match the rows, and that the report starts with `---`.
 </verification>

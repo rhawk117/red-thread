@@ -1,4 +1,4 @@
-"""The skills the plan skill loads declare their names, and the agent-only ones are not commands."""
+"""The skills game-plan loads declare their names, and the agent-only ones are not commands."""
 
 from typing import TYPE_CHECKING
 
@@ -23,7 +23,9 @@ def agent_skill_cases() -> pytest.MarkDecorator:
 class TestLoadedSkills:
     @pytest.fixture
     def plan_text(self, repository_root: Path) -> str:
-        return repository_root.joinpath('skills', 'plan', 'SKILL.md').read_text(encoding='utf-8')
+        return repository_root.joinpath('skills', 'game-plan', 'SKILL.md').read_text(
+            encoding='utf-8'
+        )
 
     def read_skill_frontmatter(self, root: Path, skill: str) -> tuple[str, ...]:
         return read_frontmatter_lines(root.joinpath('skills', skill, 'SKILL.md'))

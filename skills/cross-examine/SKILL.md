@@ -10,8 +10,9 @@ description: >-
   putting any question to the owner.
 when_to_use: >-
   Use for "cross-examine this design", "stress-test my plan", "interview me about the approach",
-  "poke holes in this before I build it". The plan skill loads it before drafting. Not for finding
-  facts (that is investigate) and not for drafting the plan (that is plan).
+  "poke holes in this before I build it". The game-plan skill invokes it on every run, before
+  drafting. Not for finding facts (that is investigate) and not for drafting the plan (that is
+  game-plan).
 ---
 
 # Cross-examine
@@ -34,7 +35,9 @@ These rules hold for every question you put to the owner, in this skill and in a
 
 - **Name things.** Say what a ticket, an entry or a risk is, with its id after it: "the ticket that caps retries (`retry-cap`)", "the owner's choice to keep one pool (C1.e2)". An id never stands alone, and a word the owner did not coin is replaced by what it means.
 - **Weigh the decision.** Open each question with what it drives: what gets built differently on each answer, and how hard that is to undo. A choice that is cheap to reverse gets a line per option. A choice that fixes a boundary, a public shape or stored data gets the entries that bear on it.
-- **Stack the options evenly.** Two to four options, written as the actual choices and not yes or no on your framing. Each says what it buys and what it costs, the recommended one included, at the same length. Before you send a question, check that someone who favours each option would call its description fair, and that you can name a real cost of the one you recommend. If you cannot, you do not understand the decision yet: send a scout or say so. Drop an option nobody would pick.
+- **Stack the options evenly.** Two to four options, written as the actual choices and not yes or no on your framing. Each says what it buys and what it costs, the recommended one included, at the same length. Drop an option nobody would pick.
+- **Argue each option at its strongest.** Write every option as its best advocate would, as if you were about to recommend it. A cost is something the option itself causes (work, risk, a limit, a thing to maintain); "lacks what the recommended option gives" restates your recommendation and is not a cost. Keep loaded words off the options you do not recommend: "silently", "blindly", "just", "hacky", "hope". Give the recommended option's worst realistic outcome, not its best case.
+- **Check before you send.** Read the options side by side. Someone who favours each one would call its description fair; each has a real cost; nothing in one is there only to make another look better. If you cannot name a real cost of the one you recommend, you do not understand the decision yet: send a scout or say so.
 - **Recommend one.** Mark exactly one option recommended, and say which cost you judge worth paying and what fact would change your answer.
 - **Use their answer.** A typed answer that names a problem you did not list is a finding: check it with a scout if it is a fact, and ask again with it included.
 
@@ -81,7 +84,7 @@ Pitch each question at the fidelity the work needs. "Which bound" settles someth
 
 Where the answers go depends on whether a case holds the work:
 
-- **With a case.** When the caller names the cases (the plan skill does), or a case under `.red-thread/` covers the target and the owner agrees to use it, record each answer as a `decision` with `source` `user`, in one `SCRIPT add` batch per case, at the round after the one the case's board header shows. Put each decision in the case it bears on; a choice that spans two cases goes in the first case the caller named. Record a scout's VERIFIED answer as a `known` with its citation, and an INFERRED one as an `open` with its `rests_on`. Load the `red-thread:artifact-authoring` skill before the first `add`.
+- **With a case.** When the caller names the cases (the game-plan skill does), or a case under `.red-thread/` covers the target and the owner agrees to use it, record each answer as a `decision` with `source` `user`, in one `SCRIPT add` batch per case, at the round after the one the case's board header shows. Put each decision in the case it bears on; a choice that spans two cases goes in the first case the caller named. Record a scout's VERIFIED answer as a `known` with its citation, and an INFERRED one as an `open` with its `rests_on`. Load the `red-thread:artifact-authoring` skill before the first `add`.
 - **With no case.** Keep the record in chat, and at the end offer `/red-thread:investigate` to open a case that holds it.
 
 Write a decision as the choice itself, a sentence later work can rest on: "Cap retries at five attempts per job", not "Option 1" or "the owner agreed". A decision is only what the owner chose in a dialog or typed; your recommendation is what you offered.
@@ -90,7 +93,7 @@ After each round, restate where the interview stands in a few lines: what was de
 
 ## Ending
 
-The interview ends when the frontier is empty, when the depth's round cap is reached, or when the owner says stop. Close with one question: the understanding is shared, one more round, or stop here. Only the first hands the record on, to the caller or, standalone, as an offer of `/red-thread:plan`. If the questions are getting worse, say so and recommend stopping where you are. A large target is examined as several smaller ones.
+The interview ends when the frontier is empty, when the depth's round cap is reached, or when the owner says stop. Close with one question: the understanding is shared, one more round, or stop here. Only the first hands the record on, to the caller or, standalone, as an offer of `/red-thread:game-plan`. If the questions are getting worse, say so and recommend stopping where you are. A large target is examined as several smaller ones.
 
 ## Rules
 
