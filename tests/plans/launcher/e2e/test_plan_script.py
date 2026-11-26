@@ -1,6 +1,5 @@
 """bin/redthread-plan from outside the plugin: a child process beside a case the case file made."""
 
-import json
 from typing import TYPE_CHECKING
 
 import pytest
@@ -15,15 +14,13 @@ if TYPE_CHECKING:
     from tests.casefile.launcher.launcher import Launcher
 
 DECISION = {'kind': 'decision', 'text': 'cap each job at five attempts', 'source': 'user'}
-GROUNDS = json.dumps([KNOWN, DECISION])
 
 
 class TestPlanScript:
     @pytest.fixture
     def plan(self, launcher: Launcher) -> Path:
         case = launcher.init()
-        added = launcher.add(case, GROUNDS)
-        assert added.code == 0, added.err
+        launcher.write(case, KNOWN, DECISION)
         return launcher.init_plan(case)
 
     @pytest.fixture

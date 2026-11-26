@@ -1,20 +1,29 @@
-"""The use cases of a case file: frame, add, check and show."""
+"""The use cases of a case file: frame it, read it, check it and show it."""
 
-from dataclasses import asdict, dataclass, field, replace
+from dataclasses import dataclass, field
+from itertools import chain
 from typing import TYPE_CHECKING
 
 from red_thread_core.redaction import create_secret_patterns
 
-from red_thread_casefile.domain import STATE_DIRECTORY, THREAD_NAME, Capabilities, Case, Cite, Entry
-from red_thread_casefile.errors import (
-    BatchRejectedError,
-    CaseExistsError,
-    InvalidThreadError,
-    MisquotedCiteError,
-    UnresolvedCiteError,
+from red_thread_casefile.domain import (
+    STATE_DIRECTORY,
+    TEXT_FIELDS,
+    Capabilities,
+    Case,
+    Cite,
+    is_current,
 )
-from red_thread_casefile.policy import CiteCheck, DraftPolicy, Finding, SupersedePolicy
-from red_thread_casefile.schemas import TEXT_FIELDS
+from red_thread_casefile.errors import MalformedCaseError, SecretInEntryError
+from red_thread_casefile.policy import (
+    CiteCheck,
+    CitePolicy,
+    EntryPolicy,
+    Finding,
+    SupersedePolicy,
+    get_page_problem,
+)
+from red_thread_casefile.schemas import load_record, read_case_file, write_case_file
 from red_thread_casefile.util import rank_languages
 from red_thread_casefile.views import Board, BoardOptions
 
@@ -23,11 +32,12 @@ if TYPE_CHECKING:
     from red_thread_core.store import Clock, SourceTree
 
     from red_thread_casefile.documents import Wording
-    from red_thread_casefile.domain import CaseKind, Draft, Ledger
+    from red_thread_casefile.domain import CaseKind, CaseRecord, Entry, Ledger, Placed
     from red_thread_casefile.errors import CaseFileError
+    from red_thread_casefile.schemas import CaseReading
     from red_thread_casefile.store import CaseRepository
 
-type CiteProblem = UnresolvedCiteError | MisquotedCiteError
+type Problems = tuple[CaseFileError, ...]
 
 EXCLUDED = f'{STATE_DIRECTORY}/'
 
@@ -42,100 +52,81 @@ class Framing:
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
-class Batch:
-    drafts: tuple[Draft, ...]
-    round: int
-    thread: str | None = None
-    problems: tuple[CaseFileError, ...] = ()
+class Checked:
+    problems: Problems
+    findings: tuple[Finding, ...]
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
-class Prepared:
-    draft: Draft
-    hits: int
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Added:
-    entries: tuple[Entry, ...]
-    redactions: int
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Stamp:
-    at: str
-    head: str | None
-    round: int
-    thread: str | None
-    first_seq: int
-
-    def apply(self, offset: int, draft: Draft) -> Entry:
-        fields = {name: value for name, value in asdict(draft).items() if name != 'position'}
-        return Entry(
-            **fields,
-            seq=self.first_seq + offset,
-            round=self.round,
-            thread=self.thread,
-            at=self.at,
-            head=self.head,
-        )
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Intake:
+class Inspector:
     tree: SourceTree
     patterns: SecretPatterns
-    batch: Batch
     ledger: Ledger
+    head: str | None
 
-    def probe(self, draft: Draft) -> CiteCheck | None:
-        cite = Cite(raw=draft.cite or '')
+    def read_scrubbed(self, path: str) -> tuple[str, ...] | None:
+        lines = self.tree.read_lines(path)
+        if lines is None:
+            return None
+        return tuple(map(self.patterns.scrub_text, lines))
+
+    def probe(self, entry: Entry) -> CiteCheck | None:
+        cite = Cite(raw=entry.cite or '')
         if cite.path is None or cite.line is None:
             return None
-        lines = self.tree.read_lines(cite.path)
-        return CiteCheck(quote=draft.quote or '', line=cite.line, lines=lines)
+        lines = self.read_scrubbed(cite.path)
+        return CiteCheck(quote=entry.quote or '', line=cite.line, lines=lines)
 
-    def get_cite_problem(self, draft: Draft) -> CiteProblem | None:
-        probe = self.probe(draft)
-        if not probe:
-            return None
-
-        if probe.cited_line is None:
-            return UnresolvedCiteError(position=draft.position, cite=draft.cite or '')
-
-        if draft.quote is not None and not probe.is_in_place:
-            return MisquotedCiteError(
-                position=draft.position, cite=draft.cite or '', found_at=probe.moved_to
-            )
-
-        return None
-
-    def find_problem(self, draft: Draft) -> CaseFileError | None:
-        thread = self.batch.thread
-        policy = DraftPolicy(draft=draft, thread=thread)
-        supersede = SupersedePolicy(draft=draft, known_refs=self.ledger.refs, thread=thread)
-        return (
-            policy.get_storage_problem()
-            or supersede.get_supersede_problem()
-            or self.get_cite_problem(draft)
+    def inspect(self, entry: Entry) -> Finding:
+        probe = self.probe(entry)
+        if probe is None or entry.quote is None:
+            return Finding(ref=entry.ref, cite=entry.cite or '', state='unchecked')
+        return Finding(
+            ref=entry.ref, cite=entry.cite or '', state=probe.get_state(), moved_to=probe.moved_to
         )
 
-    def find_problems(self) -> tuple[CaseFileError, ...]:
-        found = map(self.find_problem, self.batch.drafts)
-        return tuple(filter(None, found))
+    def find_citations(self) -> tuple[Finding, ...]:
+        cited = (entry for entry in self.ledger.live if entry.cite is not None)
+        return tuple(map(self.inspect, cited))
 
-    def quote(self, draft: Draft) -> Draft:
-        probe = self.probe(draft)
-        if not probe or draft.quote is not None:
-            return draft
-        return replace(draft, quote=probe.cited_line)
+    def get_cite_problem(self, placed: Placed) -> CaseFileError | None:
+        probe = self.probe(placed.entry)
+        if probe is None:
+            return None
+        policy = CitePolicy(
+            entry=placed.entry,
+            spot=placed.spot,
+            probe=probe,
+            is_fresh=is_current(placed.entry.head, self.head),
+        )
+        return policy.get_cite_problem()
 
-    def prepare(self, draft: Draft) -> Prepared:
-        quoted = self.quote(draft)
-        present = {name: value for name in TEXT_FIELDS if (value := getattr(quoted, name))}
-        scrubbed = {name: self.patterns.scrub(value) for name, value in present.items()}
-        clean = replace(quoted, **{name: found.text for name, found in scrubbed.items()})
-        return Prepared(draft=clean, hits=sum(found.hits for found in scrubbed.values()))
+    def find_secret_problems(self, placed: Placed) -> tuple[SecretInEntryError, ...]:
+        present = ((name, getattr(placed.entry, name)) for name in TEXT_FIELDS)
+        scrubbed = ((name, self.patterns.scrub(value)) for name, value in present if value)
+        return tuple(
+            SecretInEntryError(spot=placed.spot, field=name, scrubbed=found.text)
+            for name, found in scrubbed
+            if found.hits
+        )
+
+    def find_problems(self, placed: Placed) -> Problems:
+        supersede = SupersedePolicy(
+            entry=placed.entry, spot=placed.spot, known_refs=self.ledger.refs
+        ).get_supersede_problem()
+        always = (*filter(None, (supersede,)), *self.find_secret_problems(placed))
+        if placed.entry.ref in self.ledger.retired:
+            return always
+
+        rules = EntryPolicy(entry=placed.entry, spot=placed.spot).get_entry_issues()
+        cite = self.get_cite_problem(placed)
+        return (*rules, *filter(None, (cite,)), *always)
+
+
+def find_case_problems(case: Case | None) -> Problems:
+    if case is None or case.page_url is None:
+        return ()
+    return tuple(filter(None, (get_page_problem(case.page_url),)))
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -147,9 +138,6 @@ class CaseFile:
     patterns: SecretPatterns = field(default_factory=create_secret_patterns)
 
     def frame(self, framing: Framing) -> Case:
-        if self.repository.exists():
-            raise CaseExistsError(case_id=framing.id)
-
         capabilities = Capabilities(languages=rank_languages(self.tree.list_files()))
         case = Case(
             id=framing.id,
@@ -161,58 +149,44 @@ class CaseFile:
             head=self.tree.get_head(),
             capabilities=capabilities,
         )
-        self.repository.create(case)
+        self.repository.create(write_case_file(case))
         self.tree.exclude(EXCLUDED)
         return case
 
-    def add(self, batch: Batch) -> Added:
-        if batch.thread is not None and not THREAD_NAME.fullmatch(batch.thread):
-            raise InvalidThreadError(thread=batch.thread)
+    def read(self) -> CaseReading:
+        return read_case_file(self.repository.read())
 
-        ledger = self.repository.read_ledger()
-        intake = Intake(tree=self.tree, patterns=self.patterns, batch=batch, ledger=ledger)
-        if problems := (*batch.problems, *intake.find_problems()):
-            raise BatchRejectedError(problems=problems)
+    def load(self) -> CaseRecord:
+        record = load_record(self.read())
+        if isinstance(record, MalformedCaseError):
+            raise record
+        return record
 
-        stamp = Stamp(
-            at=self.clock.now(),
-            head=self.tree.get_head(),
-            round=batch.round,
-            thread=batch.thread,
-            first_seq=ledger.count_in(batch.thread) + 1,
-        )
-        prepared = tuple(map(intake.prepare, batch.drafts))
-        entries = tuple(stamp.apply(offset, item.draft) for offset, item in enumerate(prepared))
-        self.repository.append(batch.thread, entries)
-        return Added(entries=entries, redactions=sum(item.hits for item in prepared))
-
-    def read_scrubbed(self, path: str) -> tuple[str, ...] | None:
-        lines = self.tree.read_lines(path)
-        if lines is None:
-            return None
-        return tuple(map(self.patterns.scrub_text, lines))
-
-    def inspect(self, entry: Entry) -> Finding:
-        cite = Cite(raw=entry.cite or '')
-        if cite.path is None or cite.line is None:
-            return Finding(ref=entry.ref, cite=cite.raw, state='unchecked')
-        lines = self.read_scrubbed(cite.path)
-        probe = CiteCheck(quote=entry.quote or '', line=cite.line, lines=lines)
-        return Finding(
-            ref=entry.ref, cite=cite.raw, state=probe.get_state(), moved_to=probe.moved_to
+    def create_inspector(self, ledger: Ledger) -> Inspector:
+        return Inspector(
+            tree=self.tree, patterns=self.patterns, ledger=ledger, head=self.tree.get_head()
         )
 
-    def check(self) -> tuple[Finding, ...]:
-        cited = (entry for entry in self.repository.read_ledger().live if entry.cite is not None)
-        return tuple(map(self.inspect, cited))
+    def find_citations(self, ledger: Ledger) -> tuple[Finding, ...]:
+        return self.create_inspector(ledger).find_citations()
+
+    def check(self) -> Checked:
+        reading = self.read()
+        inspector = self.create_inspector(reading.ledger)
+        found = chain.from_iterable(map(inspector.find_problems, reading.placed))
+        return Checked(
+            problems=(*reading.problems, *find_case_problems(reading.case), *found),
+            findings=inspector.find_citations(),
+        )
 
     def show(self, options: BoardOptions | None = None) -> str:
+        record = self.load()
         board = Board(
-            case=self.repository.read_case(),
-            ledger=self.repository.read_ledger(),
+            case=record.case,
+            ledger=record.ledger,
             headings=self.wording.headings,
             head=self.tree.get_head(),
             options=options or BoardOptions(),
-            findings=self.check(),
+            findings=self.find_citations(record.ledger),
         )
         return board.render()

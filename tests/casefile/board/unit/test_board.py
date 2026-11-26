@@ -1,16 +1,14 @@
 """The board: its sections, its cap, its lead marker and what it leaves out."""
 
-import json
 from typing import TYPE_CHECKING
 
 import pytest
 from red_thread_casefile.domain import Ledger
 from red_thread_casefile.packaged import load_wording
-from red_thread_casefile.schemas import case_from_text, case_to_text
 from red_thread_casefile.views import Board, BoardOptions
 
 from tests.casefile.board.cases import lead_marker_params, section_cap_params
-from tests.casefile.ledger.builders import create_case, create_draft, create_entry
+from tests.casefile.ledger.builders import create_case, create_entry
 from tests.casefile.ledger.memory import HEAD, NEXT_HEAD
 
 if TYPE_CHECKING:
@@ -19,7 +17,6 @@ if TYPE_CHECKING:
     from tests.casefile.board.cases import CapCase, LeadCase
     from tests.casefile.ledger.builders import CaseHarness
 
-RETIRED_FLAG = 'navigation_tool'
 SECTION_TITLES = ['Decided', 'Known', 'Hypotheses', 'Open', 'Ruled out', 'Next', 'Resources']
 
 
@@ -31,19 +28,6 @@ def create_board(
         ledger=Ledger(entries=entries),
         head=head,
         options=options or BoardOptions(),
-        headings=load_wording().headings,
-    )
-
-
-def create_board_of_retired_case() -> Board:
-    document = json.loads(case_to_text(create_case()))
-    document['capabilities'][RETIRED_FLAG] = True
-    case = case_from_text(json.dumps(document))
-    return Board(
-        case=case,
-        ledger=Ledger(entries=()),
-        head=HEAD,
-        options=BoardOptions(),
         headings=load_wording().headings,
     )
 
@@ -116,11 +100,6 @@ class TestSections:
         assert 'Target: why the retry queue stalls' in text
         assert 'Kind: root-cause | Round: 3 | HEAD: 1111111' in text
         assert 'Threads: T1 (2)' in text
-
-    def test_case_written_with_the_retired_flag_still_renders(self) -> None:
-        text = create_board_of_retired_case().render()
-
-        assert 'Navigation tool' not in text
 
     def test_thread_entries_are_listed_under_their_thread_ref(self) -> None:
         entries = (create_entry(seq=1), create_entry(seq=1, thread='T1'))
@@ -236,10 +215,10 @@ class TestLeadMarker:
 class TestShow:
     @pytest.fixture
     def harness(self, framed_harness: CaseHarness) -> CaseHarness:
-        framed_harness.add(create_draft())
+        framed_harness.seed(None, create_entry())
         return framed_harness
 
-    def test_shown_board_lists_what_was_added(self, harness: CaseHarness) -> None:
+    def test_shown_board_lists_what_was_written(self, harness: CaseHarness) -> None:
         text = harness.casefile.show()
 
         assert '[e1]' in text

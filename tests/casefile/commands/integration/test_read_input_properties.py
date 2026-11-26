@@ -1,4 +1,4 @@
-"""add --file and read_input on a file that is not there: an unreadable input, never an OS error."""
+"""export --selection and read_input on a missing file: an unreadable input, never an OS error."""
 
 import io
 import string
@@ -22,10 +22,18 @@ class TestMissingInputFile:
     def locate_missing(self, factory: pytest.TempPathFactory, name: str) -> Path:
         return factory.mktemp('inputs', numbered=True).joinpath(name)
 
-    def run_add(self, path: Path) -> tuple[int, str, str]:
+    def run_export(self, path: Path) -> tuple[int, str, str]:
         out = io.StringIO()
         err = io.StringIO()
-        arguments = ['add', '--case', str(path.parent), '--round', '1', '--file', str(path)]
+        arguments = [
+            'export',
+            '--case',
+            str(path.parent),
+            '--lens',
+            'brief',
+            '--selection',
+            str(path),
+        ]
         with redirect_stdout(out), redirect_stderr(err):
             code = main(arguments)
         return code, out.getvalue(), err.getvalue()
@@ -47,12 +55,12 @@ class TestMissingInputFile:
     @pytest.mark.regression
     @given(name=names)
     @example(name='missing.json')
-    def test_add_with_a_missing_file_exits_one_and_reports_on_standard_error(
+    def test_export_with_a_missing_selection_exits_one_and_reports_on_standard_error(
         self, tmp_path_factory: pytest.TempPathFactory, name: str
     ) -> None:
         path = self.locate_missing(tmp_path_factory, name)
 
-        code, out, err = self.run_add(path)
+        code, out, err = self.run_export(path)
 
         assert code == 1
         assert out == ''

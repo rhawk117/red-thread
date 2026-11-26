@@ -1,59 +1,55 @@
 """In-memory stand-ins for the case file's three ports, behaving like their real adapters."""
 
-from collections import defaultdict
 from dataclasses import dataclass, field
-from itertools import chain
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from msgspec.structs import replace
-from red_thread_casefile.domain import Ledger, order_thread
-from red_thread_casefile.errors import CaseNotFoundError
-
-if TYPE_CHECKING:
-    from red_thread_casefile.domain import Case, Entry
+from red_thread_casefile.domain import CASE_FILE, LedgerSource
+from red_thread_casefile.errors import CaseExistsError, CaseNotFoundError
+from red_thread_casefile.store import order_thread_file
 
 MOMENT = '2026-11-21T09:30:00+00:00'
+DAY = '2026-11-21'
 HEAD = '1111111111111111111111111111111111111111'
+SHORT_HEAD = HEAD[:7]
 NEXT_HEAD = '2222222222222222222222222222222222222222'
+MEMORY_CASE = 'memory'
 
 
 def start_heads() -> list[str | None]:
     return [HEAD]
 
 
-def start_thread_files() -> defaultdict[str | None, list[Entry]]:
-    return defaultdict(list)
+def name_thread(name: str) -> str | None:
+    return None if name == CASE_FILE else Path(name).stem
+
+
+def order_file(name: str) -> tuple[bool, bool, int, str]:
+    return (name != CASE_FILE, *order_thread_file(Path(name)))
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class MemoryCaseRepository:
-    cases: list[Case] = field(default_factory=list)
-    files: defaultdict[str | None, list[Entry]] = field(default_factory=start_thread_files)
+    files: dict[str, str] = field(default_factory=dict)
 
     def exists(self) -> bool:
-        return bool(self.cases)
+        return CASE_FILE in self.files
 
-    def create(self, case: Case) -> None:
-        self.write_case(case)
+    def create(self, text: str) -> None:
+        if self.exists():
+            raise CaseExistsError(case_id=MEMORY_CASE)
+        self.files[CASE_FILE] = text
 
-    def read_case(self) -> Case:
+    def read(self) -> tuple[LedgerSource, ...]:
         if not self.exists():
-            raise CaseNotFoundError(path=Path('memory'))
-        return self.cases[-1]
+            raise CaseNotFoundError(path=Path(MEMORY_CASE))
+        names = sorted(self.files, key=order_file)
+        return tuple(
+            LedgerSource(name=name, thread=name_thread(name), text=self.files[name])
+            for name in names
+        )
 
-    def write_case(self, case: Case) -> None:
-        self.cases[:] = [case]
-
-    def read_ledger(self) -> Ledger:
-        if not self.exists():
-            raise CaseNotFoundError(path=Path('memory'))
-        threads = sorted((name for name in self.files if name is not None), key=order_thread)
-        held = (self.files.get(name, []) for name in (None, *threads))
-        return Ledger(entries=tuple(chain.from_iterable(held)))
-
-    def append(self, thread: str | None, entries: tuple[Entry, ...]) -> None:
-        self.files[thread].extend(replace(entry, thread=thread) for entry in entries)
+    def write(self, name: str, text: str) -> None:
+        self.files[name] = text
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)

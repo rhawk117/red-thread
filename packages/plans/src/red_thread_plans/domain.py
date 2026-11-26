@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Literal
 import msgspec
 
 if TYPE_CHECKING:
-    from red_thread_casefile.domain import Case, EntryKind, Ledger
+    from red_thread_casefile.domain import EntryKind
 
 type Status = Literal['draft', 'accepted', 'done']
 type Lights = Literal['on', 'off']
@@ -95,9 +95,3 @@ class Opening:
     id: str
     title: str
     case_ids: tuple[str, ...]
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class CaseRecord:
-    case: Case
-    ledger: Ledger

@@ -3,21 +3,33 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from red_thread_casefile.domain import CASE_FILE
 from red_thread_casefile.packaged import load_wording
-from red_thread_casefile.services import Batch, CaseFile
+from red_thread_casefile.services import CaseFile
 from red_thread_casefile.store import DirectoryCaseRepository
 from red_thread_core.store import GitSourceTree
 
 from tests.casefile.ledger.builders import CASE_ID, create_case
+from tests.casefile.ledger.markdown import CaseScribe, name_file, write_case_text
 from tests.casefile.ledger.memory import FixedClock
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from red_thread_casefile.domain import Draft
-    from red_thread_casefile.services import Added
+    from red_thread_casefile.domain import Case, Entry
+    from red_thread_casefile.services import Checked
 
     from tests.casefile.ledger.git_repository import GitRepository
+
+
+@dataclass(slots=True, kw_only=True, frozen=True)
+class DirectorySink:
+    directory: Path
+
+    def write(self, name: str, text: str) -> None:
+        path = self.directory.joinpath(name)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding='utf-8')
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -26,19 +38,26 @@ class DirectoryHarness:
     directory: Path
     repository: DirectoryCaseRepository
     casefile: CaseFile
+    scribe: CaseScribe
 
     @property
-    def ledger_file(self) -> Path:
-        return self.directory.joinpath('ledger.jsonl')
+    def case_file(self) -> Path:
+        return self.directory.joinpath(CASE_FILE)
 
     def thread_file(self, thread: str) -> Path:
-        return self.directory.joinpath('threads', f'{thread}.jsonl')
+        return self.directory.joinpath(name_file(thread))
 
     def read_bytes(self, path: Path) -> bytes:
         return path.read_bytes() if path.is_file() else b''
 
-    def add(self, *drafts: Draft, thread: str | None = None, round_number: int = 1) -> Added:
-        return self.casefile.add(Batch(drafts=drafts, round=round_number, thread=thread))
+    def seed(self, thread: str | None, *entries: Entry) -> None:
+        self.scribe.seed(thread, *entries)
+
+    def frame(self, case: Case) -> None:
+        self.scribe.frame(case)
+
+    def check(self) -> Checked:
+        return self.casefile.check()
 
 
 def create_directory_harness(git: GitRepository) -> DirectoryHarness:
@@ -50,10 +69,13 @@ def create_directory_harness(git: GitRepository) -> DirectoryHarness:
         clock=FixedClock(),
         wording=load_wording(),
     )
-    return DirectoryHarness(git=git, directory=directory, repository=repository, casefile=casefile)
+    scribe = CaseScribe(sink=DirectorySink(directory=directory), cases=[create_case()])
+    return DirectoryHarness(
+        git=git, directory=directory, repository=repository, casefile=casefile, scribe=scribe
+    )
 
 
 def create_framed_directory_harness(git: GitRepository) -> DirectoryHarness:
     harness = create_directory_harness(git)
-    harness.repository.create(create_case())
+    harness.repository.create(write_case_text(create_case()))
     return harness

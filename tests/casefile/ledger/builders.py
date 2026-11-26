@@ -1,18 +1,19 @@
 """Values, factories and harnesses the casefile tests share."""
 
-import json
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-import pytest
-from red_thread_casefile.domain import Case, Draft, Entry
-from red_thread_casefile.errors import BatchRejectedError
+from msgspec.structs import replace
+from red_thread_casefile.domain import Case, Entry
 from red_thread_casefile.packaged import load_wording
-from red_thread_casefile.services import Batch, CaseFile
+from red_thread_casefile.services import CaseFile
 
+from tests.casefile.ledger.markdown import CaseScribe, write_case_text
 from tests.casefile.ledger.memory import (
+    DAY,
     HEAD,
     MOMENT,
+    SHORT_HEAD,
     FixedClock,
     MemoryCaseRepository,
     MemorySourceTree,
@@ -21,7 +22,7 @@ from tests.casefile.ledger.memory import (
 if TYPE_CHECKING:
     from red_thread_casefile.domain import EntryKind, Verdict
     from red_thread_casefile.errors import CaseFileError
-    from red_thread_casefile.services import Added
+    from red_thread_casefile.services import Checked
 
 CASE_ID = '20261121-retry-queue-slowdown'
 URL_CITE = 'https://example.invalid/docs/retries#backoff'
@@ -32,6 +33,7 @@ KNOWN = {
     'text': 'the sleep blocks the queue',
     'source': 'scout',
     'cite': 'src/queue.py:3',
+    'quote': 'time.sleep(job.delay)',
 }
 QUEUE_LINES = (
     'import time',
@@ -60,8 +62,8 @@ def create_entry(
     text: str = 'the retry queue stalls',
     source: str = 'scout',
     round_number: int = 1,
-    at: str = MOMENT,
-    head: str | None = HEAD,
+    at: str = DAY,
+    head: str | None = SHORT_HEAD,
     verdict: Verdict | None = None,
     cite: str | None = None,
     quote: str | None = None,
@@ -91,29 +93,21 @@ def create_entry(
     )
 
 
-def create_draft(position: int = 1, *, kind: EntryKind = 'open', source: str = 'scout') -> Draft:
-    return Draft(position=position, kind=kind, text=f'a {kind} about the queue', source=source)
-
-
-def create_valid_draft(kind: EntryKind, position: int = 1) -> Draft:
-    draft = create_draft(position, kind=kind)
+def create_valid_entry(kind: EntryKind, seq: int = 1) -> Entry:
+    entry = create_entry(seq=seq, kind=kind, text=f'a {kind} about the queue')
     if kind == 'known':
-        return replace(draft, cite=URL_CITE, verdict='VERIFIED')
+        return replace(entry, cite=URL_CITE, verdict='VERIFIED')
 
     if kind == 'hypothesis':
-        return replace(draft, refute='the stall disappears when the sleep is removed')
+        return replace(entry, refute='the stall disappears when the sleep is removed')
 
     if kind == 'ruled_out':
-        return replace(draft, cite=URL_CITE)
+        return replace(entry, cite=URL_CITE)
 
     if kind == 'decision':
-        return replace(draft, source='user')
+        return replace(entry, source='user')
 
-    return draft
-
-
-def create_batch_text(*records: dict[str, object]) -> str:
-    return json.dumps(list(records))
+    return entry
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -122,16 +116,23 @@ class CaseHarness:
     tree: MemorySourceTree
     clock: FixedClock
     casefile: CaseFile
+    scribe: CaseScribe
 
     @property
     def entries(self) -> tuple[Entry, ...]:
-        return self.repository.read_ledger().entries
+        return self.casefile.load().ledger.entries
 
     def seed(self, thread: str | None, *entries: Entry) -> None:
-        self.repository.append(thread, entries)
+        self.scribe.seed(thread, *entries)
 
-    def add(self, *drafts: Draft, thread: str | None = None, round_number: int = 1) -> Added:
-        return self.casefile.add(Batch(drafts=drafts, round=round_number, thread=thread))
+    def frame(self, case: Case) -> None:
+        self.scribe.frame(case)
+
+    def check(self) -> Checked:
+        return self.casefile.check()
+
+    def find_problems(self) -> tuple[CaseFileError, ...]:
+        return self.check().problems
 
 
 def create_case_harness() -> CaseHarness:
@@ -139,24 +140,13 @@ def create_case_harness() -> CaseHarness:
     tree = MemorySourceTree(files={QUEUE_PATH: QUEUE_LINES})
     clock = FixedClock()
     casefile = CaseFile(repository=repository, tree=tree, clock=clock, wording=load_wording())
-    return CaseHarness(repository=repository, tree=tree, clock=clock, casefile=casefile)
+    scribe = CaseScribe(sink=repository, cases=[create_case()])
+    return CaseHarness(
+        repository=repository, tree=tree, clock=clock, casefile=casefile, scribe=scribe
+    )
 
 
 def create_framed_harness() -> CaseHarness:
     harness = create_case_harness()
-    harness.repository.create(create_case())
+    harness.repository.create(write_case_text(create_case()))
     return harness
-
-
-def reject_batch(
-    harness: CaseHarness,
-    *drafts: Draft,
-    thread: str | None = None,
-    problems: tuple[CaseFileError, ...] = (),
-) -> BatchRejectedError:
-    entries_before = harness.entries
-    batch = Batch(drafts=drafts, round=1, thread=thread, problems=problems)
-    with pytest.raises(BatchRejectedError) as raised:
-        harness.casefile.add(batch)
-    assert harness.entries == entries_before
-    return raised.value

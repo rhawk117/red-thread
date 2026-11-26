@@ -4,13 +4,17 @@ from dataclasses import dataclass
 from pathlib import PurePath
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
+from red_thread_casefile.errors import MalformedCaseError
+from red_thread_casefile.schemas import load_record, read_case_file
 from red_thread_casefile.store import DirectoryCaseRepository
 
-from red_thread_plans.domain import TICKET_HOME, CaseRecord
+from red_thread_plans.domain import TICKET_HOME
 from red_thread_plans.errors import MissingPlanError, PlanExistsError
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from red_thread_casefile.domain import CaseRecord
 
 NOT_CASES = frozenset({'.', '..', TICKET_HOME, 'plans'})
 
@@ -67,4 +71,8 @@ class DirectoryCaseShelf:
         if not repository.exists():
             return None
 
-        return CaseRecord(case=repository.read_case(), ledger=repository.read_ledger())
+        record = load_record(read_case_file(repository.read()))
+        if isinstance(record, MalformedCaseError):
+            raise record
+
+        return record

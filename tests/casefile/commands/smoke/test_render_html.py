@@ -22,7 +22,7 @@ class TestRenderHtml:
     def test_board_html_is_written_in_the_case_and_named_after_the_text_board(
         self, cli: CliHarness, case: Path
     ) -> None:
-        cli.add(case, *create_open_records(2))
+        cli.write(case, *create_open_records(2))
 
         result = cli.render(case, '--html')
 
@@ -33,7 +33,7 @@ class TestRenderHtml:
     def test_the_text_board_is_unchanged_and_the_wrote_line_comes_after_it(
         self, cli: CliHarness, case: Path
     ) -> None:
-        cli.add(case, *create_open_records(9))
+        cli.write(case, *create_open_records(9))
         plain = cli.render(case)
 
         with_page = cli.render(case, '--html')
@@ -44,7 +44,7 @@ class TestRenderHtml:
     def test_the_page_shows_every_live_entry_though_the_text_board_is_capped(
         self, cli: CliHarness, case: Path
     ) -> None:
-        cli.add(case, *create_open_records(9))
+        cli.write(case, *create_open_records(9))
 
         result = cli.render(case, '--html')
 
@@ -53,7 +53,7 @@ class TestRenderHtml:
         assert list_item_refs(page) == [f'e{number}' for number in range(1, 10)]
 
     def test_without_html_no_page_is_written(self, cli: CliHarness, case: Path) -> None:
-        cli.add(case, *create_open_records(1))
+        cli.write(case, *create_open_records(1))
 
         cli.render(case)
 
@@ -62,7 +62,7 @@ class TestRenderHtml:
     def test_the_page_holds_no_raw_script_from_a_stored_entry(
         self, cli: CliHarness, case: Path
     ) -> None:
-        cli.add(
+        cli.write(
             case,
             {
                 'kind': 'open',
@@ -82,9 +82,15 @@ class TestRenderHtml:
     def test_the_page_flags_an_entry_whose_citation_changed(
         self, cli: CliHarness, case: Path
     ) -> None:
-        cli.add(
+        cli.write(
             case,
-            {'kind': 'known', 'text': 'the sleep', 'source': 'scout', 'cite': 'src/queue.py:3'},
+            {
+                'kind': 'known',
+                'text': 'the sleep',
+                'source': 'scout',
+                'cite': 'src/queue.py:3',
+                'quote': 'time.sleep(job.delay)',
+            },
         )
         queue = cli.git.root.joinpath('src', 'queue.py')
         queue.write_text('import time\ndef retry(job):\n    pass\n', encoding='utf-8')

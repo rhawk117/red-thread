@@ -1,35 +1,56 @@
-"""The directory adapter keeps files append-only and names a corrupt line by file and number."""
+"""The case directory read from Markdown: every fault named by file and line, no file written."""
 
-import json
 from typing import TYPE_CHECKING
 
 import pytest
 from msgspec.structs import replace
-from red_thread_casefile.errors import CorruptCaseError, CorruptLedgerError
-
-from tests.casefile.ledger.builders import create_entry
-from tests.casefile.ledger.cases import (
-    VALID_LINE,
-    corrupt_case_params,
-    corrupt_line_params,
-    line_separator_params,
+from red_thread_casefile.errors import (
+    MalformedBlockError,
+    MalformedCaseError,
+    MalformedFrontmatterError,
+    StrayTextError,
+    UndecodableFileError,
 )
 
+from tests.casefile.ledger.builders import create_case, create_entry
+from tests.casefile.ledger.cases import (
+    corrupt_block_params,
+    corrupt_case_params,
+    line_separator_params,
+)
+from tests.casefile.ledger.markdown import write_case_text, write_entry, write_thread_text
+
 if TYPE_CHECKING:
+    from pathlib import Path
+
+    from red_thread_casefile.errors import CaseFileError
+
     from tests.casefile.ledger.cases import SeparatorCase
     from tests.casefile.ledger.directory import DirectoryHarness
+
+
+def corrupt_block_cases() -> pytest.MarkDecorator:
+    return pytest.mark.parametrize('block', corrupt_block_params())
 
 
 def corrupt_case_cases() -> pytest.MarkDecorator:
     return pytest.mark.parametrize('text', corrupt_case_params())
 
 
-def corrupt_line_cases() -> pytest.MarkDecorator:
-    return pytest.mark.parametrize('line', corrupt_line_params())
-
-
 def line_separator_cases() -> pytest.MarkDecorator:
     return pytest.mark.parametrize('case', line_separator_params())
+
+
+def snapshot(directory: Path) -> dict[str, bytes]:
+    return {
+        path.relative_to(directory).as_posix(): path.read_bytes()
+        for path in sorted(directory.rglob('*'))
+        if path.is_file()
+    }
+
+
+def find_line(text: str, line: str) -> int:
+    return text.split('\n').index(line) + 1
 
 
 class TestDirectoryFiles:
@@ -37,91 +58,95 @@ class TestDirectoryFiles:
     def harness(self, framed_directory_harness: DirectoryHarness) -> DirectoryHarness:
         return framed_directory_harness
 
+    def write_block(self, harness: DirectoryHarness, block: str) -> str:
+        text = f'{write_case_text(create_case())}\n### e1\n\n```yaml\n{block}\n```\n'
+        harness.case_file.write_text(text, encoding='utf-8')
+        return text
+
     def test_created_case_has_a_case_file_and_a_threads_directory(
         self, harness: DirectoryHarness
     ) -> None:
-        assert harness.directory.joinpath('case.json').is_file()
+        assert harness.case_file.is_file()
         assert harness.directory.joinpath('threads').is_dir()
 
-    def test_each_entry_is_one_line_of_its_file(self, harness: DirectoryHarness) -> None:
-        harness.repository.append(None, (create_entry(seq=1), create_entry(seq=2)))
-        harness.repository.append('T1', (create_entry(seq=1),))
-
-        ledger_lines = harness.ledger_file.read_text(encoding='utf-8').splitlines()
-        thread_lines = harness.thread_file('T1').read_text(encoding='utf-8').splitlines()
-        assert [json.loads(line)['seq'] for line in ledger_lines] == [1, 2]
-        assert [json.loads(line)['seq'] for line in thread_lines] == [1]
-
-    def test_append_never_changes_the_bytes_already_in_the_file(
+    def test_each_entry_is_read_from_the_file_it_was_written_in(
         self, harness: DirectoryHarness
     ) -> None:
-        harness.repository.append(None, (create_entry(seq=1), create_entry(seq=2)))
-        before = harness.ledger_file.read_bytes()
+        harness.seed(None, create_entry(seq=1), create_entry(seq=2))
+        harness.seed('T1', create_entry(seq=1))
 
-        harness.repository.append(None, (create_entry(seq=3),))
+        refs = [entry.ref for entry in harness.casefile.load().ledger.entries]
 
-        after = harness.ledger_file.read_bytes()
-        assert after.startswith(before)
-        assert len(after) > len(before)
-        assert after[len(before) :].count(b'\n') == 1
+        assert refs == ['e1', 'e2', 'T1.e1']
+        assert harness.thread_file('T1').is_file()
 
-    def test_appending_to_a_thread_leaves_the_ledger_file_alone(
+    def test_check_leaves_every_file_byte_for_byte_as_it_was(
         self, harness: DirectoryHarness
     ) -> None:
-        harness.repository.append(None, (create_entry(seq=1),))
-        before = harness.ledger_file.read_bytes()
+        harness.seed(None, create_entry(seq=1, kind='known'))
+        harness.seed('T1', create_entry(seq=2))
+        before = snapshot(harness.directory)
 
-        harness.repository.append('T1', (create_entry(seq=1),))
+        problems = harness.check().problems
 
-        assert harness.ledger_file.read_bytes() == before
+        assert problems
+        assert snapshot(harness.directory) == before
 
-    @corrupt_line_cases()
-    def test_corrupt_ledger_line_is_reported_with_its_file_and_line_number(
-        self, harness: DirectoryHarness, line: str
+    @corrupt_block_cases()
+    def test_a_block_that_is_not_an_entry_is_named_by_file_and_heading_line(
+        self, harness: DirectoryHarness, block: str
     ) -> None:
-        harness.ledger_file.write_text(f'{VALID_LINE}\n{line}\n', encoding='utf-8')
+        text = self.write_block(harness, block)
 
-        with pytest.raises(CorruptLedgerError) as raised:
-            harness.repository.read_ledger()
+        problems: tuple[CaseFileError, ...] = harness.check().problems
 
-        assert raised.value.path == harness.ledger_file
-        assert raised.value.line_number == 2
-        assert f'{harness.ledger_file} line 2' in str(raised.value)
+        assert len(problems) == 1
+        assert isinstance(problems[0], MalformedBlockError)
+        assert problems[0].spot.file == 'case.md'
+        assert problems[0].spot.line == find_line(text, '### e1')
 
-    def test_corrupt_thread_line_is_reported_with_the_thread_file(
+    def test_text_outside_a_block_in_a_thread_file_names_the_thread_file(
         self, harness: DirectoryHarness
     ) -> None:
-        harness.thread_file('T4').write_text('broken\n', encoding='utf-8')
+        stray = write_thread_text((create_entry(seq=1),)) + '\nbroken\n'
+        harness.thread_file('T4').write_text(stray, encoding='utf-8')
 
-        with pytest.raises(CorruptLedgerError) as raised:
-            harness.repository.read_ledger()
+        problems = harness.check().problems
 
-        assert raised.value.path == harness.thread_file('T4')
-        assert raised.value.line_number == 1
-
-    def test_blank_lines_are_skipped_but_still_counted(self, harness: DirectoryHarness) -> None:
-        harness.ledger_file.write_text(f'{VALID_LINE}\n\n   \nbroken\n', encoding='utf-8')
-
-        with pytest.raises(CorruptLedgerError) as raised:
-            harness.repository.read_ledger()
-
-        assert raised.value.line_number == 4
+        assert len(problems) == 1
+        assert isinstance(problems[0], StrayTextError)
+        assert problems[0].spot.file == 'threads/T4.md'
+        assert problems[0].spot.line == find_line(stray, 'broken')
 
     def test_blank_lines_between_entries_do_not_lose_entries(
         self, harness: DirectoryHarness
     ) -> None:
-        harness.ledger_file.write_text(f'{VALID_LINE}\n\n{VALID_LINE}\n', encoding='utf-8')
+        first = write_entry(create_entry(seq=1))
+        second = write_entry(create_entry(seq=2))
+        opening = write_case_text(create_case(), (create_entry(seq=1),)).removesuffix(first)
+        text = f'{opening}\n\n\n{first}\n   \n\n{second}\n\n'
+        harness.case_file.write_text(text, encoding='utf-8')
 
-        assert len(harness.repository.read_ledger().entries) == 2
+        assert len(harness.casefile.load().ledger.entries) == 2
 
     @line_separator_cases()
     def test_entry_text_with_a_unicode_line_separator_is_read_back_whole(
         self, harness: DirectoryHarness, case: SeparatorCase
     ) -> None:
         entry = replace(create_entry(seq=1), text=f'before{case.separator}after')
-        harness.repository.append(None, (entry,))
+        harness.seed(None, entry)
 
-        assert harness.repository.read_ledger().entries == (entry,)
+        assert harness.casefile.load().ledger.entries == (entry,)
+
+    def test_a_case_file_that_is_not_utf8_is_refused_with_its_path(
+        self, harness: DirectoryHarness
+    ) -> None:
+        harness.case_file.write_bytes(b'---\nid: \xff\n---\n')
+
+        with pytest.raises(UndecodableFileError) as raised:
+            harness.check()
+
+        assert raised.value.path == harness.case_file
 
 
 class TestCorruptCaseFile:
@@ -130,29 +155,26 @@ class TestCorruptCaseFile:
         return framed_directory_harness
 
     @corrupt_case_cases()
-    def test_corrupt_case_file_is_reported_with_its_path_and_a_reason(
+    def test_corrupt_frontmatter_is_reported_with_the_file_and_a_reason(
         self, harness: DirectoryHarness, text: str
     ) -> None:
-        case_file = harness.directory.joinpath('case.json')
-        case_file.write_text(text, encoding='utf-8')
+        harness.case_file.write_text(text, encoding='utf-8')
 
-        with pytest.raises(CorruptCaseError) as raised:
-            harness.repository.read_case()
+        problems = harness.check().problems
 
-        assert raised.value.path == case_file
-        assert raised.value.reason
-        assert f'{case_file} is not a case record ({raised.value.reason})' in str(raised.value)
+        faults = [problem for problem in problems if isinstance(problem, MalformedFrontmatterError)]
+        assert len(faults) == 1
+        assert faults[0].file == 'case.md'
+        assert faults[0].reason
 
     @corrupt_case_cases()
-    def test_corrupt_case_file_is_left_as_it_was_and_the_ledger_stays_readable(
+    def test_corrupt_frontmatter_is_left_as_it_was_and_the_case_will_not_load(
         self, harness: DirectoryHarness, text: str
     ) -> None:
-        harness.repository.append(None, (create_entry(seq=1),))
-        case_file = harness.directory.joinpath('case.json')
-        case_file.write_text(text, encoding='utf-8')
+        harness.seed('T1', create_entry(seq=1))
+        harness.case_file.write_text(text, encoding='utf-8')
 
-        with pytest.raises(CorruptCaseError):
-            harness.repository.read_case()
+        with pytest.raises(MalformedCaseError):
+            harness.casefile.load()
 
-        assert case_file.read_text(encoding='utf-8') == text
-        assert len(harness.repository.read_ledger().entries) == 1
+        assert harness.case_file.read_text(encoding='utf-8') == text

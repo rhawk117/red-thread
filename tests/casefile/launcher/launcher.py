@@ -6,8 +6,12 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
+from red_thread_casefile.domain import RoundStamp
 
+from tests.casefile.entries.blocks import write_round
 from tests.casefile.launcher.children import ChildRunner
+from tests.casefile.ledger.builders import DAY
+from tests.casefile.ledger.markdown import append_text
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -95,8 +99,9 @@ class Launcher:
         created = finished.out.splitlines()[0].removeprefix('created ')
         return self.git.root.joinpath(created).resolve()
 
-    def add(self, case: Path, batch: str) -> Finished:
-        return self.run('add', '--case', str(case), '--round', '1', stdin=batch)
+    def write(self, case: Path, *records: Mapping[str, object]) -> None:
+        stamp = RoundStamp(number=1, day=DAY, head=self.git.head)
+        append_text(case, write_round(stamp, 1, records))
 
     def on_case(self, command: str, case: Path, *extra: str) -> Finished:
         return self.run(command, '--case', str(case), *extra)

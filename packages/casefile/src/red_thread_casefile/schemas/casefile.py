@@ -1,0 +1,279 @@
+"""The case file both ways: its Markdown files read into entries, and the scaffold init writes."""
+
+from dataclasses import dataclass
+from itertools import chain, pairwise
+from operator import attrgetter
+from typing import TYPE_CHECKING
+
+import msgspec
+
+from red_thread_casefile.domain import (
+    BLOCK_CLOSE,
+    BLOCK_OPEN,
+    CASE_FILE,
+    ENTRY_HEADING,
+    ENTRY_MARK,
+    FENCE,
+    NO_HEAD,
+    ROUND_HEADING,
+    ROUND_MARK,
+    THREAD_NAME,
+    TITLE_MARK,
+    Case,
+    CaseRecord,
+    Entry,
+    EntryRecord,
+    Ledger,
+    Placed,
+    RoundStamp,
+    Spot,
+    date_of,
+    is_day,
+)
+from red_thread_casefile.errors import (
+    CaseFileError,
+    EntryBeforeRoundError,
+    MalformedBlockError,
+    MalformedCaseError,
+    MalformedEntryHeadingError,
+    MalformedFrontmatterError,
+    MalformedRoundError,
+    MissingBlockError,
+    NumberingError,
+    StrayTextError,
+    StrayThreadFileError,
+)
+from red_thread_casefile.schemas.lines import (
+    FIRST_LINE,
+    Line,
+    Numbered,
+    cut_at,
+    find_closing,
+    number_lines,
+    split_lines,
+    trim,
+)
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Sequence
+
+    from red_thread_casefile.domain import LedgerSource
+    from red_thread_casefile.schemas.lines import Cut
+
+type Problems = tuple[CaseFileError, ...]
+type Reading = Placed | CaseFileError
+type Block = tuple[EntryRecord | CaseFileError, *tuple[CaseFileError, ...]]
+
+
+@dataclass(slots=True, kw_only=True, frozen=True)
+class FileReading:
+    placed: tuple[Placed, ...] = ()
+    problems: Problems = ()
+
+
+@dataclass(slots=True, kw_only=True, frozen=True)
+class Front:
+    body: tuple[Line, ...]
+    case: Case | None = None
+    problems: Problems = ()
+
+
+@dataclass(slots=True, kw_only=True, frozen=True)
+class CaseReading:
+    case: Case | None
+    placed: tuple[Placed, ...]
+    problems: Problems
+
+    @property
+    def ledger(self) -> Ledger:
+        return Ledger(entries=tuple(map(attrgetter('entry'), self.placed)))
+
+
+def decode_case(name: str, text: str) -> Case | MalformedFrontmatterError:
+    try:
+        return msgspec.yaml.decode(text, type=Case)
+    except msgspec.DecodeError as error:
+        return MalformedFrontmatterError(file=name, reason=str(error))
+
+
+def decode_record(text: str, spot: Spot) -> EntryRecord | MalformedBlockError:
+    try:
+        return msgspec.yaml.decode(text, type=EntryRecord)
+    except msgspec.DecodeError as error:
+        return MalformedBlockError(spot=spot, reason=str(error))
+
+
+def read_front(source: LedgerSource) -> Front:
+    lines = split_lines(source.text)
+    every = number_lines(lines, FIRST_LINE)
+    if source.name != CASE_FILE:
+        return Front(body=every)
+
+    if not lines or lines[0].strip() != FENCE:
+        reason = 'it does not open with a --- line'
+        return Front(
+            body=every, problems=(MalformedFrontmatterError(file=CASE_FILE, reason=reason),)
+        )
+
+    closing = find_closing(lines)
+    if closing is None:
+        reason = 'it has no closing --- line'
+        return Front(body=(), problems=(MalformedFrontmatterError(file=CASE_FILE, reason=reason),))
+
+    decoded = decode_case(CASE_FILE, '\n'.join(lines[1:closing]))
+    body = every[closing + 1 :]
+    if isinstance(decoded, MalformedFrontmatterError):
+        return Front(body=body, problems=(decoded,))
+
+    return Front(body=body, case=decoded)
+
+
+def split_readings(readings: Iterable[Reading]) -> FileReading:
+    held = tuple(readings)
+    return FileReading(
+        placed=tuple(item for item in held if isinstance(item, Placed)),
+        problems=tuple(item for item in held if not isinstance(item, Placed)),
+    )
+
+
+def name_ref(thread: str | None, seq: int) -> str:
+    if thread is None:
+        return f'e{seq}'
+    return f'{thread}.e{seq}'
+
+
+def list_numbers(body: tuple[Line, ...]) -> tuple[Numbered, ...]:
+    heads = (part.head for part in cut_at(body, ENTRY_MARK).parts)
+    found = ((head, ENTRY_HEADING.fullmatch(head.mark)) for head in heads)
+    return tuple(Numbered(line=head, seq=int(match['seq'])) for head, match in found if match)
+
+
+@dataclass(slots=True, kw_only=True, frozen=True)
+class LedgerReader:
+    source: LedgerSource
+
+    def locate(self, line: Line, seq: int | None = None) -> Spot:
+        ref = None if seq is None else name_ref(self.source.thread, seq)
+        return Spot(file=self.source.name, line=line.number, ref=ref)
+
+    def judge_loose(self, line: Line) -> CaseFileError | None:
+        if line.is_blank:
+            return None
+        return StrayTextError(spot=self.locate(line))
+
+    def judge_opening(self, line: Line) -> CaseFileError | None:
+        if line.text.startswith(TITLE_MARK):
+            return None
+        return self.judge_loose(line)
+
+    def read_stamp(self, line: Line) -> RoundStamp | MalformedRoundError:
+        matched = ROUND_HEADING.fullmatch(line.mark)
+        if matched is None or not is_day(matched['day']):
+            return MalformedRoundError(spot=self.locate(line))
+        head = None if matched['head'] == NO_HEAD else matched['head']
+        return RoundStamp(number=int(matched['round']), day=matched['day'], head=head)
+
+    def read_block(self, lines: tuple[Line, ...], spot: Spot) -> Block:
+        if not lines or lines[0].text.rstrip() != BLOCK_OPEN:
+            return (MissingBlockError(spot=spot),)
+
+        closers = (
+            index for index, line in enumerate(lines) if index and line.text.rstrip() == BLOCK_CLOSE
+        )
+        closing = next(closers, None)
+        if closing is None:
+            return (MissingBlockError(spot=spot),)
+
+        stray = filter(None, map(self.judge_loose, lines[closing + 1 :]))
+        record = decode_record('\n'.join(line.text for line in lines[1:closing]), spot)
+        return (record, *stray)
+
+    def read_entry(self, cut: Cut, stamp: RoundStamp) -> tuple[Reading, ...]:
+        matched = ENTRY_HEADING.fullmatch(cut.head.mark)
+        if matched is None:
+            return (MalformedEntryHeadingError(spot=self.locate(cut.head)),)
+
+        seq = int(matched['seq'])
+        spot = self.locate(cut.head, seq)
+        record, *rest = self.read_block(trim(cut.body), spot)
+        if not isinstance(record, EntryRecord):
+            return (record, *rest)
+
+        entry = Entry(
+            **msgspec.structs.asdict(record),
+            seq=seq,
+            round=stamp.number,
+            at=stamp.day,
+            head=stamp.head,
+            thread=self.source.thread,
+        )
+        return (Placed(entry=entry, spot=spot), *rest)
+
+    def read_round(self, cut: Cut) -> tuple[Reading, ...]:
+        stamp = self.read_stamp(cut.head)
+        if isinstance(stamp, MalformedRoundError):
+            return (stamp,)
+
+        entries = cut_at(cut.body, ENTRY_MARK)
+        loose = filter(None, map(self.judge_loose, entries.preamble))
+        read = chain.from_iterable(self.read_entry(part, stamp) for part in entries.parts)
+        return (*loose, *read)
+
+    def find_numbering_problems(self, body: tuple[Line, ...]) -> tuple[NumberingError, ...]:
+        start = Numbered(line=Line(number=0, text=''), seq=0)
+        steps = pairwise((start, *list_numbers(body)))
+        return tuple(
+            NumberingError(spot=self.locate(later.line, later.seq), expected=earlier.seq + 1)
+            for earlier, later in steps
+            if later.seq != earlier.seq + 1
+        )
+
+    def read_opening(self, opening: tuple[Line, ...]) -> tuple[CaseFileError, ...]:
+        entries = cut_at(opening, ENTRY_MARK)
+        loose = filter(None, map(self.judge_opening, entries.preamble))
+        early = (EntryBeforeRoundError(spot=self.locate(part.head)) for part in entries.parts)
+        return (*loose, *early)
+
+    def read(self, body: tuple[Line, ...]) -> FileReading:
+        rounds = cut_at(body, ROUND_MARK)
+        opening = self.read_opening(rounds.preamble)
+        read = chain.from_iterable(map(self.read_round, rounds.parts))
+        found = split_readings((*opening, *read))
+        numbering = self.find_numbering_problems(body)
+        return FileReading(placed=found.placed, problems=(*found.problems, *numbering))
+
+
+def read_source(source: LedgerSource) -> FileReading:
+    if source.thread is not None and not THREAD_NAME.fullmatch(source.thread):
+        return FileReading(problems=(StrayThreadFileError(file=source.name),))
+
+    front = read_front(source)
+    read = LedgerReader(source=source).read(front.body)
+    return FileReading(placed=read.placed, problems=(*front.problems, *read.problems))
+
+
+def read_case_file(sources: Sequence[LedgerSource]) -> CaseReading:
+    case = next((source for source in sources if source.name == CASE_FILE), None)
+    front = None if case is None else read_front(case)
+    readings = tuple(map(read_source, sources))
+    return CaseReading(
+        case=None if front is None else front.case,
+        placed=tuple(chain.from_iterable(map(attrgetter('placed'), readings))),
+        problems=tuple(chain.from_iterable(map(attrgetter('problems'), readings))),
+    )
+
+
+def load_record(reading: CaseReading) -> CaseRecord | MalformedCaseError:
+    if reading.case is None or reading.problems:
+        return MalformedCaseError(problems=reading.problems)
+    return CaseRecord(case=reading.case, ledger=reading.ledger)
+
+
+def write_title(target: str) -> str:
+    return f'{TITLE_MARK}{" ".join(target.split())}'
+
+
+def write_case_file(case: Case) -> str:
+    fields = msgspec.yaml.encode(case).decode()
+    opening = RoundStamp(number=0, day=date_of(case.created), head=case.head)
+    return f'{FENCE}\n{fields}{FENCE}\n\n{write_title(case.target)}\n\n{opening.heading}\n'

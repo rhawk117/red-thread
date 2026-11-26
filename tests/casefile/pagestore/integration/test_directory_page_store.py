@@ -42,8 +42,8 @@ class TestOnDisk:
         assert directory.joinpath('out').is_dir()
 
     def test_existing_files_beside_the_page_are_left_alone(self, tmp_path: Path) -> None:
-        tmp_path.joinpath('case.json').write_text('{}', encoding='utf-8')
+        tmp_path.joinpath('case.md').write_text('{}', encoding='utf-8')
 
         DirectoryPageStore(directory=tmp_path).write('out/brief.md', 'x')
 
-        assert tmp_path.joinpath('case.json').read_text(encoding='utf-8') == '{}'
+        assert tmp_path.joinpath('case.md').read_text(encoding='utf-8') == '{}'

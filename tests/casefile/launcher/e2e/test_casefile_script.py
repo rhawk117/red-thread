@@ -1,6 +1,5 @@
 """bin/redthread-casefile from outside the plugin: a child process in a temporary git repository."""
 
-import json
 from typing import TYPE_CHECKING
 
 import pytest
@@ -8,6 +7,7 @@ from red_thread_casefile.domain import PROGRAM
 
 from tests.casefile.launcher.launcher import hostile_uv_config_params, list_tree, snapshot
 from tests.casefile.ledger.builders import KNOWN
+from tests.casefile.ledger.markdown import append_text
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -15,7 +15,6 @@ if TYPE_CHECKING:
     from tests.casefile.launcher.launcher import Launcher
 
 OPEN = {'kind': 'open', 'text': 'what stalls the queue', 'source': 'scout'}
-BATCH = json.dumps([OPEN, KNOWN])
 CASE_HOME = '.red-thread'
 
 
@@ -39,25 +38,28 @@ class TestCasefileScript:
 
     def test_a_case_goes_from_init_to_a_board_page_and_a_brief(self, launcher: Launcher) -> None:
         case = launcher.init()
+        launcher.write(case, OPEN, KNOWN)
 
-        added = launcher.add(case, BATCH)
         rendered = launcher.on_case('render', case, '--html')
         checked = launcher.on_case('check', case)
         exported = launcher.on_case('export', case, '--lens', 'brief', '--html')
 
-        assert [step.code for step in (added, rendered, checked, exported)] == [0, 0, 0, 0]
-        assert added.out == 'stored e1 e2\n'
+        assert [step.code for step in (rendered, checked, exported)] == [0, 0, 0]
+        assert 'what stalls the queue' in rendered.out
         assert 'the sleep blocks the queue' in rendered.out
         assert case.joinpath('board.html').is_file()
         assert {path.name for path in case.joinpath('out').iterdir()} == {'brief.md', 'brief.html'}
 
-    def test_a_rejected_batch_keeps_its_exit_code_and_its_reason(self, launcher: Launcher) -> None:
+    def test_an_unreadable_case_keeps_its_exit_code_and_its_reason(
+        self, launcher: Launcher
+    ) -> None:
         case = launcher.init()
+        append_text(case, 'a line outside any entry\n')
 
-        rejected = launcher.add(case, 'not a batch')
+        rejected = launcher.on_case('render', case)
 
         assert (rejected.code, rejected.out) == (1, '')
-        assert f'{PROGRAM}: the batch is not usable' in rejected.err
+        assert f'{PROGRAM}: the case file cannot be read' in rejected.err
 
     def test_a_second_run_prints_nothing_on_standard_error(self, launcher: Launcher) -> None:
         case = launcher.init()
@@ -68,7 +70,7 @@ class TestCasefileScript:
 
     def test_the_plugin_is_left_as_it_was(self, launcher: Launcher) -> None:
         case = launcher.init()
-        launcher.add(case, BATCH)
+        launcher.write(case, OPEN, KNOWN)
 
         launcher.on_case('render', case, '--html')
 
@@ -79,7 +81,7 @@ class TestCasefileScript:
     ) -> None:
         before = {path.name for path in launcher.git.root.iterdir()}
         case = launcher.init()
-        launcher.add(case, BATCH)
+        launcher.write(case, OPEN, KNOWN)
 
         launcher.on_case('render', case, '--html')
 

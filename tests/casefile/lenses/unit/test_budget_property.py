@@ -21,7 +21,7 @@ type Outcome = Exported | LensOverBudgetError
 
 
 def create_text_lists(count: int) -> st.SearchStrategy[list[str]]:
-    return st.lists(st.text(max_size=60), min_size=count, max_size=count)
+    return st.lists(st.text(max_size=60).filter(str.strip), min_size=count, max_size=count)
 
 
 class TestBudgetProperty:

@@ -1,10 +1,11 @@
 """casefile init, driven through main(argv) against a temporary git repository."""
 
-import json
 import re
 from typing import TYPE_CHECKING
 
-from red_thread_casefile.domain import PROGRAM
+from red_thread_casefile.domain import CASE_FILE, PROGRAM
+
+from tests.casefile.commands.cli import read_case
 
 if TYPE_CHECKING:
     from tests.casefile.commands.cli import CliHarness
@@ -39,12 +40,28 @@ class TestInit:
     ) -> None:
         case = cli.init('retry stall', '--publish')
 
-        record = json.loads(case.joinpath('case.json').read_text(encoding='utf-8'))
-        assert record['target'] == 'retry stall'
-        assert record['kind'] == 'root-cause'
-        assert record['bar'] == 'name the line'
-        assert record['publish'] is True
-        assert record['head'] == cli.git.head
+        record = read_case(case)
+        assert record is not None
+        assert (record.target, record.kind, record.bar) == (
+            'retry stall',
+            'root-cause',
+            'name the line',
+        )
+        assert record.publish is True
+        assert record.head == cli.git.head
+
+    def test_init_writes_the_title_and_round_zero_under_the_frontmatter(
+        self, cli: CliHarness
+    ) -> None:
+        case = cli.init('retry stall')
+
+        lines = case.joinpath(CASE_FILE).read_text(encoding='utf-8').splitlines()
+
+        assert lines[0] == '---'
+        assert '# retry stall' in lines
+        assert lines[-1].startswith('## Round 0 · ')
+        assert lines[-1].endswith(f' · {cli.git.head[:7]}')
+        assert case.joinpath('threads').is_dir()
 
     def test_slug_names_the_case_instead_of_the_target(self, cli: CliHarness) -> None:
         case = cli.init('a long target that is not used', '--slug', 'Cache miss storm')
@@ -61,7 +78,7 @@ class TestInit:
 
     def test_a_second_init_of_the_same_case_is_refused(self, cli: CliHarness) -> None:
         case = cli.init()
-        before = case.joinpath('case.json').read_bytes()
+        before = case.joinpath(CASE_FILE).read_bytes()
 
         result = cli.run(
             'init',
@@ -79,7 +96,7 @@ class TestInit:
         assert result.out == ''
         assert result.err.startswith(f'{PROGRAM}: ')
         assert 'already exists' in result.err
-        assert case.joinpath('case.json').read_bytes() == before
+        assert case.joinpath(CASE_FILE).read_bytes() == before
 
     def test_repeated_inits_exclude_the_directory_from_git_once(self, cli: CliHarness) -> None:
         cli.init('first case')

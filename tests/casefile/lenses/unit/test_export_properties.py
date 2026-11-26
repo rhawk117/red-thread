@@ -91,7 +91,7 @@ class TestExportProperties:
         if isinstance(outcome, LensOverBudgetError):
             return
 
-        live = {entry.ref for entry in harness.store.read_ledger().live}
+        live = {entry.ref for entry in harness.case_file.load().ledger.live}
         named = list_named_refs(harness.pages.read(f'out/{lens}.md') or '')
         assert set(named) <= live
         assert len(named) == len(set(named))
@@ -101,7 +101,7 @@ class TestExportProperties:
         self, specs: list[Spec], data: st.DataObject
     ) -> None:
         harness = self.stock(specs)
-        ledger = harness.store.read_ledger()
+        ledger = harness.case_file.load().ledger
         live = [entry.ref for entry in ledger.live]
         include = data.draw(st.lists(st.sampled_from(live), unique=True)) if live else []
         request = ExportRequest(lens='report', selection=Selection(include=tuple(include)))

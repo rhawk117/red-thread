@@ -1,9 +1,9 @@
 """A press over the in-memory case file and page store, and one over a real case directory."""
 
-import json
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
+from msgspec.structs import replace
 from red_thread_casefile.factory import CaseFiles
 from red_thread_casefile.lenses import Selection
 from red_thread_casefile.packaged import load_lens_book
@@ -65,7 +65,7 @@ class PressHarness:
         self.case.seed(thread, *entries)
 
     def frame(self, case: Case) -> None:
-        self.case.repository.write_case(case)
+        self.case.frame(case)
 
     def export_markdown(self, lens: LensName, selection: Selection | None = None) -> str:
         export(self, lens, selection)
@@ -121,10 +121,14 @@ class DirectoryPressHarness:
     def out_file(self, name: str) -> Path:
         return self.case_directory.joinpath(name)
 
-    def read_case_record(self) -> dict[str, object]:
-        text = self.out_file('case.json').read_text(encoding='utf-8')
-        record: dict[str, object] = json.loads(text)
-        return record
+    def seed(self, *entries: Entry) -> None:
+        head = self.directory.git.head
+        self.directory.seed(None, *(replace(entry, head=head) for entry in entries))
+
+    def write_page_url(self, url: str) -> None:
+        case_file = self.directory.case_file
+        text = case_file.read_text(encoding='utf-8')
+        case_file.write_text(text.replace('page_url: null', f"page_url: '{url}'"), encoding='utf-8')
 
 
 def create_directory_press_harness(git: GitRepository) -> DirectoryPressHarness:

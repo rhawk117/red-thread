@@ -21,9 +21,10 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
     from pathlib import Path
 
+    from red_thread_casefile.domain import CaseRecord
     from red_thread_core.store import Clock, SourceTree
 
-    from red_thread_plans.domain import CaseRecord, Opening, Outline, PlanDocument
+    from red_thread_plans.domain import Opening, Outline, PlanDocument
     from red_thread_plans.store import CaseShelf, PlanRepository
 
 

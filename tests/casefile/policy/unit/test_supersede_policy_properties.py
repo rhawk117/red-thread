@@ -1,21 +1,26 @@
-"""SupersedePolicy: unknown refs come first, then refs outside the draft's own thread."""
+"""SupersedePolicy: unknown refs come first, then refs outside the entry's own thread."""
+
+from typing import TYPE_CHECKING
 
 from hypothesis import given
 from hypothesis import strategies as st
-from red_thread_casefile.domain import Draft
+from red_thread_casefile.domain import Spot
 from red_thread_casefile.errors import ForeignSupersededError, UnknownSupersededError
 from red_thread_casefile.policy import SupersedePolicy
 
 from tests.casefile.entries.strategies import POOLED_REFS
+from tests.casefile.ledger.builders import create_entry
+
+if TYPE_CHECKING:
+    from red_thread_casefile.domain import Entry
 
 UNKNOWN = 'e999'
 NAMED_THREADS = ('T1', 'T2', 'T10')
+SPOT = Spot(file='case.md', line=12, ref='e3')
 
 
-def create_draft(supersedes: list[str]) -> Draft:
-    return Draft(
-        position=3, kind='open', text='a lead', source='scout', supersedes=tuple(supersedes)
-    )
+def create_superseding(refs: list[str], thread: str | None) -> Entry:
+    return create_entry(seq=3, text='a lead', supersedes=tuple(refs), thread=thread)
 
 
 def list_own_refs(thread: str | None) -> list[str]:
@@ -31,14 +36,14 @@ class TestSupersedePolicyProperties:
     known_sets = st.frozensets(st.sampled_from(POOLED_REFS))
 
     @given(thread=threads, data=st.data())
-    def test_known_refs_of_the_drafts_own_thread_are_accepted(
+    def test_known_refs_of_the_entrys_own_thread_are_accepted(
         self, thread: str | None, data: st.DataObject
     ) -> None:
         refs = data.draw(st.lists(st.sampled_from(list_own_refs(thread)), max_size=3))
         known = frozenset(refs) | data.draw(self.known_sets)
 
         problem = SupersedePolicy(
-            draft=create_draft(refs), known_refs=known, thread=thread
+            entry=create_superseding(refs, thread), spot=SPOT, known_refs=known
         ).get_supersede_problem()
 
         assert not problem
@@ -50,15 +55,15 @@ class TestSupersedePolicyProperties:
         refs = [*(ref for ref in before if ref in known), UNKNOWN, *after]
 
         problem = SupersedePolicy(
-            draft=create_draft(refs), known_refs=known, thread=thread
+            entry=create_superseding(refs, thread), spot=SPOT, known_refs=known
         ).get_supersede_problem()
 
         assert isinstance(problem, UnknownSupersededError)
         assert problem.ref == UNKNOWN
-        assert problem.position == 3
+        assert problem.spot == SPOT
 
     @given(thread=named_threads, data=st.data())
-    def test_the_first_ref_outside_the_drafts_thread_is_named_when_all_refs_are_known(
+    def test_the_first_ref_outside_the_entrys_thread_is_named_when_all_refs_are_known(
         self, thread: str, data: st.DataObject
     ) -> None:
         own = list_own_refs(thread)
@@ -68,10 +73,10 @@ class TestSupersedePolicyProperties:
         after = data.draw(self.any_refs)
 
         problem = SupersedePolicy(
-            draft=create_draft([*before, first, *after]),
+            entry=create_superseding([*before, first, *after], thread),
+            spot=SPOT,
             known_refs=frozenset(POOLED_REFS),
-            thread=thread,
         ).get_supersede_problem()
 
         assert isinstance(problem, ForeignSupersededError)
-        assert (problem.ref, problem.thread, problem.position) == (first, thread, 3)
+        assert (problem.ref, problem.thread, problem.spot) == (first, thread, SPOT)

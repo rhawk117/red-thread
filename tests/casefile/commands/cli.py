@@ -1,20 +1,38 @@
 """Drives red_thread_casefile.cli.main in-process and reports what a caller would see."""
 
 import io
-import json
 import sys
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from red_thread_casefile.cli import main
+from red_thread_casefile.domain import ENTRY_HEADING, RoundStamp
+from red_thread_casefile.schemas import read_case_file
+from red_thread_casefile.store import DirectoryCaseRepository
+
+from tests.casefile.entries.blocks import write_round
+from tests.casefile.ledger.builders import DAY
+from tests.casefile.ledger.markdown import append_text, name_file
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
     from pathlib import Path
 
     import pytest
+    from red_thread_casefile.domain import Case
 
     from tests.casefile.ledger.git_repository import GitRepository
+
+
+def count_entries(case: Path, thread: str | None) -> int:
+    path = case.joinpath(name_file(thread))
+    lines = path.read_text(encoding='utf-8').splitlines() if path.is_file() else []
+    return sum(1 for line in lines if ENTRY_HEADING.fullmatch(line))
+
+
+def read_case(case: Path) -> Case | None:
+    sources = DirectoryCaseRepository(directory=case).read()
+    return read_case_file(sources).case
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -29,10 +47,6 @@ class CliHarness:
     git: GitRepository
     capsys: pytest.CaptureFixture[str]
     monkeypatch: pytest.MonkeyPatch
-
-    @property
-    def batch_file(self) -> Path:
-        return self.git.root.parent.joinpath('batch.json')
 
     @property
     def selection_file(self) -> Path:
@@ -62,25 +76,10 @@ class CliHarness:
         created = result.out.splitlines()[0].removeprefix('created ')
         return self.git.root.joinpath(created).resolve()
 
-    def add(
-        self,
-        case: Path,
-        *records: Mapping[str, object],
-        thread: str | None = None,
-        round_number: int = 1,
-    ) -> CliRun:
-        self.batch_file.write_text(json.dumps(list(records)), encoding='utf-8')
-        scope = ('--thread', thread) if thread is not None else ()
-        return self.run(
-            'add',
-            '--case',
-            str(case),
-            '--round',
-            str(round_number),
-            '--file',
-            str(self.batch_file),
-            *scope,
-        )
+    def write(self, case: Path, *records: Mapping[str, object], thread: str | None = None) -> None:
+        first = count_entries(case, thread) + 1
+        stamp = RoundStamp(number=1, day=DAY, head=self.git.head)
+        append_text(case, write_round(stamp, first, records), thread)
 
     def render(self, case: Path, *extra: str) -> CliRun:
         return self.run('render', '--case', str(case), *extra)
@@ -98,6 +97,3 @@ class CliHarness:
 
     def export_from_stdin(self, case: Path, lens: str, selection: str) -> CliRun:
         return self.run('export', '--case', str(case), '--lens', lens, stdin=selection)
-
-    def page(self, case: Path, url: str) -> CliRun:
-        return self.run('page', '--case', str(case), '--url', url)

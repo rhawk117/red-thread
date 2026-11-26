@@ -8,7 +8,14 @@ from red_thread_core.documents import Document, Paragraph, PointList, Section, p
 from red_thread_core.util import squeeze
 
 from red_thread_casefile.documents import EntryBuilder, list_entries_block
-from red_thread_casefile.domain import PROGRAM, STATE_DIRECTORY, EntryKind, shorten_head
+from red_thread_casefile.domain import (
+    CASE_FILE,
+    PROGRAM,
+    STATE_DIRECTORY,
+    THREAD_HOME,
+    EntryKind,
+    shorten_head,
+)
 from red_thread_casefile.errors import LensOverBudgetError, UnknownSelectionRefError
 from red_thread_casefile.views import Annotator, CheckReport
 
@@ -129,8 +136,9 @@ class Composer:
         case = self.edition.case
         location = f'{STATE_DIRECTORY}/{case.id}'
         checked = CheckReport(findings=self.edition.findings).summary
+        threads = f'with one file per thread under `{THREAD_HOME}/`'
         pointers = [
-            f'Ledger: `{location}/ledger.jsonl`, with one file per thread under `threads/`.',
+            f'Case file: `{location}/{CASE_FILE}`, {threads}.',
             f'Citations checked at commit {self.edition.short_head}: {checked}.',
             f'Check again with the red-thread plugin: `{PROGRAM} check --case {location}`',
         ]

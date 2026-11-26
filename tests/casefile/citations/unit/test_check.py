@@ -1,6 +1,5 @@
 """The check reports which stored citations still hold, against a tree that changed."""
 
-from dataclasses import replace
 from typing import TYPE_CHECKING
 
 import pytest
@@ -13,13 +12,7 @@ from tests.casefile.citations.cases import (
     check_state_params,
     unchecked_cite_params,
 )
-from tests.casefile.ledger.builders import (
-    QUEUE_PATH,
-    create_draft,
-    create_entry,
-    create_valid_draft,
-)
-from tests.casefile.redaction.cases import LEAKED
+from tests.casefile.ledger.builders import QUEUE_PATH, create_entry
 
 if TYPE_CHECKING:
     from tests.casefile.citations.cases import CheckCase
@@ -27,7 +20,8 @@ if TYPE_CHECKING:
 
 CONFIG_PATH = 'src/config.py'
 LEAK_LINE = 'AWS_KEY = "AKIAIOSFODNN7EXAMPLE"'
-LEAK_MARK = '[REDACTED:aws-key]'
+SCRUBBED_LINE = 'AWS_KEY = "[REDACTED:aws-key]"'
+SCRUBBED_CITE = f'{CONFIG_PATH}:2'
 
 
 def check_state_cases() -> pytest.MarkDecorator:
@@ -53,7 +47,7 @@ class TestCheck:
         if case.after is not None:
             harness.tree.write(QUEUE_PATH, case.after)
 
-        findings = harness.casefile.check()
+        findings = harness.check().findings
 
         assert findings == (
             Finding(ref='e1', cite=SLEEP_CITE, state=case.state, moved_to=case.moved_to),
@@ -65,7 +59,7 @@ class TestCheck:
     ) -> None:
         framed_harness.seed(None, create_entry(seq=1, kind='known', cite=cite, quote='anything'))
 
-        findings = framed_harness.casefile.check()
+        findings = framed_harness.check().findings
 
         assert findings == (Finding(ref='e1', cite=cite, state='unchecked'),)
         assert framed_harness.tree.reads == []
@@ -74,7 +68,7 @@ class TestCheck:
         harness.seed('T3', structs.replace(self.cited, thread='T3'))
         harness.tree.write(QUEUE_PATH, ('# top', *harness.tree.files[QUEUE_PATH]))
 
-        states = {finding.ref: finding.state for finding in harness.casefile.check()}
+        states = {finding.ref: finding.state for finding in harness.check().findings}
 
         assert states == {'e1': 'moved', 'T3.e1': 'moved'}
 
@@ -87,68 +81,54 @@ class TestCheck:
             create_entry(seq=4),
         )
 
-        refs = [finding.ref for finding in framed_harness.casefile.check()]
+        refs = [finding.ref for finding in framed_harness.check().findings]
 
         assert refs == ['e1']
 
     def test_ledger_with_no_citations_has_no_findings(self, framed_harness: CaseHarness) -> None:
         framed_harness.seed(None, create_entry(seq=1))
 
-        assert framed_harness.casefile.check() == ()
+        assert framed_harness.check().findings == ()
 
 
 class TestCheckAfterRedaction:
+    scrubbed = create_entry(seq=1, kind='known', cite=SCRUBBED_CITE, quote=SCRUBBED_LINE)
+
     @pytest.fixture
     def leak_harness(self, framed_harness: CaseHarness) -> CaseHarness:
         framed_harness.tree.write(CONFIG_PATH, ('import os', LEAK_LINE, 'REGION = "eu"'))
+        framed_harness.seed(None, self.scrubbed)
         return framed_harness
 
-    def test_entry_whose_stored_quote_was_redacted_still_checks_ok(
+    def test_a_quote_written_scrubbed_checks_ok_against_the_line_with_the_secret(
         self, leak_harness: CaseHarness
     ) -> None:
-        draft = replace(create_valid_draft('known'), cite=f'{CONFIG_PATH}:2')
-        added = leak_harness.add(draft)
+        checked = leak_harness.check()
 
-        findings = leak_harness.casefile.check()
+        assert checked.problems == ()
+        assert checked.findings == (Finding(ref='e1', cite=SCRUBBED_CITE, state='ok'),)
 
-        [entry] = added.entries
-        assert LEAKED not in (entry.quote or '')
-        assert LEAK_MARK in (entry.quote or '')
-        assert findings == (Finding(ref='e1', cite=f'{CONFIG_PATH}:2', state='ok'),)
-
-    def test_redacted_quote_supplied_with_the_secret_still_checks_ok(
+    def test_a_scrubbed_quote_is_still_moved_when_its_line_moves(
         self, leak_harness: CaseHarness
     ) -> None:
-        draft = replace(create_valid_draft('known'), cite=f'{CONFIG_PATH}:2', quote=LEAKED)
-        leak_harness.add(draft)
-
-        [finding] = leak_harness.casefile.check()
-
-        assert finding.state == 'ok'
-
-    def test_redacted_quote_is_still_moved_when_its_line_moves(
-        self, leak_harness: CaseHarness
-    ) -> None:
-        leak_harness.add(replace(create_valid_draft('known'), cite=f'{CONFIG_PATH}:2'))
         leak_harness.tree.write(CONFIG_PATH, ('# new', 'import os', LEAK_LINE))
 
-        [finding] = leak_harness.casefile.check()
+        [finding] = leak_harness.check().findings
 
         assert (finding.state, finding.moved_to) == ('moved', 3)
 
-    def test_redacted_quote_is_still_changed_when_its_line_changes(
+    def test_a_scrubbed_quote_is_still_changed_when_its_line_changes(
         self, leak_harness: CaseHarness
     ) -> None:
-        leak_harness.add(replace(create_valid_draft('known'), cite=f'{CONFIG_PATH}:2'))
         leak_harness.tree.write(CONFIG_PATH, ('import os', 'AWS_REGION = "eu"', 'REGION = "eu"'))
 
-        [finding] = leak_harness.casefile.check()
+        [finding] = leak_harness.check().findings
 
         assert finding.state == 'changed'
 
     def test_entry_without_a_cite_never_reaches_the_tree(self, framed_harness: CaseHarness) -> None:
-        framed_harness.add(create_draft())
+        framed_harness.seed(None, create_entry())
 
-        framed_harness.casefile.check()
+        framed_harness.check()
 
         assert framed_harness.tree.reads == []

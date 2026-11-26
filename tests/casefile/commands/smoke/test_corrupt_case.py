@@ -1,13 +1,13 @@
-"""Every command that reads a corrupt case.json or ledger line reports it and changes nothing."""
+"""Every command over a case.md it cannot read reports the fault and changes nothing."""
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
-from red_thread_casefile.domain import PROGRAM
+from red_thread_casefile.domain import CASE_FILE, PROGRAM
 
-from tests.casefile.ledger.builders import PAGE_URL
 from tests.casefile.ledger.cases import corrupt_case_params
+from tests.casefile.ledger.markdown import append_text
 from tests.params import as_params
 
 if TYPE_CHECKING:
@@ -15,122 +15,106 @@ if TYPE_CHECKING:
 
     from tests.casefile.commands.cli import CliHarness, CliRun
 
-BATCH = '[{"kind": "open", "text": "who owns the queue", "source": "scout"}]'
-BROKEN_LINE = 'this is not a ledger entry'
+OPEN = {'kind': 'open', 'text': 'who owns the queue', 'source': 'scout'}
+BROKEN_LINE = 'this is not an entry'
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class CommandCall:
     name: str
     argv: tuple[str, ...]
-    stdin: str
-    reads_case: bool
-    reads_ledger: bool
     marks: tuple[pytest.MarkDecorator, ...] = ()
 
 
 def create_calls() -> list[CommandCall]:
     return [
-        CommandCall(name='render', argv=('render',), stdin='', reads_case=True, reads_ledger=True),
-        CommandCall(name='check', argv=('check',), stdin='', reads_case=False, reads_ledger=True),
-        CommandCall(
-            name='export',
-            argv=('export', '--lens', 'brief'),
-            stdin='',
-            reads_case=True,
-            reads_ledger=True,
-        ),
-        CommandCall(
-            name='add',
-            argv=('add', '--round', '1'),
-            stdin=BATCH,
-            reads_case=False,
-            reads_ledger=True,
-        ),
-        CommandCall(
-            name='page',
-            argv=('page', '--url', PAGE_URL),
-            stdin='',
-            reads_case=True,
-            reads_ledger=False,
-        ),
+        CommandCall(name='render', argv=('render',)),
+        CommandCall(name='export', argv=('export', '--lens', 'brief')),
     ]
 
 
-def case_command_cases() -> pytest.MarkDecorator:
-    calls = [call for call in create_calls() if call.reads_case]
-    return pytest.mark.parametrize('call', as_params(calls))
-
-
-def ledger_command_cases() -> pytest.MarkDecorator:
-    calls = [call for call in create_calls() if call.reads_ledger]
-    return pytest.mark.parametrize('call', as_params(calls))
+def loading_command_cases() -> pytest.MarkDecorator:
+    return pytest.mark.parametrize('call', as_params(create_calls()))
 
 
 def corrupt_case_cases() -> pytest.MarkDecorator:
     return pytest.mark.parametrize('text', corrupt_case_params())
 
 
-class TestCorruptCaseFile:
-    def run_call(self, cli: CliHarness, case: Path, call: CommandCall) -> CliRun:
-        return cli.run(*call.argv, '--case', str(case), stdin=call.stdin)
+def run_call(cli: CliHarness, case: Path, call: CommandCall) -> CliRun:
+    return cli.run(*call.argv, '--case', str(case), stdin='')
 
-    @case_command_cases()
+
+def assert_nothing_written(case: Path) -> None:
+    assert not case.joinpath('out').exists()
+    assert not case.joinpath('board.html').exists()
+
+
+class TestCorruptCaseFile:
+    @loading_command_cases()
     @corrupt_case_cases()
-    def test_the_command_names_the_file_and_exits_one_without_a_traceback(
+    def test_the_command_names_case_md_and_exits_one_without_a_traceback(
         self, cli: CliHarness, case: Path, call: CommandCall, text: str
     ) -> None:
-        case_file = case.joinpath('case.json')
-        case_file.write_text(text, encoding='utf-8')
+        case.joinpath(CASE_FILE).write_text(text, encoding='utf-8')
 
-        result = self.run_call(cli, case, call)
+        result = run_call(cli, case, call)
 
         assert result.code == 1
         assert result.out == ''
-        assert result.err.startswith(f'{PROGRAM}: {case_file} is not a case record (')
+        assert result.err.startswith(f'{PROGRAM}: the case file cannot be read')
+        assert f'- {CASE_FILE}' in result.err
         assert 'Traceback' not in result.err
-        assert result.err.count('\n') == 1
 
-    @case_command_cases()
+    @corrupt_case_cases()
+    def test_check_names_case_md_as_a_fault_and_exits_one(
+        self, cli: CliHarness, case: Path, text: str
+    ) -> None:
+        case.joinpath(CASE_FILE).write_text(text, encoding='utf-8')
+
+        result = cli.check(case)
+
+        assert (result.code, result.err) == (1, '')
+        assert f'- {CASE_FILE}' in result.out
+
+    @loading_command_cases()
     @corrupt_case_cases()
     def test_nothing_is_changed_or_written(
         self, cli: CliHarness, case: Path, call: CommandCall, text: str
     ) -> None:
-        case_file = case.joinpath('case.json')
+        case_file = case.joinpath(CASE_FILE)
         case_file.write_text(text, encoding='utf-8')
-        ledger_before = case.joinpath('ledger.jsonl').exists()
 
-        self.run_call(cli, case, call)
+        run_call(cli, case, call)
 
         assert case_file.read_text(encoding='utf-8') == text
-        assert case.joinpath('ledger.jsonl').exists() == ledger_before
-        assert not case.joinpath('out').exists()
-        assert not case.joinpath('board.html').exists()
+        assert_nothing_written(case)
 
 
-class TestCorruptLedgerLine:
-    @ledger_command_cases()
+class TestStrayLine:
+    @pytest.fixture
+    def broken(self, cli: CliHarness, case: Path) -> Path:
+        cli.write(case, OPEN)
+        append_text(case, f'{BROKEN_LINE}\n', 'T1')
+        return case
+
+    @loading_command_cases()
     def test_the_command_names_the_file_and_line_and_exits_one_without_a_traceback(
-        self, cli: CliHarness, case: Path, call: CommandCall
+        self, cli: CliHarness, broken: Path, call: CommandCall
     ) -> None:
-        ledger = case.joinpath('ledger.jsonl')
-        ledger.write_text(f'{BROKEN_LINE}\n', encoding='utf-8')
-
-        result = cli.run(*call.argv, '--case', str(case), stdin=call.stdin)
+        result = run_call(cli, broken, call)
 
         assert result.code == 1
         assert result.out == ''
-        assert result.err.startswith(f'{PROGRAM}: {ledger} line 1 is not a ledger entry')
+        assert '- threads/T1.md:1: this text is outside' in result.err
         assert 'Traceback' not in result.err
 
-    @ledger_command_cases()
-    def test_the_broken_ledger_is_left_as_it_was(
-        self, cli: CliHarness, case: Path, call: CommandCall
+    @loading_command_cases()
+    def test_the_broken_file_is_left_as_it_was(
+        self, cli: CliHarness, broken: Path, call: CommandCall
     ) -> None:
-        ledger = case.joinpath('ledger.jsonl')
-        ledger.write_text(f'{BROKEN_LINE}\n', encoding='utf-8')
+        run_call(cli, broken, call)
 
-        cli.run(*call.argv, '--case', str(case), stdin=call.stdin)
-
-        assert ledger.read_text(encoding='utf-8') == f'{BROKEN_LINE}\n'
-        assert not case.joinpath('out').exists()
+        thread = broken.joinpath('threads', 'T1.md')
+        assert thread.read_text(encoding='utf-8') == f'{BROKEN_LINE}\n'
+        assert_nothing_written(broken)

@@ -8,16 +8,21 @@ from typing import TYPE_CHECKING, Self
 import msgspec
 from red_thread_core.util import squeeze
 
-from red_thread_casefile.domain import EntryKind, shorten_head
+from red_thread_casefile.domain import EntryKind, is_current, shorten_head
 from red_thread_casefile.policy import CITE_STATES, FAILING_STATES, QUIET_STATES, tally_states
 
 if TYPE_CHECKING:
     from red_thread_casefile.domain import Case, Entry, Ledger, Verdict
+    from red_thread_casefile.errors import CaseFileError
     from red_thread_casefile.policy import Finding
 
 NO_COMMIT = 'no commit'
 LEAD_FLAG_PREFIX = 'lead, '
 CITE_FLAG_PREFIX = 'citation '
+FAULT_ADVICE = (
+    'Correct an entry nobody has read yet where it stands. In a thread file you only append '
+    'to, append an entry whose supersedes names the faulty one instead.'
+)
 
 
 class Heading(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields=True, gc=False):
@@ -63,7 +68,7 @@ class Annotator:
         return next((finding for finding in self.findings if finding.ref == entry.ref), None)
 
     def get_recorded_head(self, entry: Entry) -> str | None:
-        if entry.head == self.head:
+        if is_current(entry.head, self.head):
             return None
         return shorten_head(entry.head, NO_COMMIT)
 
@@ -150,10 +155,22 @@ class Board:
 @dataclass(slots=True, kw_only=True, frozen=True)
 class CheckReport:
     findings: tuple[Finding, ...]
+    problems: tuple[CaseFileError, ...] = ()
 
     @property
     def has_failures(self) -> bool:
-        return any(finding.state in FAILING_STATES for finding in self.findings)
+        drifted = any(finding.state in FAILING_STATES for finding in self.findings)
+        return drifted or bool(self.problems)
+
+    def render_problems(self) -> list[str]:
+        if not self.problems:
+            return []
+        return [
+            f'{len(self.problems)} faults; check changed no file:',
+            *(f'- {problem}' for problem in self.problems),
+            FAULT_ADVICE,
+            '',
+        ]
 
     @property
     def summary(self) -> str:
@@ -167,10 +184,11 @@ class CheckReport:
     def render(self) -> str:
         flagged = (finding for finding in self.findings if finding.state not in QUIET_STATES)
         lines = [
+            *self.render_problems(),
             f'checked {len(self.findings)} citations: {self.summary}',
             *map(self.describe, flagged),
         ]
-        if self.has_failures:
+        if any(finding.state in FAILING_STATES for finding in self.findings):
             lines.append(
                 'A changed or missing citation is no longer evidence. Verify the claim again, '
                 'then retire the old entry with supersedes.'

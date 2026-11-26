@@ -1,4 +1,4 @@
-"""add --file and export --selection on a file that cannot be read."""
+"""export --selection on a file that cannot be read."""
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -24,8 +24,6 @@ class UnreadableFile:
 
 def unreadable_file_cases() -> pytest.MarkDecorator:
     scenarios = [
-        UnreadableFile(name='add-missing-file', command='add', path_kind='missing'),
-        UnreadableFile(name='add-directory-as-file', command='add', path_kind='directory'),
         UnreadableFile(name='export-missing-selection', command='export', path_kind='missing'),
         UnreadableFile(
             name='export-directory-as-selection', command='export', path_kind='directory'
@@ -41,12 +39,7 @@ class TestUnreadableInput:
             located.mkdir()
         return located
 
-    def run_command(
-        self, cli: CliHarness, case: Path, scenario: UnreadableFile, path: Path
-    ) -> CliRun:
-        if scenario.command == 'add':
-            return cli.run('add', '--case', str(case), '--round', '1', '--file', str(path))
-
+    def run_command(self, cli: CliHarness, case: Path, path: Path) -> CliRun:
         return cli.run('export', '--case', str(case), '--lens', 'brief', '--selection', str(path))
 
     @unreadable_file_cases()
@@ -55,7 +48,7 @@ class TestUnreadableInput:
     ) -> None:
         path = self.locate(cli, scenario)
 
-        result = self.run_command(cli, case, scenario, path)
+        result = self.run_command(cli, case, path)
 
         assert result.code == 1
         assert result.out == ''
@@ -69,8 +62,7 @@ class TestUnreadableInput:
     ) -> None:
         path = self.locate(cli, scenario)
 
-        self.run_command(cli, case, scenario, path)
+        self.run_command(cli, case, path)
 
-        assert not case.joinpath('ledger.jsonl').exists()
         assert not case.joinpath('out').exists()
         assert 'Entries: 0 live, 0 retired' in cli.render(case).out

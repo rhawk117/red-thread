@@ -1,19 +1,26 @@
 """The press over a real case directory and a real git repository."""
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
+from msgspec.structs import replace
 from red_thread_casefile.errors import (
-    InvalidPageUrlError,
     LensOverBudgetError,
     UnknownSelectionRefError,
 )
 from red_thread_casefile.lenses import Selection
 
-from tests.casefile.ledger.builders import QUEUE_LINES, QUEUE_PATH, create_draft, create_valid_draft
+from tests.casefile.ledger.builders import QUEUE_LINES, QUEUE_PATH, create_valid_entry
 from tests.casefile.lenses.builders import export
-from tests.casefile.lenses.reading import find_item, list_headings, list_refs, list_remarks
+from tests.casefile.lenses.cases import QUEUE_CITE, QUEUE_QUOTE
+from tests.casefile.lenses.reading import (
+    find_item,
+    list_headings,
+    list_refs,
+    list_remarks,
+    list_section_lines,
+)
 from tests.casefile.pages.html_reading import (
     list_item_refs,
     list_mermaid,
@@ -27,7 +34,7 @@ from tests.casefile.pages.promises import (
 from tests.params import as_params
 
 if TYPE_CHECKING:
-    from red_thread_casefile.domain import Draft
+    from red_thread_casefile.domain import Entry
 
     from tests.casefile.ledger.git_repository import GitRepository
     from tests.casefile.lenses.builders import DirectoryPressHarness
@@ -39,8 +46,9 @@ EDITED_LINES = (*QUEUE_LINES[:2], '    pass', QUEUE_LINES[3])
 SHIFTED_LINES = ('# header', *QUEUE_LINES)
 
 
-def create_cited_draft(position: int) -> Draft:
-    return replace(create_valid_draft('known', position), text=FINDING, cite='src/queue.py:3')
+def create_cited_entry(position: int) -> Entry:
+    known = create_valid_entry('known', position)
+    return replace(known, text=FINDING, cite=QUEUE_CITE, quote=QUEUE_QUOTE)
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -90,10 +98,10 @@ def disk_change_cases() -> pytest.MarkDecorator:
 class TestExportOnDisk:
     @pytest.fixture
     def harness(self, directory_press_harness: DirectoryPressHarness) -> DirectoryPressHarness:
-        directory_press_harness.directory.add(
-            create_valid_draft('decision', 1),
-            create_cited_draft(2),
-            create_draft(3, kind='open'),
+        directory_press_harness.seed(
+            create_valid_entry('decision', 1),
+            create_cited_entry(2),
+            create_valid_entry('open', 3),
         )
         return directory_press_harness
 
@@ -112,6 +120,16 @@ class TestExportOnDisk:
             'Pointers',
             'How to read',
         ]
+
+    def test_the_pointers_name_the_case_file_that_holds_the_entries(
+        self, harness: DirectoryPressHarness
+    ) -> None:
+        export(harness, 'brief')
+
+        text = harness.out_file('out/brief.md').read_text(encoding='utf-8')
+        (line,) = [line for line in list_section_lines(text, 'Pointers') if 'Case file' in line]
+        named = line.split('`')[1]
+        assert harness.directory.git.root.joinpath(named).resolve() == harness.directory.case_file
 
     def test_entries_come_through_the_real_ledger_with_text_cite_and_ref(
         self, harness: DirectoryPressHarness
@@ -157,7 +175,7 @@ class TestExportOnDisk:
     def test_the_board_page_is_written_in_the_case_directory_with_every_live_entry(
         self, harness: DirectoryPressHarness
     ) -> None:
-        harness.directory.add(*(create_draft(number, kind='open') for number in range(4, 14)))
+        harness.seed(*(create_valid_entry('open', number) for number in range(4, 14)))
 
         written = harness.press.draw()
 
@@ -168,7 +186,7 @@ class TestExportOnDisk:
     def test_a_diagram_added_through_the_ledger_file_is_drawn_on_the_board_and_a_lens_page(
         self, harness: DirectoryPressHarness
     ) -> None:
-        harness.directory.add(replace(create_draft(4, kind='open'), diagram=DIAGRAM))
+        harness.seed(replace(create_valid_entry('open', 4), diagram=DIAGRAM))
 
         harness.press.draw()
         export(harness, 'brief', html=True)
@@ -195,7 +213,7 @@ class TestExportOnDisk:
 class TestRefusalsOnDisk:
     @pytest.fixture
     def harness(self, directory_press_harness: DirectoryPressHarness) -> DirectoryPressHarness:
-        directory_press_harness.directory.add(create_cited_draft(1), create_draft(2, kind='open'))
+        directory_press_harness.seed(create_cited_entry(1), create_valid_entry('open', 2))
         return directory_press_harness
 
     def test_an_unknown_ref_writes_nothing(self, harness: DirectoryPressHarness) -> None:
@@ -209,7 +227,7 @@ class TestRefusalsOnDisk:
     ) -> None:
         export(harness, 'brief')
         earlier = harness.out_file('out/brief.md').read_bytes()
-        harness.directory.add(*(create_draft(number, kind='open') for number in range(3, 73)))
+        harness.seed(*(create_valid_entry('open', number) for number in range(3, 73)))
 
         with pytest.raises(LensOverBudgetError) as raised:
             export(harness, 'brief', html=True)
@@ -222,7 +240,7 @@ class TestRefusalsOnDisk:
     def test_an_over_budget_first_export_creates_no_output_folder(
         self, harness: DirectoryPressHarness
     ) -> None:
-        harness.directory.add(*(create_draft(number, kind='open') for number in range(3, 73)))
+        harness.seed(*(create_valid_entry('open', number) for number in range(3, 73)))
 
         with pytest.raises(LensOverBudgetError):
             export(harness, 'brief')
@@ -230,60 +248,23 @@ class TestRefusalsOnDisk:
         assert not harness.out_file('out').exists()
 
 
-class TestRecordPageOnDisk:
+class TestPageUrlOnDisk:
     @pytest.fixture
     def harness(self, directory_press_harness: DirectoryPressHarness) -> DirectoryPressHarness:
-        directory_press_harness.directory.add(create_draft(1, kind='open'))
+        directory_press_harness.seed(create_valid_entry('open', 1))
+        directory_press_harness.write_page_url(PAGE_URL)
         return directory_press_harness
 
-    def test_the_link_is_stored_in_case_json_and_nothing_else_in_it_changes(
+    def test_a_link_written_into_case_md_is_what_a_fresh_board_shows(
         self, harness: DirectoryPressHarness
     ) -> None:
-        before = harness.read_case_record()
-
-        returned = harness.press.record_page(PAGE_URL)
-
-        assert returned.page_url == PAGE_URL
-        assert harness.read_case_record() == {**before, 'page_url': PAGE_URL}
-
-    def test_the_ledger_file_is_not_touched(self, harness: DirectoryPressHarness) -> None:
-        before = harness.directory.ledger_file.read_bytes()
-
-        harness.press.record_page(PAGE_URL)
-
-        assert harness.directory.ledger_file.read_bytes() == before
-
-    @pytest.mark.parametrize(
-        'url',
-        [
-            pytest.param('http://example.invalid/b', id='http'),
-            pytest.param('https://example.invalid/a b', id='whitespace'),
-        ],
-    )
-    def test_a_rejected_link_leaves_case_json_byte_for_byte(
-        self, harness: DirectoryPressHarness, url: str
-    ) -> None:
-        before = harness.out_file('case.json').read_bytes()
-
-        with pytest.raises(InvalidPageUrlError):
-            harness.press.record_page(url)
-
-        assert harness.out_file('case.json').read_bytes() == before
-
-    def test_the_recorded_link_is_what_a_fresh_board_shows(
-        self, harness: DirectoryPressHarness
-    ) -> None:
-        harness.press.record_page(PAGE_URL)
-
         shown = harness.directory.casefile.show()
 
         assert f'Page: {PAGE_URL}' in shown.splitlines()
 
-    def test_the_recorded_link_is_what_a_fresh_export_points_to(
+    def test_a_link_written_into_case_md_is_what_a_fresh_export_points_to(
         self, harness: DirectoryPressHarness
     ) -> None:
-        harness.press.record_page(PAGE_URL)
-
         export(harness, 'brief')
 
         text = harness.out_file('out/brief.md').read_text(encoding='utf-8')

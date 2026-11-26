@@ -1,11 +1,11 @@
-"""The values a case file holds: the case, its entries and the drafts agents submit."""
+"""The values a case file holds: the case, its rounds and entries, and where each one sits."""
 
 import re
 from dataclasses import dataclass
 from datetime import date
 from itertools import chain
 from pathlib import PurePosixPath
-from typing import Literal
+from typing import Annotated, Literal
 
 import msgspec
 
@@ -15,6 +15,7 @@ type EntryKind = Literal['known', 'open', 'decision', 'hypothesis', 'ruled_out',
 type Verdict = Literal['VERIFIED', 'INFERRED', 'NEEDS-ANALYSIS', 'BLOCKED']
 type CaseKind = Literal['root-cause', 'claim', 'research', 'survey']
 type CiteForm = Literal['path', 'url', 'other']
+type Filled = Annotated[str, msgspec.Meta(pattern=r'\S')]
 
 ENTRY_KINDS: tuple[EntryKind, ...] = (
     'known',
@@ -39,6 +40,24 @@ SLUG_WORDS = 5
 PATH_CITE = re.compile(r'(?P<path>[^\s:#]+):(?P<line>[1-9]\d*)(?:-\d+)?')
 THREAD_NAME = re.compile(r'T[1-9]\d*')
 SLUG_BREAK = re.compile(r'[^a-z0-9]+')
+CASE_FILE = 'case.md'
+THREAD_HOME = 'threads'
+THREAD_SUFFIX = '.md'
+FENCE = '---'
+TITLE_MARK = '# '
+ROUND_MARK = '## '
+ENTRY_MARK = '### '
+BLOCK_OPEN = '```yaml'
+BLOCK_CLOSE = '```'
+STAMP_SEPARATOR = ' · '
+ROUND_WORD = 'Round'
+ROUND_HEADING = re.compile(
+    r'##\s+Round\s+(?P<round>\d+)\s+·\s+(?P<day>\d{4}-\d{2}-\d{2})\s+·\s+'
+    r'(?P<head>[0-9a-f]{7,40}|none)'
+)
+ENTRY_HEADING = re.compile(r'###\s+e(?P<seq>[1-9]\d*)')
+OPTIONAL_TEXT_FIELDS = ('cite', 'quote', 'addr', 'rests_on', 'refute', 'diagram')
+TEXT_FIELDS = ('text', *OPTIONAL_TEXT_FIELDS)
 
 
 def order_thread(name: str) -> int:
@@ -50,6 +69,20 @@ def date_of(timestamp: str) -> str:
         return date.fromisoformat(timestamp[:DATE_WIDTH]).isoformat()
     except ValueError as error:
         raise InvalidTimestampError(timestamp=timestamp) from error
+
+
+def is_day(text: str) -> bool:
+    try:
+        date.fromisoformat(text)
+    except ValueError:
+        return False
+    return True
+
+
+def is_current(recorded: str | None, head: str | None) -> bool:
+    if recorded is None or head is None:
+        return recorded == head
+    return head.startswith(recorded)
 
 
 def shorten_head(head: str | None, missing: str = NO_HEAD) -> str:
@@ -108,18 +141,54 @@ class Cite:
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
-class Draft:
-    position: int
-    kind: EntryKind
+class Spot:
+    file: str
+    line: int
+    ref: str | None = None
+
+    @property
+    def label(self) -> str:
+        place = f'{self.file}:{self.line}'
+        return place if self.ref is None else f'{place} {self.ref}'
+
+
+@dataclass(slots=True, kw_only=True, frozen=True)
+class RoundStamp:
+    number: int
+    day: str
+    head: str | None = None
+
+    @property
+    def heading(self) -> str:
+        parts = (f'{ROUND_WORD} {self.number}', self.day, shorten_head(self.head))
+        return f'{ROUND_MARK}{STAMP_SEPARATOR.join(parts)}'
+
+
+@dataclass(slots=True, kw_only=True, frozen=True)
+class LedgerSource:
+    name: str
+    thread: str | None
     text: str
-    source: str
+
+
+class EntryRecord(
+    msgspec.Struct,
+    frozen=True,
+    kw_only=True,
+    gc=False,
+    omit_defaults=True,
+    forbid_unknown_fields=True,
+):
+    kind: EntryKind
+    text: Filled
+    source: Filled
     verdict: Verdict | None = None
-    cite: str | None = None
-    quote: str | None = None
-    addr: str | None = None
-    rests_on: str | None = None
-    refute: str | None = None
-    diagram: str | None = None
+    cite: Filled | None = None
+    quote: Filled | None = None
+    addr: Filled | None = None
+    rests_on: Filled | None = None
+    refute: Filled | None = None
+    diagram: Filled | None = None
     supersedes: tuple[str, ...] = ()
 
 
@@ -155,11 +224,11 @@ class Entry(
         return f'{self.thread}.e{self.seq}'
 
 
-class Capabilities(msgspec.Struct, frozen=True, kw_only=True, gc=False):
+class Capabilities(msgspec.Struct, frozen=True, kw_only=True, gc=False, forbid_unknown_fields=True):
     languages: tuple[str, ...] = ()
 
 
-class Case(msgspec.Struct, frozen=True, kw_only=True, gc=False):
+class Case(msgspec.Struct, frozen=True, kw_only=True, gc=False, forbid_unknown_fields=True):
     id: str
     target: str
     kind: CaseKind
@@ -205,3 +274,15 @@ class Ledger:
 
     def describe_threads(self) -> str:
         return ', '.join(f'{name} ({self.count_in(name)})' for name in self.threads)
+
+
+@dataclass(slots=True, kw_only=True, frozen=True)
+class Placed:
+    entry: Entry
+    spot: Spot
+
+
+@dataclass(slots=True, kw_only=True, frozen=True)
+class CaseRecord:
+    case: Case
+    ledger: Ledger
