@@ -1,6 +1,5 @@
 """The page script, run under Node against a fake DOM built from a rendered board."""
 
-import shutil
 from typing import TYPE_CHECKING
 
 import pytest
@@ -14,6 +13,7 @@ from tests.casefile.pages.script import (
     click_chip,
     deny_clipboard,
     load,
+    navigate,
     run_timers,
     switch_scheme,
     toggle,
@@ -29,14 +29,6 @@ FLOW = 'flowchart LR\n  retry --> pool'
 OLD_FLOW = 'flowchart LR\n  guess --> pool'
 RETIRED = 'Retired'
 RETIRED_INDEX = 3
-
-
-@pytest.fixture(scope='session')
-def node() -> str:
-    found = shutil.which('node')
-    if found is None:
-        pytest.skip('node is not installed, and the page script runs under it')
-    return found
 
 
 @pytest.fixture
@@ -172,6 +164,26 @@ class TestCopying:
         assert (state['clipboard'], state['commands']) == ([], ['copy'])
         assert state['textareas'] == 0
         assert state['status'] == f'Copied {QUEUE_CITE}'
+
+
+class TestLinks:
+    def test_a_link_to_a_folded_section_opens_it(self, script: ScriptHarness) -> None:
+        state = script.play(load(), navigate('section-retired'))
+
+        assert RETIRED in list_open_sections(state)
+        assert list_drawn(state) == [True, True, True]
+
+    def test_a_link_to_a_retired_entry_opens_the_fold_that_holds_it(
+        self, script: ScriptHarness
+    ) -> None:
+        state = script.play(load(), navigate('e3'))
+
+        assert RETIRED in list_open_sections(state)
+
+    def test_a_link_to_nothing_on_the_page_opens_nothing(self, script: ScriptHarness) -> None:
+        state = script.play(load(), navigate('section-elsewhere'))
+
+        assert RETIRED not in list_open_sections(state)
 
 
 class TestDiagrams:

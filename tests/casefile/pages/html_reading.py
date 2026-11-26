@@ -47,6 +47,7 @@ PAGE_TAGS = frozenset({
     'script',
     'body',
     'main',
+    'aside',
     'header',
     'h1',
     'h2',
@@ -67,6 +68,8 @@ PAGE_TAGS = frozenset({
     'div',
     'code',
     'a',
+    'del',
+    'ins',
 })
 
 
@@ -126,6 +129,10 @@ def list_attribute_names(page: str) -> set[str]:
 
 def find_tags(page: str, name: str) -> list[dict[str, str]]:
     return [attributes for tag, attributes in list_tags(page) if tag == name]
+
+
+def find_outbound_links(page: str) -> list[dict[str, str]]:
+    return [link for link in find_tags(page, 'a') if not link['href'].startswith('#')]
 
 
 def find_buttons(page: str, role: str) -> list[dict[str, str]]:

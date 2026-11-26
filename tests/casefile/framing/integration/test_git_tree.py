@@ -4,7 +4,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 from red_thread_casefile.services import EXCLUDED, CaseFile, Framing
-from red_thread_casefile.store import DirectoryCaseRepository, GitSourceTree
+from red_thread_casefile.store import DirectoryCaseRepository
+from red_thread_core.store import GitSourceTree
 
 from tests.casefile.ledger.directory import create_directory_harness
 from tests.casefile.ledger.memory import FixedClock

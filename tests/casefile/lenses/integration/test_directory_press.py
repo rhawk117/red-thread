@@ -4,8 +4,12 @@ from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
 import pytest
-from red_thread_casefile.errors import InvalidPageUrlError, LensOverBudgetError, UnknownPlanRefError
-from red_thread_casefile.lenses import Plan
+from red_thread_casefile.errors import (
+    InvalidPageUrlError,
+    LensOverBudgetError,
+    UnknownSelectionRefError,
+)
+from red_thread_casefile.lenses import Selection
 
 from tests.casefile.ledger.builders import QUEUE_LINES, QUEUE_PATH, create_draft, create_valid_draft
 from tests.casefile.lenses.builders import export
@@ -121,7 +125,7 @@ class TestExportOnDisk:
     def test_exporting_again_replaces_the_file(self, harness: DirectoryPressHarness) -> None:
         export(harness, 'brief')
 
-        export(harness, 'brief', Plan(title='A second title', include=()))
+        export(harness, 'brief', Selection(title='A second title', include=()))
 
         text = harness.out_file('out/brief.md').read_text(encoding='utf-8')
         assert text.splitlines()[0] == '# A second title'
@@ -195,8 +199,8 @@ class TestRefusalsOnDisk:
         return directory_press_harness
 
     def test_an_unknown_ref_writes_nothing(self, harness: DirectoryPressHarness) -> None:
-        with pytest.raises(UnknownPlanRefError):
-            export(harness, 'brief', Plan(include=('e9',)), html=True)
+        with pytest.raises(UnknownSelectionRefError):
+            export(harness, 'brief', Selection(include=('e9',)), html=True)
 
         assert not harness.out_file('out').exists()
 

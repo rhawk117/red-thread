@@ -27,7 +27,7 @@ When the version is not known yet, send `code-sense` first, since a page for the
 
 When the subject splits into parts that do not depend on each other (several dependencies, several protocols, the two sides of an integration), propose one thread per part and give each to a `research-lead` after the owner approves the split.
 
-Security questions follow the same shape: scouts read, and `research-cell` runs an experiment only in its own worktree against local code.
+Security questions follow the same shape: scouts read, and `lab-rat` runs an experiment only in its own worktree against local code.
 
 ## At the gate
 

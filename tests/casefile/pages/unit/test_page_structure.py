@@ -5,14 +5,7 @@ from dataclasses import dataclass, replace
 import pytest
 from red_thread_casefile.assets import read_asset
 from red_thread_casefile.boards import MAP_NOTE
-from red_thread_casefile.documents import (
-    Document,
-    Flowchart,
-    Paragraph,
-    PointList,
-    Section,
-    parse_line,
-)
+from red_thread_core.documents import Document, Flowchart, Paragraph, PointList, Section, parse_line
 
 from tests.casefile.pages.builders import DIAGRAM, create_document, create_marked_entry
 from tests.casefile.pages.html_reading import (
@@ -92,22 +85,29 @@ class TestSections:
 
         page = render_page(Document(title='t', sections=sections))
 
-        assert find_tags(page, 'details') == [{'class': 'section', 'open': ''}] * 2
+        assert find_tags(page, 'details') == [
+            {'class': 'section', 'id': 'section-first', 'open': ''},
+            {'class': 'section', 'id': 'section-second', 'open': ''},
+        ]
         assert list_section_titles(page) == ['First', 'Second']
 
 
 class TestEntryMarks:
-    def test_an_entry_carries_its_kind_and_thread(self) -> None:
+    def test_an_entry_carries_its_ref_as_an_anchor_with_its_kind_and_thread(self) -> None:
         entry = create_marked_entry(ref='T1.e2', kind='open', thread='T1')
 
         page = render_page(create_document(entry))
 
-        assert find_entries(page) == [{'class': 'entry', 'data-kind': 'open', 'data-thread': 'T1'}]
+        assert find_entries(page) == [
+            {'class': 'entry', 'id': 'T1.e2', 'data-kind': 'open', 'data-thread': 'T1'}
+        ]
 
     def test_the_main_ledger_is_an_empty_thread_string(self) -> None:
         page = render_page(create_document(create_marked_entry(thread=None)))
 
-        assert find_entries(page) == [{'class': 'entry', 'data-kind': 'known', 'data-thread': ''}]
+        assert find_entries(page) == [
+            {'class': 'entry', 'id': 'e1', 'data-kind': 'known', 'data-thread': ''}
+        ]
 
     def test_a_point_carries_no_mark_and_no_ref_button(self) -> None:
         page = render_page(create_pointer_document())
@@ -152,7 +152,10 @@ class TestMap:
         page = render_page(document)
 
         assert list_section_titles(page) == ['Findings', 'Map']
-        assert find_tags(page, 'details') == [{'class': 'section', 'open': ''}] * 2
+        assert find_tags(page, 'details') == [
+            {'class': 'section', 'id': 'section-findings', 'open': ''},
+            {'class': 'section', 'id': 'section-map', 'open': ''},
+        ]
         diagram, drawn = list_mermaid(page)
         assert diagram == DIAGRAM
         assert drawn.splitlines() == [*read_asset('map.mmd').splitlines(), *MAP_LINES]

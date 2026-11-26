@@ -2,7 +2,7 @@
 
 The case file behind the red-thread plugin. It keeps an append-only ledger of what an investigation found, renders that ledger as a board at every gate, checks that each citation still points at the code it quoted, and assembles the final outputs from the ledger. Nothing else in the plugin writes or renders a case file, and the model never edits one by hand.
 
-Its one dependency is msgspec, which reads and writes every JSON record. `docs/design.md` section 4 holds the format, the rules and the decisions behind them.
+It depends on msgspec, which reads and writes every JSON record, and on `red-thread-core` (`packages/core`), which holds the document tree, the page and its assets, redaction and the source tree, clock and page store. This package adds what only a case file knows: the ledger, its rules, the board and the lenses, and the entry list block the core page renders. `docs/design.md` section 4 holds the format, the rules and the decisions behind them.
 
 ## Who uses it
 
@@ -12,7 +12,7 @@ The `investigate` and `distill` skills call it through `bin/redthread-casefile`,
 uv run --no-config --no-project --python 3.14 --with-editable <plugin>/packages/casefile -- python -m red_thread_casefile "$@"
 ```
 
-uv takes the dependencies from this package's `pyproject.toml` and keeps the environment in its cache. Nothing is installed into the repository under investigation, and `--no-config` stops a uv setting in that repository from changing what gets installed. The first run on a machine downloads msgspec and, if needed, Python 3.14.
+uv takes the dependencies from this package's `pyproject.toml`, installs `packages/core` editable beside it as a workspace source, and keeps the environment in its cache. Nothing is installed into the repository under investigation, and `--no-config` stops a uv setting in that repository from changing what gets installed. The first run on a machine downloads msgspec and, if needed, Python 3.14.
 
 ## What it is for
 
@@ -46,12 +46,12 @@ A case id is the UTC date and a slug of the target, such as `20261121-retry-queu
 | `add --case DIR --round N [--thread T1] [--file F]` | validates a batch of entries whole, stamps the time and HEAD, redacts secrets and appends it; the batch is one JSON object or a JSON array of them, read from standard input or `--file` |
 | `render --case DIR [--full] [--html]` | opens every citation again and prints the board with a changed, moved or missing citation flagged beside its entry; `--full` shows every live entry, `--html` also writes `board.html` |
 | `check --case DIR` | resolves every live citation against the current tree |
-| `export --case DIR --lens L [--plan F] [--html]` | writes one output to `out/` from the ledger; `--lens` is `brief`, `issue`, `handoff` or `report` |
+| `export --case DIR --lens L [--selection F] [--html]` | writes one output to `out/` from the ledger; `--lens` is `brief`, `issue`, `handoff` or `report` |
 | `page --case DIR --url URL` | records the https link that publishing returned in `case.json` |
 
 `--case` takes the directory `init` printed. Round 0 is framing, and the rounds count up from there.
 
-Each output has a line budget, and `export` fails when the output runs over it: 60 lines for a brief, 80 for an issue, 40 for a handoff and 200 for a report. The plan it reads is a JSON object with an optional `title`, `goal`, `include` and `blocking`, the last two as lists of entry refs such as `["e3", "T1.e2"]`.
+Each output has a line budget, and `export` fails when the output runs over it: 60 lines for a brief, 80 for an issue, 40 for a handoff and 200 for a report. The selection it reads is a JSON object with an optional `title`, `goal`, `include` and `blocking`, the last two as lists of entry refs such as `["e3", "T1.e2"]`.
 
 ## Entries and their rules
 
@@ -87,9 +87,9 @@ This answers the question a later session has to ask first: which of these claim
 
 `render --html` and `export --html` write HTML pages from the ledger. The board page opens with the case facts (bar, kind, round, commit, languages, entry counts, threads and the totals of the citation check), then one panel per section, then a mermaid map of the case: each thread is a line of its entries, and a retired entry has a dashed outline with an edge from the entry that retired it. A folded list of retired entries closes the page. Lens pages share the panels and entry details but leave out the facts and the retired list.
 
-A page loads two scripts from cdnjs, each pinned to an exact version with an integrity hash: the Tailwind browser build for styling and mermaid for diagrams. Offline, a page still reads top to bottom with every entry in the HTML. The page's own script, `assets/page.js`, uses no library. It filters entries by kind and thread, folds sections, copies a ref or a citation, and redraws diagrams when the theme changes. Entry text reaches the page only as escaped text.
+A page loads two scripts from cdnjs, each pinned to an exact version with an integrity hash: the Tailwind browser build for styling and mermaid for diagrams. Offline, a page still reads top to bottom with every entry in the HTML. The page's own script, `page.js` in `red-thread-core`, uses no library. It filters entries by kind and thread, folds sections, copies a ref or a citation, and redraws diagrams when the theme changes. Entry text reaches the page only as escaped text.
 
-The skeleton, styles, script and map header are in `assets/`, beside `src/`. The package reads them by path from the source tree, which is how the launcher and an editable install run it. A built wheel would not carry them. Colors are tokens in `assets/page.css`, one set per theme, and `assets/tailwind.css` maps them to Tailwind utilities, so a palette change touches one file.
+The skeleton, styles, script and map headers are in `assets/`, beside `src/`. The package reads them by path from the source tree, which is how the launcher and an editable install run it. A built wheel would not carry them. Colors are tokens in `assets/page.css`, one set per theme, and `assets/tailwind.css` maps them to Tailwind utilities, so a palette change touches one file.
 
 ## Development
 

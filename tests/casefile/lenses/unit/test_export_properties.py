@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
-from red_thread_casefile.errors import LensOverBudgetError, UnknownPlanRefError
-from red_thread_casefile.lenses import LENS_NAMES, Plan, count_lines, get_lens
+from red_thread_casefile.errors import LensOverBudgetError, UnknownSelectionRefError
+from red_thread_casefile.lenses import LENS_NAMES, Selection, count_lines, get_lens
 from red_thread_casefile.services import ExportRequest
 
 from tests.casefile.entries.strategies import entry_kinds
@@ -103,7 +103,7 @@ class TestExportProperties:
         ledger = harness.store.read_ledger()
         live = [entry.ref for entry in ledger.live]
         include = data.draw(st.lists(st.sampled_from(live), unique=True)) if live else []
-        request = ExportRequest(lens='report', plan=Plan(include=tuple(include)))
+        request = ExportRequest(lens='report', selection=Selection(include=tuple(include)))
 
         harness.press.export(request)
 
@@ -113,13 +113,13 @@ class TestExportProperties:
         assert set(include) <= set(named)
 
     @given(specs=specs, lens=lenses, missing=st.sampled_from(('e999', 'T9.e1')))
-    def test_a_plan_naming_an_entry_that_is_not_live_is_refused_and_writes_nothing(
+    def test_a_selection_naming_an_entry_that_is_not_live_is_refused_and_writes_nothing(
         self, specs: list[Spec], lens: LensName, missing: str
     ) -> None:
         harness = self.stock(specs)
-        request = ExportRequest(lens=lens, plan=Plan(include=(missing,)))
+        request = ExportRequest(lens=lens, selection=Selection(include=(missing,)))
 
-        with pytest.raises(UnknownPlanRefError) as raised:
+        with pytest.raises(UnknownSelectionRefError) as raised:
             harness.press.export(request)
 
         assert raised.value.ref == missing

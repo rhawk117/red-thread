@@ -3,7 +3,7 @@
 from typing import TYPE_CHECKING
 
 import pytest
-from red_thread_casefile.lenses import Plan
+from red_thread_casefile.lenses import Selection
 from red_thread_casefile.views import describe_kind
 
 from tests.casefile.ledger.builders import create_entry
@@ -12,7 +12,7 @@ from tests.casefile.lenses.cases import QUEUE_CITE, QUEUE_QUOTE, flag_params, le
 from tests.casefile.lenses.reading import list_all_refs
 from tests.casefile.pages.builders import DIAGRAM, SCRIPT
 from tests.casefile.pages.html_reading import (
-    find_tags,
+    find_outbound_links,
     list_item_refs,
     list_mermaid,
     list_section_titles,
@@ -60,7 +60,7 @@ class TestLensPage:
             *create_numbered_entries('open', 2, start=4),
         )
 
-        export(press_harness, 'brief', Plan(include=('e3', 'e1', 'e5')), html=True)
+        export(press_harness, 'brief', Selection(include=('e3', 'e1', 'e5')), html=True)
 
         markdown_refs = list_all_refs(press_harness.read_markdown('brief'))
         assert list_item_refs(press_harness.read_page('brief')) == markdown_refs
@@ -79,20 +79,20 @@ class TestLensPage:
     def test_the_urgency_label_is_shown_on_the_page(self, press_harness: PressHarness) -> None:
         press_harness.seed(*create_numbered_entries('open', 2))
 
-        export(press_harness, 'brief', Plan(blocking=('e2',)), html=True)
+        export(press_harness, 'brief', Selection(blocking=('e2',)), html=True)
 
         page = press_harness.read_page('brief')
         assert 'not blocking' in page
         assert page.count('blocking') == 2
 
-    def test_plan_title_goal_and_entries_cannot_add_elements(
+    def test_selection_title_goal_and_entries_cannot_add_elements(
         self, press_harness: PressHarness
     ) -> None:
         press_harness.seed(
             create_entry(seq=1, kind='open', text=SCRIPT, rests_on=SCRIPT, cite=SCRIPT)
         )
 
-        export(press_harness, 'brief', Plan(title=SCRIPT, goal=SCRIPT), html=True)
+        export(press_harness, 'brief', Selection(title=SCRIPT, goal=SCRIPT), html=True)
 
         page = press_harness.read_page('brief')
         assert_page_holds_only_its_own_markup(page)
@@ -125,7 +125,7 @@ class TestLensPage:
 
         export(press_harness, 'brief', html=True)
 
-        links = find_tags(press_harness.read_page('brief'), 'a')
+        links = find_outbound_links(press_harness.read_page('brief'))
         assert [link['href'] for link in links] == ['https://example.invalid/a']
 
     def test_a_url_cite_with_a_quote_cannot_break_out_of_the_href(
@@ -136,7 +136,7 @@ class TestLensPage:
 
         export(press_harness, 'brief', html=True)
 
-        (link,) = find_tags(press_harness.read_page('brief'), 'a')
+        (link,) = find_outbound_links(press_harness.read_page('brief'))
         assert link['href'] == cite
         assert set(link) == {'href', 'rel'}
 
@@ -147,7 +147,7 @@ class TestLensSections:
     ) -> None:
         press_harness.seed(*create_numbered_entries('known', 2))
 
-        export(press_harness, 'brief', Plan(include=('e1', 'e2')), html=True)
+        export(press_harness, 'brief', Selection(include=('e1', 'e2')), html=True)
 
         sections = {
             section.title: section for section in list_sections(press_harness.read_page('brief'))
@@ -158,7 +158,7 @@ class TestLensSections:
     def test_a_fixed_part_carries_no_kind_and_no_note(self, press_harness: PressHarness) -> None:
         press_harness.seed(*create_numbered_entries('known', 2))
 
-        export(press_harness, 'brief', Plan(include=('e1', 'e2')), html=True)
+        export(press_harness, 'brief', Selection(include=('e1', 'e2')), html=True)
 
         sections = {
             section.title: section for section in list_sections(press_harness.read_page('brief'))

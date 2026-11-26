@@ -1,10 +1,10 @@
 """The case map: each thread as a line of its entries, and what retired what, in mermaid."""
 
-import re
 from dataclasses import dataclass
 from itertools import chain, pairwise
-from textwrap import shorten
 from typing import TYPE_CHECKING
+
+from red_thread_core.charts import clean_label
 
 from red_thread_casefile.domain import order_thread
 
@@ -14,13 +14,10 @@ if TYPE_CHECKING:
     from red_thread_casefile.domain import Entry, Ledger
 
 MAIN_LEDGER = 'main ledger'
-LABEL_WIDTH = 44
-UNSAFE = re.compile(r"[^\w .,:/()+='-]")
 
 
 def label_node(entry: Entry) -> str:
-    text = shorten(UNSAFE.sub(' ', entry.text), width=LABEL_WIDTH, placeholder='...')
-    return f'{entry.ref} {entry.kind}: {text}'
+    return f'{entry.ref} {entry.kind}: {clean_label(entry.text)}'
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)

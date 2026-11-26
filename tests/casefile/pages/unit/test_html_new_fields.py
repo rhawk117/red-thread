@@ -9,18 +9,16 @@ from hypothesis import strategies as st
 from red_thread_casefile.boards import RETIRED_NOTE
 from red_thread_casefile.documents import (
     Citation,
-    Document,
     EntryList,
     EntryNode,
-    Fact,
     Note,
-    Section,
+    list_document_entries,
     list_entries_block,
-    parse_line,
-    parse_value,
+    list_section_entries,
 )
 from red_thread_casefile.domain import ENTRY_KINDS, VERDICTS
 from red_thread_casefile.policy import CITE_STATES, Finding
+from red_thread_core.documents import Document, Fact, Section, parse_line, parse_value
 
 from tests.casefile.documents.builders import MOMENT
 from tests.casefile.documents.reading import join_line
@@ -67,8 +65,8 @@ def create_retired(entries: tuple[EntryNode, ...]) -> tuple[Section, ...]:
 
 
 def list_all_entries(document: Document) -> list[EntryNode]:
-    retired = [entry for section in document.appendix for entry in section.entries]
-    return [*document.entries, *retired]
+    retired = [entry for section in document.appendix for entry in list_section_entries(section)]
+    return [*list_document_entries(document), *retired]
 
 
 def find_finding(entry: EntryNode) -> Finding | None:

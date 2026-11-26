@@ -1,17 +1,8 @@
 """Document trees drawn by Hypothesis, for the writer properties."""
 
 from hypothesis import strategies as st
-from red_thread_casefile.documents import (
-    Citation,
-    Document,
-    EntryList,
-    EntryNode,
-    Note,
-    Paragraph,
-    PointList,
-    Section,
-    parse_line,
-)
+from red_thread_casefile.documents import Citation, EntryList, EntryNode, Note
+from red_thread_core.documents import Document, Paragraph, PointList, Section, parse_line
 
 from tests.casefile.documents.builders import MOMENT
 from tests.casefile.entries.strategies import optional, words

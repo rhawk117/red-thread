@@ -4,7 +4,8 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from red_thread_casefile.services import Batch, CaseFile
-from red_thread_casefile.store import DirectoryCaseRepository, GitSourceTree
+from red_thread_casefile.store import DirectoryCaseRepository
+from red_thread_core.store import GitSourceTree
 
 from tests.casefile.ledger.builders import CASE_ID, create_case
 from tests.casefile.ledger.memory import FixedClock

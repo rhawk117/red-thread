@@ -1,6 +1,6 @@
 # red-thread design
 
-Status on 2026-11-21: the direction is agreed, and steps 1 to 5 of the build order in section 11 are built. No real case has been run yet. **Decided** marks a choice the owner made in a dialog. **Proposed** marks the designer's intent that the owner has not confirmed.
+Status on 2026-11-26: the direction is agreed, and steps 1 to 5 of the build order in section 11 are built. One real case ran from framing to a brief on 2026-11-21 (section 11, step 6). Planning is built through step 3 of its build order in section 13: the selection rename, the plan record and the plan page. On 2026-11-26 the code was split into three packages (core, casefile and plans), lanes became worktrees, and plans and cases link to each other (section 12). **Decided** marks a choice the owner made in a dialog. **Proposed** marks the designer's intent that the owner has not confirmed.
 
 ## How to read this
 
@@ -8,6 +8,7 @@ Status on 2026-11-21: the direction is agreed, and steps 1 to 5 of the build ord
 - Sections 4 to 7 are the contract for building it.
 - Section 8 describes `navigate`, the code navigation red-thread ships in `packages/navigate`, which replaced the external agentlens.
 - Section 9 lists the evidence, section 10 the prompting guidance for agent files, section 11 what is open and the build order, section 12 the decision log.
+- Section 13 describes planning: the plan, the epic and its tickets as GitHub issues, and what the implementation plugin reads. Steps 1 to 3 of its build order are built; the rest is proposed.
 
 ## 1. Purpose
 
@@ -21,8 +22,13 @@ Use cases:
 2. Large research worth several agents: security research, or learning how a system works.
 3. Produce a hand-off, meaning a pointer to context that is useful to a person and to an agent, and a GitHub issue.
 4. Troubleshoot to a root cause, or survey a codebase for technical debt: what it is, why it happened and what to do.
+5. Debug a failure to a fix the owner approves, then say why it broke, why nothing caught it and what preventing it would cost (added 2026-11-25).
 
 Out of scope: tickets, task tracking, code review, implementing changes, an MCP server and a database. Version 1 ships no hooks.
+
+**Changed 2026-11-25:** the `debug` skill applies a fix, and the guards the owner chooses, after the owner approves each at a gate (section 12). Implementing anything else stays out of scope.
+
+**Changed 2026-11-25:** planning is in scope (sections 12 and 13). red-thread turns a case into a plan, an epic and its tickets, and publishes them as GitHub issues. Executing a ticket, task state, code review and pull requests belong to a separate implementation plugin that reads what red-thread publishes. An MCP server and a database stay out of scope.
 
 The owner steers every investigation from experience and reviews on a phone through Remote Control, so every gate has to be readable there.
 
@@ -52,10 +58,10 @@ primary     target, thread list, your decisions    holds the rendered board, nev
 | --- | --- | --- | --- |
 | primary | none, it is the session | the session's model | never reads raw scout output when leads are in use |
 | lead | `agents/research-lead.md` | `claude-sonnet-5-5` | six jobs a round, two rounds |
-| code scout | `agents/code-sense.md` | `claude-haiku-5-5` | five tool calls, read-only |
-| lens scout | `agents/code-lens.md` | `claude-haiku-5-5` | 6,000 tokens of navigate output, read-only |
-| web scout | `agents/web-head.md` | `claude-haiku-5-5` | five tool calls, read-only |
-| lab scout | `agents/research-cell.md` | `claude-sonnet-5-5` | one experiment per dispatch, in a git worktree |
+| code scout | `agents/swarm/code-sense.md` | `claude-haiku-5-5` | five tool calls, read-only |
+| lens scout | `agents/swarm/code-lens.md` | `claude-haiku-5-5` | 6,000 tokens of navigate output, read-only |
+| web scout | `agents/swarm/web-head.md` | `claude-haiku-5-5` | five tool calls, read-only |
+| lab scout | `agents/swarm/lab-rat.md` | `claude-sonnet-5-5` | one experiment per dispatch, in a git worktree |
 | skeptic | `agents/peer-review.md` | `claude-sonnet-5-5` | receives claims and citations, never the reasoning; read-only |
 
 **Decided: depth is adaptive.** With one thread, the primary dispatches scouts itself and stops at a gate every two or three lookups. With two or more independent threads, each thread gets a lead. The owner approves the thread split in round zero, and at each gate chooses which threads advance, redirect or stop. Leads cost steering precision: a lead runs up to six lookups between gates.
@@ -91,7 +97,7 @@ Platform facts checked on 2026-11-21 against the Claude Code docs and one live p
 
 **Decided:** one Python script is the only writer and renderer of the case file. It replaces the MCP server, the database and the recorder hooks. Its one dependency is msgspec, which reads and writes every JSON record. That reverses the earlier choice of the standard library alone. The launcher asks uv for msgspec with `--with`, so nothing is installed into the project under investigation, and the first run on a machine downloads it.
 
-The code is the workspace package `packages/casefile`. The stored records (`Entry`, `Case` and `Capabilities`) are frozen msgspec Structs, so a ledger line or a `case.json` that does not match its type is refused with the file and the fault named. Batches and export plans keep their own validation, so `add` still reports every fault in a batch with its fix. The page's skeleton, styles, script and map header sit in `packages/casefile/assets/`, beside `src/`, where they are easy to find, and `assets.py` reads them by path from the module file. The package therefore runs from the source tree, which is how `bin/redthread-casefile` and an editable install run it; a built wheel would not carry the assets. The HTML fragments are Python 3.14 t-strings rendered through one escaping function. Imports inside the package are absolute.
+The code is the workspace package `packages/casefile`. The stored records (`Entry`, `Case` and `Capabilities`) are frozen msgspec Structs, so a ledger line or a `case.json` that does not match its type is refused with the file and the fault named. Batches and export selections keep their own validation, so `add` still reports every fault in a batch with its fix. Since 2026-11-26 the page's skeleton, styles and script sit in `packages/core/assets/` and the map header in `packages/casefile/assets/`, each beside its package's `src/`, where they are easy to find, and each package's `assets.py` reads them by path from the module file. The package therefore runs from the source tree, which is how `bin/redthread-casefile` and an editable install run it; a built wheel would not carry the assets. The HTML fragments are Python 3.14 t-strings rendered through one escaping function. Imports inside the package are absolute.
 
 | Command | What it does | Status |
 | --- | --- | --- |
@@ -101,6 +107,7 @@ The code is the workspace package `packages/casefile`. The stored records (`Entr
 | `check` | re-resolves every live citation against the current tree | Built |
 | `export` | assembles a lens output from the ledger and fails when it is over its line budget | Built |
 | `page` | records the link of the published board in `case.json` | Built |
+| `plan` | moved on 2026-11-26 to its own package and launcher, `bin/redthread-plan` (section 13) | Moved |
 
 **Decided:** the script is the workspace package `packages/casefile`, run through `bin/redthread-casefile`, which starts it with `uv run --no-project --python 3.14 --with-editable` on the package. uv takes the dependencies from the package's own `pyproject.toml` and keeps the environment in its cache, so nothing is installed into the project under investigation and the launcher repeats no requirement. The primary passes the launcher's absolute path in each brief as `SCRIPT`, since a brief already carries everything a worker needs.
 
@@ -210,6 +217,8 @@ Routes not chosen:
 
 **Decided:** two user-facing skills, `investigate` and `distill`, plus the preloaded `navigate` support skill (see section 8). Use cases are kinds and lenses, each a small reference file loaded on demand. There is no skill per use case and no pickup skill.
 
+**Changed 2026-11-25:** a third user-facing skill, `debug`, takes a failure to a fix. It keeps its record in a `root-cause` case and hands technical debt back to `investigate` (section 12).
+
 ### Round zero
 
 One dialog before any dispatch: the target as one line the owner can disagree with, the kind, the bar (what the answer must establish for the decision to be acted on), what the owner already knows or has ruled out, and publish or local. If the target splits into independent threads, the owner approves the split.
@@ -265,7 +274,7 @@ Rules:
 - With no case open, `distill` first builds a ledger from the conversation, and any claim it cannot cite becomes `open`.
 - The brief carries its own reading instructions, so it works for a person, for an agent without the plugin, and inside a GitHub issue.
 
-`export` takes an optional JSON plan on standard input: `title`, `goal`, `include` (refs, most important first) and `blocking` (open refs). The model chooses and ranks. The script writes each entry's own text, citation and ref, flags leads and changed citations, redacts the title and goal, and writes nothing when the output is over budget. A budget counts lines that carry text: brief 60, issue 80, handoff 40, report 200. The last three were set while building. **Decided 2026-11-21:** the owner accepted them as built. A budget that a real case shows to be wrong is reported, not changed on the spot.
+`export` takes an optional JSON selection on standard input (named a "plan" until 2026-11-25, renamed when the plan record took the word, section 13): `title`, `goal`, `include` (refs, most important first) and `blocking` (open refs). The model chooses and ranks. The script writes each entry's own text, citation and ref, flags leads and changed citations, redacts the title and goal, and writes nothing when the output is over budget. A budget counts lines that carry text: brief 60, issue 80, handoff 40, report 200. The last three were set while building. **Decided 2026-11-21:** the owner accepted them as built. A budget that a real case shows to be wrong is reported, not changed on the spot.
 
 Brief template (Decided):
 
@@ -287,7 +296,7 @@ All scouts share one report contract, already used by `code-sense` and `web-head
 | `code-sense` (was `eyes`) | renamed; LSP dropped; navigates with `rg` and ranged reads, and takes the behavior questions that `code-lens` does not; cites paths from the repository root, because the ledger opens them |
 | `code-lens` (lens scout) | new: the `code-sense` contract over the navigate verbs `map`, `find` and `slice`, with a budget of tool output in place of five calls (section 8) |
 | `web-head` | the brief gains today's date |
-| `research-cell` (lab scout) | new: one experiment per dispatch in a worktree, returns the command and its output |
+| `lab-rat` (lab scout, was `research-cell`) | new: one experiment per dispatch in a worktree, returns the command and its output |
 | `peer-review` (skeptic) | new: tries to break each claim from its citation alone, against a four-question rubric. It is read-only, so the primary records its verdicts |
 
 Every agent file is rewritten against section 10 before it ships.
@@ -344,7 +353,7 @@ The strongest competitor is no tool. In the agentlens 0.2.0 evaluation (agentlen
 
 - `init` does not look for the tool, the board header does not show it and a lead's brief does not mention it. The case file's `navigation_tool` field is gone from new cases, and a `case.json` that still has it loads and renders.
 - `code-lens` runs only `bin/redthread-navigate` (named in the briefing as NAVIGATE) and `rg`, with a budget of 6,000 tokens of output a question. The primary or a lead, through `skills/investigate/SKILL.md`, sends it questions about the structure of code in the six languages. Questions about behavior still go to `code-sense`.
-- `skills/navigate` holds how to use navigate: the commands, addresses, output, recipes for common asks and every refusal with its next step. It is preloaded through the `skills` field into `code-lens`, `code-sense`, `research-cell` and `peer-review`, and each of them gets NAVIGATE in its brief. `code-lens` runs only navigate and `rg`; the other three use navigate first for structure in the six languages and keep their own tools for the rest.
+- `skills/agents/navigate` holds how to use navigate: the commands, addresses, output, recipes for common asks and every refusal with its next step. It is preloaded through the `skills` field into `code-lens`, `code-sense`, `lab-rat` and `peer-review`, and each of them gets NAVIGATE in its brief. `code-lens` runs only navigate and `rg`; the other three use navigate first for structure in the six languages and keep their own tools for the rest.
 - `map` prints each symbol's signature line and `find` prints each definition's address, kind and span with no line text, so the scout cites only lines it saw in `slice` or `rg -n` output.
 
 ### Why not the other routes
@@ -475,6 +484,7 @@ Open:
 - Both skills pre-approve `bin/redthread-casefile` through `allowed-tools`. The docs say `${CLAUDE_PLUGIN_ROOT}` is substituted in Bash rules there, and that the grant lasts for the invoking turn only. Whether it reaches a subagent is not documented, so step 6 must confirm it. The real case could not: it ran in `auto` permission mode, where sandboxed Bash never asks. It needs a session where Bash asks.
 - Owner comments are read at the gate (section 4). No published page has carried a comment through that step yet, so the shape of what the Artifact tool returns for a thread is untested.
 - The restyled page has not been looked at in a browser from this machine, which has none, and its Tailwind block has not been compiled outside a browser. The owner checks a sample board. Since 2026-11-21 the tests run the page's script under Node (`tests/casefile/pages/integration`), against a small fake DOM and a stand-in for mermaid in `tests/casefile/pages/dom_harness.js`: the filters, the fold button, copying, and drawing and redrawing diagrams. That checks the script's logic and not what a browser or the real mermaid does with it.
+- The `debug` skill is written and validated, and has not run on a real failure. Untested: the worktree check in its phase 2, `git bisect` inside a `research-cell` worktree, proving a guard against the unfixed commit, and loading `investigate` from its close.
 
 Build order:
 
@@ -618,3 +628,295 @@ Made by the owner on 2026-11-25.
 | Output model | one typed tree of frozen dataclass nodes, one entry builder and two writer Protocols (`InlineWriter`, `BlockWriter`) with a method per node kind, so a new kind of content has one place to start and ty names every writer that lacks it (section 4, The document model) |
 | Who draws the page | Python, through the t-string `render`; no Jinja and no TypeScript, so no new dependency and no build step, and the page still carries every entry in its HTML |
 | Scope | the board page and the Markdown lens output; the text board keeps its own path for now |
+
+### 2026-11-25: the debug skill
+
+Made by the owner on 2026-11-25, in one dialog. The skill descends from `whats-broken` in mightymodels and is written for red-thread's agents and case file.
+
+| Decision | Choice and reason |
+| --- | --- |
+| Fix path | the skill applies a fix after the owner approves it at a gate: the session writes a regression test that fails first, then the smallest change. This reverses "implementing changes" in section 1 for an approved fix and an approved guard, and for nothing else. Rejected: stopping at the cause, which leaves the failure in place and the prevention advice resting on a fix nobody ran; and proving the patch in a worktree first, which needs `research-cell` to fix |
+| Record | a case file of kind `root-cause`, so the ledger, the board, the citation check, `peer-review` and `distill` work unchanged and the package gains no kind |
+| Name | `debug`, as `/red-thread:debug` |
+| Evaluation | validation only (`vibe-code skill validate` and the repository's checks); the owner drives the first real failure by hand. No eval cases, because a headless run has no AskUserQuestion and the gates are the skill |
+
+**Proposed**, as written into the skill and not yet confirmed by a run:
+
+- Seven phases: frame, reproduce, evidence, hypotheses, fix, escape, close. No fix is proposed before a hypothesis has survived a test that could have refuted it.
+- At least two rival hypotheses, as in the `root-cause` kind. Independent rivals are tested in the same turn, one `research-cell` each, and one experiment answers for one hypothesis.
+- A failed fix is recorded as a `ruled_out` entry that starts "Fix attempt N:", so the count survives a compaction. At three the skill stops and asks the owner what they see.
+- The escape phase answers why the defect was introduced and why no guard caught it, gives each guard a verdict (absent, not run, blind, ignored), and classes each finding as a slip, a gap or debt. Each candidate guard is priced by what it catches, what it costs to build and what it costs to keep, and the owner chooses in a dialog. "None: the regression test is enough" is always an option.
+- A debt finding is not sized in the debugging case. The skill offers to load `investigate` on it, which opens a case of its own.
+- The primary runs the reproduction command itself, once, in the checkout. Every experiment brief starts with `git checkout --detach SHA`, and the first experiment checks that the failure shows in a clean worktree at all.
+
+Platform fact checked on 2026-11-25 against the Claude Code docs (sub-agents and worktrees pages): a subagent's worktree branches from the repository's default branch, not from the session's HEAD, unless `worktree.baseRef` is set to `"head"`. Whether uncommitted changes reach it is not documented. The `root-cause` kind of `investigate` did not pin the commit in its `research-cell` briefs; since 2026-11-25 its reference file says to start EXPERIMENT with `git checkout --detach SHA` (decided by the owner).
+
+### 2026-11-25: the swarm layout
+
+Made by the owner on 2026-11-25. Earlier entries keep the old names and paths.
+
+| Decision | Choice and reason |
+| --- | --- |
+| Scout folder | the four scouts live in `agents/swarm/`. Claude Code makes a plugin agent's subfolder part of its name, so they are dispatched as `red-thread:swarm:<name>`. `research-lead` and `peer-review` stay in `agents/` |
+| Lab scout name | `research-cell` is now `lab-rat` |
+| Agent-only skills | `navigate` lives in `skills/agents/`, which `plugin.json` lists under `skills` because the default scan does not reach it |
+
+### 2026-11-25: the meet-the-team skill
+
+Made by the owner on 2026-11-25.
+
+| Decision | Choice and reason |
+| --- | --- |
+| Team guide | `skills/agents/meet-the-team` introduces the six agents to whoever dispatches them: who may dispatch whom, which agent takes which question, an example brief and the required fields for each, budgets and limits, and what to do with each verdict. It is one file so that briefing guidance is not rewritten in every caller. Like `navigate` it is `user-invocable: false` |
+| Lead | `research-lead` preloads it through `skills`. The lead's own file keeps only what is the lead's: the names of its team, that a follow-up is a new briefing, and that judgment is its job |
+| Primary | `investigate` and `debug` keep their brief-field tables, which must be in context at every dispatch, and tell the primary to load the skill by name (`red-thread:meet-the-team`) before its first dispatch, for the detail. A relative link was tried first and `vibe-code skill validate` refuses a reference that leaves the skill directory. The tables and the skill overlap on field names, which the owner accepted in place of a required skill load. `tests/plugin/team_skill` fails when the skill stops naming an agent on the roster, when the lead stops preloading it, or when either skill stops naming it |
+
+### 2026-11-25: the artifact-authoring skill
+
+Made by the owner on 2026-11-25.
+
+| Decision | Choice and reason |
+| --- | --- |
+| Writing guide | `skills/agents/artifact-authoring` says how to word what an agent writes for a reader who was not there. Like `navigate` and `meet-the-team` it is `user-invocable: false` |
+| Scope | runtime handoffs only: a case file entry, a report up the chain, the gate summary, a distill title and goal, and a handoff. Writing the plugin's own agent and skill files is out of scope, because that reader is a contributor's session and not a shipped agent |
+| Readers | `research-lead` preloads it through `skills`. `investigate`, `debug` and `distill` tell the primary to load `red-thread:artifact-authoring` before the first `add`, or before the title and goal. The scouts do not load it: their report format is fixed in their own files, and section 10 keeps a Haiku 5.5 prompt short |
+| Briefs | `meet-the-team` stays the one place for writing a brief. This skill points at it and adds only what a handoff carries |
+| Shape | one file with no `references/`: a core that holds for every artifact, then a section per artifact that ends on a "Done when" line, so each has a completion criterion the writer can check |
+| Sources | the structure and several rules (completion criteria, single source of truth, the no-op test, stating the positive) are adapted from Matt Pocock's `writing-for-agents` skill, <https://github.com/mattpocock/skills/blob/main/skills/productivity/writing-for-agents/SKILL.md>, read on 2026-11-25. Its material on skill descriptions, invocation and progressive disclosure was left out with the prompt-file scope. The rest comes from the Anthropic sources in sections 9 and 10: reasons with instructions, plain wording, lightweight references passed back in place of copies, and steering the reader when something is truncated |
+| Test | `tests/plugin/artifact_skill` fails when the lead stops preloading the skill, when one of the three skills stops naming it, or when it stops pointing at `meet-the-team` for briefs |
+
+### 2026-11-25: the planning extension
+
+Made by the owner on 2026-11-25, in two dialogs and the messages between them. Section 13 holds the design.
+
+| Decision | Choice and reason |
+| --- | --- |
+| Plugin split | planning joins red-thread; implementation and review ship together as one separate plugin. Rejected: planning as its own plugin, because a plan keeps returning to the findings and that seam would carry a versioned contract at its busiest point; and four plugins, because review findings and per-task checks feed the same task state |
+| Transport | the GitHub issue body carries a ticket, with a machine-readable block, and the case keeps a local JSON copy. `.red-thread/` is untracked, so another worktree or a cloud session does not see it. Rejected: files under the shared git directory, which are invisible remotely; and committed plan files, which reverse the never-commit rule and leave stale plans in history |
+| Epics | one case can cut many tickets: a parent issue with one sub-issue per ticket. This reverses "tickets" in section 1's out-of-scope list. The case file stays the record of evidence, and the issue becomes the record of a ticket, which narrows "The case file is the only shared memory" in section 2 |
+| Task briefs | written per ticket when the ticket starts, against HEAD at that time. Rejected: every brief at plan time, because briefs for later tickets go stale as earlier ones land; and the first ticket only, which is two code paths for one step |
+| Progress | hooks stamp start and stop events, the page is republished at each transition, and GitHub shows the epic's rollup. Rejected: an MCP server pushing through channels, a research preview that must be named in `--channels` at every launch; and GitHub alone, which has no durations |
+| Risks | "Gate" becomes "You intervene", and the re-plan trigger goes: a signal changes how the affected tickets are cut, not the whole plan |
+| Visible plans | the plan is a page the owner reads, like the board |
+| Direction, designed in section 13 | worktrees and tickets in parallel; stacked pull requests; an optional adversarial review of the plan; smaller tasks whose briefs carry machine-readable frontmatter and may name any installed subagent, skill or MCP tool; an optional interface preview by a dedicated agent; a retrospective that replaces `prune-ticket` and closes the issues |
+
+### 2026-11-25: version 1 of planning
+
+Made by the owner on 2026-11-25, in three dialogs.
+
+| Decision | Choice and reason |
+| --- | --- |
+| Where version 1 stops | the plan and the epic: the plan record, the page, the plan skill, the interface agent, publishing, syncing a revision and a close step. Briefs, routing, events and the retrospective come after a real epic has run. Rejected: through ticket start, which fixes the brief schema before anything has consumed one; and everything, because three steps depend on a plugin that does not exist |
+| Who executes a ticket | a plain Claude Code session in a worktree, working from the issue alone, so a ticket has to stand as a prompt. Rejected: mightymodels as a stopgap, which shapes tickets around the harness being replaced and assumes one active ticket per branch; and building both plugins together, which holds version 1 until both work |
+| Brief cutter | a red-thread skill run in the ticket's worktree, built after version 1. Rejected: the implementation plugin, which would then own task decomposition and routing |
+| One ticket | the same plan skill; a plan with one ticket publishes one issue with no parent. Rejected: keeping the `distill` issue lens for small work, which leaves two issue formats; and a separate fast skill |
+| Ticket body | the script writes the entries each acceptance sentence rests on, in their own words with citations and the commit they were checked at, under a line budget. Rejected: pointers only, which makes the session derive again what the case established; and a link to the page, which a session cannot read through `gh` |
+| Interface agent | in version 1, written for Opus 5.5: it runs only when asked, and a wrong interface misleads every ticket above it in the lane. Rejected by the owner: the field and the page alone with the primary drafting. Rejected: Sonnet 5.5; and inheriting the session's model, because an agent file is written for one model |
+| Interface output | a checked preview: the agent type-checks its signatures in a scratch worktree that is thrown away, and returns text for the plan record. Rejected: unchecked text; and real stubs on a branch, which has red-thread committing code |
+| Lanes | the plan computes lanes and stack order, and each ticket states its branch, its base and its place in the stack. The owner starts the sessions and runs `gh stack`. Rejected: dependencies alone, which drops the check that makes parallel work safe; and a helper that creates worktrees |
+| Closing | a close step in version 1 checks that each ticket's pull request has merged, closes the sub-issues and then the epic, and reports what it could not close. The retrospective takes the step over later |
+| Revisions | a new revision is synced to GitHub by ticket id: it edits the tickets it touches, adds new ones and closes dropped ones. Rejected: publishing once, after which the issue and the plan drift; and replacing issues, which churns the numbers pull requests point at |
+| Done when | the work after version 1 is planned as an epic with version 1 and run through plain sessions |
+
+### 2026-11-26: packages, worktrees and links
+
+Made by the owner on 2026-11-26, after reading the first plan page and finding it unclear: it had no grounding text, no account of what changed, and words such as "lane" that it never explained, and it was laid out for a phone only.
+
+| Decision | Choice |
+| --- | --- |
+| Packages | three: `packages/core` (`red_thread_core`) holds the document model, the page and Markdown writers, the page assets, redaction, the store protocols and where the pages sit; `packages/casefile` depends on core; `packages/plans` (`red_thread_plans`) depends on both. Rejected: keeping the plan inside casefile, which coupled the two records. The split went on top of the existing commits |
+| Plan home | beside the cases: `.red-thread/plans/<plan-id>/` holds `plan.json` (the id, title, the cases its revisions cited, and the epic and issue links), `rN.json` and `plan.html`. A plan never writes into a case directory |
+| Many cases | a plan names each case it rests on with an alias, and one plan can rest on many cases. A ref is `C1.e4`, or `C2.T1.e2` for an entry in a thread |
+| Acceptance | a criterion is `{criterion, required_by}`, replacing `{text, rests_on}`, so it is not confused with an entry's `rests_on` caveat |
+| Worktree | "lane" became "worktree" everywhere: one git worktree and one stack of pull requests |
+| Plan command | its own launcher, `bin/redthread-plan`, with `init`, `revise` and `render` |
+| The plan page | each criterion shows the text of every entry that requires it, linked to that entry on its board; a "What changed" section opens a revision after the first; each ticket shows its why, and a changed ticket shows each field as it was and as it is; every page ends its rail with a fold that explains its words |
+| Links | both ways: the plan page links each case's board, the epic and each issue, and reads "not published yet" until a publish step records them. Each board lists the plans that cite its case, read from `.red-thread/plans/*/plan.json` when the board is drawn, so nothing is written into the case |
+| Layout | every page: at 1280px and up, a rail with the title, facts, toolbar, contents and terms beside the content, where the kind sections or the worktrees sit in columns; on a phone the rail sits on top and the columns stack |
+
+## 13. Planning
+
+Added 2026-11-25. Section 12 records what the owner decided. The build order at the end says which steps are built; everything else here is **Proposed**.
+
+**Changed 2026-11-26** (section 12): a plan lives in `.red-thread/plans/<plan-id>/`, not in a case, and rests on one or more cases through aliases. "Lane" is now "worktree", and an acceptance sentence is now a criterion `{criterion, required_by}`. The `plan` command is `bin/redthread-plan` with `init`, `revise` and `render`. The text below uses the new names.
+
+### Version 1
+
+Decided 2026-11-25 (section 12).
+
+| In version 1 | After version 1 |
+| --- | --- |
+| The plan record, the `plan` command and its checks | Briefs and the routing agent |
+| The plan page | Events, and status and elapsed time on the page |
+| The plan skill: draft, risks, the optional review, the gate | The retrospective |
+| The interface agent | The implementation plugin, a separate project |
+| Publishing an epic or a single ticket, and syncing a revision | |
+| The close step | |
+
+A plain Claude Code session in a worktree executes a ticket from the issue alone. It writes no events, so progress in version 1 is GitHub's rollup and the page as of the last revision.
+
+### What crosses the boundary
+
+red-thread ends at a published ticket and its briefs. The implementation plugin starts there and never reads `ledger.jsonl`. Whatever crosses a worktree goes through the issue, because the case directory exists in one checkout only.
+
+| Artifact | Record | The owner reads | Read by |
+| --- | --- | --- | --- |
+| Plan | `.red-thread/plans/<plan-id>/r<n>.json`, one file per accepted revision, beside the cases it rests on | `plan.html`, published like the board | the owner and `peer-review` |
+| Epic | a parent issue | the issue and GitHub's sub-issue progress | the retrospective |
+| Ticket | a sub-issue: prose, then one fenced JSON block under a `red-thread ticket v1` summary | the issue | the implementation plugin, through `gh issue view` |
+| Brief | `briefs/T<n>.md` in the ticket's worktree: YAML frontmatter, then the body | the page when the ticket starts | the subagent the brief names |
+| Events | a JSONL file the implementation plugin's hooks append to, summarised in an issue comment when the ticket closes | status and elapsed time on the page | the retrospective |
+
+Each record carries a schema version, so the two plugins release separately.
+
+### The plan record
+
+The plans package is the only writer of a plan. `revise` reads one JSON document on standard input or from `--file`, checks it whole as `add` checks a batch, and stores it as the next revision. A revision is never edited: the page shows the latest and what changed from the one before.
+
+- Fields: intent, approach, the cases it rests on, invariants, non-goals, tickets and risks.
+- A ticket has an id, a title, a why, acceptance criteria, the files it owns, the tickets it depends on, a worktree and an optional interface.
+- An acceptance criterion states an outcome someone can observe, and names the live `decision` or `known` entries that require it. The script refuses one that rests on nothing. This is the guard against "that is not what I asked for": every promise in the plan traces to something the owner decided or a scout verified.
+- The script refuses a dependency cycle, and refuses two tickets in different worktrees that own the same file.
+- "Plan" already named the JSON that `export` reads (section 6, `lenses.py`). That document is now the "selection", and `--plan` is `--selection` (built 2026-11-25).
+
+**Built 2026-11-25**, with the owner's approval of the record and its refusals:
+
+- A revision is `r<n>.json` in the plan directory: the drafted fields, plus `schema` (`red-thread/plan@1`), `revision`, `at` and `head`, which the script stamps. It is created exclusively, so a stored revision is never overwritten.
+- A ticket's `id` and `worktree` are lowercase slugs. An acceptance criterion is `{criterion, required_by}`, where each ref names a case alias. The interface is `{language, source}`.
+- A risk has an `id` (`R1`, `R2`), `risk`, `signal`, the `tickets` it touches and a `handling` tagged by `kind`: `accept`; `mitigate` with the `ticket` that carries the change and an optional `criterion`, which must be one of that ticket's criteria word for word, or is left out when the ticket itself is the mitigation; or `you-intervene` with the `recut` tickets, which must be among the risk's own.
+- The drafter names each ticket's worktree, and the script computes its position: a stable topological order of the worktree's tickets, ties kept in drafted order. This settles section 12's "the plan computes lanes and stack order" against "the plan records only lane and position" below: the plan computes the stack and checks the worktrees, and does not invent them.
+- A dependency on a ticket in another worktree is refused (owner, 2026-11-25), because a worktree is one stack.
+- Two worktrees collide when some path, existing or not, matches an `owns` entry of each. The check is exact for `*` (any run of characters within one segment, a leading dot included), `?` and `**` (zero or more segments, or at least one at the end), the rules of `PurePosixPath.full_match`, and the refusal names a path both worktrees could change. `dir/` means `dir/**`. An entry that is empty, absolute, climbs with `..` or uses a `[ ]` class is refused. Two tickets in one worktree may own the same files.
+- A plan that cannot be read is refused at its first shape fault, with the JSON path. A readable plan is checked whole and every fault is named with its fix: blank text, no tickets, a ticket without acceptance or owns, a malformed or duplicate id, no case or a case missing from `.red-thread/`, a ticket without a why, a criterion required by nothing or by a ref that is unknown, retired or not a decision or known, an unknown or cross-worktree dependency, a cycle, a worktree collision, and a risk that names an unknown ticket, a criterion the ticket does not have, or a recut that is empty or strays outside the risk. Text is checked as sent, then redacted, then stored.
+
+**The page, built 2026-11-25, rebuilt 2026-11-26:**
+
+- `revise` writes `plan.html` in the plan directory each time it stores a revision, from that revision, the one before it and the cases it rests on. A refused plan writes nothing. `render` draws it again from the latest revision.
+- `PlanPage` (`red_thread_plans/page.py`) composes the page. Its sections are What changed (from the second revision on: the tickets added, changed and dropped, then each plan field as it was and as it is), Approach, Cases (each alias linked to its board, with the case's question), Invariants, Non-goals, one `Worktree <name>` column per worktree with its stack bottom first, and Risks. The appendix holds the `Worktrees` chart and, when tickets were dropped, a folded `Dropped` list. The facts are the revision, the date, the commit, the ticket and worktree count, the changes and the epic.
+- A ticket shows its mark, its title, its why, its place, its dependencies, the paths it owns, its issue link or "not published yet", each criterion under "Done when" with every entry that requires it (its kind, its ref linked to `../../<case>/board.html#<ref>` and its text), its interface, and for a changed ticket a fold of each field as it was and as it is. A ref whose entry is gone reads "This entry is no longer in the case."
+- The status mark compares each ticket with the ticket of the same id in the revision before: `new` when it had none, `unchanged` when every field is equal, `changed` otherwise. Status from events stays after version 1.
+- `Flowchart` draws each worktree as a subgraph, with an arrow from each dependency to its dependent and each node coloured by its mark (header `packages/plans/assets/worktrees.mmd`).
+- `CodeListing` is a general block in the document model, written as `<pre class="listing">` on a page and as a fenced block in Markdown. The plan's own nodes, `TicketNode`, `Promise`, `Ground`, `TicketList` and `ChangeList`, live in `red_thread_plans/nodes.py` and reach the writers through `BlockWriter.write_tickets`, as every other block does.
+- The toolbar adds worktree and status chips beside the kind and thread chips. `page.js` filters any entry that carries `data-kind` or `data-worktree` on every chip group, so `Section.kind` stays an entry kind. It also opens the folded section that holds the target of a `#ref` link, on load and when the hash changes.
+- The board lists the plans that cite its case as a `Plans` fact linking `../plans/<plan-id>/plan.html`, read from each `plan.json` when the board is drawn; a plan index that cannot be read is skipped. Each entry is an anchor named by its ref.
+
+### The plan skill
+
+1. Start from a case. Run `check` first, as `distill` does, so a plan is not cut from changed citations.
+2. Draft the tickets from the case's decisions and knowns. Stay at intent, acceptance and ownership: task detail waits for the ticket to start.
+3. Offer the interface preview.
+4. Put each risk to the owner.
+5. Offer the review.
+6. Gate: the owner accepts, redirects or drops tickets. On acceptance the script stores the revision and the page is published.
+7. Publish the epic to GitHub after one approval that covers every issue it will create.
+
+### Risks
+
+Each risk states the risk, a signal someone can observe, and the tickets it touches. The handlings are:
+
+- **Accept**: proceed, and note the signal.
+- **Mitigate**: shown as the change itself, a criterion added to a named ticket or a new ticket, so the owner judges a diff and not a promise.
+- **You intervene**: work on the touched tickets stops when the signal appears and the owner decides. The plan names which tickets would be cut again.
+
+The dialog offers only handlings a senior engineer could pick, states the cost of each including the recommended one, and offers two when there are only two. mightymodels had the same rule in prose (`game-plan`, "Stack the options evenly") and a fixed list of four, and the list is what produced the padding.
+
+### Review
+
+Optional, asked at step 5. One `peer-review` pass in a fresh context that gets the plan and the rendered case, not the conversation. It checks that each criterion follows from the entries that require it, that no decision is left without a ticket, that worktrees do not collide, and what the plan assumes without evidence. A finding without a ref or a `path:line` is dropped. The owner picks which findings change the plan. There is one pass and no debate round.
+
+### Interfaces
+
+Optional, per ticket, by a dedicated agent written for Opus 5.5 and not yet named. It writes the public surface only: signatures, types, error cases and the names of the tests. It type-checks them in a scratch worktree that is thrown away and returns the text for the plan record, so the preview is known to compile and nothing lands in the repository. The preview shows on the page and in the issue. A worktree may open with a ticket that lands the interfaces and their failing tests, so the bottom pull request of the stack is the contract. Internals stay out, because detail fixed this early is wrong often enough to cost more than it saves.
+
+### The epic on GitHub
+
+- The epic is a parent issue, and each ticket a sub-issue created with `gh issue create --parent`. Order is `--blocked-by`. Both need gh 2.94.0 or later.
+- A plan with one ticket publishes one issue with no parent.
+- The script assembles a ticket body: the goal, the acceptance sentences, the owned files, the branch, its base and its place in the stack, each "You intervene" signal as a condition to stop on, then the entries the acceptance rests on, in their own words with citations and the commit they were checked at. The body has a line budget.
+- A new revision is synced by ticket id: it edits the bodies of the tickets it touches, adds sub-issues for new tickets and closes dropped ones. The case keeps the map from ticket id to issue number.
+- Limits: 100 sub-issues per parent, eight levels, 50 links per dependency type.
+- GitHub reports the rollup itself, as `sub_issues_summary.percent_completed`.
+- Closing is explicit. Closing keywords are read only when a pull request targets the default branch, and the stacked pull request pages say nothing about them, so a close step checks that each ticket's pull request has merged, runs `gh issue close` for the ticket and then the epic, and reports what it could not close. The step is part of the plan skill in version 1, and the retrospective takes it over.
+
+### Worktrees and stacks
+
+A worktree is one git worktree and one stack (called a lane until 2026-11-26). Tickets that depend on each other share a worktree and become one pull request each, bottom up. Worktrees that own disjoint files run in parallel. The plan records only `worktree` and position. In version 1 the owner creates the worktrees and runs `gh stack`; later that belongs to the implementation plugin. A ticket that cannot keep its files apart from another worktree joins that worktree.
+
+### Ticket start: briefs and routing
+
+After version 1. When a ticket starts, a red-thread skill run in the ticket's worktree cuts its tasks against HEAD. It reads the ticket from the issue, because the case directory is in another checkout. A task is one deliverable with one verification command: a function, a test file or a review.
+
+```yaml
+---
+schema: red-thread/brief@1
+ticket: 42
+task: T3
+depends_on: [T1]
+owns: [packages/casefile/src/red_thread_casefile/lenses.py]
+acceptance:
+  - export refuses a selection that names a retired ref
+verify: uv run pytest -q tests/casefile/lenses
+agent: python-harness:test-engineer
+skills: [python-harness:design-tests]
+mcp_tools: []
+---
+```
+
+A routing agent, the successor to `terry-toolchain`, fills `agent`, `skills` and `mcp_tools`. It reads the names and descriptions of what is installed, narrows the candidates by the language and paths of the owned files, and picks among the few that remain with one line of reason. With no match it names the implementation plugin's default implementer. The owner sees the choice with the brief and can change it. In mightymodels the survey never changed which worker a task went to: the choice was a fixed table, and `subagent_type` had to start with the plugin's own prefix. The implementation plugin must not carry that restriction.
+
+### Progress
+
+After version 1. red-thread ships no hook for this. The implementation plugin's hooks append one event per transition, with the time, the ticket, the task and what happened, and stamp the time themselves because `SubagentStop` carries none. The page shows each ticket's status and elapsed time and is republished at each transition.
+
+### Retrospective
+
+After version 1. Replaces `prune-ticket`. Friction is recorded when it happens: a blocked task, an escalation, a brief written again, a scope expansion, a "You intervene" that fired, and the owner saying the result is not what they asked for. The retrospective reads that record, says what slowed the work and where it left the plan, and classes each item as a plan gap, a brief gap, a routing miss or an environment problem. It proposes changes to instruction files, skills and hooks as diffs the owner approves, then closes the issues.
+
+### Evidence
+
+Read on 2026-11-25.
+
+| Claim | Source |
+| --- | --- |
+| A planner that fixes granular detail early passes its errors down; a contract for "done" is agreed before code | Anthropic, "Harness design for long-running apps" |
+| JSON for state an agent must not rewrite; one feature at a time | Anthropic, "Effective harnesses for long-running agents" |
+| A brief needs an objective, an output format, tool guidance and boundaries | Anthropic, "How we built our multi-agent research system" |
+| A fresh reviewer helps, and one asked to find problems always finds something | Claude Code docs, best practices |
+| Each parallel worker gets its own checkout and its own files | Claude Code docs, best practices and agent teams |
+| A server pushes into a session only through channels, a research preview | Claude Code docs, MCP and channels |
+| Stacked pull requests are generally available since 2026-10-06, with `gh stack` and a REST API | GitHub changelog and docs |
+| Closing keywords are ignored off the default branch | GitHub docs, "Linking a pull request to an issue" |
+| Specification and verification failures dominate multi-agent runs; a high-level verification step added 15.6% task success | MAST, arXiv 2503.13657 |
+| Self-correction without outside feedback can lower accuracy | Huang et al., arXiv 2310.01798 |
+| Interfaces first, and tests from a separate agent, raise pass rates | Parsel, arXiv 2212.10561; AgentCoder, arXiv 2312.13010 |
+| The best method finds the decisive failing step 14.2% of the time after the fact | Who&When, arXiv 2505.00212 |
+
+Not verified: no study was found of padded options in agent plans or of interface previews as a review aid, and the routing accuracy figures came from search summaries.
+
+### Open
+
+- Section 10 has no guidance for an agent file written for Opus 5.5.
+- How the interface agent's scratch worktree gets the project's toolchain, and what it checks in a language with no type checker.
+- The line budget for a ticket body.
+- Which session republishes the page, and from what, when the case directory is in another checkout.
+- Which plugin owns the retrospective. It reads execution events and reasons like an investigation.
+- Whether a skill can dispatch another plugin's subagent by name. The docs do not say; a run has to confirm it.
+- Whether a closing keyword takes effect after GitHub retargets a stacked pull request onto the default branch.
+- The names of the routing agent and the interface agent.
+
+Build order for version 1:
+
+| Step | Status |
+| --- | --- |
+| 1. Rename the export plan to a selection | built 2026-11-25 |
+| 2. The plan record, the `plan` command and its checks: traceability, cycles and lane collisions | built 2026-11-25 |
+| 3. The plan page | built 2026-11-25 |
+| 3a. Core, casefile and plans packages; worktrees; criteria; cases by alias; `bin/redthread-plan`; the page's grounds, changes and terms; the rail and columns layout; links between plans and boards | built 2026-11-26 |
+| 4. The interface agent | not started |
+| 5. The plan skill: draft, the interface offer, the risk dialog, the optional review and the gate | not started |
+| 6. Publishing: the ticket body, issues, sub-issues and dependencies | not started |
+| 7. Syncing a revision | not started |
+| 8. The close step | not started |
+| 9. The first epic: plan the work below with version 1 and run it through plain sessions | not started |
+
+After version 1: ticket start with briefs and the routing agent, the event schema with status on the page, and the retrospective.

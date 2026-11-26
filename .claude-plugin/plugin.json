@@ -10,6 +10,7 @@
   "homepage": "https://github.com/rhawk117/red-thread",
   "repository": "https://github.com/rhawk117/red-thread",
   "license": "MIT",
+  "skills": ["./skills/agents/"],
   "keywords": [
     "research",
     "triage",

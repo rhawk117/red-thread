@@ -4,20 +4,18 @@ from dataclasses import replace
 from html import escape
 
 import pytest
-from red_thread_casefile.documents import (
-    Citation,
+from red_thread_casefile.documents import Citation, EntryList, Note
+from red_thread_casefile.policy import Finding
+from red_thread_core.documents import (
     Document,
-    EntryList,
     Fact,
     Flowchart,
-    Note,
     Paragraph,
     PointList,
     Section,
     parse_line,
     parse_value,
 )
-from red_thread_casefile.policy import Finding
 
 from tests.casefile.pages.builders import PAYLOADS, payload_params
 from tests.casefile.pages.html_reading import (
@@ -49,7 +47,9 @@ class TestEntry:
         page = render_page(create_document(entry))
 
         assert list_item_refs(page) == ['T1.e2']
-        assert find_entries(page) == [{'class': 'entry', 'data-kind': 'open', 'data-thread': 'T1'}]
+        assert find_entries(page) == [
+            {'class': 'entry', 'id': 'T1.e2', 'data-kind': 'open', 'data-thread': 'T1'}
+        ]
 
     def test_code_spans_in_the_claim_are_code_elements(self) -> None:
         page = render_page(create_document(create_entry_node('run `make` first')))
@@ -136,14 +136,22 @@ class TestSections:
         (reading,) = list_sections(render_page(Document(title='t', sections=(section,))))
 
         assert (reading.title, reading.count, reading.note) == ('Known', 2, 'Checked claims.')
-        assert reading.attributes == {'class': 'section', 'data-kind': 'known', 'open': ''}
+        assert reading.attributes == {
+            'class': 'section',
+            'id': 'section-known',
+            'data-kind': 'known',
+            'open': '',
+        }
 
     def test_a_folded_section_without_entries_has_no_count_and_is_closed(self) -> None:
         section = Section(title='Goal', blocks=(Paragraph(line=parse_line('a')),), folded=True)
 
         (reading,) = list_sections(render_page(Document(title='t', sections=(section,))))
 
-        assert (reading.count, reading.attributes) == (None, {'class': 'section'})
+        assert (reading.count, reading.attributes) == (
+            None,
+            {'class': 'section', 'id': 'section-goal'},
+        )
 
 
 class TestFacts:

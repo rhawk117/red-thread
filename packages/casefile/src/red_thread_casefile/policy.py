@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from operator import attrgetter
 from typing import TYPE_CHECKING, Literal
 
+from red_thread_core.util import squeeze
+
 from red_thread_casefile.domain import OWNER, PAGE_URL_SCHEME
 from red_thread_casefile.errors import (
     DecisionInThreadError,
@@ -19,7 +21,6 @@ from red_thread_casefile.errors import (
     UnknownSupersededError,
     UpgradedVerdictError,
 )
-from red_thread_casefile.util import squeeze
 
 if TYPE_CHECKING:
     from collections.abc import Iterable

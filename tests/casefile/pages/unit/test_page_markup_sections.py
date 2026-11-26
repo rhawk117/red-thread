@@ -5,9 +5,9 @@ from typing import TYPE_CHECKING
 
 from red_thread_casefile.assets import read_asset
 from red_thread_casefile.boards import MAP_NOTE, RETIRED_NOTE
-from red_thread_casefile.documents import (
+from red_thread_casefile.documents import EntryList
+from red_thread_core.documents import (
     Document,
-    EntryList,
     Fact,
     Flowchart,
     Paragraph,
@@ -129,7 +129,8 @@ class TestMapAndRetiredFold:
 
         (found,) = list_sections(page)
         assert (found.title, found.count) == ('Map', None)
-        assert found.note
+        assert found.note is not None
+        assert found.note != ''
         assert 'data-kind' not in found.attributes
 
     def test_the_retired_fold_follows_the_map_is_closed_and_counts_its_entries(self) -> None:

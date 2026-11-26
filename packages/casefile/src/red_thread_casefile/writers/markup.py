@@ -1,50 +1,18 @@
-"""HTML from the document tree: every value escaped by one function, every node one fragment."""
+"""HTML for the case file's own nodes: an entry with its verdict, citation, notes and diagram."""
 
-from dataclasses import dataclass, field
-from html import escape
-from string.templatelib import Interpolation, Template, convert
 from typing import TYPE_CHECKING
+
+from red_thread_core.writers.markup import write_line, write_ref
 
 from red_thread_casefile.domain import date_of
 
 if TYPE_CHECKING:
-    from red_thread_casefile.documents import (
-        Block,
-        Citation,
-        Code,
-        EntryList,
-        EntryNode,
-        Fact,
-        Flowchart,
-        Inline,
-        Line,
-        Link,
-        Paragraph,
-        PointList,
-        Section,
-        Text,
-    )
+    from string.templatelib import Template
+
+    from red_thread_casefile.documents import Citation, EntryNode
     from red_thread_casefile.policy import Finding
 
 STATE_TITLE = 'The citation at the last check'
-
-
-def render_value(value: object) -> str:
-    if isinstance(value, Template):
-        return render(value)
-    if isinstance(value, tuple):
-        return ''.join(map(render_value, value))
-    return escape(str(value))
-
-
-def render_part(part: str | Interpolation[object]) -> str:
-    if isinstance(part, Interpolation):
-        return render_value(convert(part.value, part.conversion))
-    return part
-
-
-def render(template: Template) -> str:
-    return ''.join(map(render_part, template))
 
 
 def label_state(finding: Finding) -> str:
@@ -73,10 +41,6 @@ def write_cite(citation: Citation | None) -> Template:
     return t'<p class="cite"><code>{target}</code>{tools}</p>{shown}'
 
 
-def write_ref(ref: str) -> Template:
-    return t'<button type="button" class="ref" data-copy="{ref}" title="Copy">{ref}</button>'
-
-
 def write_notes(entry: EntryNode) -> Template:
     round_stamp = t'<li class="stamp">round {entry.round}</li>'
     day = t'<li class="stamp"><time datetime="{entry.at}">{date_of(entry.at)}</time></li>'
@@ -91,78 +55,22 @@ def write_diagram(diagram: str | None) -> Template:
     return t'<pre class="mermaid">{diagram}</pre>'
 
 
-def write_fold(section: Section, body: Template) -> Template:
-    entries = section.entries
-    count = t'<span class="count">{len(entries)}</span>' if entries else t''
-    note = t'<span class="about">{section.note}</span>' if section.note else t''
-    kind = t' data-kind="{section.kind}"' if section.kind else t''
-    state = t'' if section.folded else t' open'
-    heading = t'<summary><h2>{section.title}</h2>{count}{note}</summary>'
-    return t'<details class="section"{kind}{state}>\n{heading}\n{body}\n</details>\n'
+def write_claim(entry: EntryNode) -> Template:
+    line = write_line(entry.claim)
+    if not entry.verdict:
+        return t'<p class="claim">{line}</p>'
+    badge = t'<span class="verdict" data-verdict="{entry.verdict}">{entry.verdict}</span>'
+    return t'<p class="claim">{badge} {line}</p>'
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class HtmlInlines:
-    def write_text(self, node: Text) -> Template:
-        return t'{node.value}'
-
-    def write_code(self, node: Code) -> Template:
-        return t'<code>{node.value}</code>'
-
-    def write_link(self, node: Link) -> Template:
-        return t'<a href="{node.url}" rel="noreferrer">{node.url}</a>'
-
-    def write_inline(self, node: Inline) -> Template:
-        return node.write(self)
-
-    def write_line(self, line: Line) -> Template:
-        return t'{tuple(map(self.write_inline, line))}'
+def write_entry(entry: EntryNode) -> Template:
+    details = t'{write_cite(entry.citation)}{write_notes(entry)}{write_diagram(entry.diagram)}'
+    body = t'<div>{write_claim(entry)}{details}</div>'
+    marks = t'data-kind="{entry.kind}" data-thread="{entry.thread or ""}"'
+    return t'<li class="entry" id="{entry.ref}" {marks}>{write_ref(entry.ref)}{body}</li>'
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class HtmlWriter:
-    inlines: HtmlInlines = field(default_factory=HtmlInlines)
-
-    def write_claim(self, entry: EntryNode) -> Template:
-        line = self.inlines.write_line(entry.claim)
-        if not entry.verdict:
-            return t'<p class="claim">{line}</p>'
-        badge = t'<span class="verdict" data-verdict="{entry.verdict}">{entry.verdict}</span>'
-        return t'<p class="claim">{badge} {line}</p>'
-
-    def write_entry(self, entry: EntryNode) -> Template:
-        details = t'{write_cite(entry.citation)}{write_notes(entry)}{write_diagram(entry.diagram)}'
-        body = t'<div>{self.write_claim(entry)}{details}</div>'
-        marks = t'data-kind="{entry.kind}" data-thread="{entry.thread or ""}"'
-        return t'<li class="entry" {marks}>{write_ref(entry.ref)}{body}</li>'
-
-    def write_point(self, point: Line) -> Template:
-        claim = t'<p class="claim">{self.inlines.write_line(point)}</p>'
-        return t'<li class="entry"><div>{claim}</div></li>'
-
-    def write_paragraph(self, node: Paragraph) -> Template:
-        return t'<p>{self.inlines.write_line(node.line)}</p>'
-
-    def write_entries(self, node: EntryList) -> Template:
-        if not node.entries:
-            return t''
-        return t'<ol class="thread">{tuple(map(self.write_entry, node.entries))}</ol>'
-
-    def write_points(self, node: PointList) -> Template:
-        if not node.points:
-            return t''
-        return t'<ol class="plain">{tuple(map(self.write_point, node.points))}</ol>'
-
-    def write_flowchart(self, node: Flowchart) -> Template:
-        return t'<pre class="mermaid">{"\n".join(node.lines)}</pre>'
-
-    def write_block(self, block: Block) -> Template:
-        return block.write(self)
-
-    def write_section(self, section: Section) -> Template:
-        return write_fold(section, t'{tuple(map(self.write_block, section.blocks))}')
-
-    def write_fact(self, fact: Fact) -> Template:
-        style = 'fact wide' if fact.wide else 'fact'
-        value = self.inlines.write_line(fact.value)
-        return t'<div class="{style}"><dt>{fact.label}</dt><dd>{value}</dd></div>'
+def write_entries(entries: tuple[EntryNode, ...]) -> Template:
+    if not entries:
+        return t''
+    return t'<ol class="thread">{tuple(map(write_entry, entries))}</ol>'

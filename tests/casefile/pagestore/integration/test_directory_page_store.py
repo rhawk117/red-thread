@@ -2,7 +2,7 @@
 
 from typing import TYPE_CHECKING
 
-from red_thread_casefile.store import DirectoryPageStore
+from red_thread_core.store import DirectoryPageStore
 
 from tests.casefile.pagestore.page_store_suite import PageStoreContract
 

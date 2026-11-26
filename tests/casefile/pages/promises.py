@@ -1,6 +1,6 @@
 """What every rendered page promises: its own scripts and styles, and only the writer's elements."""
 
-from red_thread_casefile.assets import read_asset
+from red_thread_core.assets import read_asset
 
 from tests.casefile.pages.flags import list_lead_flags, list_state_labels
 from tests.casefile.pages.html_reading import (

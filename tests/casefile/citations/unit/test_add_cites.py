@@ -5,7 +5,7 @@ from dataclasses import replace
 from typing import TYPE_CHECKING
 
 import pytest
-from red_thread_casefile.errors import BatchRejectedError, MisquotedCiteError
+from red_thread_casefile.errors import BatchRejectedError, MisquotedCiteError, UnresolvedCiteError
 
 from tests.casefile.citations.cases import (
     SLEEP_CITE,
@@ -42,6 +42,7 @@ class TestCiteResolvedWhenAdded:
             rejection = reject_batch(harness, draft)
             [problem] = rejection.problems
             assert type(problem) is case.error_type
+            assert isinstance(problem, UnresolvedCiteError | MisquotedCiteError)
             assert problem.cite == case.cite
             assert problem.position == 1
             if isinstance(problem, MisquotedCiteError):

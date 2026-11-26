@@ -1,4 +1,4 @@
-"""add --file and export --plan on a file that cannot be read."""
+"""add --file and export --selection on a file that cannot be read."""
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -26,8 +26,10 @@ def unreadable_file_cases() -> pytest.MarkDecorator:
     scenarios = [
         UnreadableFile(name='add-missing-file', command='add', path_kind='missing'),
         UnreadableFile(name='add-directory-as-file', command='add', path_kind='directory'),
-        UnreadableFile(name='export-missing-plan', command='export', path_kind='missing'),
-        UnreadableFile(name='export-directory-as-plan', command='export', path_kind='directory'),
+        UnreadableFile(name='export-missing-selection', command='export', path_kind='missing'),
+        UnreadableFile(
+            name='export-directory-as-selection', command='export', path_kind='directory'
+        ),
     ]
     return pytest.mark.parametrize('scenario', as_params(scenarios))
 
@@ -45,7 +47,7 @@ class TestUnreadableInput:
         if scenario.command == 'add':
             return cli.run('add', '--case', str(case), '--round', '1', '--file', str(path))
 
-        return cli.run('export', '--case', str(case), '--lens', 'brief', '--plan', str(path))
+        return cli.run('export', '--case', str(case), '--lens', 'brief', '--selection', str(path))
 
     @unreadable_file_cases()
     def test_the_failure_is_reported_on_standard_error_with_exit_one(

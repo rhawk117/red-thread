@@ -12,8 +12,8 @@ when_to_use: >-
   Use when the user wants to understand before changing: "why does X happen", "find the root
   cause", "is it true that", "how does X work", "research X before we plan", "survey the tech debt
   in", "look into", or when a plan would rest on facts nobody has checked. Also use to resume a
-  case that already exists under .red-thread/. Not for making the change itself, and not for
-  writing up a finished case (that is distill).
+  case that already exists under .red-thread/. Not for making the change itself, not for a failure
+  the user wants fixed now (that is debug), and not for writing up a finished case (that is distill).
 ---
 
 # Investigate
@@ -39,11 +39,13 @@ If that line is empty, take the target from the conversation.
 | `code-sense` | QUESTION, SCOPE (a directory, file or package), NAVIGATE; optional known facts and paths to skip | `path:line` citations from this repository, its git history and its GitHub issues |
 | `code-lens` | QUESTION, SCOPE, NAVIGATE; optional known facts and paths to skip | `path:line` citations for the structure of code in Python, JavaScript, TypeScript, Go, Rust and Terraform (where a symbol is defined, what refers to it, what a file holds) |
 | `web-head` | QUESTION, SUBJECT (package name), LEAD (a URL or a search phrase), TODAY; optional VERSION | cited URLs from official docs, changelogs and upstream source |
-| `research-cell` | HYPOTHESIS, REFUTE (the observation that would prove it wrong), SCOPE, NAVIGATE; optional EXPERIMENT | one experiment run in its own worktree: the command, the deciding output, and whether the hypothesis survived |
+| `lab-rat` | HYPOTHESIS, REFUTE (the observation that would prove it wrong), SCOPE, NAVIGATE; optional EXPERIMENT | one experiment run in its own worktree: the command, the deciding output, and whether the hypothesis survived |
 | `research-lead` | QUESTION, DECISION, CASE, THREAD, ROUND, SCRIPT, NAVIGATE, TODAY; optional KNOWN, SCOPE, SKIP | a short report that points at the entries it stored in its thread |
 | `peer-review` | CASE, SCRIPT, CONCLUSION, TODAY, NAVIGATE; optional REFS | a verdict per claim, and whether the conclusion follows |
 
-The Agent tool lists them with the plugin prefix, as in `red-thread:code-sense`. Each one starts with no memory of this conversation, so a brief stands alone: use the field names above exactly, put one question in each brief, and say what to skip. TODAY is today's date; if you do not know it, run `date -u +%F`.
+The Agent tool lists them with the plugin prefix. The four scouts also carry their folder, as in `red-thread:swarm:code-sense`; `research-lead` and `peer-review` do not, as in `red-thread:research-lead`. Each one starts with no memory of this conversation, so a brief stands alone: use the field names above exactly, put one question in each brief, and say what to skip. TODAY is today's date; if you do not know it, run `date -u +%F`.
+
+Before the first dispatch of a case, load the `red-thread:meet-the-team` skill with the Skill tool. It has an example brief for each agent, each agent's budget and limits, and what to do with each verdict.
 
 Send a question about the structure of code in Python, JavaScript, TypeScript, Go, Rust or Terraform to `code-lens`, and give it NAVIGATE. Send every other code question, and every question about what the code does at run time, to `code-sense`.
 
@@ -87,6 +89,8 @@ EOF
 ```
 
 Fields: `kind` (`known`, `open`, `decision`, `hypothesis`, `ruled_out`, `resource`, `next`), `text` (one claim or question, as a sentence), `source` (the agent that found it, `primary` or `user`), `verdict`, `cite` (`path:line` from the repository root, a URL, or a command), `rests_on`, `refute`, `supersedes` (a list of earlier refs this entry retires), and `diagram` (mermaid source, for a flow or a structure that reads better drawn; only the HTML page shows it). Leave `quote` out for a `path:line` cite: the script records the line itself.
+
+Before the first `add` of a case, load the `red-thread:artifact-authoring` skill with the Skill tool. It covers how to word an entry, the summary at a gate and a handoff for a reader who was not in this conversation.
 
 The script validates a batch whole. When it rejects one it stores nothing and prints each problem with its fix, so apply the fixes and send the whole batch again. What it enforces:
 

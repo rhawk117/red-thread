@@ -1,13 +1,7 @@
 """Small documents for the writer tests."""
 
-from red_thread_casefile.documents import (
-    Document,
-    EntryList,
-    EntryNode,
-    Paragraph,
-    Section,
-    parse_line,
-)
+from red_thread_casefile.documents import EntryList, EntryNode
+from red_thread_core.documents import Document, Paragraph, Section, parse_line
 
 from tests.casefile.documents.builders import MOMENT
 

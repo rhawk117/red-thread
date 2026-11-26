@@ -3,6 +3,8 @@
 from dataclasses import asdict, dataclass, field, replace
 from typing import TYPE_CHECKING
 
+from red_thread_core.redaction import create_secret_patterns
+
 from red_thread_casefile.domain import STATE_DIRECTORY, THREAD_NAME, Capabilities, Case, Cite, Entry
 from red_thread_casefile.errors import (
     BatchRejectedError,
@@ -12,16 +14,17 @@ from red_thread_casefile.errors import (
     UnresolvedCiteError,
 )
 from red_thread_casefile.policy import CiteCheck, DraftPolicy, Finding, SupersedePolicy
-from red_thread_casefile.redaction import create_secret_patterns
 from red_thread_casefile.schemas import TEXT_FIELDS
 from red_thread_casefile.util import rank_languages
 from red_thread_casefile.views import Board, BoardOptions
 
 if TYPE_CHECKING:
+    from red_thread_core.redaction import SecretPatterns
+    from red_thread_core.store import Clock, SourceTree
+
     from red_thread_casefile.domain import CaseKind, Draft, Ledger
     from red_thread_casefile.errors import CaseFileError
-    from red_thread_casefile.redaction import SecretPatterns
-    from red_thread_casefile.store import CaseRepository, Clock, SourceTree
+    from red_thread_casefile.store import CaseRepository
 
 type CiteProblem = UnresolvedCiteError | MisquotedCiteError
 

@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from red_thread_casefile.store import GitSourceTree
+from red_thread_core.store import GitSourceTree
 
 from tests.git import GIT_SETTINGS
 

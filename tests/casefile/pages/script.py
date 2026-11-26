@@ -37,6 +37,10 @@ def switch_scheme(*, dark: bool) -> Step:
     return {'do': 'scheme', 'dark': dark}
 
 
+def navigate(anchor: str) -> Step:
+    return {'do': 'navigate', 'id': anchor}
+
+
 def run_timers() -> Step:
     return {'do': 'timers'}
 

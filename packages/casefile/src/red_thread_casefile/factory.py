@@ -3,18 +3,17 @@
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from red_thread_core.mentions import DirectoryMentionShelf
+from red_thread_core.places import PLAN_HOME
+from red_thread_core.store import DirectoryPageStore, GitSourceTree, SystemClock
+
 from red_thread_casefile.services import CaseFile, Press
-from red_thread_casefile.store import (
-    DirectoryCaseRepository,
-    DirectoryPageStore,
-    GitSourceTree,
-    SystemClock,
-)
+from red_thread_casefile.store import DirectoryCaseRepository
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from red_thread_casefile.store import Clock
+    from red_thread_core.store import Clock
 
 ROOT_DEPTH = 1
 
@@ -33,4 +32,8 @@ class CaseFiles:
 
     def open_press(self, directory: Path) -> Press:
         resolved = directory.resolve()
-        return Press(record=self.bind(resolved), pages=DirectoryPageStore(directory=resolved))
+        return Press(
+            record=self.bind(resolved),
+            pages=DirectoryPageStore(directory=resolved),
+            mentions=DirectoryMentionShelf(directory=resolved.parent.joinpath(PLAN_HOME)),
+        )

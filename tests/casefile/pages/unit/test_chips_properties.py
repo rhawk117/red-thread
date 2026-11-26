@@ -6,17 +6,16 @@ from typing import TYPE_CHECKING
 from hypothesis import given
 from hypothesis import strategies as st
 from red_thread_casefile.charts import MAIN_LEDGER
-from red_thread_casefile.documents import (
-    Document,
-    EntryNode,
-    PointList,
-    Section,
-    list_entries_block,
-    parse_line,
-)
+from red_thread_casefile.documents import EntryNode, list_document_entries, list_entries_block
 from red_thread_casefile.domain import ENTRY_KINDS
 from red_thread_casefile.views import HEADINGS
-from red_thread_casefile.writers.page import HtmlPage, order_name
+from red_thread_casefile.writers.page import (
+    list_kind_chips,
+    list_thread_chips,
+    order_name,
+    render_case_page,
+)
+from red_thread_core.documents import Document, PointList, Section, parse_line
 
 from tests.casefile.documents.builders import MOMENT
 from tests.casefile.entries.strategies import optional, thread_names
@@ -30,8 +29,8 @@ from tests.casefile.pages.html_reading import (
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from red_thread_casefile.documents import Block, Line
-    from red_thread_casefile.writers.page import Chip
+    from red_thread_core.documents import Block, Line
+    from red_thread_core.writers.page import Chip
 
 TWO_CHIPS = 2
 
@@ -65,7 +64,7 @@ def create_sectioned_document(groups: Sequence[Sequence[Member]]) -> Document:
 
 
 def expect_kind_chips(document: Document) -> list[ChipReading]:
-    counted = Counter(entry.kind for entry in document.entries)
+    counted = Counter(entry.kind for entry in list_document_entries(document))
     return [
         ChipReading(
             group='kind',
@@ -79,7 +78,7 @@ def expect_kind_chips(document: Document) -> list[ChipReading]:
 
 
 def expect_thread_chips(document: Document) -> list[ChipReading]:
-    counted = Counter(entry.thread or '' for entry in document.entries)
+    counted = Counter(entry.thread or '' for entry in list_document_entries(document))
     main = [''] * ('' in counted)
     named = sorted((name for name in counted if name), key=order_name)
     return [
@@ -107,7 +106,7 @@ class TestChipProperties:
     def test_kind_chips_count_the_entries_of_each_kind_in_the_order_of_the_sections(
         self, document: Document
     ) -> None:
-        chips = HtmlPage(document=document).list_kind_chips()
+        chips = list_kind_chips(list_document_entries(document))
 
         assert list(map(read_chip, chips)) == expect_kind_chips(document)
 
@@ -115,23 +114,22 @@ class TestChipProperties:
     def test_thread_chips_put_the_main_ledger_first_then_names_by_length_and_text(
         self, document: Document
     ) -> None:
-        chips = HtmlPage(document=document).list_thread_chips()
+        chips = list_thread_chips(list_document_entries(document))
 
         assert list(map(read_chip, chips)) == expect_thread_chips(document)
 
     @given(document=documents)
     def test_a_point_is_counted_by_no_chip(self, document: Document) -> None:
-        page = HtmlPage(document=document)
-        entries = document.entries
+        entries = list_document_entries(document)
 
-        assert sum(chip.count for chip in page.list_kind_chips()) == len(entries)
-        assert sum(chip.count for chip in page.list_thread_chips()) == len(entries)
+        assert sum(chip.count for chip in list_kind_chips(entries)) == len(entries)
+        assert sum(chip.count for chip in list_thread_chips(entries)) == len(entries)
 
     @given(document=documents)
     def test_the_page_shows_a_chip_group_only_for_a_filter_with_two_or_more_chips(
         self, document: Document
     ) -> None:
-        page = HtmlPage(document=document).render()
+        page = render_case_page(document)
 
         shown = list_chip_groups(page)
         offered = [expect_kind_chips(document), expect_thread_chips(document)]
@@ -142,9 +140,8 @@ class TestChipProperties:
     def test_the_toolbar_exists_exactly_when_there_is_a_section_and_holds_one_fold_button(
         self, document: Document
     ) -> None:
-        page = HtmlPage(document=document).render()
+        page = render_case_page(document)
 
-        navs = find_tags(page, 'nav')
+        toolbars = [nav for nav in find_tags(page, 'nav') if nav['class'] == 'toolbar']
         folds = [tool for tool in find_buttons(page, 'tool') if 'data-fold' in tool]
-        assert len(navs) == len(folds) == bool(document.sections)
-        assert all(nav['class'] == 'toolbar' for nav in navs)
+        assert len(toolbars) == len(folds) == bool(document.sections)

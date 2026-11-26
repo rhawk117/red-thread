@@ -4,25 +4,18 @@ from dataclasses import replace
 from typing import TYPE_CHECKING, Literal, cast, get_args
 
 import pytest
-from red_thread_casefile.documents import (
-    Citation,
-    EntryList,
-    Fact,
-    Flowchart,
-    Note,
-    Section,
-    parse_line,
-    parse_value,
-)
+from red_thread_casefile.documents import Citation, EntryList, Note
 from red_thread_casefile.policy import Finding
+from red_thread_core.documents import Fact, Flowchart, Section, parse_line, parse_value
 
 from tests.casefile.writers.builders import create_document, create_entry_node
 
 if TYPE_CHECKING:
     from _pytest.mark import ParameterSet
-    from red_thread_casefile.documents import Document, EntryNode
+    from red_thread_casefile.documents import EntryNode
     from red_thread_casefile.domain import EntryKind, Verdict
     from red_thread_casefile.policy import CiteState
+    from red_thread_core.documents import Document
 
 type DocumentField = Literal[
     'title',

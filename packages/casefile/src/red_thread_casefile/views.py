@@ -5,11 +5,14 @@ from dataclasses import dataclass, field
 from itertools import chain
 from typing import TYPE_CHECKING, Self
 
+from red_thread_core.util import squeeze
+
 from red_thread_casefile.domain import shorten_head
 from red_thread_casefile.policy import CITE_STATES, FAILING_STATES, QUIET_STATES, tally_states
-from red_thread_casefile.util import squeeze
 
 if TYPE_CHECKING:
+    from red_thread_core.mentions import PlanMention
+
     from red_thread_casefile.domain import Case, Entry, EntryKind, Ledger, Verdict
     from red_thread_casefile.policy import Finding
 
@@ -133,6 +136,7 @@ class Board:
     case: Case
     ledger: Ledger
     head: str | None = None
+    plans: tuple[PlanMention, ...] = ()
     options: BoardOptions = field(default_factory=BoardOptions)
     findings: tuple[Finding, ...] = ()
 

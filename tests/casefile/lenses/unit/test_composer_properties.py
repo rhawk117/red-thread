@@ -1,4 +1,4 @@
-"""Plan and Composer: what a plan admits and how it orders the entries it selects."""
+"""Selection and Composer: what a selection admits and how it orders the entries it selects."""
 
 from typing import TYPE_CHECKING
 
@@ -6,7 +6,7 @@ import msgspec
 from hypothesis import given
 from hypothesis import strategies as st
 from red_thread_casefile.domain import ENTRY_KINDS, Ledger
-from red_thread_casefile.lenses import Composer, Edition, Plan, count_lines, get_lens
+from red_thread_casefile.lenses import Composer, Edition, Selection, count_lines, get_lens
 
 from tests.casefile.entries.strategies import POOLED_REFS, optional, pooled_entries, words
 from tests.casefile.ledger.builders import create_entry
@@ -33,10 +33,10 @@ class TestCountLines:
         assert count_lines(text) == len([line for line in lines if line.strip()])
 
 
-class TestPlanAdmits:
+class TestSelectionAdmits:
     pooled_refs = pick_refs(POOLED_REFS)
-    plans = st.builds(Plan, include=optional(pooled_refs), blocking=optional(pooled_refs))
-    open_plans = st.builds(Plan, include=st.none(), blocking=optional(pooled_refs))
+    selections = st.builds(Selection, include=optional(pooled_refs), blocking=optional(pooled_refs))
+    open_selections = st.builds(Selection, include=st.none(), blocking=optional(pooled_refs))
     decisions = st.builds(msgspec.structs.replace, pooled_entries, kind=st.just('decision'))
     others = st.builds(
         msgspec.structs.replace,
@@ -44,33 +44,33 @@ class TestPlanAdmits:
         kind=st.sampled_from([kind for kind in ENTRY_KINDS if kind != 'decision']),
     )
 
-    @given(plan=plans, entry=decisions)
-    def test_a_decision_is_always_admitted(self, plan: Plan, entry: Entry) -> None:
-        assert plan.admits(entry)
+    @given(selection=selections, entry=decisions)
+    def test_a_decision_is_always_admitted(self, selection: Selection, entry: Entry) -> None:
+        assert selection.admits(entry)
 
-    @given(plan=open_plans, entry=pooled_entries)
-    def test_a_plan_without_an_include_list_admits_everything(
-        self, plan: Plan, entry: Entry
+    @given(selection=open_selections, entry=pooled_entries)
+    def test_a_selection_without_an_include_list_admits_everything(
+        self, selection: Selection, entry: Entry
     ) -> None:
-        assert plan.admits(entry)
+        assert selection.admits(entry)
 
-    @given(plan=plans, entry=others)
+    @given(selection=selections, entry=others)
     def test_otherwise_only_an_included_or_blocking_entry_is_admitted(
-        self, plan: Plan, entry: Entry
+        self, selection: Selection, entry: Entry
     ) -> None:
-        named = entry.ref in (plan.include or ()) or entry.ref in (plan.blocking or ())
+        named = entry.ref in (selection.include or ()) or entry.ref in (selection.blocking or ())
 
-        assert plan.admits(entry) == (plan.include is None or named)
+        assert selection.admits(entry) == (selection.include is None or named)
 
 
 class TestComposerSelect:
     counts = st.integers(min_value=1, max_value=8)
 
-    def create_composer(self, count: int, plan: Plan) -> tuple[Composer, list[str]]:
+    def create_composer(self, count: int, selection: Selection) -> tuple[Composer, list[str]]:
         entries = tuple(create_entry(seq=seq) for seq in range(1, count + 1))
         edition = Edition(case=CASE, ledger=Ledger(entries=entries))
         refs = [entry.ref for entry in entries]
-        return Composer(lens=get_lens('brief'), plan=plan, edition=edition), refs
+        return Composer(lens=get_lens('brief'), selection=selection, edition=edition), refs
 
     @given(count=counts, data=st.data())
     def test_blocking_entries_come_first_and_the_rest_keep_the_include_order(
@@ -79,7 +79,7 @@ class TestComposerSelect:
         refs = [f'e{seq}' for seq in range(1, count + 1)]
         include = data.draw(pick_refs(tuple(refs)))
         blocking = data.draw(pick_refs(tuple(refs)))
-        composer, _ = self.create_composer(count, Plan(include=include, blocking=blocking))
+        composer, _ = self.create_composer(count, Selection(include=include, blocking=blocking))
 
         selected = [entry.ref for entry in composer.select('open')]
 
@@ -94,7 +94,7 @@ class TestComposerSelect:
     ) -> None:
         refs = [f'e{seq}' for seq in range(1, count + 1)]
         blocking = data.draw(pick_refs(tuple(refs)))
-        composer, _ = self.create_composer(count, Plan(blocking=blocking))
+        composer, _ = self.create_composer(count, Selection(blocking=blocking))
 
         selected = [entry.ref for entry in composer.select('open')]
 

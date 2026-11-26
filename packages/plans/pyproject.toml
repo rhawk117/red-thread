@@ -1,0 +1,26 @@
+[project]
+name = "red-thread-plans"
+version = "0.1.0"
+description = "The plans behind red-thread: a cut of tickets drawn from investigations, checked whole and stored by revision"
+readme = "README.md"
+authors = [
+    { name = "rhawk117", email = "noplaceLike127dot0dot0dot1@proton.me" },
+]
+requires-python = ">=3.14"
+dependencies = [
+    "cyclopts==5.5.3",
+    "msgspec>=0.22.0",
+    "red-thread-casefile",
+    "red-thread-core",
+]
+
+[project.scripts]
+redthread-plan = "red_thread_plans:main"
+
+[tool.uv.sources]
+red-thread-casefile = { workspace = true }
+red-thread-core = { workspace = true }
+
+[build-system]
+requires = ["uv_build>=0.13.1,<0.14.0"]
+build-backend = "uv_build"

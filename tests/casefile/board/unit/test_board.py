@@ -13,7 +13,7 @@ from tests.casefile.ledger.builders import create_case, create_draft, create_ent
 from tests.casefile.ledger.memory import HEAD, NEXT_HEAD
 
 if TYPE_CHECKING:
-    from red_thread_casefile.domain import Entry
+    from red_thread_casefile.domain import Entry, EntryKind
 
     from tests.casefile.board.cases import CapCase, LeadCase
     from tests.casefile.ledger.builders import CaseHarness
@@ -66,7 +66,15 @@ def lead_marker_cases() -> pytest.MarkDecorator:
 
 class TestSections:
     def test_sections_come_in_the_documented_order(self) -> None:
-        kinds = ('resource', 'next', 'ruled_out', 'open', 'hypothesis', 'known', 'decision')
+        kinds: tuple[EntryKind, ...] = (
+            'resource',
+            'next',
+            'ruled_out',
+            'open',
+            'hypothesis',
+            'known',
+            'decision',
+        )
         entries = tuple(create_entry(seq=seq, kind=kind) for seq, kind in enumerate(kinds, 1))
 
         text = create_board(entries).render()

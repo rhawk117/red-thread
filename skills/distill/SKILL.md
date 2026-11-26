@@ -19,6 +19,8 @@ when_to_use: >-
 
 You turn a case file into one output for one reader. You choose which entries go in and in what order. The script writes every line from the ledger. The only prose you write is a title and a goal, because a summary written from memory drifts from the record and the reader cannot tell where.
 
+Before you write a title, a goal or an entry, load the `red-thread:artifact-authoring` skill with the Skill tool. It covers how to word each one for a reader who was not in this conversation.
+
 The owner's request: $ARGUMENTS
 
 In this file, SCRIPT means:
@@ -34,7 +36,7 @@ ${CLAUDE_PLUGIN_ROOT}/bin/redthread-casefile
 3. Check before anything else: `SCRIPT check --case CASE`. If a citation is changed or missing, ask the owner whether to verify it again with investigate, export with the flag showing, or stop. The export flags such an entry and never hides it.
 4. Read the record: `SCRIPT render --case CASE --full`.
 5. Read the lens file from the table. It says who reads the output and how to choose.
-6. Send a plan and export:
+6. Send a selection and export:
 
    ```sh
    SCRIPT export --case CASE --lens brief <<'EOF'
@@ -56,7 +58,7 @@ ${CLAUDE_PLUGIN_ROOT}/bin/redthread-casefile
 
    Add `--html` to also write the output as a page.
 7. If the script says the output is over its budget, cut `include` and export again. The budget is the point: an output that grows to hold everything is a second ledger, and the reader already has the first.
-8. Read the written file once and go through the lens file's checklist. To change the output, change the plan and export again. Do not edit the file: an edited output no longer matches the ledger. If the ledger itself is missing something, add the entry with `SCRIPT add`, then export again.
+8. Read the written file once and go through the lens file's checklist. To change the output, change the selection and export again. Do not edit the file: an edited output no longer matches the ledger. If the ledger itself is missing something, add the entry with `SCRIPT add`, then export again.
 9. Deliver as the lens file says, and tell the owner the path and the line count.
 
 ## Lenses

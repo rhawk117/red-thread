@@ -2,7 +2,7 @@
 
 from hypothesis import given
 from hypothesis import strategies as st
-from red_thread_casefile.documents import Code, Link, Text, parse_line, parse_value
+from red_thread_core.documents import Code, Link, Text, parse_line, parse_value
 
 from tests.casefile.documents.reading import join_line, write_back
 

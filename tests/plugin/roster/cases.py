@@ -13,10 +13,10 @@ if TYPE_CHECKING:
 LEAD = 'red-thread:research-lead'
 SKEPTIC = 'red-thread:peer-review'
 SCOUTS = (
-    'red-thread:code-sense',
-    'red-thread:code-lens',
-    'red-thread:web-head',
-    'red-thread:research-cell',
+    'red-thread:swarm:code-sense',
+    'red-thread:swarm:code-lens',
+    'red-thread:swarm:web-head',
+    'red-thread:swarm:lab-rat',
 )
 SILENT = (*SCOUTS, SKEPTIC)
 

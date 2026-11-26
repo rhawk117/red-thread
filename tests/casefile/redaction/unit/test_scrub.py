@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
-from red_thread_casefile.redaction import create_secret_patterns
+from red_thread_core.redaction import create_secret_patterns
 
 from tests.casefile.ledger.builders import create_draft, create_valid_draft
 from tests.casefile.redaction.cases import LEAKED, ordinary_text_params, secret_params

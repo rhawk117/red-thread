@@ -4,29 +4,31 @@ from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING
 
 import msgspec
+from red_thread_core.mentions import MemoryMentionShelf
+from red_thread_core.places import BOARD_PAGE
+from red_thread_core.writers.markdown import MarkdownWriter
 
 from red_thread_casefile.boards import BoardPage
-from red_thread_casefile.lenses import Composer, Edition, Plan, count_lines, get_lens
+from red_thread_casefile.lenses import Composer, Edition, Selection, count_lines, get_lens
 from red_thread_casefile.policy import get_page_problem
 from red_thread_casefile.views import Board
-from red_thread_casefile.writers.markdown import MarkdownWriter
-from red_thread_casefile.writers.page import HtmlPage
+from red_thread_casefile.writers.page import render_case_page
 
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from red_thread_core.mentions import MentionShelf
+    from red_thread_core.store import PageStore
+
     from red_thread_casefile.domain import Case
     from red_thread_casefile.lenses import LensName
     from red_thread_casefile.services.casefile import CaseFile
-    from red_thread_casefile.store import PageStore
-
-BOARD_PAGE = 'board.html'
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class ExportRequest:
     lens: LensName
-    plan: Plan = field(default_factory=Plan)
+    selection: Selection = field(default_factory=Selection)
     html: bool = False
 
 
@@ -41,6 +43,7 @@ class Exported:
 class Press:
     record: CaseFile
     pages: PageStore
+    mentions: MentionShelf = field(default_factory=MemoryMentionShelf)
 
     def gather(self) -> Edition:
         return Edition(
@@ -62,16 +65,17 @@ class Press:
             ledger=edition.ledger,
             head=edition.head,
             findings=edition.findings,
+            plans=self.mentions.list_mentions(edition.case.id),
         )
         document = BoardPage(board=board).compose()
-        return self.pages.write(BOARD_PAGE, HtmlPage(document=document).render())
+        return self.pages.write(BOARD_PAGE, render_case_page(document))
 
     def export(self, request: ExportRequest) -> Exported:
         lens = get_lens(request.lens)
-        title = self.scrub(request.plan.title)
-        plan = replace(request.plan, title=title, goal=self.scrub(request.plan.goal))
-        composer = Composer(lens=lens, plan=plan, edition=self.gather())
-        if problem := composer.get_plan_problem():
+        title = self.scrub(request.selection.title)
+        selection = replace(request.selection, title=title, goal=self.scrub(request.selection.goal))
+        composer = Composer(lens=lens, selection=selection, edition=self.gather())
+        if problem := composer.get_selection_problem():
             raise problem
 
         document = composer.compose()
@@ -81,7 +85,7 @@ class Press:
 
         paths = [self.pages.write(f'out/{lens.name}.md', text)]
         if request.html:
-            page = HtmlPage(document=document).render()
+            page = render_case_page(document)
             paths.append(self.pages.write(f'out/{lens.name}.html', page))
 
         return Exported(paths=tuple(paths), lines=count_lines(text), budget=lens.budget)

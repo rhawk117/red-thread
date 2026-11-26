@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from tests.casefile.launcher.children import Finished
     from tests.casefile.ledger.git_repository import GitRepository
 
+PACKAGES = ('core', 'casefile', 'plans')
 PLUGIN_ROOT = 'CLAUDE_PLUGIN_ROOT'
 OUTER_VARIABLES = frozenset({PLUGIN_ROOT, 'VIRTUAL_ENV'})
 TARGET = 'why the retry queue stalls'
@@ -54,15 +55,22 @@ class PluginCopy:
     def script(self) -> Path:
         return self.root.joinpath('bin', 'redthread-casefile')
 
+    @property
+    def plan_script(self) -> Path:
+        return self.root.joinpath('bin', 'redthread-plan')
+
 
 def copy_plugin(source: Path, target: Path) -> PluginCopy:
     skipped = shutil.ignore_patterns('__pycache__', '*.pyc', '*.egg-info', '.venv')
-    package = target.joinpath('packages', 'casefile')
-    shutil.copytree(source.joinpath('packages', 'casefile'), package, ignore=skipped)
+    for name in PACKAGES:
+        package = target.joinpath('packages', name)
+        shutil.copytree(source.joinpath('packages', name), package, ignore=skipped)
+    shutil.copy2(source.joinpath('pyproject.toml'), target)
     bin_dir = target.joinpath('bin')
     bin_dir.mkdir()
     shutil.copy2(source.joinpath('bin', 'redthread-lib'), bin_dir)
     shutil.copy2(source.joinpath('bin', 'redthread-casefile'), bin_dir)
+    shutil.copy2(source.joinpath('bin', 'redthread-plan'), bin_dir)
     return PluginCopy(root=target, files=tuple(list_tree(target)))
 
 
@@ -92,3 +100,13 @@ class Launcher:
 
     def on_case(self, command: str, case: Path, *extra: str) -> Finished:
         return self.run(command, '--case', str(case), *extra)
+
+    def run_plan(self, *arguments: str, stdin: str = '') -> Finished:
+        runner = ChildRunner(cwd=self.git.root, env=self.environment)
+        return runner.run('bash', str(self.plugin.plan_script), *arguments, stdin=stdin)
+
+    def init_plan(self) -> Path:
+        finished = self.run_plan('init', '--title', TARGET)
+        assert finished.code == 0, finished.err
+        created = finished.out.splitlines()[0].removeprefix('created ')
+        return self.git.root.joinpath(created).resolve()

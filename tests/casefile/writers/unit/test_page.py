@@ -3,7 +3,8 @@
 from dataclasses import replace
 from typing import TYPE_CHECKING
 
-from red_thread_casefile.documents import Document, EntryList, Section, parse_line
+from red_thread_casefile.documents import EntryList
+from red_thread_core.documents import Document, Section, parse_line
 
 from tests.casefile.pages.html_reading import list_chip_groups, list_section_titles
 from tests.casefile.writers.builders import create_entry_node

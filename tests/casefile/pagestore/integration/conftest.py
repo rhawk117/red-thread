@@ -3,7 +3,7 @@
 from typing import TYPE_CHECKING
 
 import pytest
-from red_thread_casefile.store import DirectoryPageStore
+from red_thread_core.store import DirectoryPageStore
 
 from tests.casefile.pagestore.directory import DirectoryPageReader
 from tests.casefile.pagestore.page_store_suite import PageHarness

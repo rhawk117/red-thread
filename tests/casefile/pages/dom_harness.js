@@ -17,6 +17,8 @@ const page = {
   observers: [],
   schemeListeners: [],
   timers: [],
+  windowListeners: {},
+  location: { hash: '' },
   clipboard: [],
   commands: [],
   themes: [],
@@ -303,6 +305,10 @@ const createSandbox = (document, withMermaid) => {
       }
     },
     setTimeout: (handler) => page.timers.push(handler),
+    location: page.location,
+    addEventListener: (type, handler) => {
+      page.windowListeners[type] = [...(page.windowListeners[type] || []), handler];
+    },
   };
   sandbox.window = sandbox;
   if (withMermaid) sandbox.mermaid = createMermaid(document);
@@ -333,6 +339,10 @@ const STEPS = {
   timers: () => {
     for (const handler of page.timers.splice(0)) handler();
   },
+  navigate: (document, step) => {
+    page.location.hash = '#' + step.id;
+    for (const handler of page.windowListeners.hashchange || []) handler({});
+  },
   deny_clipboard: () => {
     page.clipboardDenied = true;
   },
@@ -349,10 +359,12 @@ const describe = (document) => {
       value: chip.dataset.value,
       pressed: chip.getAttribute('aria-pressed') === 'true',
     })),
-    entries: document.querySelectorAll('.entry[data-kind]').map((entry) => ({
+    entries: document.querySelectorAll('.entry[data-kind], .entry[data-worktree]').map((entry) => ({
       ref: entry.querySelector('.ref').textContent,
       kind: entry.dataset.kind,
       thread: entry.dataset.thread,
+      worktree: entry.dataset.worktree,
+      status: entry.dataset.status,
       hidden: entry.hidden,
     })),
     sections: document.querySelectorAll('details.section').map((section) => ({

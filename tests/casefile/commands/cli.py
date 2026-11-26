@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 from red_thread_casefile.cli import main
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
     from pathlib import Path
 
     import pytest
@@ -34,8 +35,8 @@ class CliHarness:
         return self.git.root.parent.joinpath('batch.json')
 
     @property
-    def plan_file(self) -> Path:
-        return self.git.root.parent.joinpath('plan.json')
+    def selection_file(self) -> Path:
+        return self.git.root.parent.joinpath('selection.json')
 
     def run(self, *argv: str, stdin: str | None = None) -> CliRun:
         if stdin is not None:
@@ -64,7 +65,7 @@ class CliHarness:
     def add(
         self,
         case: Path,
-        *records: dict[str, object],
+        *records: Mapping[str, object],
         thread: str | None = None,
         round_number: int = 1,
     ) -> CliRun:
@@ -87,16 +88,16 @@ class CliHarness:
     def check(self, case: Path) -> CliRun:
         return self.run('check', '--case', str(case))
 
-    def export(self, case: Path, lens: str, *extra: str, plan: str | None = None) -> CliRun:
+    def export(self, case: Path, lens: str, *extra: str, selection: str | None = None) -> CliRun:
         arguments = ('export', '--case', str(case), '--lens', lens, *extra)
-        if plan is None:
+        if selection is None:
             return self.run(*arguments, stdin='')
 
-        self.plan_file.write_text(plan, encoding='utf-8')
-        return self.run(*arguments, '--plan', str(self.plan_file))
+        self.selection_file.write_text(selection, encoding='utf-8')
+        return self.run(*arguments, '--selection', str(self.selection_file))
 
-    def export_from_stdin(self, case: Path, lens: str, plan: str) -> CliRun:
-        return self.run('export', '--case', str(case), '--lens', lens, stdin=plan)
+    def export_from_stdin(self, case: Path, lens: str, selection: str) -> CliRun:
+        return self.run('export', '--case', str(case), '--lens', lens, stdin=selection)
 
     def page(self, case: Path, url: str) -> CliRun:
         return self.run('page', '--case', str(case), '--url', url)

@@ -12,8 +12,8 @@ from tests.casefile.ledger.builders import MOMENT, create_case, create_entry
 from tests.casefile.ledger.memory import HEAD
 
 if TYPE_CHECKING:
-    from red_thread_casefile.documents import Fact
     from red_thread_casefile.views import Board
+    from red_thread_core.documents import Fact
 
     from tests.casefile.board.cases import StateCount
 
