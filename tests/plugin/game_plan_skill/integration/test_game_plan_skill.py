@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 from red_thread_plans.domain import PlanDocument
+from red_thread_plans.packaged import load_outline
 from red_thread_plans.policy import Grounds, PlanPolicy
 from red_thread_plans.schemas import read_plan
 
@@ -57,7 +58,12 @@ class TestGamePlanSkill:
     ) -> None:
         documents = tuple(map(self.read_example, plan_examples))
         policies = (
-            PlanPolicy(document=document, grounds=Grounds(), missing=document.frontmatter.cases)
+            PlanPolicy(
+                document=document,
+                grounds=Grounds(),
+                missing=document.frontmatter.cases,
+                outline=load_outline(),
+            )
             for document in documents
         )
 

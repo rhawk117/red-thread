@@ -18,6 +18,7 @@ from red_thread_plans.errors import (
     UnknownRefError,
     UnsetLightsError,
 )
+from red_thread_plans.packaged import load_outline
 from red_thread_plans.policy import PlanPolicy, create_grounds
 from red_thread_plans.schemas import read_plan
 
@@ -99,7 +100,9 @@ class TestPlanPolicy:
     grounds = create_grounds({'C1': create_ledger()})
 
     def find_issue_types(self, text: str) -> tuple[type[object], ...]:
-        policy = PlanPolicy(document=read_document(text), grounds=self.grounds)
+        policy = PlanPolicy(
+            document=read_document(text), grounds=self.grounds, outline=load_outline()
+        )
         return tuple(map(type, policy.get_plan_issues()))
 
     @plan_policy_fault_cases()
@@ -110,7 +113,9 @@ class TestPlanPolicy:
 
     def test_an_unfit_ref_names_the_line_of_its_criterion(self) -> None:
         text = edit_plan(write_sound_plan(CASE_ID), ((REFS, '(C1.e3)'),))
-        policy = PlanPolicy(document=read_document(text), grounds=self.grounds)
+        policy = PlanPolicy(
+            document=read_document(text), grounds=self.grounds, outline=load_outline()
+        )
 
         issues = policy.get_plan_issues()
 
@@ -123,7 +128,12 @@ class TestPlanPolicy:
 
     def test_a_missing_case_is_named_and_its_refs_are_not_checked(self) -> None:
         document = read_document(write_sound_plan(CASE_ID))
-        policy = PlanPolicy(document=document, grounds=create_grounds({}), missing={'C1': CASE_ID})
+        policy = PlanPolicy(
+            document=document,
+            grounds=create_grounds({}),
+            missing={'C1': CASE_ID},
+            outline=load_outline(),
+        )
 
         issues = policy.get_plan_issues()
 

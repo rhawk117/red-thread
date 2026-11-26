@@ -5,7 +5,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 from hypothesis import example, given
-from red_thread_casefile.documents import Citation, Note, list_section_entries
+from red_thread_casefile.documents import Citation, list_section_entries
+from red_thread_casefile.packaged import load_wording
 from red_thread_casefile.policy import Finding
 from red_thread_core.documents import (
     Document,
@@ -59,7 +60,7 @@ class TestEntryLine:
             create_entry_node('claim'),
             citation=Citation(target='src/a.py:1', finding=finding),
             lead='1111111',
-            notes=(Note(kind='rests_on', value='a page'),),
+            notes=(load_wording().write_note('rests_on', 'a page'),),
         )
 
         (line,) = list_item_lines(create_document(entry))

@@ -12,31 +12,16 @@ from red_thread_core.documents import (
     parse_value,
 )
 
-from red_thread_casefile.assets import read_asset
 from red_thread_casefile.charts import create_case_map
-from red_thread_casefile.documents import (
-    EntryBuilder,
-    EntryList,
-    Note,
-    list_caveat_notes,
-    list_entries_block,
-)
+from red_thread_casefile.documents import EntryBuilder, EntryList, list_entries_block
 from red_thread_casefile.domain import NO_HEAD, date_of, shorten_head
+from red_thread_casefile.packaged import read_asset
 from red_thread_casefile.policy import CITE_STATES, tally_states
-from red_thread_casefile.terms import BOARD_TERMS
-from red_thread_casefile.views import HEADINGS
 
 if TYPE_CHECKING:
-    from red_thread_casefile.documents import EntryNode
+    from red_thread_casefile.documents import EntryNode, Note, Wording
     from red_thread_casefile.domain import Entry
     from red_thread_casefile.views import Board, Heading
-
-MAP_NOTE = (
-    'Each thread as a line of its entries, with an arrow from an entry to the one it retired.'
-)
-RETIRED_NOTE = (
-    'Entries a later entry replaced. The ledger keeps them and the sections leave them out.'
-)
 
 
 def create_fact(label: str, value: str, *, wide: bool = False) -> Fact:
@@ -46,6 +31,7 @@ def create_fact(label: str, value: str, *, wide: bool = False) -> Fact:
 @dataclass(slots=True, kw_only=True, frozen=True)
 class BoardPage:
     board: Board
+    wording: Wording
 
     def list_retirers(self, entry: Entry) -> list[str]:
         return [other.ref for other in self.board.ledger.entries if entry.ref in other.supersedes]
@@ -57,10 +43,11 @@ class BoardPage:
     def list_notes(self, entry: Entry) -> tuple[Note, ...]:
         retirers = ', '.join(self.list_retirers(entry))
         retires = ', '.join(entry.supersedes)
-        retired_by = (Note(kind='retired_by', value=retirers),) if retirers else ()
-        retiring = (Note(kind='retires', value=retires),) if retires else ()
-        source = Note(kind='source', value=entry.source)
-        return (*retired_by, *list_caveat_notes(entry), *retiring, source)
+        wording = self.wording
+        retired_by = (wording.write_note('retired_by', retirers),) if retirers else ()
+        retiring = (wording.write_note('retires', retires),) if retires else ()
+        source = wording.write_note('source', entry.source)
+        return (*retired_by, *wording.list_caveat_notes(entry), *retiring, source)
 
     def create_entry(self, entry: Entry) -> EntryNode:
         return self.builder.build(entry, self.list_notes(entry))
@@ -77,7 +64,7 @@ class BoardPage:
         if not lines:
             return ()
         chart = Flowchart(lines=(read_asset('map.mmd').rstrip(), *lines))
-        return (Section(title='Map', blocks=(chart,), note=MAP_NOTE),)
+        return (Section(title='Map', blocks=(chart,), note=self.wording.map_note),)
 
     def compose_retired(self) -> tuple[Section, ...]:
         ledger = self.board.ledger
@@ -86,7 +73,8 @@ class BoardPage:
         if not entries:
             return ()
         blocks = (EntryList(entries=entries),)
-        return (Section(title='Retired', blocks=blocks, note=RETIRED_NOTE, folded=True),)
+        note = self.wording.retired_note
+        return (Section(title='Retired', blocks=blocks, note=note, folded=True),)
 
     def count_states(self) -> str:
         counted = tally_states(self.board.findings)
@@ -113,12 +101,12 @@ class BoardPage:
         return tuple(facts)
 
     def compose(self) -> Document:
-        sections = map(self.compose_section, HEADINGS)
+        sections = map(self.compose_section, self.wording.headings)
         return Document(
             title=self.board.case.target,
             summary=(parse_line(f'Case {self.board.case.id}'),),
             facts=self.list_facts(),
             sections=tuple(section for section in sections if section.blocks),
             appendix=(*self.compose_map(), *self.compose_retired()),
-            terms=BOARD_TERMS,
+            terms=self.wording.terms,
         )

@@ -7,7 +7,6 @@ import msgspec
 from red_thread_plans.domain import (
     FENCE,
     HEADING,
-    SECTIONS,
     BodyLine,
     Frontmatter,
     PlanDocument,
@@ -17,6 +16,8 @@ from red_thread_plans.errors import PlanShapeError
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+
+    from red_thread_plans.domain import Outline
 
 LIGHTS_FIELD = '$.lights'
 LIGHTS_HINT = (
@@ -77,7 +78,7 @@ def read_plan(text: str) -> PlanDocument | PlanShapeError:
     return PlanDocument(frontmatter=frontmatter, sections=cut_sections(body))
 
 
-def write_plan(frontmatter: Frontmatter) -> str:
+def write_plan(frontmatter: Frontmatter, outline: Outline) -> str:
     fields = msgspec.yaml.encode(frontmatter).decode()
-    headings = '\n'.join(f'{HEADING}{title}\n' for title in SECTIONS)
+    headings = '\n'.join(f'{HEADING}{title}\n' for title in outline.sections)
     return f'{FENCE}\n{fields}{FENCE}\n\n# {frontmatter.title}\n\n{headings}'

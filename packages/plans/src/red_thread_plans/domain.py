@@ -22,18 +22,12 @@ ITEM = '- '
 RESTING_KINDS: tuple[EntryKind, ...] = ('decision', 'known')
 SETTLED: tuple[Status, ...] = ('accepted', 'done')
 REF = re.compile(r'\bC[1-9]\d*\.(?:T[1-9]\d*\.)?e[1-9]\d*\b')
-SECTIONS = (
-    'Intent',
-    'Approach',
-    'Invariants',
-    'Non-goals',
-    'Acceptance',
-    'Tasks',
-    'Risks',
-    'Changes',
-)
-REQUIRED_SECTIONS = ('Intent', 'Approach', 'Acceptance', 'Tasks')
 ACCEPTANCE = 'Acceptance'
+
+
+class Outline(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields=True, gc=False):
+    sections: tuple[str, ...]
+    required: tuple[str, ...]
 
 
 class Frontmatter(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields=True, gc=False):

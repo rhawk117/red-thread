@@ -3,9 +3,8 @@
 from dataclasses import replace
 from typing import TYPE_CHECKING
 
-from red_thread_casefile.assets import read_asset
-from red_thread_casefile.boards import MAP_NOTE, RETIRED_NOTE
 from red_thread_casefile.documents import EntryList
+from red_thread_casefile.packaged import load_wording, read_asset
 from red_thread_core.documents import (
     Document,
     Fact,
@@ -53,12 +52,12 @@ def create_prose_section(title: str, *, folded: bool = False) -> Section:
 
 def create_map_section(lines: tuple[str, ...]) -> Section:
     chart = Flowchart(lines=(read_asset('map.mmd').rstrip(), *lines))
-    return Section(title='Map', blocks=(chart,), note=MAP_NOTE)
+    return Section(title='Map', blocks=(chart,), note=load_wording().map_note)
 
 
 def create_retired_section(entries: tuple[EntryNode, ...]) -> Section:
     blocks = (EntryList(entries=entries),)
-    return Section(title=RETIRED, blocks=blocks, note=RETIRED_NOTE, folded=True)
+    return Section(title=RETIRED, blocks=blocks, note=load_wording().retired_note, folded=True)
 
 
 def read_one_section(section: Section) -> SectionReading:

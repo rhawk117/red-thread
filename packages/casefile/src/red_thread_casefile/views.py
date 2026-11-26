@@ -5,13 +5,14 @@ from dataclasses import dataclass, field
 from itertools import chain
 from typing import TYPE_CHECKING, Self
 
+import msgspec
 from red_thread_core.util import squeeze
 
-from red_thread_casefile.domain import shorten_head
+from red_thread_casefile.domain import EntryKind, shorten_head
 from red_thread_casefile.policy import CITE_STATES, FAILING_STATES, QUIET_STATES, tally_states
 
 if TYPE_CHECKING:
-    from red_thread_casefile.domain import Case, Entry, EntryKind, Ledger, Verdict
+    from red_thread_casefile.domain import Case, Entry, Ledger, Verdict
     from red_thread_casefile.policy import Finding
 
 NO_COMMIT = 'no commit'
@@ -19,54 +20,10 @@ LEAD_FLAG_PREFIX = 'lead, '
 CITE_FLAG_PREFIX = 'citation '
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Heading:
+class Heading(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields=True, gc=False):
     kind: EntryKind
     title: str
     note: str
-
-
-HEADINGS = (
-    Heading(
-        kind='decision',
-        title='Decided',
-        note='What the owner decided or wants taken as given.',
-    ),
-    Heading(
-        kind='known',
-        title='Known',
-        note='Claims with a citation that was opened and checked.',
-    ),
-    Heading(
-        kind='hypothesis',
-        title='Hypotheses',
-        note='Explanations still to test, each with what would refute it.',
-    ),
-    Heading(
-        kind='open',
-        title='Open',
-        note='Questions and claims that are not established yet.',
-    ),
-    Heading(
-        kind='ruled_out',
-        title='Ruled out',
-        note='Dead ends, each closed by a citation or by the owner.',
-    ),
-    Heading(
-        kind='next',
-        title='Next',
-        note='Steps left for whoever picks the case up.',
-    ),
-    Heading(
-        kind='resource',
-        title='Resources',
-        note='Sources and references the case points to.',
-    ),
-)
-
-
-def describe_kind(kind: EntryKind) -> str:
-    return next(heading.note for heading in HEADINGS if heading.kind == kind)
 
 
 def list_caveats(entry: Entry) -> list[str]:
@@ -133,6 +90,7 @@ class BoardOptions:
 class Board:
     case: Case
     ledger: Ledger
+    headings: tuple[Heading, ...]
     head: str | None = None
     options: BoardOptions = field(default_factory=BoardOptions)
     findings: tuple[Finding, ...] = ()
@@ -185,7 +143,7 @@ class Board:
         return lines
 
     def render(self) -> str:
-        sections = map(self.render_section, HEADINGS)
+        sections = map(self.render_section, self.headings)
         return '\n'.join((*self.render_header(), *chain.from_iterable(sections)))
 
 

@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from red_thread_core.redaction import SecretPatterns
     from red_thread_core.store import Clock, SourceTree
 
+    from red_thread_casefile.documents import Wording
     from red_thread_casefile.domain import CaseKind, Draft, Ledger
     from red_thread_casefile.errors import CaseFileError
     from red_thread_casefile.store import CaseRepository
@@ -142,6 +143,7 @@ class CaseFile:
     repository: CaseRepository
     tree: SourceTree
     clock: Clock
+    wording: Wording
     patterns: SecretPatterns = field(default_factory=create_secret_patterns)
 
     def frame(self, framing: Framing) -> Case:
@@ -208,6 +210,7 @@ class CaseFile:
         board = Board(
             case=self.repository.read_case(),
             ledger=self.repository.read_ledger(),
+            headings=self.wording.headings,
             head=self.tree.get_head(),
             options=options or BoardOptions(),
             findings=self.check(),

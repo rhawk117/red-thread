@@ -1,12 +1,12 @@
 """The Terraform backend names blocks and references the way Terraform addresses them."""
 
-from importlib import resources
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
 
 import pytest
 from red_thread_navigate.find.services import references_to
 from red_thread_navigate.symbols.store import backend_for
+from red_thread_navigate.symbols.store.treesitter import load_query_source
 from red_thread_navigate.walk import SourceFile
 
 from tests.navigate.symbols.samples import TERRAFORM_BROKEN, TERRAFORM_SAMPLE
@@ -118,12 +118,7 @@ class TestLookup:
         assert backend_at(PurePosixPath('a/b.tf')).language == 'terraform'
 
     def test_query_loads_as_a_resource(self) -> None:
-        text = (
-            resources
-            .files('red_thread_navigate.symbols.store')
-            .joinpath('queries', 'terraform.scm')
-            .read_text(encoding='utf-8')
-        )
+        text = load_query_source('terraform')
         assert '@definition.resource' in text
 
 

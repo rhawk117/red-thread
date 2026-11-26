@@ -6,8 +6,9 @@ from dataclasses import dataclass
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
-from red_thread_plans.domain import SECTIONS, Frontmatter, PlanDocument
+from red_thread_plans.domain import Frontmatter, PlanDocument
 from red_thread_plans.errors import PlanShapeError
+from red_thread_plans.packaged import load_outline
 from red_thread_plans.schemas import LIGHTS_HINT, read_plan, write_plan
 
 from tests.params import as_params
@@ -64,17 +65,17 @@ class TestWritePlan:
     def test_the_frontmatter_init_writes_reads_back_unchanged(
         self, frontmatter: Frontmatter
     ) -> None:
-        document = read_plan(write_plan(frontmatter))
+        document = read_plan(write_plan(frontmatter, load_outline()))
 
         assert isinstance(document, PlanDocument), document
         assert document.frontmatter == frontmatter
 
     @given(frontmatter=frontmatters)
     def test_the_skeleton_holds_every_section_in_order(self, frontmatter: Frontmatter) -> None:
-        document = read_plan(write_plan(frontmatter))
+        document = read_plan(write_plan(frontmatter, load_outline()))
 
         assert isinstance(document, PlanDocument), document
-        assert tuple(section.title for section in document.sections) == SECTIONS
+        assert tuple(section.title for section in document.sections) == load_outline().sections
 
 
 class TestReadPlan:

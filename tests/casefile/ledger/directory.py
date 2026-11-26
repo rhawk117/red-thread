@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from red_thread_casefile.packaged import load_wording
 from red_thread_casefile.services import Batch, CaseFile
 from red_thread_casefile.store import DirectoryCaseRepository
 from red_thread_core.store import GitSourceTree
@@ -44,7 +45,10 @@ def create_directory_harness(git: GitRepository) -> DirectoryHarness:
     directory = git.root.joinpath('.red-thread', CASE_ID)
     repository = DirectoryCaseRepository(directory=directory)
     casefile = CaseFile(
-        repository=repository, tree=GitSourceTree(root=git.root), clock=FixedClock()
+        repository=repository,
+        tree=GitSourceTree(root=git.root),
+        clock=FixedClock(),
+        wording=load_wording(),
     )
     return DirectoryHarness(git=git, directory=directory, repository=repository, casefile=casefile)
 

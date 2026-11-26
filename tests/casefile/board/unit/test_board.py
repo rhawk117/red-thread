@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 from red_thread_casefile.domain import Ledger
+from red_thread_casefile.packaged import load_wording
 from red_thread_casefile.schemas import case_from_text, case_to_text
 from red_thread_casefile.views import Board, BoardOptions
 
@@ -30,6 +31,7 @@ def create_board(
         ledger=Ledger(entries=entries),
         head=head,
         options=options or BoardOptions(),
+        headings=load_wording().headings,
     )
 
 
@@ -37,7 +39,13 @@ def create_board_of_retired_case() -> Board:
     document = json.loads(case_to_text(create_case()))
     document['capabilities'][RETIRED_FLAG] = True
     case = case_from_text(json.dumps(document))
-    return Board(case=case, ledger=Ledger(entries=()), head=HEAD, options=BoardOptions())
+    return Board(
+        case=case,
+        ledger=Ledger(entries=()),
+        head=HEAD,
+        options=BoardOptions(),
+        headings=load_wording().headings,
+    )
 
 
 def list_headings(text: str) -> list[str]:

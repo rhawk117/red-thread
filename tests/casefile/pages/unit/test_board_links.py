@@ -4,7 +4,7 @@ from html import escape
 from typing import TYPE_CHECKING
 
 import pytest
-from red_thread_casefile.terms import BOARD_TERMS
+from red_thread_casefile.packaged import load_wording
 
 from tests.casefile.ledger.builders import create_entry
 from tests.casefile.pages.html_reading import find_entries, list_item_refs
@@ -51,4 +51,4 @@ class TestBoardLayout:
         page = draw_board(seeded)
 
         assert '<details class="terms">' in page
-        assert all(escape(term.word) in page for term in BOARD_TERMS)
+        assert all(escape(term.word) in page for term in load_wording().terms)

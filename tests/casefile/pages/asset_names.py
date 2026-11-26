@@ -2,6 +2,6 @@
 
 from typing import get_args
 
-from red_thread_core.assets import CoreAsset
+from red_thread_core.packaged import CoreAsset
 
 ASSET_NAMES: tuple[CoreAsset, ...] = get_args(CoreAsset.__value__)

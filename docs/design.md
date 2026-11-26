@@ -97,7 +97,7 @@ Platform facts checked on 2026-11-21 against the Claude Code docs and one live p
 
 **Decided:** one Python script is the only writer and renderer of the case file. It replaces the MCP server, the database and the recorder hooks. Its one dependency is msgspec, which reads and writes every JSON record. That reverses the earlier choice of the standard library alone. The launcher asks uv for msgspec with `--with`, so nothing is installed into the project under investigation, and the first run on a machine downloads it.
 
-The code is the workspace package `packages/casefile`. The stored records (`Entry`, `Case` and `Capabilities`) are frozen msgspec Structs, so a ledger line or a `case.json` that does not match its type is refused with the file and the fault named. Batches and export selections keep their own validation, so `add` still reports every fault in a batch with its fix. Since 2026-11-26 the page's skeleton, styles and script sit in `packages/core/assets/` and the map header in `packages/casefile/assets/`, each beside its package's `src/`, where they are easy to find, and each package's `assets.py` reads them by path from the module file. The package therefore runs from the source tree, which is how `bin/redthread-casefile` and an editable install run it; a built wheel would not carry the assets. The HTML fragments are Python 3.14 t-strings rendered through one escaping function. Imports inside the package are absolute.
+The code is the workspace package `packages/casefile`. The stored records (`Entry`, `Case` and `Capabilities`) are frozen msgspec Structs, so a ledger line or a `case.json` that does not match its type is refused with the file and the fault named. Batches and export selections keep their own validation, so `add` still reports every fault in a batch with its fix. Each package keeps the files it ships under `src/<module>/assets/`, inside the package, and reads them through `red_thread_core.packaged` with `importlib.resources`: the page's skeleton, styles and script in core, and in casefile the map header, `wording.yaml` (the section headings, the note prefixes, the map and retired notes, and the glossary) and `lenses.yaml` (the lens parts, budgets and the reading lines). The YAML files decode into frozen Structs that refuse unknown keys, once, when the factory builds the case file, and are handed to the code that writes the board and the lenses. A built wheel carries them. The HTML fragments are Python 3.14 t-strings rendered through one escaping function. Imports inside the package are absolute.
 
 | Command | What it does | Status |
 | --- | --- | --- |
@@ -566,7 +566,7 @@ All made by the owner on 2026-11-21.
 | Skill pre-approval | both skills pre-approve the case file script through `allowed-tools` |
 | Step 6 | each agent runs once headless on a canned brief, then the owner drives a real case |
 | Skill support files | under each skill's `references/` directory |
-| Package code | absolute imports, the page assets in `packages/casefile/assets/`, t-strings for HTML fragments, msgspec Structs for stored records |
+| Package code | absolute imports, the page assets in `packages/casefile/assets/` (historical: inside each package since 2026-11-26, see below), t-strings for HTML fragments, msgspec Structs for stored records |
 | Page | Tailwind and mermaid from cdnjs, pinned with integrity hashes; filters, folding, copying and a case map in plain JavaScript; case facts, section panels with a description, entry details and a folded list of retired entries; reverses the self-contained page |
 | Entry diagrams | an optional `diagram` field on an entry, drawn on the HTML pages only |
 | Test markers | tier marks come from the directory; a regression is an `@example` on a property marked `regression` |
@@ -777,6 +777,18 @@ Made by the owner on 2026-11-26, after the game-plan build. The owner objected t
 | Page | the Markdown file is the artifact. `plan.html` is gone, and boards no longer list or link plans |
 | YAML | PyYAML, through `msgspec.yaml`, decoding the frontmatter into a frozen Struct that refuses unknown keys. A bare `on` or `off` reads as a boolean, so `lights` is written with quotes and the refusal says so |
 | The case file | moves to Markdown with frontmatter next, by the same rule. Not started |
+
+### 2026-11-26: wording and tables as packaged YAML
+
+Made by the owner on 2026-11-26. The board's glossary was a Python module of constants, and other tables were the same: text and structure a person edits without touching logic.
+
+| Decision | Choice and reason |
+| --- | --- |
+| What moved | the glossary terms, the section headings with their notes, the note prefixes, and the map and retired notes into casefile's `wording.yaml`; the four lenses and the reading lines into casefile's `lenses.yaml`; the plan's section headings and the required ones into plans' `outline.yaml`. Error messages stay in code, beside the fields they name |
+| Primitive | `red_thread_core.packaged`: `read_asset_text(package, name)` reads a file under the package's `assets/`, and `load_asset(package, name, shape)` decodes a YAML file into the shape with `msgspec.yaml`. Each shape is a frozen Struct that refuses unknown keys. Core therefore depends on msgspec and PyYAML, which ends its standard-library-only rule. Rejected: a text-only core with the decoding in each package |
+| Loading | at the edge: the `CaseFiles` and `Plans` factories load the tables once and inject them into the case file, the press, the board, the lens composer and the planner. Nothing reads a file at import |
+| Asset home | every package keeps its assets under `src/<module>/assets/` and reads them through `importlib.resources`, so a built wheel carries them. navigate's vendored queries moved to `red_thread_navigate/assets/queries/` and load through the same primitive, so navigate depends on core |
+| Checks | tests hold each table complete: a heading for every entry kind, a prefix for every note kind, a lens for every lens name, every required plan section among the sections |
 
 ## 13. Planning
 

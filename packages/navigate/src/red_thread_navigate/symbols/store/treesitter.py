@@ -1,10 +1,10 @@
 import time
 from dataclasses import dataclass, field
-from importlib import resources
 from types import MappingProxyType
 from typing import TYPE_CHECKING, get_args
 
 import tree_sitter
+from red_thread_core.packaged import read_asset_text
 
 from red_thread_navigate.symbols.domain import FileSymbols, Reference, Symbol, SymbolKind
 from red_thread_navigate.util import split_lines
@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
     from red_thread_navigate.walk import SourceFile
 
+NAVIGATE_PACKAGE = 'red_thread_navigate'
 DEFINITION_PREFIX = 'definition.'
 REFERENCE_PREFIX = 'reference.'
 READ_CHUNK_BYTES = 65536
@@ -34,10 +35,7 @@ class Definition:
 
 
 def load_query_source(query_name: str) -> str:
-    query_file = resources.files('red_thread_navigate.symbols.store').joinpath(
-        'queries', f'{query_name}.scm'
-    )
-    return query_file.read_text(encoding='utf-8')
+    return read_asset_text(NAVIGATE_PACKAGE, f'queries/{query_name}.scm')
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)

@@ -1,0 +1,59 @@
+# The lenses distill writes from a case file, each a list of parts in the order they appear.
+# A part shows the live entries of one kind, or one fixed block: goal, pointers or reading.
+# budget is the most non-blank lines the Markdown output may have.
+
+# reading: the lines of the "How to read" part.
+reading:
+  - Citations are pointers. Open the cited line before relying on a summary of it.
+  - An entry flagged as a lead was recorded at another commit. Verify it again first.
+  - An open entry is not established. Its rests on note names what it depends on.
+  - Square brackets hold the entry ref in the ledger, which has the full record.
+
+lenses:
+  - name: brief
+    intro: Brief of
+    budget: 60
+    parts:
+      - {title: Goal, fixed: goal}
+      - {title: Decided, kind: decision}
+      - {title: Constraints, kind: known}
+      - {title: Ruled out, kind: ruled_out}
+      - {title: Open, kind: open}
+      - {title: Pointers, fixed: pointers}
+      - {title: How to read, fixed: reading}
+  - name: issue
+    intro: Raised from
+    budget: 80
+    parts:
+      - {title: Summary, fixed: goal}
+      - {title: Findings, kind: known}
+      - {title: Open questions, kind: open}
+      - {title: Ruled out, kind: ruled_out}
+      - {title: Next steps, kind: next}
+      - {title: References, kind: resource}
+      - {title: Pointers, fixed: pointers}
+  - name: handoff
+    intro: Handoff of
+    budget: 40
+    parts:
+      - {title: Where this stands, fixed: goal}
+      - {title: Decided, kind: decision}
+      - {title: Start here, kind: next}
+      - {title: Open, kind: open}
+      - {title: Hypotheses, kind: hypothesis}
+      - {title: Pointers, fixed: pointers}
+      - {title: How to read, fixed: reading}
+  - name: report
+    intro: Report on
+    budget: 200
+    parts:
+      - {title: Summary, fixed: goal}
+      - {title: Decided, kind: decision}
+      - {title: Findings, kind: known}
+      - {title: Hypotheses, kind: hypothesis}
+      - {title: Ruled out, kind: ruled_out}
+      - {title: Open, kind: open}
+      - {title: Next steps, kind: next}
+      - {title: Resources, kind: resource}
+      - {title: Pointers, fixed: pointers}
+      - {title: How to read, fixed: reading}

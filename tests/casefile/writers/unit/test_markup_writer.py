@@ -4,7 +4,8 @@ from dataclasses import replace
 from html import escape
 
 import pytest
-from red_thread_casefile.documents import Citation, EntryList, Note
+from red_thread_casefile.documents import Citation, EntryList
+from red_thread_casefile.packaged import load_wording
 from red_thread_casefile.policy import Finding
 from red_thread_core.documents import (
     Document,
@@ -83,7 +84,10 @@ class TestEntry:
         assert f'<a href="{URL}" rel="noreferrer">{URL}</a>' in page
 
     def test_notes_are_stamps_then_flags_then_notes(self) -> None:
-        notes = (Note(kind='retired_by', value='e4'), Note(kind='source', value='scout'))
+        notes = (
+            load_wording().write_note('retired_by', 'e4'),
+            load_wording().write_note('source', 'scout'),
+        )
         entry = replace(create_entry_node(), lead='1111111', notes=notes)
 
         page = render_page(create_document(entry))
@@ -175,7 +179,7 @@ class TestEscaping:
         entry = replace(
             create_entry_node(text),
             citation=citation,
-            notes=(Note(kind='source', value=text),),
+            notes=(load_wording().write_note('source', text),),
             diagram=text,
             thread=text,
         )

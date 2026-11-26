@@ -4,7 +4,8 @@ from dataclasses import replace
 from typing import TYPE_CHECKING, Literal, cast, get_args
 
 import pytest
-from red_thread_casefile.documents import Citation, EntryList, Note
+from red_thread_casefile.documents import Citation, EntryList
+from red_thread_casefile.packaged import load_wording
 from red_thread_casefile.policy import Finding
 from red_thread_core.documents import Fact, Flowchart, Section, parse_line, parse_value
 
@@ -93,7 +94,7 @@ def create_document_carrying(field: DocumentField, text: str) -> Document:
     entry = replace(
         create_cited_entry(citation),
         claim=parse_line('plain text'),
-        notes=(Note(kind='rests_on', value='plain'),),
+        notes=(load_wording().write_note('rests_on', 'plain'),),
         lead='1111111',
     )
     other = replace(create_entry_node('other text', 'e2'), kind='open')
@@ -113,7 +114,7 @@ def create_document_carrying(field: DocumentField, text: str) -> Document:
         ),
         'item-ref': create_document(replace(entry, ref=text), other),
         'item-note': create_document(
-            replace(entry, notes=(Note(kind='source', value=text),)), other
+            replace(entry, notes=(load_wording().write_note('source', text),)), other
         ),
         'item-flag': create_document(replace(entry, lead=text), other),
         'item-kind': create_document(replace(entry, kind=cast('EntryKind', text)), other),
@@ -141,7 +142,7 @@ def create_document_carrying(field: DocumentField, text: str) -> Document:
         'retired-note': replace(
             base,
             appendix=create_appendix(
-                'Retired', replace(retired, notes=(Note(kind='source', value=text),))
+                'Retired', replace(retired, notes=(load_wording().write_note('source', text),))
             ),
         ),
     }

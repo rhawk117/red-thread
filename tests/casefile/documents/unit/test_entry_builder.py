@@ -4,8 +4,9 @@ from typing import get_args
 
 from hypothesis import given
 from hypothesis import strategies as st
-from red_thread_casefile.documents import Citation, EntryBuilder, Note, list_caveat_notes
+from red_thread_casefile.documents import Citation, EntryBuilder
 from red_thread_casefile.domain import EntryKind
+from red_thread_casefile.packaged import load_wording
 from red_thread_casefile.policy import Finding
 from red_thread_casefile.views import Annotator
 from red_thread_core.documents import parse_line
@@ -89,17 +90,20 @@ class TestNotes:
     builder = EntryBuilder(annotator=Annotator(head=BOARD_HEAD))
 
     def test_the_notes_given_are_the_notes_kept_in_order(self) -> None:
-        notes = (Note(kind='urgency', value='blocking'), Note(kind='source', value='scout'))
+        notes = (
+            load_wording().write_note('urgency', 'blocking'),
+            load_wording().write_note('source', 'scout'),
+        )
 
         assert self.builder.build(create_entry(head=BOARD_HEAD), notes).notes == notes
 
     def test_caveats_are_rests_on_then_refuted_by(self) -> None:
         entry = create_entry(rests_on='a 4.x docs page', refute='a passing run')
 
-        assert list_caveat_notes(entry) == (
-            Note(kind='rests_on', value='a 4.x docs page'),
-            Note(kind='refuted_by', value='a passing run'),
+        assert load_wording().list_caveat_notes(entry) == (
+            load_wording().write_note('rests_on', 'a 4.x docs page'),
+            load_wording().write_note('refuted_by', 'a passing run'),
         )
 
     def test_an_entry_without_caveats_has_none(self) -> None:
-        assert list_caveat_notes(create_entry()) == ()
+        assert load_wording().list_caveat_notes(create_entry()) == ()

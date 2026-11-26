@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from msgspec.structs import replace
 from red_thread_casefile.domain import Capabilities, Ledger
+from red_thread_casefile.packaged import load_wording
 from red_thread_casefile.policy import Finding
 from red_thread_casefile.views import Board
 
@@ -26,7 +27,11 @@ def create_page_board(
     case: Case | None = None,
 ) -> Board:
     return Board(
-        case=case or create_case(), ledger=Ledger(entries=entries), head=head, findings=findings
+        case=case or create_case(),
+        ledger=Ledger(entries=entries),
+        head=head,
+        findings=findings,
+        headings=load_wording().headings,
     )
 
 

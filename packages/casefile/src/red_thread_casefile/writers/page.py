@@ -7,13 +7,13 @@ from red_thread_core.writers.page import Chip, HtmlPage
 
 from red_thread_casefile.charts import MAIN_LEDGER
 from red_thread_casefile.documents import list_document_entries
-from red_thread_casefile.views import HEADINGS
 
 if TYPE_CHECKING:
     from red_thread_core.documents import Document
     from red_thread_core.writers.page import ChipRow
 
     from red_thread_casefile.documents import EntryNode
+    from red_thread_casefile.views import Heading
 
 
 def order_name(name: str) -> tuple[int, str]:
@@ -24,11 +24,11 @@ def name_thread(entry: EntryNode) -> str:
     return entry.thread or ''
 
 
-def list_kind_chips(entries: tuple[EntryNode, ...]) -> ChipRow:
+def list_kind_chips(entries: tuple[EntryNode, ...], headings: tuple[Heading, ...]) -> ChipRow:
     counted = Counter(entry.kind for entry in entries)
     return tuple(
         Chip(group='kind', value=heading.kind, label=heading.title, count=counted[heading.kind])
-        for heading in HEADINGS
+        for heading in headings
         if counted[heading.kind]
     )
 
@@ -41,10 +41,11 @@ def list_thread_chips(entries: tuple[EntryNode, ...]) -> ChipRow:
     )
 
 
-def list_entry_filters(document: Document) -> tuple[ChipRow, ...]:
+def list_entry_filters(document: Document, headings: tuple[Heading, ...]) -> tuple[ChipRow, ...]:
     entries = list_document_entries(document)
-    return (list_kind_chips(entries), list_thread_chips(entries))
+    return (list_kind_chips(entries, headings), list_thread_chips(entries))
 
 
-def render_case_page(document: Document) -> str:
-    return HtmlPage(document=document, filters=list_entry_filters(document)).render()
+def render_case_page(document: Document, headings: tuple[Heading, ...]) -> str:
+    filters = list_entry_filters(document, headings)
+    return HtmlPage(document=document, filters=filters).render()

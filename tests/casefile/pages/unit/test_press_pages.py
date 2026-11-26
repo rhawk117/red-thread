@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 from red_thread_casefile.lenses import Selection
-from red_thread_casefile.views import describe_kind
+from red_thread_casefile.packaged import load_wording
 
 from tests.casefile.ledger.builders import create_entry
 from tests.casefile.lenses.builders import create_numbered_entries, export, seed_flag_scenario
@@ -153,7 +153,7 @@ class TestLensSections:
             section.title: section for section in list_sections(press_harness.read_page('brief'))
         }
         assert sections['Constraints'].attributes.get('data-kind') == 'known'
-        assert sections['Constraints'].note == describe_kind('known')
+        assert sections['Constraints'].note == load_wording().describe_kind('known')
 
     def test_a_fixed_part_carries_no_kind_and_no_note(self, press_harness: PressHarness) -> None:
         press_harness.seed(*create_numbered_entries('known', 2))

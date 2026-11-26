@@ -6,7 +6,7 @@ from operator import attrgetter
 from string import Template as PageTemplate
 from typing import TYPE_CHECKING
 
-from red_thread_core.assets import read_asset
+from red_thread_core.packaged import read_asset
 from red_thread_core.writers.markup import (
     anchor_section,
     render,

@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
     from red_thread_core.store import Clock, SourceTree
 
-    from red_thread_plans.domain import CaseRecord, Opening, PlanDocument
+    from red_thread_plans.domain import CaseRecord, Opening, Outline, PlanDocument
     from red_thread_plans.store import CaseShelf, PlanRepository
 
 
@@ -47,6 +47,7 @@ class Planner:
     plan: PlanRepository
     tree: SourceTree
     clock: Clock
+    outline: Outline
 
     def gather(self, cases: Mapping[str, str]) -> dict[str, CaseRecord]:
         found = ((alias, self.shelf.find(case_id)) for alias, case_id in cases.items())
@@ -74,7 +75,7 @@ class Planner:
             raise UnknownCaseError(alias=None, case_id=missing)
 
         self.tree.exclude(EXCLUDED)
-        return self.plan.create(write_plan(self.stamp(opening)))
+        return self.plan.create(write_plan(self.stamp(opening), self.outline))
 
     def check(self) -> Checked:
         document = read_plan(self.plan.read())
@@ -85,7 +86,12 @@ class Planner:
         records = self.gather(cases)
         ledgers = {alias: record.ledger for alias, record in records.items()}
         missing = {alias: case_id for alias, case_id in cases.items() if alias not in records}
-        policy = PlanPolicy(document=document, grounds=create_grounds(ledgers), missing=missing)
+        policy = PlanPolicy(
+            document=document,
+            grounds=create_grounds(ledgers),
+            outline=self.outline,
+            missing=missing,
+        )
         if problems := policy.get_plan_issues():
             raise PlanRejectedError(problems=problems)
 

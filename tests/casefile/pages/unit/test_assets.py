@@ -5,16 +5,16 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
-from red_thread_casefile.assets import read_asset as read_case_asset
 from red_thread_casefile.domain import ENTRY_KINDS
-from red_thread_core.assets import read_asset
+from red_thread_casefile.packaged import read_asset as read_case_asset
+from red_thread_core.packaged import read_asset
 
 from tests.casefile.pages.asset_names import ASSET_NAMES
 from tests.casefile.pages.html_reading import MERMAID_URL, TAILWIND_URL
 from tests.params import as_params
 
 if TYPE_CHECKING:
-    from red_thread_core.assets import CoreAsset
+    from red_thread_core.packaged import CoreAsset
 
 OUTSIDE_URL = re.compile(r'https?://[^\s"\'<>)]+')
 STYLE_NAMES: tuple[CoreAsset, ...] = ('page.css', 'tailwind.css')

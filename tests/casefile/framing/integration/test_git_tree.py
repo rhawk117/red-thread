@@ -3,6 +3,7 @@
 from typing import TYPE_CHECKING
 
 import pytest
+from red_thread_casefile.packaged import load_wording
 from red_thread_casefile.services import EXCLUDED, CaseFile, Framing
 from red_thread_casefile.store import DirectoryCaseRepository
 from red_thread_core.store import GitSourceTree
@@ -91,6 +92,7 @@ class TestExclusion:
             repository=DirectoryCaseRepository(directory=second_directory),
             tree=GitSourceTree(root=directory_harness.git.root),
             clock=FixedClock(),
+            wording=load_wording(),
         )
 
         second.frame(FRAMING)

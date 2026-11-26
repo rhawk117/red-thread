@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 import pytest
 from red_thread_casefile.domain import Case, Draft, Entry
 from red_thread_casefile.errors import BatchRejectedError
+from red_thread_casefile.packaged import load_wording
 from red_thread_casefile.services import Batch, CaseFile
 
 from tests.casefile.ledger.memory import (
@@ -137,7 +138,7 @@ def create_case_harness() -> CaseHarness:
     repository = MemoryCaseRepository()
     tree = MemorySourceTree(files={QUEUE_PATH: QUEUE_LINES})
     clock = FixedClock()
-    casefile = CaseFile(repository=repository, tree=tree, clock=clock)
+    casefile = CaseFile(repository=repository, tree=tree, clock=clock, wording=load_wording())
     return CaseHarness(repository=repository, tree=tree, clock=clock, casefile=casefile)
 
 

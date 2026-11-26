@@ -8,7 +8,8 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 from red_thread_casefile.errors import LensOverBudgetError, UnknownSelectionRefError
-from red_thread_casefile.lenses import LENS_NAMES, Selection, count_lines, get_lens
+from red_thread_casefile.lenses import LENS_NAMES, Selection, count_lines
+from red_thread_casefile.packaged import load_lens_book
 from red_thread_casefile.services import ExportRequest
 
 from tests.casefile.entries.strategies import entry_kinds
@@ -70,12 +71,12 @@ class TestExportProperties:
         outcome = self.attempt(harness, request)
 
         if isinstance(outcome, LensOverBudgetError):
-            assert outcome.lines > get_lens(lens).budget
+            assert outcome.lines > load_lens_book().get(lens).budget
             assert harness.pages.files == {}
             return
 
         written = harness.pages.read(f'out/{lens}.md') or ''
-        assert outcome.lines <= get_lens(lens).budget
+        assert outcome.lines <= load_lens_book().get(lens).budget
         assert count_lines(written) == outcome.lines
         assert (harness.pages.read(f'out/{lens}.html') is not None) == html
 

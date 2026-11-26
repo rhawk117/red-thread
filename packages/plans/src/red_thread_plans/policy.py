@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from red_thread_plans.domain import REQUIRED_SECTIONS, RESTING_KINDS, SECTIONS, SETTLED
+from red_thread_plans.domain import ACCEPTANCE, RESTING_KINDS, SETTLED
 from red_thread_plans.errors import (
     EmptySectionError,
     GroundlessCriterionError,
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from red_thread_casefile.domain import Entry, Ledger
     from red_thread_casefile.errors import CaseFileError
 
-    from red_thread_plans.domain import BodyLine, PlanDocument
+    from red_thread_plans.domain import BodyLine, Outline, PlanDocument
 
 type Problems = tuple[CaseFileError, ...]
 
@@ -68,6 +68,7 @@ def find_alias(ref: str) -> str:
 class PlanPolicy:
     document: PlanDocument
     grounds: Grounds
+    outline: Outline
     missing: Mapping[str, str] = field(default_factory=dict)
 
     @property
@@ -95,16 +96,16 @@ class PlanPolicy:
         if section is None:
             return MissingSectionError(title=title)
 
-        if title in REQUIRED_SECTIONS and section.is_empty:
+        if title in self.outline.required and section.is_empty:
             return EmptySectionError(title=title, line=section.number)
 
-        if title == 'Acceptance' and not section.items:
+        if title == ACCEPTANCE and not section.items:
             return NoCriteriaError(line=section.number)
 
         return None
 
     def get_section_issues(self) -> Problems:
-        return tuple(filter(None, map(self.get_section_problem, SECTIONS)))
+        return tuple(filter(None, map(self.get_section_problem, self.outline.sections)))
 
     def is_checkable(self, ref: str) -> bool:
         return find_alias(ref) not in self.missing

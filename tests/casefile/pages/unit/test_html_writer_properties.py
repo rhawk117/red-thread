@@ -3,21 +3,20 @@
 import re
 from dataclasses import replace
 from html import unescape
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, get_args
 
 from hypothesis import example, given
 from hypothesis import strategies as st
-from red_thread_casefile.assets import read_asset
-from red_thread_casefile.boards import MAP_NOTE
 from red_thread_casefile.documents import (
-    NOTE_LABELS,
     Citation,
     EntryList,
     EntryNode,
     Note,
+    NoteKind,
     list_document_entries,
 )
 from red_thread_casefile.domain import ENTRY_KINDS
+from red_thread_casefile.packaged import load_wording, read_asset
 from red_thread_core.documents import Document, Flowchart, Paragraph, PointList, Section, parse_line
 
 from tests.casefile.documents.builders import MOMENT
@@ -84,7 +83,7 @@ def render_claim(text: str) -> str:
 
 def create_map(lines: list[str]) -> Section:
     chart = Flowchart(lines=(read_asset('map.mmd').rstrip(), *lines))
-    return Section(title='Map', blocks=(chart,), note=MAP_NOTE)
+    return Section(title='Map', blocks=(chart,), note=load_wording().map_note)
 
 
 def list_map_lines(document: Document) -> list[str]:
@@ -127,9 +126,7 @@ def list_lead_flags(entries: tuple[EntryNode, ...]) -> list[str]:
 
 class TestHtmlPageProperties:
     lines = st.builds(parse_line, texts)
-    notes = st.builds(
-        Note, kind=st.sampled_from([label.kind for label in NOTE_LABELS]), value=texts
-    )
+    notes = st.builds(Note, kind=st.sampled_from(get_args(NoteKind.__value__)), text=texts)
     entries = st.builds(
         EntryNode,
         ref=texts,

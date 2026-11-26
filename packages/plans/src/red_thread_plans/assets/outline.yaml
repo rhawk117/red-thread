@@ -1,0 +1,17 @@
+# The section headings of a plan, in the order init writes them and check expects them.
+sections:
+  - Intent
+  - Approach
+  - Invariants
+  - Non-goals
+  - Acceptance
+  - Tasks
+  - Risks
+  - Changes
+
+# required: the sections check refuses to find empty.
+required:
+  - Intent
+  - Approach
+  - Acceptance
+  - Tasks

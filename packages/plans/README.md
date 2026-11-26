@@ -48,6 +48,8 @@ issue: null
 
 The plan is edited in place. Once it is accepted, each change adds one to `revision` and a line under Changes.
 
+The section headings, in order, and the ones `check` refuses to find empty are in `src/red_thread_plans/assets/outline.yaml`.
+
 ## Commands
 
 | Command | What it does |

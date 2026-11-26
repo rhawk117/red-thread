@@ -89,7 +89,7 @@ This answers the question a later session has to ask first: which of these claim
 
 A page loads two scripts from cdnjs, each pinned to an exact version with an integrity hash: the Tailwind browser build for styling and mermaid for diagrams. Offline, a page still reads top to bottom with every entry in the HTML. The page's own script, `page.js` in `red-thread-core`, uses no library. It filters entries by kind and thread, folds sections, copies a ref or a citation, and redraws diagrams when the theme changes. Entry text reaches the page only as escaped text.
 
-The skeleton, styles, script and map headers are in `assets/`, beside `src/`. The package reads them by path from the source tree, which is how the launcher and an editable install run it. A built wheel would not carry them. Colors are tokens in `assets/page.css`, one set per theme, and `assets/tailwind.css` maps them to Tailwind utilities, so a palette change touches one file.
+The skeleton, styles and script are in `red-thread-core` under `src/red_thread_core/assets/`. This package keeps its own files under `src/red_thread_casefile/assets/`: the map header, `wording.yaml` and `lenses.yaml`. `wording.yaml` holds the words the board and the lens outputs use: the section headings with their notes, the prefixes of an entry's notes, the notes of the map and retired sections, and the glossary. `lenses.yaml` holds each lens's parts in order, its line budget and the lines of How to read. Edit either file to change the wording; a key the code does not know is refused when the file loads. Colors are tokens in `page.css` in core, one set per theme, and `tailwind.css` maps them to Tailwind utilities, so a palette change touches one file.
 
 ## Development
 
