@@ -65,7 +65,7 @@ An entry is a `### e<n>` heading over one fenced `yaml` block, under a `## Round
 7. A `hypothesis` needs a `refute` line.
 8. A `ruled_out` entry needs a citation or the owner as its source.
 
-It also opens every `path:line` and compares `quote` with the cited line; a `path:line` cite without `quote` is a fault, and `check` prints the line to paste. An absolute path or one containing `..` is never read and stays unchecked. Text outside a round heading, an entry heading or a block is a fault, and so is a field that is present but blank. A thread can retire only its own entries, an entry from `user` or a `decision` belongs in `case.md`, an `INFERRED` entry needs `rests_on`, a `known` can't carry a verdict weaker than `VERIFIED`, and `page_url`, when set, must be an https link.
+It also opens every `path:line` and compares `quote` with the cited line; a `path:line` cite without `quote` is a fault, and `check` prints the line to paste. An absolute path or one containing `..` is never read and stays unchecked. Text outside a round heading, an entry heading or a block is a fault, and so is a field that is present but blank. Round headings in one file go up, one heading for each round. A thread can retire only its own entries, an entry from `user` or a `decision` belongs in `case.md`, an `INFERRED` entry needs `rests_on`, a `known` can't carry a verdict weaker than `VERIFIED`, and `page_url`, when set, must be an https link.
 
 ## The citation check
 

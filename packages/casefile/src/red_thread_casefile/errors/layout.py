@@ -101,6 +101,18 @@ class NumberingError(CaseFileError):
         )
 
 
+class RoundOrderError(CaseFileError):
+    def __init__(self, *, spot: Spot, number: int, previous: int) -> None:
+        self.spot = spot
+        self.number = number
+        self.previous = previous
+        super().__init__(
+            f'{name_place(spot)} this is round {number}, but the round heading above it is '
+            f'round {previous}. Rounds in one file go up, with one heading each: delete this '
+            f'heading if its entries belong to round {previous}, or number it above {previous}.'
+        )
+
+
 class StrayThreadFileError(CaseFileError):
     def __init__(self, *, file: str) -> None:
         self.file = file

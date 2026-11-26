@@ -8,6 +8,7 @@ from red_thread_casefile.errors import (
     MalformedEntryHeadingError,
     MalformedRoundError,
     MissingBlockError,
+    RoundOrderError,
     StrayTextError,
 )
 
@@ -53,6 +54,15 @@ def entry_heading_case(name: str, heading: str) -> LayoutCase:
     )
 
 
+def round_order_case(name: str, first: str) -> LayoutCase:
+    return LayoutCase(
+        name=name,
+        text=f'{first}\n\n{write_raw_entry("### e1")}{ROUND}{write_raw_entry("### e2")}',
+        error_type=RoundOrderError,
+        place='threads/T1.md:10:',
+    )
+
+
 def layout_params() -> list[ParameterSet]:
     cases = [
         round_heading_case('round-without-a-number', '## Round two · 2026-11-21 · none'),
@@ -62,6 +72,8 @@ def layout_params() -> list[ParameterSet]:
         round_heading_case('round-with-a-short-head', '## Round 1 · 2026-11-21 · abc12'),
         round_heading_case('round-with-an-uppercase-head', '## Round 1 · 2026-11-21 · ABC1234'),
         round_heading_case('round-with-another-word', '## Step 1 · 2026-11-21 · none'),
+        round_order_case('round-heading-repeated', '## Round 1 · 2026-11-21 · none'),
+        round_order_case('round-number-going-down', '## Round 2 · 2026-11-21 · none'),
         entry_heading_case('entry-numbered-zero', '### e0'),
         entry_heading_case('entry-with-a-capital', '### E1'),
         entry_heading_case('entry-named-in-words', '### entry 1'),

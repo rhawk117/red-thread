@@ -11,7 +11,12 @@ from red_thread_casefile.schemas import read_case_file, write_case_file
 
 from tests.casefile.entries.strategies import cases, entries, thread_names, words
 from tests.casefile.ledger.builders import create_case
-from tests.casefile.ledger.markdown import name_file, write_case_text, write_thread_text
+from tests.casefile.ledger.markdown import (
+    name_file,
+    number_entries,
+    write_case_text,
+    write_thread_text,
+)
 from tests.casefile.ledger.memory import name_thread
 
 if TYPE_CHECKING:
@@ -29,10 +34,6 @@ CASE_FIELDS = (
     'page_url',
     'capabilities',
 )
-
-
-def number_entries(written: list[Entry], thread: str | None) -> list[Entry]:
-    return [replace(entry, seq=seq, thread=thread) for seq, entry in enumerate(written, 1)]
 
 
 def read_files(files: dict[str, str]) -> CaseReading:

@@ -20,7 +20,7 @@ from red_thread_casefile.domain import (
 from red_thread_casefile.schemas import write_case_file
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Iterable, Sequence
     from pathlib import Path
 
     from red_thread_casefile.domain import Case, Entry
@@ -39,6 +39,16 @@ def append_text(case: Path, text: str, thread: str | None = None) -> None:
 
 def stamp_entry(entry: Entry) -> RoundStamp:
     return RoundStamp(number=entry.round, day=entry.at, head=entry.head)
+
+
+def number_entries(written: Sequence[Entry], thread: str | None) -> list[Entry]:
+    groups = groupby(written, key=stamp_entry)
+    rounds = (
+        replace(entry, round=number)
+        for number, (_, group) in enumerate(groups, 1)
+        for entry in group
+    )
+    return [replace(entry, seq=seq, thread=thread) for seq, entry in enumerate(rounds, 1)]
 
 
 def write_block(entry: Entry) -> str:

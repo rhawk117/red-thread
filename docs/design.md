@@ -192,6 +192,7 @@ Added while building. **Decided 2026-11-21:** the owner accepted the first five 
 - An entry written at the current HEAD is held to its quote: a cited line that does not exist is a fault, and a quote found elsewhere or not at all is a fault. An entry from an earlier commit is only reported as moved, changed or missing.
 - A field that is present must not be blank. YAML trims a plain value and keeps a quoted one as written.
 - `page_url`, when set, must be an https link.
+- Round headings in one file go up: a heading whose number repeats or falls below the one above it is a fault, because each round has one heading.
 
 ### The citation check
 

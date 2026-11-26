@@ -26,10 +26,13 @@ def write_block_entry(seq: int, block: str) -> str:
     return f'### e{seq}\n\n```yaml\n{block}```\n'
 
 
-def write_round(stamp: RoundStamp, first: int, records: Sequence[Mapping[str, object]]) -> str:
+def write_entries(first: int, records: Sequence[Mapping[str, object]]) -> str:
     blocks = map(encode_block, records)
-    entries = (write_block_entry(seq, block) for seq, block in enumerate(blocks, first))
-    return '\n'.join((f'{stamp.heading}\n', *entries))
+    return '\n'.join(write_block_entry(seq, block) for seq, block in enumerate(blocks, first))
+
+
+def write_round(stamp: RoundStamp, first: int, records: Sequence[Mapping[str, object]]) -> str:
+    return f'{stamp.heading}\n\n{write_entries(first, records)}'
 
 
 def write_blocks_case(blocks: Sequence[str]) -> str:

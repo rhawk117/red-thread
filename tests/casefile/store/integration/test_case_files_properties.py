@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 import pytest
 from hypothesis import example, given
 from hypothesis import strategies as st
-from msgspec.structs import replace
 from red_thread_casefile.domain import order_thread
 from red_thread_casefile.errors import CaseExistsError, CaseNotFoundError, UndecodableFileError
 from red_thread_casefile.schemas import read_case_file, write_case_file
@@ -13,7 +12,12 @@ from red_thread_casefile.store import DirectoryCaseRepository
 
 from tests.casefile.entries.strategies import entries, thread_names
 from tests.casefile.ledger.builders import create_case, create_entry
-from tests.casefile.ledger.markdown import name_file, write_case_text, write_thread_text
+from tests.casefile.ledger.markdown import (
+    name_file,
+    number_entries,
+    write_case_text,
+    write_thread_text,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -24,10 +28,6 @@ type Threads = dict[str, list[Entry]]
 
 SEPARATED = create_entry(seq=1, text='a\x85b\N{LINE SEPARATOR}c\N{PARAGRAPH SEPARATOR}d')
 NO_CARRIAGE_RETURN = st.characters(blacklist_categories=('Cs',), blacklist_characters='\r')
-
-
-def number_entries(written: list[Entry], thread: str | None) -> list[Entry]:
-    return [replace(entry, seq=seq, thread=thread) for seq, entry in enumerate(written, 1)]
 
 
 def is_undecodable(content: bytes) -> bool:

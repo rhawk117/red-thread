@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from tests.casefile.redaction.strategies import Planted
     from tests.casefile.services.fakes import ServiceHarness
 
-type Batch = tuple[str | None, list[str], int]
+type Batch = tuple[str | None, list[str]]
 
 
 def is_not_thread_name(name: str) -> bool:
@@ -28,15 +28,16 @@ def is_not_thread_name(name: str) -> bool:
 
 
 def write_next(harness: ServiceHarness, entry: Entry) -> Entry:
-    numbered = replace(entry, seq=len(harness.scribe.files[entry.thread]) + 1)
+    seq = len(harness.scribe.files[entry.thread]) + 1
+    numbered = replace(entry, seq=seq, round=seq)
     harness.seed(numbered)
     return numbered
 
 
 def write_batches(harness: ServiceHarness, batches: list[Batch]) -> list[Entry]:
     return [
-        write_next(harness, create_entry(thread=thread, text=text, round_number=number))
-        for thread, texts, number in batches
+        write_next(harness, create_entry(thread=thread, text=text))
+        for thread, texts in batches
         for text in texts
     ]
 
@@ -70,7 +71,6 @@ class TestEntryCheckProperties:
     batches = st.tuples(
         st.sampled_from(POOLED_THREADS),
         st.lists(words, min_size=1, max_size=4),
-        st.integers(min_value=0, max_value=5),
     )
     batch_runs = st.lists(batches, min_size=1, max_size=6)
     stray_names = st.from_regex(r'[A-Za-z0-9_-]{1,8}', fullmatch=True).filter(is_not_thread_name)

@@ -40,6 +40,7 @@ from red_thread_casefile.errors import (
     MalformedRoundError,
     MissingBlockError,
     NumberingError,
+    RoundOrderError,
     StrayTextError,
     StrayThreadFileError,
 )
@@ -148,6 +149,12 @@ def list_numbers(body: tuple[Line, ...]) -> tuple[Numbered, ...]:
     return tuple(Numbered(line=head, seq=int(match['seq'])) for head, match in found if match)
 
 
+def list_rounds(body: tuple[Line, ...]) -> tuple[Numbered, ...]:
+    heads = (part.head for part in cut_at(body, ROUND_MARK).parts)
+    found = ((head, ROUND_HEADING.fullmatch(head.mark)) for head in heads)
+    return tuple(Numbered(line=head, seq=int(match['round'])) for head, match in found if match)
+
+
 @dataclass(slots=True, kw_only=True, frozen=True)
 class LedgerReader:
     source: LedgerSource
@@ -219,14 +226,22 @@ class LedgerReader:
         read = chain.from_iterable(self.read_entry(part, stamp) for part in entries.parts)
         return (*loose, *read)
 
-    def find_numbering_problems(self, body: tuple[Line, ...]) -> tuple[NumberingError, ...]:
+    def find_sequence_problems(
+        self, body: tuple[Line, ...]
+    ) -> tuple[NumberingError | RoundOrderError, ...]:
         start = Numbered(line=Line(number=0, text=''), seq=0)
-        steps = pairwise((start, *list_numbers(body)))
-        return tuple(
+        entries = pairwise((start, *list_numbers(body)))
+        numbering = (
             NumberingError(spot=self.locate(later.line, later.seq), expected=earlier.seq + 1)
-            for earlier, later in steps
+            for earlier, later in entries
             if later.seq != earlier.seq + 1
         )
+        order = (
+            RoundOrderError(spot=self.locate(later.line), number=later.seq, previous=earlier.seq)
+            for earlier, later in pairwise(list_rounds(body))
+            if later.seq <= earlier.seq
+        )
+        return (*numbering, *order)
 
     def read_opening(self, opening: tuple[Line, ...]) -> tuple[CaseFileError, ...]:
         entries = cut_at(opening, ENTRY_MARK)
@@ -239,8 +254,8 @@ class LedgerReader:
         opening = self.read_opening(rounds.preamble)
         read = chain.from_iterable(map(self.read_round, rounds.parts))
         found = split_readings((*opening, *read))
-        numbering = self.find_numbering_problems(body)
-        return FileReading(placed=found.placed, problems=(*found.problems, *numbering))
+        sequence = self.find_sequence_problems(body)
+        return FileReading(placed=found.placed, problems=(*found.problems, *sequence))
 
 
 def read_source(source: LedgerSource) -> FileReading:
