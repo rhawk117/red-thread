@@ -1,7 +1,13 @@
 [environment]
 python-version = "3.14"
 python-platform = "all"
-root = ["packages/casefile/src", "packages/navigate/src", "."]
+root = [
+    "packages/core/src",
+    "packages/casefile/src",
+    "packages/plans/src",
+    "packages/navigate/src",
+    ".",
+]
 
 [src]
 include = ["packages", "tests"]
