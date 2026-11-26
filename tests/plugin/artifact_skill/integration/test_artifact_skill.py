@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 
 def primary_skill_cases() -> pytest.MarkDecorator:
-    names = ('investigate', 'debug', 'distill')
+    names = ('investigate', 'debug', 'distill', 'plan')
     return pytest.mark.parametrize('skill', [pytest.param(name, id=name) for name in names])
 
 

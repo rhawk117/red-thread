@@ -17,7 +17,7 @@ def roster_agent_cases() -> pytest.MarkDecorator:
 
 
 def primary_skill_cases() -> pytest.MarkDecorator:
-    names = ('investigate', 'debug')
+    names = ('investigate', 'debug', 'plan')
     return pytest.mark.parametrize('skill', [pytest.param(name, id=name) for name in names])
 
 
