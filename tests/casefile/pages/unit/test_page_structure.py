@@ -85,7 +85,10 @@ class TestSections:
 
         page = render_page(Document(title='t', sections=sections))
 
-        assert find_tags(page, 'details') == [{'class': 'section', 'open': ''}] * 2
+        assert find_tags(page, 'details') == [
+            {'class': 'section', 'id': 'section-first', 'open': ''},
+            {'class': 'section', 'id': 'section-second', 'open': ''},
+        ]
         assert list_section_titles(page) == ['First', 'Second']
 
 
@@ -145,7 +148,10 @@ class TestMap:
         page = render_page(document)
 
         assert list_section_titles(page) == ['Findings', 'Map']
-        assert find_tags(page, 'details') == [{'class': 'section', 'open': ''}] * 2
+        assert find_tags(page, 'details') == [
+            {'class': 'section', 'id': 'section-findings', 'open': ''},
+            {'class': 'section', 'id': 'section-map', 'open': ''},
+        ]
         diagram, drawn = list_mermaid(page)
         assert diagram == DIAGRAM
         assert drawn.splitlines() == [*read_asset('map.mmd').splitlines(), *MAP_LINES]

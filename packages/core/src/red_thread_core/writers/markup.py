@@ -1,5 +1,6 @@
 """HTML from the document tree: every value escaped by one function, every node one fragment."""
 
+import re
 from dataclasses import dataclass
 from html import escape
 from string.templatelib import Interpolation, Template, convert
@@ -17,6 +18,8 @@ if TYPE_CHECKING:
         Section,
         Text,
     )
+
+NOT_ANCHOR = re.compile(r'[^a-z0-9]+')
 
 
 def render_value(value: object) -> str:
@@ -46,7 +49,7 @@ class HtmlInlines:
         return t'<code>{node.value}</code>'
 
     def write_link(self, node: Link) -> Template:
-        return t'<a href="{node.url}" rel="noreferrer">{node.url}</a>'
+        return t'<a href="{node.url}" rel="noreferrer">{node.shown}</a>'
 
     def write_inline(self, node: Inline) -> Template:
         return node.write(self)
@@ -89,13 +92,19 @@ def write_listing(listing: CodeListing | None) -> Template:
     return t'<pre class="listing" data-language="{listing.language}">{code}</pre>'
 
 
+def anchor_section(title: str) -> str:
+    return 'section-' + NOT_ANCHOR.sub('-', title.lower()).strip('-')
+
+
 def write_fold(section: Section, body: Template) -> Template:
     count = t'<span class="count">{section.count}</span>' if section.count else t''
     note = t'<span class="about">{section.note}</span>' if section.note else t''
     kind = t' data-kind="{section.kind}"' if section.kind is not None else t''
     state = t'' if section.folded else t' open'
     heading = t'<summary><h2>{section.title}</h2>{count}{note}</summary>'
-    return t'<details class="section"{kind}{state}>\n{heading}\n{body}\n</details>\n'
+    anchor = anchor_section(section.title)
+    opening = t'<details class="section" id="{anchor}"{kind}{state}>'
+    return t'{opening}\n{heading}\n{body}\n</details>\n'
 
 
 def write_block(block: Block) -> Template:

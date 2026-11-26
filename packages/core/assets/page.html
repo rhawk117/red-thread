@@ -12,11 +12,15 @@ $style</style>
 $theme</style>
 </head>
 <body>
-<main class="mx-auto flex max-w-3xl flex-col gap-4">
-<header class="flex flex-col gap-3 border-b-2 border-thread pb-5">
-<h1 class="text-2xl leading-tight font-semibold tracking-tight text-balance">$title</h1>
+<div class="layout">
+<aside class="rail">
+<header class="masthead">
+<h1>$title</h1>
 $summary</header>
-$toolbar$sections</main>
+$toolbar$contents$terms</aside>
+<main class="content">
+$sections</main>
+</div>
 <p id="status" role="status" class="sr-only"></p>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/12.3.0/mermaid.min.js" integrity="sha512-CaEn6DWYJ1MM0mFAT9nvJzd3z5gPsXTM7wzprb8wx615WzTnTSrGrbKkZUqe1s24lpW27X4HlIrSFvQm/ykqZA==" crossorigin="anonymous" referrerpolicy="no-referrer" defer></script>
 <script>

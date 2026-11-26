@@ -142,7 +142,6 @@ class TestChipProperties:
     ) -> None:
         page = render_case_page(document)
 
-        navs = find_tags(page, 'nav')
+        toolbars = [nav for nav in find_tags(page, 'nav') if nav['class'] == 'toolbar']
         folds = [tool for tool in find_buttons(page, 'tool') if 'data-fold' in tool]
-        assert len(navs) == len(folds) == bool(document.sections)
-        assert all(nav['class'] == 'toolbar' for nav in navs)
+        assert len(toolbars) == len(folds) == bool(document.sections)

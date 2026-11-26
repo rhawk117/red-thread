@@ -134,14 +134,22 @@ class TestSections:
         (reading,) = list_sections(render_page(Document(title='t', sections=(section,))))
 
         assert (reading.title, reading.count, reading.note) == ('Known', 2, 'Checked claims.')
-        assert reading.attributes == {'class': 'section', 'data-kind': 'known', 'open': ''}
+        assert reading.attributes == {
+            'class': 'section',
+            'id': 'section-known',
+            'data-kind': 'known',
+            'open': '',
+        }
 
     def test_a_folded_section_without_entries_has_no_count_and_is_closed(self) -> None:
         section = Section(title='Goal', blocks=(Paragraph(line=parse_line('a')),), folded=True)
 
         (reading,) = list_sections(render_page(Document(title='t', sections=(section,))))
 
-        assert (reading.count, reading.attributes) == (None, {'class': 'section'})
+        assert (reading.count, reading.attributes) == (
+            None,
+            {'class': 'section', 'id': 'section-goal'},
+        )
 
 
 class TestFacts:

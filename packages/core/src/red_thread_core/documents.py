@@ -57,6 +57,11 @@ class Code:
 @dataclass(slots=True, kw_only=True, frozen=True)
 class Link:
     url: str
+    label: str = ''
+
+    @property
+    def shown(self) -> str:
+        return self.label or self.url
 
     def write[T](self, writer: InlineWriter[T]) -> T:
         return writer.write_link(self)
@@ -143,6 +148,7 @@ class Section:
     kind: str | None = None
     note: str = ''
     folded: bool = False
+    column: bool = False
 
     @property
     def count(self) -> int:
@@ -157,9 +163,16 @@ class Fact:
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
+class Term:
+    word: str
+    meaning: str
+
+
+@dataclass(slots=True, kw_only=True, frozen=True)
 class Document:
     title: str
     summary: tuple[Line, ...] = ()
     facts: tuple[Fact, ...] = ()
     sections: tuple[Section, ...] = ()
     appendix: tuple[Section, ...] = ()
+    terms: tuple[Term, ...] = ()

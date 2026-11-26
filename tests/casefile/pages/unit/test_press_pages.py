@@ -12,7 +12,7 @@ from tests.casefile.lenses.cases import QUEUE_CITE, QUEUE_QUOTE, flag_params, le
 from tests.casefile.lenses.reading import list_all_refs
 from tests.casefile.pages.builders import DIAGRAM, SCRIPT
 from tests.casefile.pages.html_reading import (
-    find_tags,
+    find_outbound_links,
     list_item_refs,
     list_mermaid,
     list_section_titles,
@@ -125,7 +125,7 @@ class TestLensPage:
 
         export(press_harness, 'brief', html=True)
 
-        links = find_tags(press_harness.read_page('brief'), 'a')
+        links = find_outbound_links(press_harness.read_page('brief'))
         assert [link['href'] for link in links] == ['https://example.invalid/a']
 
     def test_a_url_cite_with_a_quote_cannot_break_out_of_the_href(
@@ -136,7 +136,7 @@ class TestLensPage:
 
         export(press_harness, 'brief', html=True)
 
-        (link,) = find_tags(press_harness.read_page('brief'), 'a')
+        (link,) = find_outbound_links(press_harness.read_page('brief'))
         assert link['href'] == cite
         assert set(link) == {'href', 'rel'}
 

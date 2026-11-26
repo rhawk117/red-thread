@@ -17,7 +17,9 @@ class MarkdownInlines:
         return f'`{node.value}`'
 
     def write_link(self, node: Link) -> str:
-        return node.url
+        if not node.label:
+            return node.url
+        return f'[{node.label}]({node.url})'
 
     def write_inline(self, node: Inline) -> str:
         return node.write(self)

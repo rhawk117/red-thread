@@ -1,5 +1,6 @@
-/* Filters, folding, copying and diagrams for a board, lens or plan page. The page reads the same
-   without this script: every entry is in the HTML, and the controls stay hidden. */
+/* Filters, folding, copying, links into folded sections and diagrams for a board, lens or plan
+   page. The page reads the same without this script: every entry is in the HTML, and the
+   controls stay hidden. */
 (() => {
   const root = document.documentElement;
   const status = document.getElementById('status');
@@ -133,6 +134,16 @@
     themes.observe(root, { attributes: true, attributeFilter: ['data-theme'] });
   };
 
+  const openTarget = () => {
+    const id = decodeURIComponent(window.location.hash.slice(1));
+    const target = id ? document.getElementById(id) : null;
+    let fold = target ? target.closest('details:not([open])') : null;
+    while (fold) {
+      fold.open = true;
+      fold = fold.closest('details:not([open])');
+    }
+  };
+
   const onToggle = () => {
     syncFold();
     drawOpenDiagrams();
@@ -147,5 +158,7 @@
   });
   document.addEventListener('toggle', onToggle, true);
   document.addEventListener('DOMContentLoaded', startDiagrams);
+  document.addEventListener('DOMContentLoaded', openTarget);
+  window.addEventListener('hashchange', openTarget);
   root.classList.add('js');
 })();

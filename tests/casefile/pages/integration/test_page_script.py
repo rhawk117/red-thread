@@ -13,6 +13,7 @@ from tests.casefile.pages.script import (
     click_chip,
     deny_clipboard,
     load,
+    navigate,
     run_timers,
     switch_scheme,
     toggle,
@@ -163,6 +164,19 @@ class TestCopying:
         assert (state['clipboard'], state['commands']) == ([], ['copy'])
         assert state['textareas'] == 0
         assert state['status'] == f'Copied {QUEUE_CITE}'
+
+
+class TestLinks:
+    def test_a_link_to_a_folded_section_opens_it(self, script: ScriptHarness) -> None:
+        state = script.play(load(), navigate('section-retired'))
+
+        assert RETIRED in list_open_sections(state)
+        assert list_drawn(state) == [True, True, True]
+
+    def test_a_link_to_nothing_on_the_page_opens_nothing(self, script: ScriptHarness) -> None:
+        state = script.play(load(), navigate('section-elsewhere'))
+
+        assert RETIRED not in list_open_sections(state)
 
 
 class TestDiagrams:

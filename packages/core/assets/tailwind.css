@@ -17,10 +17,32 @@
 }
 
 @layer components {
+  .layout {
+    @apply mx-auto flex max-w-3xl flex-col gap-4 xl:grid xl:max-w-[120rem]
+      xl:grid-cols-[20rem_minmax(0,1fr)] xl:items-start xl:gap-8;
+  }
+  .rail {
+    @apply flex min-w-0 flex-col gap-4 xl:sticky xl:top-8 xl:max-h-[calc(100dvh-4rem)]
+      xl:overflow-y-auto xl:pr-1;
+  }
+  .masthead { @apply flex flex-col gap-3 border-b-2 border-thread pb-5; }
+  .masthead > h1 { @apply text-2xl leading-tight font-semibold tracking-tight text-balance; }
+  .content { @apply flex min-w-0 flex-col gap-4; }
+  .columns {
+    @apply grid grid-cols-1 items-start gap-4 xl:grid-cols-[repeat(auto-fit,minmax(22rem,1fr))];
+  }
+  .contents { @apply hidden text-sm xl:block; }
+  .contents > ol { @apply flex flex-col gap-1 border-l-2 border-line pl-3; }
+  .contents a { @apply text-quiet hover:text-ink hover:underline; }
+  .terms { @apply rounded-lg border border-line bg-surface text-sm; }
+  .terms > summary { @apply cursor-pointer px-4 py-2.5 font-semibold; }
+  .terms > dl { @apply flex flex-col gap-2.5 border-t border-line px-4 py-3; }
+  .terms dt { @apply font-semibold; }
+  .terms dd { @apply text-quiet; }
   .meta { @apply flex flex-col gap-0.5 text-sm text-quiet; }
   .facts {
     @apply grid grid-cols-2 gap-x-6 gap-y-3 rounded-lg border border-line bg-surface p-4 text-sm
-      sm:grid-cols-4;
+      sm:grid-cols-4 xl:grid-cols-2;
   }
   .fact { @apply flex min-w-0 flex-col gap-0.5; }
   .fact.wide { @apply col-span-full; }
@@ -37,7 +59,7 @@
   .chip[aria-pressed="false"] { @apply bg-transparent text-quiet line-through; }
   .count { @apply text-quiet tabular-nums; }
   .tool { @apply ml-auto rounded-md; }
-  .section { @apply rounded-lg border border-line bg-surface; }
+  .section { @apply min-w-0 scroll-mt-4 rounded-lg border border-line bg-surface; }
   .section > summary {
     @apply flex cursor-pointer list-none flex-wrap items-center gap-x-2.5 gap-y-1 px-4 py-3;
   }

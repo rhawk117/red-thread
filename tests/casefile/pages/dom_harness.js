@@ -17,6 +17,8 @@ const page = {
   observers: [],
   schemeListeners: [],
   timers: [],
+  windowListeners: {},
+  location: { hash: '' },
   clipboard: [],
   commands: [],
   themes: [],
@@ -303,6 +305,10 @@ const createSandbox = (document, withMermaid) => {
       }
     },
     setTimeout: (handler) => page.timers.push(handler),
+    location: page.location,
+    addEventListener: (type, handler) => {
+      page.windowListeners[type] = [...(page.windowListeners[type] || []), handler];
+    },
   };
   sandbox.window = sandbox;
   if (withMermaid) sandbox.mermaid = createMermaid(document);
@@ -332,6 +338,10 @@ const STEPS = {
   },
   timers: () => {
     for (const handler of page.timers.splice(0)) handler();
+  },
+  navigate: (document, step) => {
+    page.location.hash = '#' + step.id;
+    for (const handler of page.windowListeners.hashchange || []) handler({});
   },
   deny_clipboard: () => {
     page.clipboardDenied = true;
