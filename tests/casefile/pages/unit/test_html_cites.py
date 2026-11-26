@@ -4,7 +4,8 @@ from dataclasses import replace
 from typing import TYPE_CHECKING
 
 import pytest
-from red_thread_casefile.documents import Citation, PointList, Section, parse_line
+from red_thread_casefile.documents import Citation
+from red_thread_core.documents import PointList, Section, parse_line
 
 from tests.casefile.pages.builders import PLAIN_URL
 from tests.casefile.pages.html_reading import (
@@ -20,7 +21,8 @@ from tests.casefile.writers.builders import create_document, create_entry_node
 from tests.casefile.writers.reading import render_page
 
 if TYPE_CHECKING:
-    from red_thread_casefile.documents import Document, EntryNode
+    from red_thread_casefile.documents import EntryNode
+    from red_thread_core.documents import Document
 
 
 def create_cited_node(text: str, ref: str, target: str) -> EntryNode:

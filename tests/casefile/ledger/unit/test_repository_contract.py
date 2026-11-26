@@ -1,6 +1,7 @@
 """The case repository contract against the in-memory fake."""
 
-from red_thread_casefile.store import CaseRepository, Clock, SourceTree
+from red_thread_casefile.store import CaseRepository
+from red_thread_core.store import Clock, SourceTree
 
 from tests.casefile.ledger.memory import (
     FixedClock,

@@ -5,27 +5,33 @@ from typing import TYPE_CHECKING
 
 import pytest
 from red_thread_casefile.documents import (
+    EntryList,
+    Note,
+    list_document_entries,
+    list_section_entries,
+)
+from red_thread_casefile.plans.nodes import TicketList
+from red_thread_core.documents import (
+    Block,
     Code,
     CodeListing,
     Document,
-    EntryList,
     Flowchart,
     Link,
-    Note,
     Paragraph,
     PointList,
     Section,
     Text,
     parse_line,
 )
-from red_thread_casefile.plans.nodes import TicketList
 
 from tests.casefile.documents.builders import create_entry_node, create_entry_section
 from tests.casefile.documents.fakes import NamingWriter
 from tests.params import as_labelled_params, as_params
 
 if TYPE_CHECKING:
-    from red_thread_casefile.documents import Block, Inline, NoteKind
+    from red_thread_casefile.documents import NoteKind
+    from red_thread_core.documents import Inline
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -88,7 +94,7 @@ class TestEntries:
         section = create_entry_section('e1', 'e2')
         mixed = Section(title='Mixed', blocks=(Paragraph(line=()), *section.blocks))
 
-        assert [entry.ref for entry in mixed.entries] == ['e1', 'e2']
+        assert [entry.ref for entry in list_section_entries(mixed)] == ['e1', 'e2']
 
     def test_a_document_holds_the_entries_of_its_sections_and_not_of_its_appendix(self) -> None:
         document = Document(
@@ -97,7 +103,7 @@ class TestEntries:
             appendix=(create_entry_section('e9', title='Retired'),),
         )
 
-        assert [entry.ref for entry in document.entries] == ['e1', 'e2']
+        assert [entry.ref for entry in list_document_entries(document)] == ['e1', 'e2']
 
 
 class TestDispatch:
@@ -108,8 +114,10 @@ class TestDispatch:
         assert node.write(self.writer) == f'{type(node).__name__.lower()} a'
 
     @block_dispatch_cases()
-    def test_a_block_reaches_the_method_named_for_its_kind(self, node: Block) -> None:
-        name = type(node).__name__.lower().replace('entrylist', 'entries')
-        name = name.replace('pointlist', 'points').replace('codelisting', 'listing')
-        name = name.replace('ticketlist', 'tickets')
-        assert node.write(self.writer).startswith(f'{name} ')
+    def test_every_block_is_a_block_that_writes_html_and_markdown(self, node: Block) -> None:
+        assert isinstance(node, Block)
+
+    @block_dispatch_cases()
+    def test_a_block_counts_only_the_entries_it_holds(self, node: Block) -> None:
+        expected = len(node.entries) if isinstance(node, EntryList) else 0
+        assert node.count == expected

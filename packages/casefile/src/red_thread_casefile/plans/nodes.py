@@ -1,10 +1,15 @@
 """The plan's own nodes in the document tree: a ticket with its promises and its status mark."""
 
 from dataclasses import dataclass
+from itertools import chain
 from typing import TYPE_CHECKING, Literal
 
+from red_thread_casefile.plans.writers import write_markdown_ticket, write_tickets
+
 if TYPE_CHECKING:
-    from red_thread_casefile.documents import BlockWriter, CodeListing, Line
+    from string.templatelib import Template
+
+    from red_thread_core.documents import CodeListing, Line
 
 type TicketStatus = Literal['new', 'changed', 'unchanged']
 
@@ -33,6 +38,10 @@ class TicketNode:
 @dataclass(slots=True, kw_only=True, frozen=True)
 class TicketList:
     tickets: tuple[TicketNode, ...]
+    count: int = 0
 
-    def write[T](self, writer: BlockWriter[T]) -> T:
-        return writer.write_tickets(self)
+    def write_html(self) -> Template:
+        return write_tickets(self.tickets)
+
+    def write_markdown(self) -> tuple[str, ...]:
+        return tuple(chain.from_iterable(map(write_markdown_ticket, self.tickets)))

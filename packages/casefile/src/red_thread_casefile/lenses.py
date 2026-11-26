@@ -3,20 +3,12 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
 
-from red_thread_casefile.documents import (
-    Document,
-    EntryBuilder,
-    Note,
-    Paragraph,
-    PointList,
-    Section,
-    list_caveat_notes,
-    list_entries_block,
-    parse_line,
-)
+from red_thread_core.documents import Document, Paragraph, PointList, Section, parse_line
+from red_thread_core.util import squeeze
+
+from red_thread_casefile.documents import EntryBuilder, Note, list_caveat_notes, list_entries_block
 from red_thread_casefile.domain import PROGRAM, STATE_DIRECTORY, shorten_head
 from red_thread_casefile.errors import LensOverBudgetError, UnknownSelectionRefError
-from red_thread_casefile.util import squeeze
 from red_thread_casefile.views import Annotator, CheckReport, describe_kind
 
 if TYPE_CHECKING:

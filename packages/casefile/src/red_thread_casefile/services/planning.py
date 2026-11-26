@@ -7,20 +7,21 @@ import msgspec
 
 from red_thread_casefile.plans.domain import Plan, PlanDraft, Ticket
 from red_thread_casefile.plans.errors import PlanRejectedError
+from red_thread_casefile.plans.filters import render_plan_page
 from red_thread_casefile.plans.page import PlanChanges, PlanPage
 from red_thread_casefile.plans.policy import PlanPolicy, create_grounds
 from red_thread_casefile.plans.util import order_stack
-from red_thread_casefile.writers.page import HtmlPage
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from pathlib import Path
 
+    from red_thread_core.redaction import SecretPatterns
+    from red_thread_core.store import PageStore
+
     from red_thread_casefile.plans.domain import TicketDraft
     from red_thread_casefile.plans.store import PlanRepository
-    from red_thread_casefile.redaction import SecretPatterns
     from red_thread_casefile.services.casefile import CaseFile
-    from red_thread_casefile.store import PageStore
 
 PLAN_PAGE = 'plan.html'
 
@@ -144,4 +145,4 @@ class Planner:
     def draw(self, plan: Plan) -> Path:
         changes = PlanChanges(plan=plan, previous=find_previous(self.plans.read_plans(), plan))
         page = PlanPage(case=self.record.repository.read_case(), changes=changes)
-        return self.pages.write(PLAN_PAGE, HtmlPage(document=page.compose()).render())
+        return self.pages.write(PLAN_PAGE, render_plan_page(page.compose()))

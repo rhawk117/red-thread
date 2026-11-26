@@ -2,7 +2,7 @@
 
 The case file behind the red-thread plugin. It keeps an append-only ledger of what an investigation found, renders that ledger as a board at every gate, checks that each citation still points at the code it quoted, and assembles the final outputs from the ledger. Nothing else in the plugin writes or renders a case file, and the model never edits one by hand.
 
-Its one dependency is msgspec, which reads and writes every JSON record. `docs/design.md` section 4 holds the format, the rules and the decisions behind them.
+It depends on msgspec, which reads and writes every JSON record, and on `red-thread-core` (`packages/core`), which holds the document tree, the page and its assets, redaction and the source tree, clock and page store. This package adds what only a case file knows: the ledger, its rules, the board and the lenses, and the entry list block the core page renders. `docs/design.md` section 4 holds the format, the rules and the decisions behind them.
 
 ## Who uses it
 
@@ -12,7 +12,7 @@ The `investigate` and `distill` skills call it through `bin/redthread-casefile`,
 uv run --no-config --no-project --python 3.14 --with-editable <plugin>/packages/casefile -- python -m red_thread_casefile "$@"
 ```
 
-uv takes the dependencies from this package's `pyproject.toml` and keeps the environment in its cache. Nothing is installed into the repository under investigation, and `--no-config` stops a uv setting in that repository from changing what gets installed. The first run on a machine downloads msgspec and, if needed, Python 3.14.
+uv takes the dependencies from this package's `pyproject.toml`, installs `packages/core` editable beside it as a workspace source, and keeps the environment in its cache. Nothing is installed into the repository under investigation, and `--no-config` stops a uv setting in that repository from changing what gets installed. The first run on a machine downloads msgspec and, if needed, Python 3.14.
 
 ## What it is for
 

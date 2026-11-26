@@ -3,20 +3,16 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from red_thread_core.documents import Document, Fact, Flowchart, Section, parse_line, parse_value
+
 from red_thread_casefile.assets import read_asset
 from red_thread_casefile.charts import create_case_map
 from red_thread_casefile.documents import (
-    Document,
     EntryBuilder,
     EntryList,
-    Fact,
-    Flowchart,
     Note,
-    Section,
     list_caveat_notes,
     list_entries_block,
-    parse_line,
-    parse_value,
 )
 from red_thread_casefile.domain import NO_HEAD, date_of, shorten_head
 from red_thread_casefile.policy import CITE_STATES, tally_states

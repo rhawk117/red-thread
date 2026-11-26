@@ -1,0 +1,14 @@
+[project]
+name = "red-thread-core"
+version = "0.1.0"
+description = "The shared base of red-thread: the document tree, its writers, the page and the primitives every package uses"
+readme = "README.md"
+authors = [
+    { name = "rhawk117", email = "noplaceLike127dot0dot0dot1@proton.me" },
+]
+requires-python = ">=3.14"
+dependencies = []
+
+[build-system]
+requires = ["uv_build>=0.13.1,<0.14.0"]
+build-backend = "uv_build"

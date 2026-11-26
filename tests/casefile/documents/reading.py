@@ -2,10 +2,10 @@
 
 from typing import TYPE_CHECKING
 
-from red_thread_casefile.documents import Code, Link
+from red_thread_core.documents import Code, Link
 
 if TYPE_CHECKING:
-    from red_thread_casefile.documents import Inline, Line
+    from red_thread_core.documents import Inline, Line
 
 
 def write_back(node: Inline) -> str:

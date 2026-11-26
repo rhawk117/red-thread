@@ -4,16 +4,10 @@ from dataclasses import replace
 from typing import TYPE_CHECKING
 
 import pytest
-from red_thread_casefile.documents import (
-    Citation,
-    Document,
-    Note,
-    PointList,
-    Section,
-    parse_line,
-)
+from red_thread_casefile.documents import Citation, Note
 from red_thread_casefile.domain import VERDICTS
 from red_thread_casefile.policy import CITE_STATES, Finding
+from red_thread_core.documents import Document, PointList, Section, parse_line
 
 from tests.casefile.ledger.memory import MOMENT
 from tests.casefile.pages.builders import PLAIN_URL, create_document

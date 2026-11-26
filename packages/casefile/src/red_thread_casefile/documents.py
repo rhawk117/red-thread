@@ -1,92 +1,27 @@
-"""The document tree between the ledger and the writers of the page and the Markdown outputs."""
+"""The case file's nodes in the document tree: an entry with its citation, notes and lead flag."""
 
-import re
 from dataclasses import dataclass
 from itertools import chain
-from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Literal
+
+from red_thread_core.documents import parse_line
+from red_thread_core.util import squeeze
 
 from red_thread_casefile.domain import Cite
-from red_thread_casefile.util import squeeze
 from red_thread_casefile.views import describe_lead, get_shown_verdict
+from red_thread_casefile.writers.markdown import write_markdown_entry
+from red_thread_casefile.writers.markup import write_entries
 
 if TYPE_CHECKING:
+    from string.templatelib import Template
+
+    from red_thread_core.documents import Block, Document, Line, Section
+
     from red_thread_casefile.domain import Entry, EntryKind, Verdict
-    from red_thread_casefile.plans.nodes import TicketList
     from red_thread_casefile.policy import Finding
     from red_thread_casefile.views import Annotator
 
 type NoteKind = Literal['rests_on', 'refuted_by', 'retires', 'retired_by', 'urgency', 'source']
-
-CODE_SPAN = re.compile(r'`([^`]+)`')
-
-
-@runtime_checkable
-class InlineWriter[T](Protocol):
-    def write_text(self, node: Text) -> T: ...
-
-    def write_code(self, node: Code) -> T: ...
-
-    def write_link(self, node: Link) -> T: ...
-
-
-@runtime_checkable
-class BlockWriter[T](Protocol):
-    def write_paragraph(self, node: Paragraph) -> T: ...
-
-    def write_entries(self, node: EntryList) -> T: ...
-
-    def write_points(self, node: PointList) -> T: ...
-
-    def write_flowchart(self, node: Flowchart) -> T: ...
-
-    def write_listing(self, node: CodeListing) -> T: ...
-
-    def write_tickets(self, node: TicketList) -> T: ...
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Text:
-    value: str
-
-    def write[T](self, writer: InlineWriter[T]) -> T:
-        return writer.write_text(self)
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Code:
-    value: str
-
-    def write[T](self, writer: InlineWriter[T]) -> T:
-        return writer.write_code(self)
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Link:
-    url: str
-
-    def write[T](self, writer: InlineWriter[T]) -> T:
-        return writer.write_link(self)
-
-
-type Inline = Text | Code | Link
-type Line = tuple[Inline, ...]
-
-
-def create_inline(index: int, piece: str) -> Inline:
-    if index % 2:
-        return Code(value=piece)
-    return Text(value=piece)
-
-
-def parse_line(text: str) -> Line:
-    pieces = enumerate(CODE_SPAN.split(text))
-    return tuple(create_inline(index, piece) for index, piece in pieces if piece)
-
-
-def parse_value(text: str) -> Line:
-    if Cite(raw=text).is_url:
-        return (Link(url=text),)
-    return parse_line(text)
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -149,81 +84,27 @@ class EntryNode:
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
-class Paragraph:
-    line: Line
-
-    def write[T](self, writer: BlockWriter[T]) -> T:
-        return writer.write_paragraph(self)
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
 class EntryList:
     entries: tuple[EntryNode, ...]
 
-    def write[T](self, writer: BlockWriter[T]) -> T:
-        return writer.write_entries(self)
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class PointList:
-    points: tuple[Line, ...]
-
-    def write[T](self, writer: BlockWriter[T]) -> T:
-        return writer.write_points(self)
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Flowchart:
-    lines: tuple[str, ...]
-
-    def write[T](self, writer: BlockWriter[T]) -> T:
-        return writer.write_flowchart(self)
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class CodeListing:
-    language: str
-    source: str
-
-    def write[T](self, writer: BlockWriter[T]) -> T:
-        return writer.write_listing(self)
-
-
-type Block = Paragraph | EntryList | PointList | Flowchart | CodeListing | TicketList
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Section:
-    title: str
-    blocks: tuple[Block, ...] = ()
-    kind: EntryKind | None = None
-    note: str = ''
-    folded: bool = False
-
     @property
-    def entries(self) -> tuple[EntryNode, ...]:
-        lists = (block.entries for block in self.blocks if isinstance(block, EntryList))
-        return tuple(chain.from_iterable(lists))
+    def count(self) -> int:
+        return len(self.entries)
+
+    def write_html(self) -> Template:
+        return write_entries(self.entries)
+
+    def write_markdown(self) -> tuple[str, ...]:
+        return tuple(map(write_markdown_entry, self.entries))
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Fact:
-    label: str
-    value: Line
-    wide: bool = False
+def list_section_entries(section: Section) -> tuple[EntryNode, ...]:
+    lists = (block.entries for block in section.blocks if isinstance(block, EntryList))
+    return tuple(chain.from_iterable(lists))
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Document:
-    title: str
-    summary: tuple[Line, ...] = ()
-    facts: tuple[Fact, ...] = ()
-    sections: tuple[Section, ...] = ()
-    appendix: tuple[Section, ...] = ()
-
-    @property
-    def entries(self) -> tuple[EntryNode, ...]:
-        return tuple(chain.from_iterable(section.entries for section in self.sections))
+def list_document_entries(document: Document) -> tuple[EntryNode, ...]:
+    return tuple(chain.from_iterable(map(list_section_entries, document.sections)))
 
 
 def list_entries_block(entries: tuple[EntryNode, ...]) -> tuple[Block, ...]:

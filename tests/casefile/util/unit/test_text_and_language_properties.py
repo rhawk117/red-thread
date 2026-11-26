@@ -4,7 +4,8 @@ from collections import Counter
 
 from hypothesis import given
 from hypothesis import strategies as st
-from red_thread_casefile.util import LANGUAGE_LIMIT, rank_languages, squeeze
+from red_thread_casefile.util import LANGUAGE_LIMIT, rank_languages
+from red_thread_core.util import squeeze
 
 WHITESPACE = (
     ' \t\n\r\x0b\x0c\x1c\x1d\x1e\x1f\x85\N{NO-BREAK SPACE}\N{LINE SEPARATOR}\N{PARAGRAPH SEPARATOR}'

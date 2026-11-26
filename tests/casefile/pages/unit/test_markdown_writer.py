@@ -1,7 +1,7 @@
 """MarkdownWriter: the order of the sections, prose lines and one list line per entry."""
 
 import pytest
-from red_thread_casefile.documents import Document, Paragraph, Section, parse_line
+from red_thread_core.documents import Document, Paragraph, Section, parse_line
 
 from tests.casefile.writers.builders import create_document, create_entry_node
 from tests.casefile.writers.reading import list_item_lines, render_markdown

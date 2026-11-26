@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from hypothesis import strategies as st
 
 if TYPE_CHECKING:
-    from red_thread_casefile.redaction import PatternName
+    from red_thread_core.redaction import PatternName
 
 BODY = r'[A-Za-z0-9+/=\n]{0,120}'
 ASSIGNMENT_KEYS = ('password', 'api_key', 'secret', 'token', 'DB_PASSWORD')

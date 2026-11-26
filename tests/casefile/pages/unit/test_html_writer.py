@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
-from red_thread_casefile.documents import Citation, Document, Note, Paragraph, Section, parse_line
+from red_thread_casefile.documents import Citation, Note
+from red_thread_core.documents import Document, Paragraph, Section, parse_line
 
 from tests.casefile.pages.builders import (
     DOCUMENT_FIELDS,

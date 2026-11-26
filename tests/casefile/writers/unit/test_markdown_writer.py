@@ -5,18 +5,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 from hypothesis import given
-from red_thread_casefile.documents import (
-    Citation,
-    Document,
-    Flowchart,
-    Note,
-    Paragraph,
-    PointList,
-    Section,
-    parse_line,
-)
+from red_thread_casefile.documents import Citation, Note, list_section_entries
 from red_thread_casefile.policy import Finding
-from red_thread_casefile.writers.markdown import MarkdownWriter
+from red_thread_core.documents import Document, Flowchart, Paragraph, PointList, Section, parse_line
 
 from tests.casefile.lenses.cases import cite_shape_params
 from tests.casefile.writers.builders import create_document, create_entry_node
@@ -82,9 +73,7 @@ class TestBlocks:
         assert list_item_lines(document) == ['- a pointer', '- see `x`']
 
     def test_a_flowchart_is_a_mermaid_code_fence(self) -> None:
-        writer = MarkdownWriter(document=Document(title='t'))
-
-        written = writer.write_block(Flowchart(lines=('flowchart TD', '  A --> B')))
+        written = Flowchart(lines=('flowchart TD', '  A --> B')).write_markdown()
 
         assert written == ('```mermaid', 'flowchart TD', '  A --> B', '```')
 
@@ -123,7 +112,9 @@ class TestDocumentLayout:
 class TestMarkdownWriterProperties:
     @given(document=documents)
     def test_every_entry_is_one_line_ending_with_its_ref_in_order(self, document: Document) -> None:
-        entries = [entry for section in document.sections for entry in section.entries]
+        entries = [
+            entry for section in document.sections for entry in list_section_entries(section)
+        ]
 
         lines = [line for line in list_item_lines(document) if line.endswith(']')]
 

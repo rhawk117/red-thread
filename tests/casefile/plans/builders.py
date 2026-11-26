@@ -13,9 +13,9 @@ from tests.casefile.ledger.builders import URL_CITE, create_case, create_entry
 from tests.casefile.ledger.memory import HEAD, MOMENT
 
 if TYPE_CHECKING:
-    from red_thread_casefile.documents import Document
     from red_thread_casefile.plans.domain import Plan
     from red_thread_casefile.plans.policy import Grounds
+    from red_thread_core.documents import Document
 
 LANES = ('core', 'docs', 'web')
 RESTING_REFS = ('e1', 'e2')

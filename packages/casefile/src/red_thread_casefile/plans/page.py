@@ -3,12 +3,10 @@
 from collections import Counter
 from dataclasses import dataclass
 from itertools import chain
-from textwrap import shorten
 from typing import TYPE_CHECKING
 
-from red_thread_casefile.assets import read_asset
-from red_thread_casefile.charts import LABEL_WIDTH, UNSAFE
-from red_thread_casefile.documents import (
+from red_thread_core.charts import clean_label
+from red_thread_core.documents import (
     CodeListing,
     Document,
     Fact,
@@ -18,13 +16,16 @@ from red_thread_casefile.documents import (
     Section,
     parse_line,
 )
+from red_thread_core.util import squeeze
+
+from red_thread_casefile.assets import read_asset
 from red_thread_casefile.domain import date_of, shorten_head
 from red_thread_casefile.plans.domain import Mitigate, YouIntervene
 from red_thread_casefile.plans.nodes import TICKET_STATUSES, Promise, TicketList, TicketNode
-from red_thread_casefile.util import squeeze
 
 if TYPE_CHECKING:
-    from red_thread_casefile.documents import Line
+    from red_thread_core.documents import Line
+
     from red_thread_casefile.domain import Case
     from red_thread_casefile.plans.domain import Acceptance, Handling, Plan, Risk, Ticket
     from red_thread_casefile.plans.nodes import TicketStatus
@@ -66,8 +67,7 @@ def create_promise(acceptance: Acceptance) -> Promise:
 
 
 def label_ticket(ticket: Ticket) -> str:
-    title = shorten(UNSAFE.sub(' ', ticket.title), width=LABEL_WIDTH, placeholder='...')
-    return f'{ticket.id}: {title}'
+    return f'{ticket.id}: {clean_label(ticket.title)}'
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)

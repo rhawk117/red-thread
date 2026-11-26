@@ -4,17 +4,12 @@ from typing import get_args
 
 from hypothesis import given
 from hypothesis import strategies as st
-from red_thread_casefile.documents import (
-    Citation,
-    EntryBuilder,
-    Note,
-    list_caveat_notes,
-    parse_line,
-)
+from red_thread_casefile.documents import Citation, EntryBuilder, Note, list_caveat_notes
 from red_thread_casefile.domain import EntryKind
 from red_thread_casefile.policy import Finding
-from red_thread_casefile.util import squeeze
 from red_thread_casefile.views import Annotator
+from red_thread_core.documents import parse_line
+from red_thread_core.util import squeeze
 
 from tests.casefile.ledger.builders import create_entry
 

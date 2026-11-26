@@ -1,6 +1,7 @@
 """Entry nodes and sections for the document tree tests."""
 
-from red_thread_casefile.documents import EntryList, EntryNode, Section, parse_line
+from red_thread_casefile.documents import EntryList, EntryNode
+from red_thread_core.documents import Section, parse_line
 
 MOMENT = '2026-11-21T10:00:00Z'
 

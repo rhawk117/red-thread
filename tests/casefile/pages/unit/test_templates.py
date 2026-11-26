@@ -6,14 +6,14 @@ from typing import TYPE_CHECKING
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
-from red_thread_casefile.assets import read_asset
-from red_thread_casefile.writers.markup import render, render_part, render_value
+from red_thread_core.assets import read_asset
+from red_thread_core.writers.markup import render, render_part, render_value
 
 from tests.casefile.pages.asset_names import ASSET_NAMES
 from tests.casefile.writers.reading import render_marked_up
 
 if TYPE_CHECKING:
-    from red_thread_casefile.assets import AssetName
+    from red_thread_core.assets import CoreAsset
 
 RAW_CHARACTERS = '<>"\''
 text_characters = st.characters(exclude_characters='`')
@@ -134,5 +134,5 @@ class TestInlineMarkup:
 
 class TestAssets:
     @asset_cases()
-    def test_an_asset_is_read_as_text(self, name: AssetName) -> None:
+    def test_an_asset_is_read_as_text(self, name: CoreAsset) -> None:
         assert read_asset(name).strip()

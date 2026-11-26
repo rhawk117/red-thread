@@ -3,19 +3,16 @@
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from red_thread_core.store import DirectoryPageStore, GitSourceTree, SystemClock
+
 from red_thread_casefile.plans.store import DirectoryPlanRepository
 from red_thread_casefile.services import CaseFile, Planner, Press
-from red_thread_casefile.store import (
-    DirectoryCaseRepository,
-    DirectoryPageStore,
-    GitSourceTree,
-    SystemClock,
-)
+from red_thread_casefile.store import DirectoryCaseRepository
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from red_thread_casefile.store import Clock
+    from red_thread_core.store import Clock
 
 ROOT_DEPTH = 1
 

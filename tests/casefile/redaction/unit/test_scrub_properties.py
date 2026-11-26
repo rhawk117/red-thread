@@ -7,13 +7,13 @@ from typing import TYPE_CHECKING
 import pytest
 from hypothesis import example, given
 from hypothesis import strategies as st
-from red_thread_casefile.redaction import create_secret_patterns
+from red_thread_core.redaction import create_secret_patterns
 
 from tests.casefile.redaction.strategies import FAMILIES, planted_secrets
 
 if TYPE_CHECKING:
     from _pytest.mark import ParameterSet
-    from red_thread_casefile.redaction import Redaction
+    from red_thread_core.redaction import Redaction
 
     from tests.casefile.redaction.strategies import Family, Planted
 

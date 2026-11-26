@@ -5,14 +5,7 @@ from dataclasses import dataclass, replace
 import pytest
 from red_thread_casefile.assets import read_asset
 from red_thread_casefile.boards import MAP_NOTE
-from red_thread_casefile.documents import (
-    Document,
-    Flowchart,
-    Paragraph,
-    PointList,
-    Section,
-    parse_line,
-)
+from red_thread_core.documents import Document, Flowchart, Paragraph, PointList, Section, parse_line
 
 from tests.casefile.pages.builders import DIAGRAM, create_document, create_marked_entry
 from tests.casefile.pages.html_reading import (

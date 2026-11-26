@@ -9,7 +9,7 @@ from tests.params import as_params
 
 if TYPE_CHECKING:
     from _pytest.mark import ParameterSet
-    from red_thread_casefile.redaction import PatternName
+    from red_thread_core.redaction import PatternName
 
 LEAKED = 'AKIAIOSFODNN7EXAMPLE'
 PRIVATE_KEY = (

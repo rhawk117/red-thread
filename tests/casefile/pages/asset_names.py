@@ -2,6 +2,6 @@
 
 from typing import get_args
 
-from red_thread_casefile.assets import AssetName
+from red_thread_core.assets import CoreAsset
 
-ASSET_NAMES: tuple[AssetName, ...] = get_args(AssetName.__value__)
+ASSET_NAMES: tuple[CoreAsset, ...] = get_args(CoreAsset.__value__)

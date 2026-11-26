@@ -7,10 +7,10 @@ from typing import TYPE_CHECKING
 import pytest
 from hypothesis import given
 from msgspec.structs import replace
-from red_thread_casefile.documents import CodeListing, Flowchart
 from red_thread_casefile.plans.domain import Interface, Mitigate, Risk
+from red_thread_casefile.plans.filters import list_tickets, render_plan_page
 from red_thread_casefile.plans.nodes import TicketList
-from red_thread_casefile.writers.page import list_tickets
+from red_thread_core.documents import CodeListing, Flowchart
 
 from tests.casefile.pages.html_reading import list_chip_groups, list_facts
 from tests.casefile.plans.builders import (
@@ -26,9 +26,9 @@ from tests.casefile.writers.reading import render_markdown, render_page
 from tests.params import as_params
 
 if TYPE_CHECKING:
-    from red_thread_casefile.documents import Document, Section
     from red_thread_casefile.plans.domain import PlanDraft
     from red_thread_casefile.plans.nodes import TicketNode, TicketStatus
+    from red_thread_core.documents import Document, Section
 
 PAGE = 1
 DOCS = 2
@@ -207,7 +207,7 @@ class TestLayout:
         docs = replace(self.draft.tickets[DOCS], title='write the docs again')
         revised = stamp_plan(replace_ticket(self.draft, DOCS, docs), 2)
 
-        page = render_page(create_plan_document(revised, stamp_plan(self.draft)))
+        page = render_plan_page(create_plan_document(revised, stamp_plan(self.draft)))
 
         chips = chain.from_iterable(list_chip_groups(page))
         assert [(chip.group, chip.value, chip.count) for chip in chips] == [

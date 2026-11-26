@@ -5,8 +5,8 @@ from html import escape
 from typing import TYPE_CHECKING
 
 import pytest
-from red_thread_casefile.documents import CodeListing, Document, Section
 from red_thread_casefile.plans.nodes import TicketList
+from red_thread_core.documents import CodeListing, Document, Section
 
 from tests.casefile.pages.builders import payload_params
 from tests.casefile.pages.html_reading import find_tags, list_code_spans, list_item_refs, list_spans
@@ -14,8 +14,8 @@ from tests.casefile.writers.builders import create_ticket_node
 from tests.casefile.writers.reading import render_markdown, render_page
 
 if TYPE_CHECKING:
-    from red_thread_casefile.documents import Block
     from red_thread_casefile.plans.nodes import TicketNode
+    from red_thread_core.documents import Block
 
 
 def payload_cases() -> pytest.MarkDecorator:

@@ -4,14 +4,16 @@ from itertools import chain
 from typing import TYPE_CHECKING
 
 from hypothesis import given
-from red_thread_casefile.documents import EntryList, EntryNode, PointList
+from red_thread_casefile.documents import EntryList, EntryNode
+from red_thread_core.documents import PointList
 
 from tests.casefile.documents.reading import join_line
 from tests.casefile.writers.reading import list_item_lines, render_markdown
 from tests.casefile.writers.strategies import documents
 
 if TYPE_CHECKING:
-    from red_thread_casefile.documents import Block, Citation, Document, Line
+    from red_thread_casefile.documents import Citation
+    from red_thread_core.documents import Block, Document, Line
 
 type ListItem = EntryNode | Line
 

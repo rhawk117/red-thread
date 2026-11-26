@@ -2,13 +2,13 @@
 
 from typing import TYPE_CHECKING
 
-from red_thread_casefile.documents import parse_line
-from red_thread_casefile.writers.markdown import MarkdownWriter
-from red_thread_casefile.writers.markup import HtmlInlines, render_value
-from red_thread_casefile.writers.page import HtmlPage
+from red_thread_casefile.writers.page import render_case_page
+from red_thread_core.documents import parse_line
+from red_thread_core.writers.markdown import MarkdownWriter
+from red_thread_core.writers.markup import HtmlInlines, render_value
 
 if TYPE_CHECKING:
-    from red_thread_casefile.documents import Document
+    from red_thread_core.documents import Document
 
 
 def render_markdown(document: Document) -> str:
@@ -16,7 +16,7 @@ def render_markdown(document: Document) -> str:
 
 
 def render_page(document: Document) -> str:
-    return HtmlPage(document=document).render()
+    return render_case_page(document)
 
 
 def render_marked_up(text: str) -> str:

@@ -3,18 +3,19 @@
 from typing import TYPE_CHECKING
 
 from red_thread_casefile.boards import BoardPage
-from red_thread_casefile.documents import Flowchart
+from red_thread_casefile.documents import list_document_entries
 from red_thread_casefile.domain import Ledger
 from red_thread_casefile.lenses import Composer, Edition, Selection, get_lens
 from red_thread_casefile.views import Board
+from red_thread_core.documents import Flowchart
 
 from tests.casefile.charts.reading import read_map
 from tests.casefile.ledger.builders import create_case, create_entry
 from tests.casefile.ledger.memory import HEAD
 
 if TYPE_CHECKING:
-    from red_thread_casefile.documents import Document
     from red_thread_casefile.domain import Entry
+    from red_thread_core.documents import Document
 
 DIAGRAM = 'flowchart TD\n  A --> B'
 
@@ -24,7 +25,7 @@ def create_board(*entries: Entry) -> Board:
 
 
 def list_item_diagrams(document: Document) -> list[str | None]:
-    return [entry.diagram for entry in document.entries]
+    return [entry.diagram for entry in list_document_entries(document)]
 
 
 def list_map_lines(document: Document) -> tuple[str, ...]:

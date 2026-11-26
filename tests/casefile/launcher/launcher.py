@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from tests.casefile.launcher.children import Finished
     from tests.casefile.ledger.git_repository import GitRepository
 
+PACKAGES = ('core', 'casefile')
 PLUGIN_ROOT = 'CLAUDE_PLUGIN_ROOT'
 OUTER_VARIABLES = frozenset({PLUGIN_ROOT, 'VIRTUAL_ENV'})
 TARGET = 'why the retry queue stalls'
@@ -57,8 +58,10 @@ class PluginCopy:
 
 def copy_plugin(source: Path, target: Path) -> PluginCopy:
     skipped = shutil.ignore_patterns('__pycache__', '*.pyc', '*.egg-info', '.venv')
-    package = target.joinpath('packages', 'casefile')
-    shutil.copytree(source.joinpath('packages', 'casefile'), package, ignore=skipped)
+    for name in PACKAGES:
+        package = target.joinpath('packages', name)
+        shutil.copytree(source.joinpath('packages', name), package, ignore=skipped)
+    shutil.copy2(source.joinpath('pyproject.toml'), target)
     bin_dir = target.joinpath('bin')
     bin_dir.mkdir()
     shutil.copy2(source.joinpath('bin', 'redthread-lib'), bin_dir)

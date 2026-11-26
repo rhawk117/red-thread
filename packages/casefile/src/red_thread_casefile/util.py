@@ -38,10 +38,6 @@ LANGUAGE_BY_SUFFIX: Mapping[str, str] = MappingProxyType({
 })
 
 
-def squeeze(text: str) -> str:
-    return ' '.join(text.split())
-
-
 def rank_languages(files: Iterable[str]) -> tuple[str, ...]:
     suffixes = (PurePosixPath(name).suffix.lower() for name in files)
     counted = Counter(

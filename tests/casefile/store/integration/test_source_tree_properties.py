@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 import pytest
 from hypothesis import example, given
 from hypothesis import strategies as st
-from red_thread_casefile.store import GitSourceTree
+from red_thread_core.store import GitSourceTree
 
 from tests.casefile.ledger.git_repository import create_empty_repository
 

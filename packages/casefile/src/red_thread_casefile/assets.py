@@ -1,13 +1,11 @@
-"""The assets beside the package source: the page skeleton, styles, script and map headers."""
+"""The case file's own assets: the map header, and the worktree header of the plan page."""
 
-from pathlib import Path
 from typing import Literal
 
-type AssetName = Literal['page.html', 'page.css', 'tailwind.css', 'page.js', 'map.mmd', 'lanes.mmd']
+from red_thread_core.assets import read_package_asset
 
-LEVELS_ABOVE = 2
+type AssetName = Literal['map.mmd', 'lanes.mmd']
 
 
 def read_asset(name: AssetName) -> str:
-    package = Path(__file__).resolve().parents[LEVELS_ABOVE]
-    return package.joinpath('assets', name).read_text(encoding='utf-8')
+    return read_package_asset(__file__, name)

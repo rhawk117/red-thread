@@ -5,6 +5,7 @@ requires-python = ">=3.14"
 [manifest]
 members = [
     "red-thread-casefile",
+    "red-thread-core",
     "red-thread-navigate",
     "red-thread-plugin",
 ]
@@ -462,13 +463,20 @@ source = { editable = "packages/casefile" }
 dependencies = [
     { name = "cyclopts" },
     { name = "msgspec" },
+    { name = "red-thread-core" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "cyclopts", specifier = "==5.5.3" },
     { name = "msgspec", specifier = ">=0.22.0" },
+    { name = "red-thread-core", editable = "packages/core" },
 ]
+
+[[package]]
+name = "red-thread-core"
+version = "0.1.0"
+source = { editable = "packages/core" }
 
 [[package]]
 name = "red-thread-navigate"

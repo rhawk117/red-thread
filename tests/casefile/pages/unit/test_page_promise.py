@@ -7,18 +7,9 @@ from typing import TYPE_CHECKING
 import pytest
 from red_thread_casefile.assets import read_asset
 from red_thread_casefile.boards import MAP_NOTE
-from red_thread_casefile.documents import (
-    Citation,
-    Document,
-    EntryList,
-    EntryNode,
-    Flowchart,
-    Note,
-    Paragraph,
-    Section,
-    parse_line,
-)
+from red_thread_casefile.documents import Citation, EntryList, EntryNode, Note
 from red_thread_casefile.policy import Finding
+from red_thread_core.documents import Document, Flowchart, Paragraph, Section, parse_line
 
 from tests.casefile.pages.html_reading import (
     MERMAID_URL,

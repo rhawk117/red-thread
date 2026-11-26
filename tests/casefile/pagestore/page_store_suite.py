@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from typing import Protocol
 
-from red_thread_casefile.store import PageStore
+from red_thread_core.store import PageStore
 
 
 class PageReader(Protocol):

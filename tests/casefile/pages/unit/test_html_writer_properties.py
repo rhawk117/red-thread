@@ -12,17 +12,13 @@ from red_thread_casefile.boards import MAP_NOTE
 from red_thread_casefile.documents import (
     NOTE_LABELS,
     Citation,
-    Document,
     EntryList,
     EntryNode,
-    Flowchart,
     Note,
-    Paragraph,
-    PointList,
-    Section,
-    parse_line,
+    list_document_entries,
 )
 from red_thread_casefile.domain import ENTRY_KINDS
+from red_thread_core.documents import Document, Flowchart, Paragraph, PointList, Section, parse_line
 
 from tests.casefile.documents.builders import MOMENT
 from tests.casefile.documents.reading import join_line
@@ -43,7 +39,7 @@ from tests.casefile.writers.builders import create_entry_node
 from tests.casefile.writers.reading import render_page
 
 if TYPE_CHECKING:
-    from red_thread_casefile.documents import Block, Line
+    from red_thread_core.documents import Block, Line
 
 ANY_TAG = re.compile(r'<[^>]*>')
 TITLE = re.compile(r'<title>(.*?)</title>', re.DOTALL)
@@ -168,7 +164,7 @@ class TestHtmlPageProperties:
     def test_the_text_of_every_field_is_what_the_page_reads_back(self, document: Document) -> None:
         page = render_page(document)
 
-        entries = document.entries
+        entries = list_document_entries(document)
         meta = ''.join(META.findall(page))
         assert read_texts(page, TITLE) == [document.title]
         assert read_texts(page, HEADING) == [document.title]
@@ -188,7 +184,7 @@ class TestHtmlPageProperties:
     ) -> None:
         page = render_page(document)
 
-        entries = document.entries
+        entries = list_document_entries(document)
         assert [entry.get('data-kind') for entry in find_entries(page) if 'data-kind' in entry] == [
             entry.kind for entry in entries
         ]
@@ -209,7 +205,9 @@ class TestHtmlPageProperties:
     ) -> None:
         page = render_page(document)
 
-        diagrams = [entry.diagram for entry in document.entries if entry.diagram is not None]
+        diagrams = [
+            entry.diagram for entry in list_document_entries(document) if entry.diagram is not None
+        ]
         drawn = list_mermaid(page)
         assert drawn[: len(diagrams)] == diagrams
         assert len(drawn) == len(diagrams) + bool(document.appendix)

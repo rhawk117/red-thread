@@ -4,21 +4,22 @@ from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING
 
 import msgspec
+from red_thread_core.writers.markdown import MarkdownWriter
 
 from red_thread_casefile.boards import BoardPage
 from red_thread_casefile.lenses import Composer, Edition, Selection, count_lines, get_lens
 from red_thread_casefile.policy import get_page_problem
 from red_thread_casefile.views import Board
-from red_thread_casefile.writers.markdown import MarkdownWriter
-from red_thread_casefile.writers.page import HtmlPage
+from red_thread_casefile.writers.page import render_case_page
 
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from red_thread_core.store import PageStore
+
     from red_thread_casefile.domain import Case
     from red_thread_casefile.lenses import LensName
     from red_thread_casefile.services.casefile import CaseFile
-    from red_thread_casefile.store import PageStore
 
 BOARD_PAGE = 'board.html'
 
@@ -64,7 +65,7 @@ class Press:
             findings=edition.findings,
         )
         document = BoardPage(board=board).compose()
-        return self.pages.write(BOARD_PAGE, HtmlPage(document=document).render())
+        return self.pages.write(BOARD_PAGE, render_case_page(document))
 
     def export(self, request: ExportRequest) -> Exported:
         lens = get_lens(request.lens)
@@ -81,7 +82,7 @@ class Press:
 
         paths = [self.pages.write(f'out/{lens.name}.md', text)]
         if request.html:
-            page = HtmlPage(document=document).render()
+            page = render_case_page(document)
             paths.append(self.pages.write(f'out/{lens.name}.html', page))
 
         return Exported(paths=tuple(paths), lines=count_lines(text), budget=lens.budget)

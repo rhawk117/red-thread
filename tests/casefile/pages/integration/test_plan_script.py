@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 from msgspec.structs import replace
+from red_thread_casefile.plans.filters import render_plan_page
 
 from tests.casefile.pages.script import ScriptHarness, click_chip
 from tests.casefile.plans.builders import (
@@ -12,7 +13,6 @@ from tests.casefile.plans.builders import (
     replace_ticket,
     stamp_plan,
 )
-from tests.casefile.writers.reading import render_page
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -27,7 +27,7 @@ def script(node: str, tmp_path: Path) -> ScriptHarness:
     draft = create_valid_draft()
     docs = replace(draft.tickets[DOCS], title='write the docs again')
     revised = stamp_plan(replace_ticket(draft, DOCS, docs), 2)
-    page = render_page(create_plan_document(revised, stamp_plan(draft)))
+    page = render_plan_page(create_plan_document(revised, stamp_plan(draft)))
     return ScriptHarness(node=node, workdir=tmp_path, page=page)
 
 

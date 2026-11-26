@@ -4,20 +4,18 @@ from dataclasses import replace
 from html import escape
 
 import pytest
-from red_thread_casefile.documents import (
-    Citation,
+from red_thread_casefile.documents import Citation, EntryList, Note
+from red_thread_casefile.policy import Finding
+from red_thread_core.documents import (
     Document,
-    EntryList,
     Fact,
     Flowchart,
-    Note,
     Paragraph,
     PointList,
     Section,
     parse_line,
     parse_value,
 )
-from red_thread_casefile.policy import Finding
 
 from tests.casefile.pages.builders import PAYLOADS, payload_params
 from tests.casefile.pages.html_reading import (

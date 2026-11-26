@@ -11,7 +11,7 @@ from hypothesis import strategies as st
 from red_thread_casefile.domain import build_case_id
 from red_thread_casefile.errors import CaseExistsError
 from red_thread_casefile.services import Framing
-from red_thread_casefile.store import SystemClock
+from red_thread_core.store import SystemClock
 
 from tests.casefile.framing.cases import case_id_params, language_params
 from tests.casefile.ledger.memory import HEAD, MOMENT

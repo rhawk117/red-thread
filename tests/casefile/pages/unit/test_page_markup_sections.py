@@ -5,9 +5,9 @@ from typing import TYPE_CHECKING
 
 from red_thread_casefile.assets import read_asset
 from red_thread_casefile.boards import MAP_NOTE, RETIRED_NOTE
-from red_thread_casefile.documents import (
+from red_thread_casefile.documents import EntryList
+from red_thread_core.documents import (
     Document,
-    EntryList,
     Fact,
     Flowchart,
     Paragraph,
