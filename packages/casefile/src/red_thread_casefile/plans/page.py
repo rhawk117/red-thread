@@ -138,7 +138,9 @@ class PlanPage:
     def create_ticket(self, ticket: Ticket) -> TicketNode:
         interface = ticket.interface
         listing = (
-            CodeListing(language=interface.language, source=interface.source) if interface else None
+            None
+            if interface is None
+            else CodeListing(language=interface.language, source=interface.source)
         )
         return TicketNode(
             id=ticket.id,
