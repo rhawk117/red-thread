@@ -8,7 +8,7 @@ from red_thread_core.writers.markdown import MarkdownWriter
 from tests.casefile.pages.html_reading import find_tags
 from tests.core.pages.writing import render_core_page
 
-COLUMNS = re.compile(r'<div class="columns">(.*?)</div>\n(?=<details|</main>)', re.DOTALL)
+COLUMNS = re.compile(r'<div class="columns">(.*?)</div>\s*(?=<details|</main>)', re.DOTALL)
 SECTION_TITLE = re.compile(r'<h2>(.*?)</h2>')
 RAIL = re.compile(r'<aside class="rail">(.*?)</aside>', re.DOTALL)
 CONTENT = re.compile(r'<main class="content">(.*?)</main>', re.DOTALL)
@@ -88,7 +88,7 @@ class TestRail:
 
         rail = read_region(RAIL, page)
         assert find_tags(rail, 'details') == [{'class': 'terms'}]
-        assert re.findall(r'<dt>(.*?)</dt><dd>(.*?)</dd>', rail) == [
+        assert re.findall(r'<dt>(.*?)</dt>\s*<dd>(.*?)</dd>', rail) == [
             ('worktree', 'one git worktree'),
             ('ref', 'C1.e4'),
         ]

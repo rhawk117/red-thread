@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from red_thread_casefile.writers.page import CasePageWriter
     from red_thread_core.documents import Document
 
-LINE_TEMPLATE = "{% import 'templates/macros.html.j2' as draw %}{{ draw.line(line) }}"
+LINE_TEMPLATE = "{% import 'macros.html.j2' as draw %}{{ draw.line(line) }}"
 
 
 @cache

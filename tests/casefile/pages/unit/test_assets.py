@@ -1,31 +1,20 @@
 """The page assets: the promises that hold for the files themselves, before any case is rendered."""
 
 import re
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
 from red_thread_casefile.domain import ENTRY_KINDS
 from red_thread_casefile.packaged import read_asset as read_case_asset
 from red_thread_core.packaged import read_asset
-from red_thread_core.writers.page import PAGE_TEMPLATE
 
 from tests.casefile.pages.asset_names import ASSET_NAMES
-from tests.casefile.pages.html_reading import MERMAID_URL, TAILWIND_URL
-from tests.params import as_params
 
 if TYPE_CHECKING:
     from red_thread_core.packaged import CoreAsset
 
 OUTSIDE_URL = re.compile(r'https?://[^\s"\'<>)]+')
 STYLE_NAMES: tuple[CoreAsset, ...] = ('page.css', 'tailwind.css')
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class AssetUrls:
-    name: CoreAsset
-    urls: tuple[str, ...]
-    marks: tuple[pytest.MarkDecorator, ...] = ()
 
 
 def asset_cases() -> pytest.MarkDecorator:
@@ -36,26 +25,14 @@ def style_cases() -> pytest.MarkDecorator:
     return pytest.mark.parametrize('name', [pytest.param(name, id=name) for name in STYLE_NAMES])
 
 
-def asset_url_cases() -> pytest.MarkDecorator:
-    pinned = (TAILWIND_URL, MERMAID_URL)
-    urls = [
-        AssetUrls(name=name, urls=pinned if name == PAGE_TEMPLATE else ()) for name in ASSET_NAMES
-    ]
-    return pytest.mark.parametrize('scenario', as_params(urls))
-
-
 class TestAssetPromises:
     @asset_cases()
     def test_an_asset_is_read_as_text(self, name: CoreAsset) -> None:
         assert read_asset(name).strip()
 
-    @asset_url_cases()
-    def test_no_asset_names_an_outside_url_but_the_two_pinned_scripts(
-        self, scenario: AssetUrls
-    ) -> None:
-        found = OUTSIDE_URL.findall(read_asset(scenario.name))
-
-        assert sorted(found) == sorted(scenario.urls)
+    @asset_cases()
+    def test_no_asset_names_an_outside_url(self, name: CoreAsset) -> None:
+        assert OUTSIDE_URL.findall(read_asset(name)) == []
 
     @asset_cases()
     def test_no_asset_holds_a_link_element_or_a_css_url(self, name: CoreAsset) -> None:

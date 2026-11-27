@@ -1,0 +1,53 @@
+{# The pieces every page draws: a line of inlines, a ref, a fact, a row of chips and a section. #}
+{% macro inline(node) %}
+  {% if node.kind == 'code' %}<code>{{ node.value }}</code>
+  {%- elif node.kind == 'link' %}<a href="{{ node.url|safe_url }}" rel="noreferrer">{{ node.shown }}</a>
+  {%- else %}{{ node.value }}
+  {%- endif %}
+{% endmacro %}
+
+{% macro line(inlines) %}
+  {% for node in inlines %}{{ inline(node) }}{% endfor %}
+{% endmacro %}
+
+{% macro ref(name) -%}
+<button type="button" class="ref" data-copy="{{ name }}" title="Copy">{{ name }}</button>
+{%- endmacro %}
+
+{% macro fact(fact) -%}
+<div class="{{ 'fact wide' if fact.wide else 'fact' }}">
+  <dt>{{ fact.label }}</dt>
+  <dd>{{ line(fact.value) }}</dd>
+</div>
+{%- endmacro %}
+
+{% macro chips(row) -%}
+<div class="chips" role="group" aria-label="Filter by {{ row[0].group }}">
+  {% for chip in row %}
+  <button type="button" class="chip" data-filter="{{ chip.group }}" data-value="{{ chip.value }}" aria-pressed="true">{{ chip.label }} <span class="count">{{ chip.count }}</span></button>
+  {% endfor %}
+</div>
+{%- endmacro %}
+
+{% macro fold(section) -%}
+{% set marks = {
+  'class': 'section',
+  'id': section.title|anchor,
+  'data-kind': section.kind,
+  'open': not section.folded,
+} %}
+<details{{ marks|attributes }}>
+  <summary>
+    <h2>{{ section.title }}</h2>
+    {% if section.count %}
+    <span class="count">{{ section.count }}</span>
+    {% endif %}
+    {% if section.note %}
+    <span class="about">{{ section.note }}</span>
+    {% endif %}
+  </summary>
+  {% for block in section.blocks %}
+  {% include block.template %}
+  {% endfor %}
+</details>
+{%- endmacro %}

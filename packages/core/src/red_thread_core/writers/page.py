@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 MIN_CHIPS = 2
 MIN_CONTENTS = 2
-PAGE_TEMPLATE = 'templates/page.html.j2'
+PAGE_TEMPLATE = 'page.html.j2'
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)

@@ -1,0 +1,59 @@
+{# A case file entry: its ref, claim and verdict, citation, notes and diagram. #}
+{% import 'macros.html.j2' as draw %}
+
+{% macro verdict(entry) -%}
+{% if entry.verdict %}<span class="verdict" data-verdict="{{ entry.verdict }}">{{ entry.verdict }}</span> {% endif %}
+{%- endmacro %}
+
+{% macro tools(citation) -%}
+{% if citation.finding %}
+<span class="state" data-state="{{ citation.finding.state }}" title="The citation at the last check">{{ citation.finding|state_label }}</span>
+{% endif %}
+<button type="button" class="copy" data-copy="{{ citation.target }}">Copy</button>
+{%- endmacro %}
+
+{% macro cite(citation) -%}
+{% if citation.is_url %}
+<p class="cite">
+  <a href="{{ citation.target|safe_url }}" rel="noreferrer">{{ citation.target }}</a>
+  {{ tools(citation) }}
+</p>
+{%- else %}
+<p class="cite">
+  <code>{{ citation.target }}</code>
+  {{ tools(citation) }}
+</p>
+{%- endif %}
+{%- endmacro %}
+
+{% macro notes(entry) -%}
+<ul class="notes">
+  <li class="stamp">round {{ entry.round }}</li>
+  <li class="stamp"><time datetime="{{ entry.at }}">{{ entry.at|date_of }}</time></li>
+  {% for flag in entry.flags %}
+  <li class="flag">{{ flag }}</li>
+  {% endfor %}
+  {% for note in entry.notes %}
+  <li>{{ note.text }}</li>
+  {% endfor %}
+</ul>
+{%- endmacro %}
+
+{% macro entry(entry) -%}
+<li class="entry" id="{{ entry.ref }}" data-kind="{{ entry.kind }}" data-thread="{{ entry.thread or '' }}">
+  {{ draw.ref(entry.ref) }}
+  <div>
+    <p class="claim">{{ verdict(entry) }}{{ draw.line(entry.claim) }}</p>
+    {% if entry.citation is not none %}
+    {{ cite(entry.citation) }}
+    {% if entry.citation.quote is not none and not entry.citation.is_url %}
+    <pre class="quote"><code>{{ entry.citation.quote }}</code></pre>
+    {% endif %}
+    {% endif %}
+    {{ notes(entry) }}
+    {% if entry.diagram is not none %}
+    <pre class="mermaid">{{ entry.diagram }}</pre>
+    {% endif %}
+  </div>
+</li>
+{%- endmacro %}
