@@ -63,7 +63,7 @@ Read this once after framing. Pick the one shape that fits the failure and use i
 ## The build, the tools or the environment fail
 
 - Reproduce: the failing command from a clean state where that is cheap (a fresh environment, a cleared cache).
-- First questions: `code-sense` for the manifest and lockfile entries of the tool or package named in the error; `web-head` for its changelog at the pinned version and the one before; what changed on the machine with no commit.
+- First questions: `code-sense` for the manifest and lockfile findings of the tool or package named in the error; `web-head` for its changelog at the pinned version and the one before; what changed on the machine with no commit.
 - Usual rivals: an upstream release that changed a default; a lockfile out of step with the manifest; a stale cache; the agent harness itself.
 - Trap: a failure caused by the harness you run in. A sandbox that refuses a path, a network host or a nested session produces errors that look like the project's. If the error names a path or a host the sandbox restricts, say so to the owner and do not change code to get past it.
 

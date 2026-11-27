@@ -44,7 +44,7 @@ issue: null
 ## Changes
 ```
 
-`status` is `draft`, `accepted` or `done`. `lights` is `"on"` when the owner is in the loop while the work runs and `"off"` when they are away, written with the quotes because YAML reads a bare `on` or `off` as a boolean. `cases` gives each case the plan rests on an alias, and a ref names an entry through it: `C1.e4` is entry `e4` of case C1, and `C2.T1.e2` is entry `e2` of thread T1 in case C2. Each `- ` line under Acceptance is a criterion, and ends with the refs of the live `decision` or `known` entries that require it.
+`status` is `draft`, `accepted` or `done`. `lights` is `"on"` when the owner is in the loop while the work runs and `"off"` when they are away, written with the quotes because YAML reads a bare `on` or `off` as a boolean. `cases` gives each case the plan rests on an alias, and a finding id names a finding through it: `C1.e4` is finding `e4` of case C1, and `C2.T1.e2` is finding `e2` of thread T1 in case C2. Each `- ` line under Acceptance is a criterion, and ends with the finding ids of the live `decision` or `known` findings that require it.
 
 The plan is edited in place. Once it is accepted, each change adds one to `revision` and a line under Changes.
 
@@ -57,4 +57,4 @@ The section headings, in order, and the ones `check` refuses to find empty are i
 | `init --title T --case ID [--case ID ...] [--slug S] [--root R]` | writes `plan.md` with its frontmatter and its section headings, and prints its path. It refuses no case, a case that is not under `.red-thread/`, and a plan that exists already |
 | `check --plan PATH` | reads the plan, or the `plan.md` in a directory, against its cases and names every fault with its line and its fix. It writes nothing |
 
-`check` refuses a frontmatter that does not decode, with an unknown key or a bare `lights` value among the reasons, at the first fault. A readable plan is checked whole: no case or a case missing from `.red-thread/`, an accepted or done plan with no `lights`, a missing section heading, Intent, Approach, Acceptance or Tasks left empty, no criterion, a criterion with no ref, a ref that is unknown or retired anywhere in the body, and a criterion ref that is not a `decision` or `known`.
+`check` refuses a frontmatter that does not decode, with an unknown key or a bare `lights` value among the reasons, at the first fault. A readable plan is checked whole: no case or a case missing from `.red-thread/`, an accepted or done plan with no `lights`, a missing section heading, Intent, Approach, Acceptance or Tasks left empty, no criterion, a criterion with no finding id, a finding id that is unknown or retired anywhere in the body, and a criterion finding id that is not a `decision` or `known`.

@@ -1,8 +1,8 @@
 # red-thread-casefile
 
-The case file behind the red-thread plugin. A case file is Markdown with YAML frontmatter that records what an investigation found. The skills and the leads write its entries by hand; this package creates the file, checks every entry and citation, renders the board at every gate, and assembles the final outputs from the entries. It writes no entry itself.
+The case file behind the red-thread plugin. A case file is Markdown with YAML frontmatter that records what an investigation found. The skills and the leads write its findings by hand; this package creates the file, checks every finding and citation, renders the board at every gate, and assembles the final outputs from the findings. It writes no finding itself.
 
-It depends on msgspec, which decodes the frontmatter and each entry's YAML block into strict Structs, and on `red-thread-core` (`packages/core`), which holds the document tree, the page and its assets, redaction and the source tree, clock and page store. This package adds what only a case file knows: the case file format, its rules, the board and the lenses, and the entry list block the core page renders. `docs/design.md` section 4 holds the format, the rules and the decisions behind them.
+It depends on msgspec, which decodes the frontmatter and each finding's YAML block into strict Structs, and on `red-thread-core` (`packages/core`), which holds the document tree, the page and its assets, redaction and the source tree, clock and page store. This package adds what only a case file knows: the case file format, its rules, the board and the lenses, and the finding list block the core page renders. `docs/design.md` section 4 holds the format, the rules and the decisions behind them.
 
 ## Who uses it
 
@@ -17,10 +17,10 @@ uv takes the dependencies from this package's `pyproject.toml`, installs `packag
 ## What it is for
 
 - **Starting a case.** `init` turns a question into a case directory with its target, kind and bar, and records the commit and the languages of the tree.
-- **Recording findings.** A scout's, a lead's or the owner's findings are appended by hand as a round of entries. `check` then names every fault with its line and fix, so a claim without a citation can't pass as a fact.
+- **Recording findings.** A scout's, a lead's or the owner's findings are appended by hand as a round of findings. `check` then names every fault with its line and fix, so a claim without a citation can't pass as a fact.
 - **Steering at a gate.** `render` prints a board that fits on about one screen, so the owner can decide whether to run another round, review the conclusion or stop.
 - **Resuming later.** A new session, a model switch or a compaction loses the conversation but not the case. `check` tells the next session which recorded claims still hold against the current tree.
-- **Writing it up.** `export` builds a brief, an issue, a handoff or a report from the entries, so every line in it keeps its citation.
+- **Writing it up.** `export` builds a brief, an issue, a handoff or a report from the findings, so every line in it keeps its citation.
 - **Sharing the board.** The link of a board published to claude.ai goes in the `page_url` frontmatter key, written by hand, so later gates republish to the same URL and the board shows it.
 
 ## The case directory
@@ -42,30 +42,30 @@ A case id is the UTC date and a slug of the target, such as `20261121-retry-queu
 | Command | What it does |
 | --- | --- |
 | `init --target T --kind K --bar B [--slug S] [--publish] [--root R]` | creates the case, records HEAD and detects the repository's languages once; `--kind` is `root-cause`, `claim`, `research` or `survey` |
-| `render --case DIR [--full] [--html]` | opens every citation again and prints the board with a changed, moved or missing citation flagged beside its entry; `--full` shows every live entry, `--html` also writes `board.html` |
-| `check --case DIR` | reads every file of the case and reports each fault as `file:line ref: problem` with its fix, then resolves every live citation against the current tree; it changes no file and exits 1 on a fault |
-| `export --case DIR --lens L [--selection F] [--html]` | writes one output to `out/` from the entries; `--lens` is `brief`, `issue`, `handoff` or `report` |
+| `render --case DIR [--full] [--html]` | opens every citation again and prints the board with a changed, moved or missing citation flagged beside its finding; `--full` shows every live finding, `--html` also writes `board.html` |
+| `check --case DIR` | reads every file of the case and reports each fault as `file:line finding id: problem` with its fix, then resolves every live citation against the current tree; it changes no file and exits 1 on a fault |
+| `export --case DIR --lens L [--selection F] [--html]` | writes one output to `out/` from the findings; `--lens` is `brief`, `issue`, `handoff` or `report` |
 
 `--case` takes the directory `init` printed. `init` writes the frontmatter, the `# target` title and the `## Round 0` heading. Round 0 is framing, and the rounds count up from there. `render` and `export` refuse a case whose files cannot be read and point at `check`.
 
-Each output has a line budget, and `export` fails when the output runs over it: 60 lines for a brief, 80 for an issue, 40 for a handoff and 200 for a report. The selection it reads is a JSON object with an optional `title`, `goal`, `include` and `blocking`, the last two as lists of entry refs such as `["e3", "T1.e2"]`.
+Each output has a line budget, and `export` fails when the output runs over it: 60 lines for a brief, 80 for an issue, 40 for a handoff and 200 for a report. The selection it reads is a JSON object with an optional `title`, `goal`, `include` and `blocking`, the last two as lists of finding ids such as `["e3", "T1.e2"]`.
 
-## Entries and their rules
+## Findings and their rules
 
-An entry is a `### e<n>` heading over one fenced `yaml` block, under a `## Round N · YYYY-MM-DD · HEAD` heading that gives it its round, date and commit. Its `kind` is `known`, `open`, `decision`, `hypothesis`, `ruled_out`, `resource` or `next`. Most carry a citation in `cite` (a `path:line`, a `URL#heading` or a command) and the cited text in `quote`. Optional fields hold a symbol address, a mermaid diagram, the caveat an inference rests on, the observation that would refute a hypothesis, and the earlier entries this one retires. The design document lists every field and shows a whole case file.
+A finding is a `### e<n>` heading over one fenced `yaml` block, under a `## Round N · YYYY-MM-DD · HEAD` heading that gives it its round, date and commit. Its `kind` is `known`, `open`, `decision`, `hypothesis`, `ruled_out`, `resource` or `next`. Most carry a citation in `cite` (a `path:line`, a `URL#heading` or a command) and the cited text in `quote`. Optional fields hold a symbol address, a mermaid diagram, the caveat an inference rests on, the observation that would refute a hypothesis, and the earlier findings this one retires. The design document lists every field and shows a whole case file.
 
 `check` enforces these rules:
 
 1. A `known` needs a citation. A claim with no citation is `open`.
 2. A `decision` comes only from the owner.
-3. An entry is corrected where it stands until a gate or a report has shown it. After that, a later entry retires it by naming it, and it is never edited.
-4. Every file is read whole, and each fault is named with its `file:line`, its ref and its fix, not just the first one.
+3. A finding is corrected where it stands until a gate or a report has shown it. After that, a later finding retires it by naming it, and it is never edited.
+4. Every file is read whole, and each fault is named with its `file:line`, its finding id and its fix, not just the first one.
 5. Text matching a secret pattern is a fault, and `check` prints the text with the secret replaced, to put in its place.
-6. An entry whose round commit differs from the current HEAD is a lead to re-verify, not evidence.
+6. A finding whose round commit differs from the current HEAD is a lead to re-verify, not evidence.
 7. A `hypothesis` needs a `refute` line.
-8. A `ruled_out` entry needs a citation or the owner as its source.
+8. A `ruled_out` finding needs a citation or the owner as its source.
 
-It also opens every `path:line` and compares `quote` with the cited line; a `path:line` cite without `quote` is a fault, and `check` prints the line to paste. An absolute path or one containing `..` is never read and stays unchecked. Text outside a round heading, an entry heading or a block is a fault, and so is a field that is present but blank. Round headings in one file go up, one heading for each round. A thread can retire only its own entries, an entry from `user` or a `decision` belongs in `case.md`, an `INFERRED` entry needs `rests_on`, a `known` can't carry a verdict weaker than `VERIFIED`, and `page_url`, when set, must be an https link.
+It also opens every `path:line` and compares `quote` with the cited line; a `path:line` cite without `quote` is a fault, and `check` prints the line to paste. An absolute path or one containing `..` is never read and stays unchecked. Text outside a round heading, a finding heading or a block is a fault, and so is a field that is present but blank. Round headings in one file go up, one heading for each round. A thread can retire only its own findings, a finding from `user` or a `decision` belongs in `case.md`, an `INFERRED` finding needs `rests_on`, a `known` can't carry a verdict weaker than `VERIFIED`, and `page_url`, when set, must be an https link.
 
 ## The citation check
 
@@ -82,11 +82,11 @@ This answers the question a later session has to ask first: which of these claim
 
 ## Pages
 
-`render --html` and `export --html` write HTML pages from the case file. The board page opens with the case facts (bar, kind, round, commit, languages, entry counts, threads and the totals of the citation check), then one panel per section, then a mermaid map of the case: each thread is a line of its entries, and a retired entry has a dashed outline with an edge from the entry that retired it. A folded list of retired entries closes the page. Lens pages share the panels and entry details but leave out the facts and the retired list.
+`render --html` and `export --html` write HTML pages from the case file. The board page opens with the case facts (bar, kind, round, commit, languages, finding counts, threads and the totals of the citation check), then one panel per section, then a mermaid map of the case: each thread is a line of its findings, and a retired finding has a dashed outline with an edge from the finding that retired it. A folded list of retired findings closes the page. Lens pages share the panels and finding details but leave out the facts and the retired list.
 
-A page loads two scripts from cdnjs, each pinned to an exact version with an integrity hash: the Tailwind browser build for styling and mermaid for diagrams. Offline, a page still reads top to bottom with every entry in the HTML. The page's own script, `page.js` in `red-thread-core`, uses no library. It filters entries by kind and thread, folds sections, copies a ref or a citation, and redraws diagrams when the theme changes. Entry text reaches the page only as escaped text.
+A page loads two scripts from cdnjs, each pinned to an exact version with an integrity hash: the Tailwind browser build for styling and mermaid for diagrams. Offline, a page still reads top to bottom with every finding in the HTML. The page's own script, `page.js` in `red-thread-core`, uses no library. It filters findings by kind and thread, folds sections, copies a finding id or a citation, and redraws diagrams when the theme changes. Finding text reaches the page only as escaped text.
 
-The skeleton, styles and script are in `red-thread-core` under `src/red_thread_core/assets/`. This package keeps its own files under `src/red_thread_casefile/assets/`: the map header, `wording.yaml` and `lenses.yaml`. `wording.yaml` holds the words the board and the lens outputs use: the section headings with their notes, the prefixes of an entry's notes, the notes of the map and retired sections, and the glossary. `lenses.yaml` holds each lens's parts in order, its line budget and the lines of How to read. Edit either file to change the wording; a key the code does not know is refused when the file loads. Colors are tokens in `page.css` in core, one set per theme, and `tailwind.css` maps them to Tailwind utilities, so a palette change touches one file.
+The skeleton, styles and script are in `red-thread-core` under `src/red_thread_core/assets/`. This package keeps its own files under `src/red_thread_casefile/assets/`: the map header, `wording.yaml` and `lenses.yaml`. `wording.yaml` holds the words the board and the lens outputs use: the section headings with their notes, the prefixes of a finding's notes, the notes of the map and retired sections, and the glossary. `lenses.yaml` holds each lens's parts in order, its line budget and the lines of How to read. Edit either file to change the wording; a key the code does not know is refused when the file loads. Colors are tokens in `page.css` in core, one set per theme, and `tailwind.css` maps them to Tailwind utilities, so a palette change touches one file.
 
 ## Development
 

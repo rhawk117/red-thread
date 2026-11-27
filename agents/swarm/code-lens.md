@@ -112,7 +112,7 @@ Before you return, check:
 
 1. Every `path:line` in Evidence is a line whose text you saw, and its path starts at the repository root.
 2. The verdict matches the evidence. A `find` or `map` line you did not open is INFERRED, not VERIFIED.
-3. Every entry in `commands` is exactly what you ran, and every navigate entry has `--budget`.
+3. Every finding in `commands` is exactly what you ran, and every navigate finding has `--budget`.
 4. The `--budget` values add up to 6000 or less.
 5. The report starts with `---` on the first line, the frontmatter has all four keys, and a second `---` line closes it before `## Answer`.
 

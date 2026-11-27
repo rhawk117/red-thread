@@ -14,7 +14,7 @@ Status on 2026-11-26: the direction is agreed, and steps 1 to 5 of the build ord
 
 red-thread is a Claude Code plugin that runs a human-gated investigation and turns the result into something a later session, or a person, can act on without re-reading the investigation.
 
-It replaces one part of the mightymodels plugin (`/home/rhawk/projects/personal/cc-marketplace/mightymodels`): the investigation loop. mightymodels wires that loop to tickets, tasks, a review pipeline, an MCP state server on SQLite with 36 tools, and nine hook entries, in about 15,600 lines of Python. red-thread keeps the loop and drops the rest.
+It replaces one part of the mightymodels plugin (`/home/rhawk/projects/personal/cc-marketplace/mightymodels`): the investigation loop. mightymodels wires that loop to tickets, tasks, a review pipeline, an MCP state server on SQLite with 36 tools, and nine hook findings, in about 15,600 lines of Python. red-thread keeps the loop and drops the rest.
 
 Use cases:
 
@@ -92,7 +92,7 @@ Platform facts checked on 2026-11-21 against the Claude Code docs and one live p
 
 `.red-thread/` is excluded from git locally and never committed. A case id is the UTC date and a slug of the target, such as `20261121-retry-queue-slowdown`.
 
-**Decided 2026-11-26** (the decision log has the owner's answers): the case file is Markdown that the skills and the leads write by hand. The script creates it, checks it and renders it, and writes no entry. That replaced `case.json`, the JSONL ledgers and the `add` and `page` commands, which put every write through the script. A case file reads like this:
+**Decided 2026-11-26** (the decision log has the owner's answers): the case file is Markdown that the skills and the leads write by hand. The script creates it, checks it and renders it, and writes no finding. That replaced `case.json`, the JSONL ledgers and the `add` and `page` commands, which put every write through the script. A case file reads like this:
 
 ````markdown
 ---
@@ -128,29 +128,29 @@ quote: WORKERS = int(os.environ.get("WORKERS", 4))
 ````
 
 - `init` writes the frontmatter, the `# target` title and the `## Round 0` heading. The frontmatter decodes into a frozen Struct that refuses unknown keys. Nobody edits it by hand except `page_url`.
-- A round is a `## Round N · YYYY-MM-DD · HEAD` heading: the round number, the UTC date and the short commit, or `none` outside git. Every entry under it takes its round, date and commit from it.
-- An entry is a `### e<n>` heading over one fenced `yaml` block, which `msgspec.yaml` decodes into a strict Struct. The number in the heading is its `seq`, and the file names its thread. Text outside a round heading, an entry heading or a block is a fault.
+- A round is a `## Round N · YYYY-MM-DD · HEAD` heading: the round number, the UTC date and the short commit, or `none` outside git. Every finding under it takes its round, date and commit from it.
+- A finding is a `### e<n>` heading over one fenced `yaml` block, which `msgspec.yaml` decodes into a strict Struct. The number in the heading is its `seq`, and the file names its thread. Text outside a round heading, a finding heading or a block is a fault.
 - The skills append a round with a quoted heredoc (`cat >> CASE/case.md <<'EOF'`), so the shell leaves `$`, backticks and quotes as written, then run `check` until it exits 0. A lead does the same in its own thread file, and when `check` faults its file it removes its unread round with `sed` and appends it again, because it has Bash and no editing tool.
 
 ### The script
 
 **Decided:** one Python package reads, checks and renders the case file. It replaces the MCP server, the database and the recorder hooks. It depends on msgspec and, through `red_thread_core`, on PyYAML, which `msgspec.yaml` uses.
 
-The code is the workspace package `packages/casefile`. The stored shapes (`Entry`, `Case` and `Capabilities`) are frozen msgspec Structs built on `red_thread_core.dto.DTO`, so a block or a frontmatter that does not match its type is a fault with its file and line named. Export selections keep their own validation. Each package keeps the files it ships under `src/<module>/assets/`, inside the package, and reads them through `red_thread_core.packaged` with `importlib.resources`: the page's skeleton, styles and script in core, and in casefile the map header, `wording.yaml` (the section headings, the note prefixes, the map and retired notes, and the glossary) and `lenses.yaml` (the lens parts, budgets and the reading lines). The YAML files decode into frozen Structs that refuse unknown keys, once, when the factory builds the case file, and are handed to the code that writes the board and the lenses. A built wheel carries them. The HTML fragments are built with core's element builder, `red_thread_core.elements`, which escapes every text and attribute value (historical: Python 3.14 t-strings until 2026-11-27, see the decision log). Imports inside the package are absolute.
+The code is the workspace package `packages/casefile`. The stored shapes (`CaseFinding`, `Case` and `Capabilities`) are frozen msgspec Structs built on `red_thread_core.dto.DTO`, so a block or a frontmatter that does not match its type is a fault with its file and line named. Export selections keep their own validation. Each package keeps the files it ships under `src/<module>/assets/`, inside the package, and reads them through `red_thread_core.packaged` with `importlib.resources`: the page's skeleton, styles and script in core, and in casefile the map header, `wording.yaml` (the section headings, the note prefixes, the map and retired notes, and the glossary) and `lenses.yaml` (the lens parts, budgets and the reading lines). The YAML files decode into frozen Structs that refuse unknown keys, once, when the factory builds the case file, and are handed to the code that writes the board and the lenses. A built wheel carries them. The HTML fragments are built with core's element builder, `red_thread_core.elements`, which escapes every text and attribute value (historical: Python 3.14 t-strings until 2026-11-27, see the decision log). Imports inside the package are absolute.
 
 | Command | What it does | Status |
 | --- | --- | --- |
 | `init` | creates the case directory and writes `case.md`: the frontmatter with HEAD and the capabilities detected once (repository languages), the title and the `## Round 0` heading | Built |
-| `check` | reads every file of the case and reports each fault as `file:line ref: problem` with its fix, then re-resolves every live citation against the current tree. It changes no file and exits 1 on a fault | Built 2026-11-26 |
-| `render` | prints the board, capped at about one screen, after opening every citation again, so a changed, moved or missing one is flagged beside its entry; writes `board.html` on request. It refuses a case whose files cannot be read | Built |
+| `check` | reads every file of the case and reports each fault as `file:line finding id: problem` with its fix, then re-resolves every live citation against the current tree. It changes no file and exits 1 on a fault | Built 2026-11-26 |
+| `render` | prints the board, capped at about one screen, after opening every citation again, so a changed, moved or missing one is flagged beside its finding; writes `board.html` on request. It refuses a case whose files cannot be read | Built |
 | `export` | assembles a lens output from the ledger and fails when it is over its line budget. It refuses a case whose files cannot be read | Built |
-| `add` | validated a batch of entries as JSON and appended it | Removed 2026-11-26: entries are written by hand |
+| `add` | validated a batch of findings as JSON and appended it | Removed 2026-11-26: findings are written by hand |
 | `page` | recorded the link of the published board | Removed 2026-11-26: `page_url` is a frontmatter key written by hand, and `check` faults one that is not an https link |
 | `plan` | moved on 2026-11-26 to its own package and launcher, `bin/redthread-plan` (section 13) | Moved |
 
 **Decided:** the script is the workspace package `packages/casefile`, run through `bin/redthread-casefile`, which starts it with `uv run --no-project --python 3.14 --with-editable` on the package. uv takes the dependencies from the package's own `pyproject.toml` and keeps the environment in its cache, so nothing is installed into the project under investigation and the launcher repeats no requirement. The primary passes the launcher's absolute path in each brief as `SCRIPT`, since a brief already carries everything a worker needs.
 
-### Entries
+### Findings
 
 **Decided** (accepted on 2026-11-21 and built; the format changed on 2026-11-26).
 
@@ -168,28 +168,28 @@ The code is the workspace package `packages/casefile`. The stored shapes (`Entry
 | `diagram` | optional mermaid source for a flow or a structure, drawn on the HTML pages only; checked for secrets like every text field (**Decided 2026-11-21**) |
 | `rests_on` | the caveat an inference depends on, such as "a 4.x docs page" |
 | `refute` | for a hypothesis, the observation that would refute it |
-| `supersedes` | earlier entries this one retires |
+| `supersedes` | earlier findings this one retires |
 | `at`, `head` | the UTC date and the short commit, from the round heading |
 
 Rules. The first six come from mightymodels. `check` enforces all eight and reports every fault at once.
 
 1. A `known` needs a citation. A claim with no citation is `open`.
 2. A `decision` comes only from the owner.
-3. An entry is corrected where it stands until a gate or a report has shown it. After that it is retired by a later entry that names it, never edited. (2026-11-26: was "files are append-only", which the script enforced when it was the only writer.)
+3. A finding is corrected where it stands until a gate or a report has shown it. After that it is retired by a later finding that names it, never edited. (2026-11-26: was "files are append-only", which the script enforced when it was the only writer.)
 4. `check` reads every file whole and names each fault with its place and fix. `render` and `export` refuse a case whose files cannot be read. (2026-11-26: was "a batch is validated whole before anything is stored".)
 5. Text matching a secret pattern is a fault, and `check` prints the text with the secret replaced, to put in its place. (2026-11-26: was redacted before it was stored.) **Decided 2026-11-26:** the patterns come from detect-secrets: its regex detectors (every one but the public IP detector) and its keyword detector. Core adds detectors only for what it misses: a whole PEM block, Stripe test and restricted keys, `sk-` API keys, Bearer tokens, GitHub fine-grained tokens, URL credentials with punctuation, and unquoted `key=value` assignments. A hit is widened to the whole token around it and labelled `[REDACTED:<type>]` from the detector's type. Rejected: keeping the hand-written patterns, and detect-secrets' entropy detectors, which flag ordinary prose.
-6. An entry whose `head` differs from the current HEAD is a lead to re-verify, not evidence.
+6. A finding whose `head` differs from the current HEAD is a lead to re-verify, not evidence.
 7. A `hypothesis` needs a `refute` line.
-8. A `ruled_out` entry needs a citation or the owner as its source.
+8. A `ruled_out` finding needs a citation or the owner as its source.
 
 Added while building. **Decided 2026-11-21:** the owner accepted the first five as built. The rest were added on 2026-11-26 with the Markdown format.
 
 - A citation is a path, a URL or anything else. `check` opens every `path:line`. An absolute path, or one containing `..`, is never read and stays unchecked.
 - `check` compares `quote` with the cited line. (2026-11-26: the script no longer records the line itself; a `path:line` cite without `quote` is a fault, and `check` prints the line to paste.)
-- An entry from `user` cannot be written to a thread, and a thread can retire only its own entries. A `decision` sits in `case.md` only.
-- An INFERRED entry needs `rests_on`, and a `known` cannot carry a verdict weaker than VERIFIED.
+- A finding from `user` cannot be written to a thread, and a thread can retire only its own findings. A `decision` sits in `case.md` only.
+- An INFERRED finding needs `rests_on`, and a `known` cannot carry a verdict weaker than VERIFIED.
 - `check` redacts the lines it reads before comparing them, so a redacted quote still matches.
-- An entry written at the current HEAD is held to its quote: a cited line that does not exist is a fault, and a quote found elsewhere or not at all is a fault. An entry from an earlier commit is only reported as moved, changed or missing.
+- A finding written at the current HEAD is held to its quote: a cited line that does not exist is a fault, and a quote found elsewhere or not at all is a fault. A finding from an earlier commit is only reported as moved, changed or missing.
 - A field that is present must not be blank. YAML trims a plain value and keeps a quoted one as written.
 - `page_url`, when set, must be an https link.
 - Round headings in one file go up: a heading whose number repeats or falls below the one above it is a fault, because each round has one heading.
@@ -209,11 +209,11 @@ It runs before every export. It also catches a citation a scout invented before 
 
 - **Decided:** the script renders the HTML for the board and for every output from the ledger. The model does not write the page.
 - **Decided:** whether a case is published to claude.ai is asked once, at framing. A published case republishes its board to the same URL at every gate. Pages are private by default. A local-only case never leaves the machine.
-- **Decided 2026-11-21, built in the skill:** comments on the published page are recorded as ledger entries from `user`, so the owner can steer by annotating a finding. At each gate of a published case the investigate skill reads the page's comment threads through the Artifact tool and records each open one under the round's heading in `case.md`: a fact to take as given or a choice is a `decision`, a dead end is a `ruled_out`, a doubt or a question is an `open` that names the entry it is about, and a request for work outside the case is a `next` that is not carried out. It then replies on the thread with the new ref and resolves it, so a comment is recorded once. A comment from anyone but the owner is an `open` entry that names its author. The script needed no change.
-- **Decided 2026-11-21, reversing the self-contained page:** a page loads two scripts from cdnjs, each pinned to an exact version with a sha512 integrity hash: the Tailwind browser build (4.3.5), which styles the page, and mermaid (12.3.0), which draws diagrams. Nothing else is fetched, so web fonts stay out. Opened offline, a page still reads top to bottom: every entry is in the HTML, the token colors apply and the controls stay hidden. Tailwind documents its browser build as a development tool; the owner chose it for a page that one person reads.
-- Built: the page's own script, `assets/page.js`, uses no library. It filters entries by kind and by thread, folds sections and copies a ref or a citation. It draws a diagram when its section is open, and draws every diagram again from its source when the viewer's theme changes, whether the viewer chose the theme or the system switched. It holds no case data: entry text reaches the page only as escaped text and escaped attribute values.
-- Built: after its sections the board page draws a map of the case, a mermaid flowchart the script writes from the ledger. Each thread is a line of its entries in order, a retired entry has a dashed outline, and an edge runs to it from the entry that retired it. An entry's own `diagram` is drawn under its claim. Diagram text is escaped into the page and mermaid runs at its strict security level.
-- Built 2026-11-21, when the owner asked for more context on the page: the board page opens with the case facts (bar, kind, round, commit, created, languages, entry counts, threads and the totals of the citation check). Each section is a panel whose header names what the section holds and counts its entries. An entry shows its round, the day it was recorded, its verdict when it is not a `known`, the state of its citation at the last check and the source line the ledger quoted. A citation that changed, moved or went missing is that state badge on the page and stays a flag in markdown. The page ends with a folded list of the retired entries, each naming the entry that retired it. Lens pages share the panels and the entry details; the facts and the retired list are on the board only.
+- **Decided 2026-11-21, built in the skill:** comments on the published page are recorded as ledger findings from `user`, so the owner can steer by annotating a finding. At each gate of a published case the investigate skill reads the page's comment threads through the Artifact tool and records each open one under the round's heading in `case.md`: a fact to take as given or a choice is a `decision`, a dead end is a `ruled_out`, a doubt or a question is an `open` that names the finding it is about, and a request for work outside the case is a `next` that is not carried out. It then replies on the thread with the new finding id and resolves it, so a comment is recorded once. A comment from anyone but the owner is an `open` finding that names its author. The script needed no change.
+- **Decided 2026-11-21, reversing the self-contained page:** a page loads two scripts from cdnjs, each pinned to an exact version with a sha512 integrity hash: the Tailwind browser build (4.3.5), which styles the page, and mermaid (12.3.0), which draws diagrams. Nothing else is fetched, so web fonts stay out. Opened offline, a page still reads top to bottom: every finding is in the HTML, the token colors apply and the controls stay hidden. Tailwind documents its browser build as a development tool; the owner chose it for a page that one person reads.
+- Built: the page's own script, `assets/page.js`, uses no library. It filters findings by kind and by thread, folds sections and copies a finding id or a citation. It draws a diagram when its section is open, and draws every diagram again from its source when the viewer's theme changes, whether the viewer chose the theme or the system switched. It holds no case data: finding text reaches the page only as escaped text and escaped attribute values.
+- Built: after its sections the board page draws a map of the case, a mermaid flowchart the script writes from the ledger. Each thread is a line of its findings in order, a retired finding has a dashed outline, and an edge runs to it from the finding that retired it. A finding's own `diagram` is drawn under its claim. Diagram text is escaped into the page and mermaid runs at its strict security level.
+- Built 2026-11-21, when the owner asked for more context on the page: the board page opens with the case facts (bar, kind, round, commit, created, languages, finding counts, threads and the totals of the citation check). Each section is a panel whose header names what the section holds and counts its findings. A finding shows its round, the day it was recorded, its verdict when it is not a `known`, the state of its citation at the last check and the source line the ledger quoted. A citation that changed, moved or went missing is that state badge on the page and stays a flag in markdown. The page ends with a folded list of the retired findings, each naming the finding that retired it. Lens pages share the panels and the finding details; the facts and the retired list are on the board only.
 - The colors are tokens in `assets/page.css`, one set per theme, and `assets/tailwind.css` maps them to Tailwind utilities, so a palette change is made in one file.
 - Facts: the Artifact tool publishes one `.html` or `.md` file. Remote Control keeps an AskUserQuestion dialog open until it is answered. The docs name an artifact as the route for a board that keeps updating.
 
@@ -223,29 +223,29 @@ It runs before every export. It also catches a citation a scout invented before 
 
 **Built 2026-11-25**, with these differences from the design below:
 
-- The nodes are in `documents.py`: the inlines `Text`, `Code` and `Link`; the blocks `Paragraph`, `EntryList`, `PointList` (a list without refs, such as the pointers) and `Flowchart`; and `Section`, `Fact` and `Document`. A section carries its kind, note and fold, so no `Heading` or `Fold` node is needed. The board's map and retired list are sections in `Document.appendix`. A ref and a state badge are fields of `EntryNode` that each writer draws, not inline nodes.
-- Notes are typed `Note` values with a kind (`rests_on`, `refuted_by`, `retires`, `retired_by`, `urgency`, `source`), and a citation is a `Citation` holding its target, quote and finding.
+- The nodes are in `documents.py`: the inlines `Text`, `Code` and `Link`; the blocks `Paragraph`, `FindingList`, `PointList` (a list without finding ids, such as the pointers) and `Flowchart`; and `Section`, `Fact` and `Document`. A section carries its kind, note and fold, so no `Heading` or `Fold` node is needed. The board's map and retired list are sections in `Document.appendix`. A finding id and a state badge are fields of `FindingNode` that each writer draws, not inline nodes.
+- Notes are typed `Note` values with a kind (`rests_on`, `refuted_by`, `retires`, `retired_by`, `urgency`, `source`), and a citation is a `CitationNode` holding its target, quote and citation check.
 - Two Protocols, `InlineWriter` and `BlockWriter`, take the place of one `Writer`, because ruff allows ten public methods to a class. Each node's `write` calls its writer method, so ty fails a writer that lacks one.
-- The writers are in `writers/`: `markdown.py`, `markup.py` (entries and blocks as HTML, with the one escaping `render`) and `page.py` (the toolbar, the header and `page.html`). `pages.py` and the old `Item`, `Section`, `Fact`, `Document` and `MarkdownWriter` in `views.py` are gone.
-- The board page and every lens output were byte-identical before and after the port, checked on a sample case with every entry kind.
-- Size: the source grew by about 300 lines (745 added, 437 removed), not shrank. `documents.py` is 250 lines, not 80, because the typed notes, citation and entry builder live there. The writers together are about the size of `pages.py` and the old `MarkdownWriter`.
+- The writers are in `writers/`: `markdown.py`, `markup.py` (findings and blocks as HTML, with the one escaping `render`) and `page.py` (the toolbar, the header and `page.html`). `pages.py` and the old `Item`, `Section`, `Fact`, `Document` and `MarkdownWriter` in `views.py` are gone.
+- The board page and every lens output were byte-identical before and after the port, checked on a sample case with every finding kind.
+- Size: the source grew by about 300 lines (745 added, 437 removed), not shrank. `documents.py` is 250 lines, not 80, because the typed notes, citation and finding builder live there. The writers together are about the size of `pages.py` and the old `MarkdownWriter`.
 
 What is wrong now:
 
-- `Item` in `views.py` is one record with thirteen optional fields. It carries a ledger entry, a pointer line and a reading line, and a writer tells them apart by which fields are empty.
+- `Item` in `views.py` is one record with thirteen optional fields. It carries a ledger finding, a pointer line and a reading line, and a writer tells them apart by which fields are empty.
 - Meaning becomes strings before a writer sees it: notes such as `rests on: X` and `retired by E3`, citations wrapped in backticks, flags with a prefix. `pages.py` parses the backticks back out with a regex, and the page cannot style a caveat apart from a flag.
 - Special content has its own field on `Document` (`facts`, `map_lines`, `retired`) and its own code in each writer.
-- Three paths build entries: `Board` (the text board, straight from the ledger), `BoardPage` and the lens `Composer`. Each has its own `list_notes`, and the last two each fill the thirteen fields in a `create_item`. The citation flag that the text board left out (the 2026-11-21 case, section 11) is the kind of gap this split allows.
+- Three paths build findings: `Board` (the text board, straight from the ledger), `BoardPage` and the lens `Composer`. Each has its own `list_notes`, and the last two each fill the thirteen fields in a `create_item`. The citation flag that the text board left out (the 2026-11-21 case, section 11) is the kind of gap this split allows.
 - A new kind of content has no single place to start.
 
 The design: one typed tree between the ledger and the page and Markdown outputs.
 
-- The nodes are frozen dataclasses in one module: blocks (`Heading`, `Paragraph`, `EntryList`, `Facts`, `Diagram`, `Fold`) and inlines (`Text`, `Code`, `Link`, `Ref`, `Badge`). An entry node keeps its parts typed: claim, verdict, citation and its state, caveats, retirers, round, day and source. No writer parses text back.
-- One builder turns a ledger `Entry` and its finding into an entry node. The text board, the board page and every lens call it and add only what is theirs, such as a lens's blocking mark.
+- The nodes are frozen dataclasses in one module: blocks (`Heading`, `Paragraph`, `EntryList`, `Facts`, `Diagram`, `Fold`) and inlines (`Text`, `Code`, `Link`, `Ref`, `Badge`). A finding node keeps its parts typed: claim, verdict, citation and its state, caveats, retirers, round, day and source. No writer parses text back.
+- One builder turns a ledger finding and its citation check into a finding node. The text board, the board page and every lens call it and add only what is theirs, such as a lens's blocking mark.
 - A `Writer` Protocol has one method per node kind, and the HTML, Markdown and text outputs are three writers. A new node kind adds a method to the Protocol, and ty names every writer that lacks it.
-- The HTML writer keeps the t-string `render` and its one escaping function for leaf markup (historical: the element builder since 2026-11-27, see the decision log). `page.html`, `page.js` and the styles stay, so an offline page still reads top to bottom with every entry in the HTML.
+- The HTML writer keeps the t-string `render` and its one escaping function for leaf markup (historical: the element builder since 2026-11-27, see the decision log). `page.html`, `page.js` and the styles stay, so an offline page still reads top to bottom with every finding in the HTML.
 - Tests assert on the tree for content and on one writer method at a time for format, in place of whole rendered strings.
-- Size, estimated from reading the code: the duplicated entry building in `views.py`, `boards.py` and `lenses.py` and the backtick regex in `pages.py` go away, each writer becomes one short method per node, and the node module adds about 80 lines. No new dependency.
+- Size, estimated from reading the code: the duplicated finding building in `views.py`, `boards.py` and `lenses.py` and the backtick regex in `pages.py` go away, each writer becomes one short method per node, and the node module adds about 80 lines. No new dependency.
 
 Routes not chosen:
 
@@ -279,10 +279,10 @@ As built, the dialog has four questions, because a dialog holds four: the target
 | Verdict | Becomes |
 | --- | --- |
 | VERIFIED | a `known` with its citation |
-| INFERRED | an `open` entry with `rests_on` filled in |
+| INFERRED | an `open` finding with `rests_on` filled in |
 | NEEDS-ANALYSIS | a judgment the primary makes in chat; a `decision` only if the owner accepts it |
-| BLOCKED | an `open` entry carrying where the answer lives |
-| two scouts disagree | its own `open` entry with both citations, never reconciled silently |
+| BLOCKED | an `open` finding carrying where the answer lives |
+| two scouts disagree | its own `open` finding with both citations, never reconciled silently |
 
 ### The gate
 
@@ -294,7 +294,7 @@ Choices: **sufficient**, **sufficient, verify first** (runs the skeptic), **dig 
 
 | Kind | First questions | Bar | Extra |
 | --- | --- | --- | --- |
-| root cause | the code path and the runtime configuration | one hypothesis survives a test that could have refuted it, and its rivals are ruled out | rival hypotheses as entries; lab scout |
+| root cause | the code path and the runtime configuration | one hypothesis survives a test that could have refuted it, and its rivals are ruled out | rival hypotheses as findings; lab scout |
 | claim | the exact lines that would make it true or false | verified true or false with citations | none |
 | research | the docs for the pinned version, and the call sites that depend on it | both halves cited | a web scout paired with a code scout |
 | survey | orientation, then a thread per area | coverage the owner sets at framing | each finding says what, where, why it happened and what to do |
@@ -317,7 +317,7 @@ Rules:
 - With no case open, `distill` first builds a ledger from the conversation, and any claim it cannot cite becomes `open`.
 - The brief carries its own reading instructions, so it works for a person, for an agent without the plugin, and inside a GitHub issue.
 
-`export` takes an optional JSON selection on standard input (named a "plan" until 2026-11-25, renamed when the plan record took the word, section 13): `title`, `goal`, `include` (refs, most important first) and `blocking` (open refs). The model chooses and ranks. The script writes each entry's own text, citation and ref, flags leads and changed citations, redacts the title and goal, and writes nothing when the output is over budget. A budget counts lines that carry text: brief 60, issue 80, handoff 40, report 200. The last three were set while building. **Decided 2026-11-21:** the owner accepted them as built. A budget that a real case shows to be wrong is reported, not changed on the spot.
+`export` takes an optional JSON selection on standard input (named a "plan" until 2026-11-25, renamed when the plan record took the word, section 13): `title`, `goal`, `include` (finding ids, most important first) and `blocking` (open finding ids). The model chooses and ranks. The script writes each finding's own text, citation and finding id, flags leads and changed citations, redacts the title and goal, and writes nothing when the output is over budget. A budget counts lines that carry text: brief 60, issue 80, handoff 40, report 200. The last three were set while building. **Decided 2026-11-21:** the owner accepted them as built. A budget that a real case shows to be wrong is reported, not changed on the spot.
 
 Brief template (Decided):
 
@@ -327,7 +327,7 @@ Brief template (Decided):
 4. **Ruled out**: one line each, with why, so the next session does not chase them again.
 5. **Open**: ranked, each marked as blocking planning or not.
 6. **Pointers**: the ledger path, the commit, the check command.
-7. **How to read**: citations are pointers, so open them instead of trusting the summary; entries from another commit are leads; run the check first.
+7. **How to read**: citations are pointers, so open them instead of trusting the summary; findings from another commit are leads; run the check first.
 
 ## 7. Agent changes
 
@@ -547,8 +547,8 @@ Headless runs on 2026-11-21. Each was one `claude -p --plugin-dir` session in a 
 | `code-sense` | claude-haiku-5-5 | 3 to 5 Bash | VERIFIED, four `path:line` citations, all correct | $0.01 |
 | `web-head` | claude-haiku-5-5 | 3 WebFetch | VERIFIED, quotes from the versioned docs pages | $0.02 |
 | `research-cell` | claude-sonnet-5-5 | 1 Bash, in its own worktree | VERIFIED, the hypothesis survived | $0.04 |
-| `research-lead` | claude-sonnet-5-5 | 3 scouts in one turn, 1 `add` | seven entries accepted in one batch, six citations ok | $0.09 |
-| `peer-review` | claude-sonnet-5-5 | 2 Bash (`render --full`, `check`, then the source) | six HOLDS, and the conclusion marked FOLLOWS-WITH-CAVEATS because it claimed more than the entries showed | $0.06 |
+| `research-lead` | claude-sonnet-5-5 | 3 scouts in one turn, 1 `add` | seven findings accepted in one batch, six citations ok | $0.09 |
+| `peer-review` | claude-sonnet-5-5 | 2 Bash (`render --full`, `check`, then the source) | six HOLDS, and the conclusion marked FOLLOWS-WITH-CAVEATS because it claimed more than the findings showed | $0.06 |
 
 What the runs changed:
 
@@ -570,17 +570,17 @@ The real case on 2026-11-21. The target was how a citation gets from `add` to a 
 
 The total was $5.17 against an agreed stop of $5. A call can end above its `--max-budget-usd`: turn 4 cost $0.73 against $0.55 and turn 5 cost $0.83 against $0.45. The primary's own estimate of its spending was low each time ($0.21 for the turn that cost $0.73).
 
-The case ended with 43 live entries, 12 retired, and `check` at 36 citations ok and 1 unchecked (a command). Its finding: the text board never shows a citation flag. `render` builds the board without findings, so only `check`, `export` and the HTML page report a changed citation. A lab scout confirmed it by experiment, and no test pinned it either way. **Decided 2026-11-21:** `render` runs the check, so the text board carries the same flags as the page, and `tests/casefile/board/unit/test_board_citations.py` pins it.
+The case ended with 43 live findings, 12 retired, and `check` at 36 citations ok and 1 unchecked (a command). Its finding: the text board never shows a citation flag. `render` builds the board without findings, so only `check`, `export` and the HTML page report a changed citation. A lab scout confirmed it by experiment, and no test pinned it either way. **Decided 2026-11-21:** `render` runs the check, so the text board carries the same flags as the page, and `tests/casefile/board/unit/test_board_citations.py` pins it.
 
 What it showed:
 
-- Resuming works from the case file alone. Turn 3 was a new session on another model, and it took the round, the threads and the open entries from `render`.
+- Resuming works from the case file alone. Turn 3 was a new session on another model, and it took the round, the threads and the open findings from `render`.
 - The roster hook's input is as assumed. A dispatch by the session carries no `agent_type`, and a dispatch by a lead carries `agent_type: red-thread:research-lead`, with the prefix. 18 dispatches went through the hook and none was outside a roster, so the deny path has still run only in tests.
 - `code-lens` took 9 of the 14 code lookups, then running the external agentlens 0.2.0 that the navigate package replaced. All 76 of its agentlens calls were well formed and carried `--no-cache` and `--budget`. Six reports were VERIFIED and three INFERRED. Two runs passed the budget of 6,000 tokens (6,800 and 7,700), and one ran `rg` four times against a cap of three. This is one repository with no baseline arm, so it says nothing about the gate in section 8, which no longer decides whether the tool ships.
 - `code-sense` made 13 tool calls on one brief that held six numbered items, against its cap of five. Its other four runs made 3 to 5. The lead's file now says such a brief is several questions.
 - Follow-ups through SendMessage failed (section 3), which left the whole HTML thread INFERRED after round 1. After the change, rounds 2 and 3 had no refused follow-up and no waiting.
 - `research-cell` could not run `git -C` in its worktree: the harness refused it three times as too complex to verify. It built a scratch repository under `/tmp` instead and wrote its scripts there, one of them through a `..` path from the worktree. Its result was sound, but it worked outside the worktree the design puts it in. **Decided 2026-11-21:** fix the prompt and not re-test: it tells the scout to run plain `git` from the worktree, to keep scratch files under it, and to return BLOCKED when plain git is refused too.
-- The brief lists the gate decisions, with their budgets, under Decided. Its constraints come in the order the model ranked them, not the order of the chain. Entries recorded before a commit made during the case show as leads.
+- The brief lists the gate decisions, with their budgets, under Decided. Its constraints come in the order the model ranked them, not the order of the chain. Findings recorded before a commit made during the case show as leads.
 - Still not shown: whether `allowed-tools` reaches a subagent, the primary resuming a lead through SendMessage, `peer-review` on a real conclusion, publishing, and comments.
 
 ## 12. Decision log
@@ -598,7 +598,7 @@ All made by the owner on 2026-11-21.
 | Design document | a repository file plus a private page |
 | agentlens role | optional accelerator (historical: replaced on 2026-11-23, see below) |
 | agentlens distribution | wheels through uv, nothing in the plugin (historical: replaced on 2026-11-23) |
-| Symbol addresses | reserve the field on ledger entries |
+| Symbol addresses | reserve the field on ledger findings |
 | agentlens direction | gut to three verbs, any language, grounded in published research (historical: built in this repository instead, 2026-11-23) |
 | Order of work | document, then build red-thread; the tool was a separate track until 2026-11-23 |
 | Agent prompts | written per model from Anthropic's guidance |
@@ -610,11 +610,11 @@ All made by the owner on 2026-11-21.
 | Step 6 | each agent runs once headless on a canned brief, then the owner drives a real case |
 | Skill support files | under each skill's `references/` directory |
 | Package code | absolute imports, the page assets in `packages/casefile/assets/` (historical: inside each package since 2026-11-26, see below), t-strings for HTML fragments (historical: the element builder since 2026-11-27), msgspec Structs for stored records |
-| Page | Tailwind and mermaid from cdnjs, pinned with integrity hashes; filters, folding, copying and a case map in plain JavaScript; case facts, section panels with a description, entry details and a folded list of retired entries; reverses the self-contained page |
-| Entry diagrams | an optional `diagram` field on an entry, drawn on the HTML pages only |
+| Page | Tailwind and mermaid from cdnjs, pinned with integrity hashes; filters, folding, copying and a case map in plain JavaScript; case facts, section panels with a description, finding details and a folded list of retired findings; reverses the self-contained page |
+| Finding diagrams | an optional `diagram` field on a finding, drawn on the HTML pages only |
 | Test markers | tier marks come from the directory; a regression is an `@example` on a property marked `regression` |
 | Rules and budgets added while building | accepted as built: the five ledger rules in section 4 and the line budgets for `issue`, `handoff` and `report` |
-| Owner comments | read at each gate from the published page and recorded as `user` entries, then answered with the ref and resolved |
+| Owner comments | read at each gate from the published page and recorded as `user` findings, then answered with the finding id and resolved |
 | Text board flags | `render` opens every citation again and flags a changed, moved or missing one, as the page does |
 | Navigation scout | `code-lens`, experimental, for the installed agentlens 0.2.0 and only where `init` found the tool; the evaluation gate stays open (historical: replaced on 2026-11-23, see below) |
 | Lab scout worktree | the prompt says to run plain `git` from the worktree and to keep every scratch file under it; fixed without a paid re-test |
@@ -668,8 +668,8 @@ Made by the owner on 2026-11-25.
 
 | Decision | Choice and reason |
 | --- | --- |
-| Output model | one typed tree of frozen dataclass nodes, one entry builder and two writer Protocols (`InlineWriter`, `BlockWriter`) with a method per node kind, so a new kind of content has one place to start and ty names every writer that lacks it (section 4, The document model) |
-| Who draws the page | Python, through the t-string `render` (historical: the element builder since 2026-11-27); no Jinja and no TypeScript, so no new dependency and no build step, and the page still carries every entry in its HTML |
+| Output model | one typed tree of frozen dataclass nodes, one finding builder and two writer Protocols (`InlineWriter`, `BlockWriter`) with a method per node kind, so a new kind of content has one place to start and ty names every writer that lacks it (section 4, The document model) |
+| Who draws the page | Python, through the t-string `render` (historical: the element builder since 2026-11-27); no Jinja and no TypeScript, so no new dependency and no build step, and the page still carries every finding in its HTML |
 | Scope | the board page and the Markdown lens output; the text board keeps its own path for now |
 
 ### 2026-11-25: the debug skill
@@ -687,7 +687,7 @@ Made by the owner on 2026-11-25, in one dialog. The skill descends from `whats-b
 
 - Seven phases: frame, reproduce, evidence, hypotheses, fix, escape, close. No fix is proposed before a hypothesis has survived a test that could have refuted it.
 - At least two rival hypotheses, as in the `root-cause` kind. Independent rivals are tested in the same turn, one `research-cell` each, and one experiment answers for one hypothesis.
-- A failed fix is recorded as a `ruled_out` entry that starts "Fix attempt N:", so the count survives a compaction. At three the skill stops and asks the owner what they see.
+- A failed fix is recorded as a `ruled_out` finding that starts "Fix attempt N:", so the count survives a compaction. At three the skill stops and asks the owner what they see.
 - The escape phase answers why the defect was introduced and why no guard caught it, gives each guard a verdict (absent, not run, blind, ignored), and classes each finding as a slip, a gap or debt. Each candidate guard is priced by what it catches, what it costs to build and what it costs to keep, and the owner chooses in a dialog. "None: the regression test is enough" is always an option.
 - A debt finding is not sized in the debugging case. The skill offers to load `investigate` on it, which opens a case of its own.
 - The primary runs the reproduction command itself, once, in the checkout. Every experiment brief starts with `git checkout --detach SHA`, and the first experiment checks that the failure shows in a clean worktree at all.
@@ -696,7 +696,7 @@ Platform fact checked on 2026-11-25 against the Claude Code docs (sub-agents and
 
 ### 2026-11-25: the swarm layout
 
-Made by the owner on 2026-11-25. Earlier entries keep the old names and paths.
+Made by the owner on 2026-11-25. Earlier findings keep the old names and paths.
 
 | Decision | Choice and reason |
 | --- | --- |
@@ -721,7 +721,7 @@ Made by the owner on 2026-11-25.
 | Decision | Choice and reason |
 | --- | --- |
 | Writing guide | `skills/agents/artifact-authoring` says how to word what an agent writes for a reader who was not there. Like `navigate` and `meet-the-team` it is `user-invocable: false` |
-| Scope | runtime handoffs only: a case file entry, a report up the chain, the gate summary, a distill title and goal, and a handoff. Writing the plugin's own agent and skill files is out of scope, because that reader is a contributor's session and not a shipped agent |
+| Scope | runtime handoffs only: a case file finding, a report up the chain, the gate summary, a distill title and goal, and a handoff. Writing the plugin's own agent and skill files is out of scope, because that reader is a contributor's session and not a shipped agent |
 | Readers | `research-lead` preloads it through `skills`. `investigate`, `debug` and `distill` tell the primary to load `red-thread:artifact-authoring` before the first `add`, or before the title and goal. The scouts do not load it: their report format is fixed in their own files, and section 10 keeps a Haiku 5.5 prompt short |
 | Briefs | `meet-the-team` stays the one place for writing a brief. This skill points at it and adds only what a handoff carries |
 | Shape | one file with no `references/`: a core that holds for every artifact, then a section per artifact that ends on a "Done when" line, so each has a completion criterion the writer can check |
@@ -753,7 +753,7 @@ Made by the owner on 2026-11-25, in three dialogs.
 | Who executes a ticket | a plain Claude Code session in a worktree, working from the issue alone, so a ticket has to stand as a prompt. Rejected: mightymodels as a stopgap, which shapes tickets around the harness being replaced and assumes one active ticket per branch; and building both plugins together, which holds version 1 until both work |
 | Brief cutter | a red-thread skill run in the ticket's worktree, built after version 1. Rejected: the implementation plugin, which would then own task decomposition and routing |
 | One ticket | the same plan skill; a plan with one ticket publishes one issue with no parent. Rejected: keeping the `distill` issue lens for small work, which leaves two issue formats; and a separate fast skill |
-| Ticket body | the script writes the entries each acceptance sentence rests on, in their own words with citations and the commit they were checked at, under a line budget. Rejected: pointers only, which makes the session derive again what the case established; and a link to the page, which a session cannot read through `gh` |
+| Ticket body | the script writes the findings each acceptance sentence rests on, in their own words with citations and the commit they were checked at, under a line budget. Rejected: pointers only, which makes the session derive again what the case established; and a link to the page, which a session cannot read through `gh` |
 | Interface agent | in version 1, written for Opus 5.5: it runs only when asked, and a wrong interface misleads every ticket above it in the lane. Rejected by the owner: the field and the page alone with the primary drafting. Rejected: Sonnet 5.5; and inheriting the session's model, because an agent file is written for one model |
 | Interface output | a checked preview: the agent type-checks its signatures in a scratch worktree that is thrown away, and returns text for the plan record. Rejected: unchecked text; and real stubs on a branch, which has red-thread committing code |
 | Lanes | the plan computes lanes and stack order, and each ticket states its branch, its base and its place in the stack. The owner starts the sessions and runs `gh stack`. Rejected: dependencies alone, which drops the check that makes parallel work safe; and a helper that creates worktrees |
@@ -769,11 +769,11 @@ Made by the owner on 2026-11-26, after reading the first plan page and finding i
 | --- | --- |
 | Packages | three: `packages/core` (`red_thread_core`) holds the document model, the page and Markdown writers, the page assets, redaction, the store protocols and where the pages sit; `packages/casefile` depends on core; `packages/plans` (`red_thread_plans`) depends on both. Rejected: keeping the plan inside casefile, which coupled the two records. The split went on top of the existing commits |
 | Plan home | beside the cases: `.red-thread/plans/<plan-id>/` holds `plan.json` (the id, title, the cases its revisions cited, and the epic and issue links), `rN.json` and `plan.html`. A plan never writes into a case directory |
-| Many cases | a plan names each case it rests on with an alias, and one plan can rest on many cases. A ref is `C1.e4`, or `C2.T1.e2` for an entry in a thread |
-| Acceptance | a criterion is `{criterion, required_by}`, replacing `{text, rests_on}`, so it is not confused with an entry's `rests_on` caveat |
+| Many cases | a plan names each case it rests on with an alias, and one plan can rest on many cases. A finding id is `C1.e4`, or `C2.T1.e2` for a finding in a thread |
+| Acceptance | a criterion is `{criterion, required_by}`, replacing `{text, rests_on}`, so it is not confused with a finding's `rests_on` caveat |
 | Worktree | "lane" became "worktree" everywhere: one git worktree and one stack of pull requests |
 | Plan command | its own launcher, `bin/redthread-plan`, with `init`, `revise` and `render` |
-| The plan page | each criterion shows the text of every entry that requires it, linked to that entry on its board; a "What changed" section opens a revision after the first; each ticket shows its why, and a changed ticket shows each field as it was and as it is; every page ends its rail with a fold that explains its words |
+| The plan page | each criterion shows the text of every finding that requires it, linked to that finding on its board; a "What changed" section opens a revision after the first; each ticket shows its why, and a changed ticket shows each field as it was and as it is; every page ends its rail with a fold that explains its words |
 | Links | both ways: the plan page links each case's board, the epic and each issue, and reads "not published yet" until a publish step records them. Each board lists the plans that cite its case, read from `.red-thread/plans/*/plan.json` when the board is drawn, so nothing is written into the case |
 | Layout | every page: at 1280px and up, a rail with the title, facts, toolbar, contents and terms beside the content, where the kind sections or the worktrees sit in columns; on a phone the rail sits on top and the columns stack |
 
@@ -786,7 +786,7 @@ Made by the owner on 2026-11-26, before and during the build of `skills/plan/`. 
 | Order | build step 5, the plan skill, before step 4, the interface agent. The plan command existed with no skill to drive it, so a session could not make a plan without typing `bin/redthread-plan` by hand. The skill leaves out the interface offer until step 4 is built. Publishing the epic stays step 6 |
 | Lineage | the skill descends from three mightymodels skills, as `debug` descends from `whats-broken`: `game-plan` (intent, approach, invariants, acceptance as observable outcome sentences, non-goals, the consistency check, and the risk interview, with its fixed list of four handlings replaced as section 13 decided), `cross-examine` (the depth question, the frontier of decisions asked in rounds, the shape of a question with what each option buys and costs, facts to scouts and decisions to the owner) and `break-it-down` (cutting by behaviour, module and order, the size of a piece, and the repository passing after each one). It leaves behind `ticket.yml`, `plan.md`, the mighty-mcp state and its `task_*` tools, `terry-toolchain` and worker routing |
 | Picking cases | the skill asks every time, with each case's target, kind and date, even when there is one. Rejected: taking a lone case without asking, which plans silently from a stale or unrelated case; and inferring the case from the conversation, where a wrong match looks plausible |
-| Decisions made while planning | recorded as `decision` entries in the case they bear on, in that case's next round, so a criterion can name them. Rejected: a planning case per plan, which adds a case of decisions with no knowns; and no new decisions, which sends every small design choice back through investigate |
+| Decisions made while planning | recorded as `decision` findings in the case they bear on, in that case's next round, so a criterion can name them. Rejected: a planning case per plan, which adds a case of decisions with no knowns; and no new decisions, which sends every small design choice back through investigate |
 | Review | `peer-review` gains a plan briefing (PLAN, CASES) beside its case briefing. Rejected: reusing the case briefing unchanged, which judges whether claims hold and not whether a criterion follows from them; and deferring the review |
 | The page | the skill asks at the gate whether to publish `plan.html` privately, and says first that its links to the boards do not open on the published page. Rejected for now: local only until step 6 records a link; and publishing whenever the cases were published |
 | Skills split | the parts the plan skill took from mightymodels are skills of their own, so each can grow apart from the plan: `cross-examine` (`skills/cross-examine/`, invocable by the owner as well), the interview and the rules for putting any question to the owner; `risk-register` (`skills/agents/`, loaded by plan), finding risks, their signals and the handlings; and `break-it-down` (`skills/agents/`, loaded by plan), cutting tickets, worktrees and stacks, and splitting one ticket. The owner kept the names `cross-examine` and `break-it-down` because they say what the skill does, and asked for a project-management name for the risk dialog. The investigate and debug gates do not load `cross-examine` yet |
@@ -804,7 +804,7 @@ Made by the owner on 2026-11-26, after reading the first build of the plan skill
 | Fair options | `cross-examine`'s rules for putting a question, which every red-thread skill follows, and `risk-register`'s rules for the handlings, now require each option written as its strongest advocate would, a cost the option itself causes (never "lacks what the recommended option gives"), no loaded words on the options not recommended, the recommended option's worst realistic outcome, and a side-by-side check before sending |
 | Lights | the gate asks "Is this a lights on or off kind of task?". On: the owner is in the loop while the tickets are built and iterated on, and steps in at each fork in the road. Off: the owner is away, so whoever runs the work adapts how it is done and stops for anything that changes what a ticket promises. The answer is stored as `lights` (`"on"`, `"off"`, or absent when not asked) in the plan record and shown among the page's facts. Rejected: a note in the plan's text, which nothing downstream can read; and a per-ticket setting, which nobody asked for |
 | The gate | four options, the most a dialog holds: Accept, Change tickets (drop or split, asked next), Redirect, Abandon. The first build had five |
-| Course-correction | a user-facing skill, `skills/course-correction/`, for a fork in the road while a plan's work runs. It names the divergence as expected against observed, first-hand; sends the scouts in parallel (`code-lens` or `code-sense`, `web-head`, `lab-rat`) on one to three hypotheses; classifies the cause as a plan gap, a false assumption, the environment, or an implementation slip, which goes to `debug`; and adapts. With the lights on the owner chooses, and a changed promise becomes a new revision. With the lights off only how the work is done changes, recorded as a `next` entry, and a fork that would change a promise is recorded as an `open` entry and waits. The name is the owner's |
+| Course-correction | a user-facing skill, `skills/course-correction/`, for a fork in the road while a plan's work runs. It names the divergence as expected against observed, first-hand; sends the scouts in parallel (`code-lens` or `code-sense`, `web-head`, `lab-rat`) on one to three hypotheses; classifies the cause as a plan gap, a false assumption, the environment, or an implementation slip, which goes to `debug`; and adapts. With the lights on the owner chooses, and a changed promise becomes a new revision. With the lights off only how the work is done changes, recorded as a `next` finding, and a fork that would change a promise is recorded as an `open` finding and waits. The name is the owner's |
 
 ### 2026-11-26: one ticket per plan, in Markdown
 
@@ -813,7 +813,7 @@ Made by the owner on 2026-11-26, after the game-plan build. The owner objected t
 | Decision | Choice and reason |
 | --- | --- |
 | Hierarchy | a plan is the plan of one ticket. An epic holds several tickets, and the skill that cuts an epic into tickets comes later. Until then, `game-plan` sizes the work by `break-it-down`, and when it is more than one ticket the owner picks the one this plan covers; the others are named under Non-goals as "a ticket of its own". Worktrees and stacks leave the plan and wait for the epic skill |
-| Format | a plan is one Markdown file, `.red-thread/tickets/<plan-id>/plan.md`. YAML frontmatter holds what a script reads (`id`, `title`, `status`, `revision`, `created`, `head`, `cases`, `lights`, `epic`, `issue`), and the body holds the sections a person reads: Intent, Approach, Invariants, Non-goals, Acceptance, Tasks, Risks and Changes. A criterion is a `- ` line under Acceptance that ends with its refs, such as `(C1.e1, C1.e2)`. Rejected: the JSON record, which the owner did not want to read or write |
+| Format | a plan is one Markdown file, `.red-thread/tickets/<plan-id>/plan.md`. YAML frontmatter holds what a script reads (`id`, `title`, `status`, `revision`, `created`, `head`, `cases`, `lights`, `epic`, `issue`), and the body holds the sections a person reads: Intent, Approach, Invariants, Non-goals, Acceptance, Tasks, Risks and Changes. A criterion is a `- ` line under Acceptance that ends with its finding ids, such as `(C1.e1, C1.e2)`. Rejected: the JSON record, which the owner did not want to read or write |
 | Tooling | `bin/redthread-plan` has two verbs. `init --title T --case ID ...` writes the frontmatter and the section headings; the skill then writes the body by hand. `check --plan PATH` reads the plan and its cases and names every fault with its fix, and writes nothing. Rejected: a command that also rewrites the plan, which brings back the command-line-as-MCP shape |
 | Tasks | the body has ordered tasks, numbered in the order the work is done. Each one is a change a reviewer could check alone, and the repository passes after it |
 | Revisions | the plan is edited in place. After the owner accepts it, each change adds one to `revision` and a line under Changes. Rejected: one file per revision, which needs a command to write it |
@@ -831,7 +831,7 @@ Made by the owner on 2026-11-26. The board's glossary was a Python module of con
 | Primitive | `red_thread_core.packaged`: `read_asset_text(package, name)` reads a file under the package's `assets/`, and `load_asset(package, name, shape)` decodes a YAML file into the shape with `msgspec.yaml`. Each shape is a frozen Struct that refuses unknown keys. Core therefore depends on msgspec and PyYAML, which ends its standard-library-only rule. Rejected: a text-only core with the decoding in each package |
 | Loading | at the edge: the `CaseFiles` and `Plans` factories load the tables once and inject them into the case file, the press, the board, the lens composer and the planner. Nothing reads a file at import |
 | Asset home | every package keeps its assets under `src/<module>/assets/` and reads them through `importlib.resources`, so a built wheel carries them. navigate's vendored queries moved to `red_thread_navigate/assets/queries/` and load through the same primitive, so navigate depends on core |
-| Checks | tests hold each table complete: a heading for every entry kind, a prefix for every note kind, a lens for every lens name, every required plan section among the sections |
+| Checks | tests hold each table complete: a heading for every finding kind, a prefix for every note kind, a lens for every lens name, every required plan section among the sections |
 
 ### 2026-11-26: the case file in Markdown
 
@@ -840,9 +840,9 @@ Made by the owner on 2026-11-26, at the gate before the build, by the rule that 
 | Decision | Choice and reason |
 | --- | --- |
 | Layout | `case.md` holds the frontmatter and the primary's rounds, and each lead appends to its own `threads/T<n>.md`, so two writers never share a file. A lead appends with a quoted heredoc and runs `check`. `research-lead` keeps Agent and Bash and gets no editing tool |
-| Entry syntax | a `### e<n>` heading over a fenced `yaml` block, decoded by `msgspec.yaml` into a strict Struct. |
+| Finding syntax | a `### e<n>` heading over a fenced `yaml` block, decoded by `msgspec.yaml` into a strict Struct. |
 | Outputs | `render` and `export` stay. They read the files and write only `board.html` and `out/`. `page` goes: `page_url` is a frontmatter key written by hand |
-| Stamps | each round is a `## Round N · YYYY-MM-DD · HEAD` heading, and its entries take their round, date and commit from it. `check` faults a missing or malformed heading, a `path:line` cite with no `quote` (and prints the line to paste) and a secret, and writes nothing |
+| Stamps | each round is a `## Round N · YYYY-MM-DD · HEAD` heading, and its findings take their round, date and commit from it. `check` faults a missing or malformed heading, a `path:line` cite with no `quote` (and prints the line to paste) and a secret, and writes nothing |
 | Pre-approval | the skills' `allowed-tools` still name only the scripts. Appending is a plain Bash command, so a session in a permission mode that asks prompts once per round; the owner's sessions run sandboxed Bash without asking. Rejected: `Bash(cat >> *)`, which would approve an append to any file |
 | Compatibility | none. The JSON code, the `add` and `page` commands and their tests were deleted; a case made before this change is not read |
 
@@ -869,6 +869,17 @@ Made by the owner on 2026-11-27. The DTO base (`red_thread_core.dto.DTO`) carrie
 | What stays a dataclass | policies, services, writers, stores, backends, views and the cyclopts argument classes, which hold collaborators or make decisions; and three values with a mutable or live field (`SkipTally`'s `Counter`, the tree-sitter `Definition`'s node, `Detector`'s compiled patterns) |
 | Rule | `.claude/rules/python.md` picks the type by role in place of by boundary |
 | Narrowing | ty does not treat a Struct as disjoint from `str`, so a union of `FrontSplit` and `FenceProblem`, or of `SourceFile` and `SkipKind`, narrows with `isinstance(value, TheStruct)` |
+
+### 2026-11-27: findings and finding ids
+
+Made by the owner on 2026-11-27. "Entry" did not say what it was an entry of, and "ref" meant nothing to a reader of one file.
+
+| Decision | Choice and reason |
+| --- | --- |
+| The record | an entry of a case is a finding: `CaseFinding` in code, "finding" in prose. The citation result that held the name `Finding` is now `CitationCheck`, and `Ledger` is `CaseLedger` |
+| Its address | a ref is a finding id: `finding_id` in code, "finding id" in prose, `FINDING_IDS` as a dispatch placeholder. The text stays `e4` and `T1.e2` |
+| On disk | the case file format does not change: a block keeps its `cite`, `addr` and `refute` keys, which the Python fields `citation`, `code_address` and `refuted_if` encode to |
+| Other names | each function, constant and field says what it holds or does, such as `write_citation_state_badge` in place of `write_state` and `opening_tag` in place of `opening` |
 
 ## 13. Planning
 
@@ -912,7 +923,7 @@ Each record carries a schema version, so the two plugins release separately.
 **Built 2026-11-26.** `red_thread_plans` is the only code that starts or checks a plan, and the skill writes the body by hand.
 
 - `init --title T --case ID [--case ID ...] [--slug S] [--root R]` refuses no case, a case that is not under `.red-thread/`, and a plan that exists already. Otherwise it writes `plan.md` with the frontmatter (`status: draft`, `revision: 1`, the date, the short HEAD, the cases as C1, C2 in the order given) and one heading per section, and prints `created` and the path. The plan id is the UTC date and a slug of the title, as for a case.
-- `check --plan PATH` takes the file or its directory. It refuses a file that does not open with `---`, has no closing `---`, or whose frontmatter does not decode, at the first fault. A readable plan is checked whole and every fault is named with its line: no case, a case missing from `.red-thread/`, an accepted or done plan with no `lights`, a section heading missing, Intent, Approach, Acceptance or Tasks left empty, no `- ` criterion, a criterion with no ref, a ref anywhere in the body that is not an entry of its case or was retired, and a criterion ref that is not a `decision` or `known`. Refs to a missing case are not checked twice. It prints `checked <path>: N criteria rest on M entries`.
+- `check --plan PATH` takes the file or its directory. It refuses a file that does not open with `---`, has no closing `---`, or whose frontmatter does not decode, at the first fault. A readable plan is checked whole and every fault is named with its line: no case, a case missing from `.red-thread/`, an accepted or done plan with no `lights`, a section heading missing, Intent, Approach, Acceptance or Tasks left empty, no `- ` criterion, a criterion with no finding id, a finding id anywhere in the body that is not a finding of its case or was retired, and a criterion finding id that is not a `decision` or `known`. Finding ids to a missing case are not checked twice. It prints `checked <path>: N criteria rest on M findings`.
 
 ### The plan record (superseded 2026-11-26)
 
@@ -920,30 +931,30 @@ The plans package is the only writer of a plan. `revise` reads one JSON document
 
 - Fields: intent, approach, the cases it rests on, invariants, non-goals, tickets and risks.
 - A ticket has an id, a title, a why, acceptance criteria, the files it owns, the tickets it depends on, a worktree and an optional interface.
-- An acceptance criterion states an outcome someone can observe, and names the live `decision` or `known` entries that require it. The script refuses one that rests on nothing. This is the guard against "that is not what I asked for": every promise in the plan traces to something the owner decided or a scout verified.
+- An acceptance criterion states an outcome someone can observe, and names the live `decision` or `known` findings that require it. The script refuses one that rests on nothing. This is the guard against "that is not what I asked for": every promise in the plan traces to something the owner decided or a scout verified.
 - The script refuses a dependency cycle, and refuses two tickets in different worktrees that own the same file.
 - "Plan" already named the JSON that `export` reads (section 6, `lenses.py`). That document is now the "selection", and `--plan` is `--selection` (built 2026-11-25).
 
 **Built 2026-11-25**, with the owner's approval of the record and its refusals:
 
 - A revision is `r<n>.json` in the plan directory: the drafted fields, plus `schema` (`red-thread/plan@1`), `revision`, `at` and `head`, which the script stamps. It is created exclusively, so a stored revision is never overwritten.
-- A ticket's `id` and `worktree` are lowercase slugs. An acceptance criterion is `{criterion, required_by}`, where each ref names a case alias. The interface is `{language, source}`.
+- A ticket's `id` and `worktree` are lowercase slugs. An acceptance criterion is `{criterion, required_by}`, where each finding id names a case alias. The interface is `{language, source}`.
 - A risk has an `id` (`R1`, `R2`), `risk`, `signal`, the `tickets` it touches and a `handling` tagged by `kind`: `accept`; `mitigate` with the `ticket` that carries the change and an optional `criterion`, which must be one of that ticket's criteria word for word, or is left out when the ticket itself is the mitigation; or `you-intervene` with the `recut` tickets, which must be among the risk's own.
 - The drafter names each ticket's worktree, and the script computes its position: a stable topological order of the worktree's tickets, ties kept in drafted order. This settles section 12's "the plan computes lanes and stack order" against "the plan records only lane and position" below: the plan computes the stack and checks the worktrees, and does not invent them.
 - A dependency on a ticket in another worktree is refused (owner, 2026-11-25), because a worktree is one stack.
-- Two worktrees collide when some path, existing or not, matches an `owns` entry of each. The check is exact for `*` (any run of characters within one segment, a leading dot included), `?` and `**` (zero or more segments, or at least one at the end), the rules of `PurePosixPath.full_match`, and the refusal names a path both worktrees could change. `dir/` means `dir/**`. An entry that is empty, absolute, climbs with `..` or uses a `[ ]` class is refused. Two tickets in one worktree may own the same files.
-- A plan that cannot be read is refused at its first shape fault, with the JSON path. A readable plan is checked whole and every fault is named with its fix: blank text, no tickets, a ticket without acceptance or owns, a malformed or duplicate id, no case or a case missing from `.red-thread/`, a ticket without a why, a criterion required by nothing or by a ref that is unknown, retired or not a decision or known, an unknown or cross-worktree dependency, a cycle, a worktree collision, and a risk that names an unknown ticket, a criterion the ticket does not have, or a recut that is empty or strays outside the risk. Text is checked as sent, then redacted, then stored.
+- Two worktrees collide when some path, existing or not, matches an `owns` finding of each. The check is exact for `*` (any run of characters within one segment, a leading dot included), `?` and `**` (zero or more segments, or at least one at the end), the rules of `PurePosixPath.full_match`, and the refusal names a path both worktrees could change. `dir/` means `dir/**`. A finding that is empty, absolute, climbs with `..` or uses a `[ ]` class is refused. Two tickets in one worktree may own the same files.
+- A plan that cannot be read is refused at its first shape fault, with the JSON path. A readable plan is checked whole and every fault is named with its fix: blank text, no tickets, a ticket without acceptance or owns, a malformed or duplicate id, no case or a case missing from `.red-thread/`, a ticket without a why, a criterion required by nothing or by a finding id that is unknown, retired or not a decision or known, an unknown or cross-worktree dependency, a cycle, a worktree collision, and a risk that names an unknown ticket, a criterion the ticket does not have, or a recut that is empty or strays outside the risk. Text is checked as sent, then redacted, then stored.
 
 **The page, built 2026-11-25, rebuilt 2026-11-26, removed 2026-11-26:**
 
 - `revise` writes `plan.html` in the plan directory each time it stores a revision, from that revision, the one before it and the cases it rests on. A refused plan writes nothing. `render` draws it again from the latest revision.
 - `PlanPage` (`red_thread_plans/page.py`) composes the page. Its sections are What changed (from the second revision on: the tickets added, changed and dropped, then each plan field as it was and as it is), Approach, Cases (each alias linked to its board, with the case's question), Invariants, Non-goals, one `Worktree <name>` column per worktree with its stack bottom first, and Risks. The appendix holds the `Worktrees` chart and, when tickets were dropped, a folded `Dropped` list. The facts are the revision, the date, the commit, the ticket and worktree count, the changes and the epic.
-- A ticket shows its mark, its title, its why, its place, its dependencies, the paths it owns, its issue link or "not published yet", each criterion under "Done when" with every entry that requires it (its kind, its ref linked to `../../<case>/board.html#<ref>` and its text), its interface, and for a changed ticket a fold of each field as it was and as it is. A ref whose entry is gone reads "This entry is no longer in the case."
+- A ticket shows its mark, its title, its why, its place, its dependencies, the paths it owns, its issue link or "not published yet", each criterion under "Done when" with every finding that requires it (its kind, its finding id linked to `../../<case>/board.html#<finding id>` and its text), its interface, and for a changed ticket a fold of each field as it was and as it is. A finding id whose finding is gone reads "This finding is no longer in the case."
 - The status mark compares each ticket with the ticket of the same id in the revision before: `new` when it had none, `unchanged` when every field is equal, `changed` otherwise. Status from events stays after version 1.
 - `Flowchart` draws each worktree as a subgraph, with an arrow from each dependency to its dependent and each node coloured by its mark (header `packages/plans/assets/worktrees.mmd`).
 - `CodeListing` is a general block in the document model, written as `<pre class="listing">` on a page and as a fenced block in Markdown. The plan's own nodes, `TicketNode`, `Promise`, `Ground`, `TicketList` and `ChangeList`, live in `red_thread_plans/nodes.py` and reach the writers through `BlockWriter.write_tickets`, as every other block does.
-- The toolbar adds worktree and status chips beside the kind and thread chips. `page.js` filters any entry that carries `data-kind` or `data-worktree` on every chip group, so `Section.kind` stays an entry kind. It also opens the folded section that holds the target of a `#ref` link, on load and when the hash changes.
-- The board lists the plans that cite its case as a `Plans` fact linking `../plans/<plan-id>/plan.html`, read from each `plan.json` when the board is drawn; a plan index that cannot be read is skipped. Each entry is an anchor named by its ref.
+- The toolbar adds worktree and status chips beside the kind and thread chips. `page.js` filters any finding that carries `data-kind` or `data-worktree` on every chip group, so `Section.kind` stays a finding kind. It also opens the folded section that holds the target of a `#ref` link, on load and when the hash changes.
+- The board lists the plans that cite its case as a `Plans` fact linking `../plans/<plan-id>/plan.html`, read from each `plan.json` when the board is drawn; a plan index that cannot be read is skipped. Each finding is an anchor named by its finding id.
 
 ### The game-plan skill
 
@@ -975,7 +986,7 @@ The dialog offers only handlings a senior engineer could pick, states the cost o
 
 ### Review
 
-Optional, asked at step 5. One `peer-review` pass in a fresh context that gets the plan and the rendered case, not the conversation. It checks that each criterion follows from the entries that require it, that no decision is left without a ticket, that worktrees do not collide, and what the plan assumes without evidence. A finding without a ref or a `path:line` is dropped. The owner picks which findings change the plan. There is one pass and no debate round.
+Optional, asked at step 5. One `peer-review` pass in a fresh context that gets the plan and the rendered case, not the conversation. It checks that each criterion follows from the findings that require it, that no decision is left without a ticket, that worktrees do not collide, and what the plan assumes without evidence. A finding without a finding id or a `path:line` is dropped. The owner picks which findings change the plan. There is one pass and no debate round.
 
 **Built 2026-11-26:** `peer-review` takes a plan briefing, PLAN (the draft file) and CASES (one alias and case directory per line) in place of CASE and CONCLUSION, and returns a table of findings, each with its place in the plan, its check and its evidence. Its collision check looks for a dependency between worktrees that own different files, such as a shared interface, because the script already refuses two worktrees that own the same path.
 
@@ -985,7 +996,7 @@ Optional, asked at step 5. One `peer-review` pass in a fresh context that gets t
 
 ### Course correction
 
-A fork in the road while a plan's work runs goes to `course-correction`, built 2026-11-26 (section 12). It reads the plan from the main checkout's `.red-thread/`, also from a worktree, names the divergence as expected against observed, sends the scouts in parallel on one to three hypotheses, and classifies the cause: a plan gap, a false assumption, the environment, or an implementation slip, which it hands to `debug`. The plan's `lights` decide who adapts: with the lights on the owner chooses and a changed promise is a new revision; with the lights off only how the work is done changes, and a fork that would change a promise waits as an `open` entry. It has not run on a real plan.
+A fork in the road while a plan's work runs goes to `course-correction`, built 2026-11-26 (section 12). It reads the plan from the main checkout's `.red-thread/`, also from a worktree, names the divergence as expected against observed, sends the scouts in parallel on one to three hypotheses, and classifies the cause: a plan gap, a false assumption, the environment, or an implementation slip, which it hands to `debug`. The plan's `lights` decide who adapts: with the lights on the owner chooses and a changed promise is a new revision; with the lights off only how the work is done changes, and a fork that would change a promise waits as an `open` finding. It has not run on a real plan.
 
 **Changed 2026-11-26** (section 12, "one ticket per plan, in Markdown"): it finds `plan.md` under `.red-thread/tickets/` and edits it in place, adding one to `revision` and a line under Changes. The intent, the approach, the criteria, the invariants, the non-goals and the risks' handlings are what the plan promises; a change to the tasks that keeps them is how the work is done, so with the lights off it is written into the plan with its Changes line.
 
@@ -997,7 +1008,7 @@ Optional, per ticket, by a dedicated agent written for Opus 5.5 and not yet name
 
 - The epic is a parent issue, and each ticket a sub-issue created with `gh issue create --parent`. Order is `--blocked-by`. Both need gh 2.94.0 or later.
 - A plan with one ticket publishes one issue with no parent.
-- The script assembles a ticket body: the goal, the acceptance sentences, the owned files, the branch, its base and its place in the stack, each "You intervene" signal as a condition to stop on, then the entries the acceptance rests on, in their own words with citations and the commit they were checked at. The body has a line budget.
+- The script assembles a ticket body: the goal, the acceptance sentences, the owned files, the branch, its base and its place in the stack, each "You intervene" signal as a condition to stop on, then the findings the acceptance rests on, in their own words with citations and the commit they were checked at. The body has a line budget.
 - A new revision is synced by ticket id: it edits the bodies of the tickets it touches, adds sub-issues for new tickets and closes dropped ones. The case keeps the map from ticket id to issue number.
 - Limits: 100 sub-issues per parent, eight levels, 50 links per dependency type.
 - GitHub reports the rollup itself, as `sub_issues_summary.percent_completed`.
@@ -1021,7 +1032,7 @@ task: T3
 depends_on: [T1]
 owns: [packages/casefile/src/red_thread_casefile/lenses.py]
 acceptance:
-  - export refuses a selection that names a retired ref
+  - export refuses a selection that names a retired finding id
 verify: uv run pytest -q tests/casefile/lenses
 agent: python-harness:test-engineer
 skills: [python-harness:design-tests]
@@ -1071,7 +1082,7 @@ Not verified: no study was found of padded options in agent plans or of interfac
 - Whether a closing keyword takes effect after GitHub retargets a stacked pull request onto the default branch.
 - The names of the routing agent and the interface agent.
 - `plan.html` links each board as `../../<case-id>/board.html`, and a board links its plans as `../plans/<plan-id>/plan.html`. On a page published through the Artifact tool neither link opens, and `plan.json` has no field for the published page, so a later session publishes a new artifact. The game-plan skill says so when it offers to publish.
-- `peer-review`'s plan briefing ran once headless on 2026-11-26 (Sonnet 5.5, `claude -p --plugin-dir`, $0.33, 2 turns of the primary) against a scratch plan with one criterion planted that its entry did not support. The report kept the plan format and listed 8 findings, the planted criterion first, each with a ref or a `path:line`. One line of text followed the report, from the agent or from the primary that relayed it. It ran `check` and `git ls-files`, both on its allowed list. It has not run from a real game-plan session, and its Risks check, added the same day, has not run at all.
+- `peer-review`'s plan briefing ran once headless on 2026-11-26 (Sonnet 5.5, `claude -p --plugin-dir`, $0.33, 2 turns of the primary) against a scratch plan with one criterion planted that its finding did not support. The report kept the plan format and listed 8 findings, the planted criterion first, each with a finding id or a `path:line`. One line of text followed the report, from the agent or from the primary that relayed it. It ran `check` and `git ls-files`, both on its allowed list. It has not run from a real game-plan session, and its Risks check, added the same day, has not run at all.
 
 Build order for version 1:
 

@@ -1,5 +1,5 @@
 # The words a case file's board and lens outputs use.
-# headings: one per entry kind, in the order the board shows its sections.
+# headings: one per finding kind, in the order the board shows its sections.
 headings:
   - kind: decision
     title: Decided
@@ -23,7 +23,7 @@ headings:
     title: Resources
     note: Sources and references the case points to.
 
-# prefixes: the text written before the value of each kind of note on an entry.
+# prefixes: the text written before the value of each kind of note on a finding.
 prefixes:
   rests_on: 'rests on: '
   refuted_by: 'refuted by: '
@@ -32,8 +32,8 @@ prefixes:
   urgency: ''
   source: ''
 
-map_note: Each thread as a line of its entries, with an arrow from an entry to the one it retired.
-retired_note: Entries a later entry replaced. The ledger keeps them and the sections leave them out.
+map_note: Each thread as a line of its findings, with an arrow from a finding to the one it retired.
+retired_note: Findings a later finding replaced. The ledger keeps them and the sections leave them out.
 
 # terms: the board page's glossary, in the order it lists them.
 terms:
@@ -43,19 +43,19 @@ terms:
       from the ledger every time, never edited by hand.
   - word: Bar
     meaning: 'What would count as an answer: the case is done when the bar is met.'
-  - word: Entry and ref
+  - word: Finding and finding id
     meaning: >-
-      One recorded finding, question or step. Its ref, such as e4 or T1.e2, is its address, and a
-      link to board.html#e4 opens the board at that entry.
+      One recorded fact, decision, question or step of a case. Its finding id, such as e4 or
+      T1.e2, is its address, and a link to board.html#e4 opens the board at that finding.
   - word: Thread
     meaning: >-
-      A line of entries on one question, such as T1. An entry outside a thread belongs to the case
+      A line of findings on one question, such as T1. A finding outside a thread belongs to the case
       as a whole.
   - word: Round
     meaning: One pass of research by the scouts, and the review of what they found.
   - word: Decided, known, hypothesis, open, ruled out
     meaning: >-
-      The kinds of entry: what the owner decided, a claim with a checked citation, an explanation
+      The kinds of finding: what the owner decided, a claim with a checked citation, an explanation
       still to test, a question not settled yet, and a dead end.
   - word: Citation
     meaning: >-
@@ -63,5 +63,5 @@ terms:
       and moved, changed or missing once the code has drifted.
   - word: Retired
     meaning: >-
-      An entry a later entry replaced. The ledger keeps it, and the board folds it away at the
+      A finding a later finding replaced. The ledger keeps it, and the board folds it away at the
       bottom.

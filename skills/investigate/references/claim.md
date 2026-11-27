@@ -25,4 +25,4 @@ A claim about behavior at runtime ("is never called", "is read at startup") that
 
 ## At the gate
 
-Say true, false or true with a condition, and name the entry refs it rests on. A claim usually takes one round. Recommend "sufficient, verify first" when the claim will be published or acted on in a way that is costly to undo.
+Say true, false or true with a condition, and name the finding ids it rests on. A claim usually takes one round. Recommend "sufficient, verify first" when the claim will be published or acted on in a way that is costly to undo.

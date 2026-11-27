@@ -62,6 +62,6 @@ For each debt finding, prepare what phase 7 asks the owner:
 
 - The target, as one line the owner can disagree with, and its kind: `survey` for "how widespread is this and where", `research` for "how should this work", `root-cause` for "why does this keep happening".
 - What the investigation would establish, and what decision that would serve.
-- The entries of this case that it starts from, by ref.
+- The findings of this case that it starts from, by finding id.
 
 Do not estimate the size of the debt or propose its remedy here. One instance and one lookup are not a survey, and a plan built on them would rest on facts nobody has checked.
