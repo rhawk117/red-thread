@@ -1,5 +1,7 @@
 """What every rendered page promises: its own scripts and styles, and only the writer's elements."""
 
+from typing import TYPE_CHECKING
+
 from red_thread_core.packaged import read_asset
 
 from tests.casefile.pages.flags import list_lead_flags, list_state_labels
@@ -13,6 +15,9 @@ from tests.casefile.pages.html_reading import (
     list_styles,
     list_tags,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 TAILWIND_STYLE = 'text/tailwindcss'
 
@@ -38,11 +43,11 @@ def assert_page_holds_only_its_own_markup(page: str) -> None:
     }
 
 
-def assert_page_shows_flag_kinds(page: str, flags: tuple[str, ...]) -> None:
+def assert_page_shows_flag_kinds(page: str, flags: Sequence[str]) -> None:
     assert set(list_flags(page)) == set(list_lead_flags(flags))
     assert set(list_state_labels(flags)) <= {span.body for span in list_spans(page, 'state')}
 
 
-def assert_page_shows_flags(page: str, flags: tuple[str, ...]) -> None:
+def assert_page_shows_flags(page: str, flags: Sequence[str]) -> None:
     assert list_flags(page) == list_lead_flags(flags)
     assert [span.body for span in list_spans(page, 'state')] == list_state_labels(flags)

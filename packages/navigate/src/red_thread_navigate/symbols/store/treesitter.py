@@ -10,7 +10,7 @@ from red_thread_navigate.symbols.domain import FileSymbols, Reference, Symbol, S
 from red_thread_navigate.util import split_lines
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Mapping, Sequence
     from pathlib import PurePosixPath
 
     from red_thread_core.timekeeping import Deadline
@@ -117,7 +117,7 @@ def by_position(definition: Definition) -> tuple[int, int]:
     return (definition.node.start_byte, -definition.node.end_byte)
 
 
-def build_symbols(definitions: list[Definition], lines: tuple[str, ...]) -> list[Symbol]:
+def build_symbols(definitions: list[Definition], lines: Sequence[str]) -> list[Symbol]:
     symbols: list[Symbol] = []
     open_scopes: list[Definition] = []
     names: list[str] = []

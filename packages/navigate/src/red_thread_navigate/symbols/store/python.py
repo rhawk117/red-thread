@@ -43,7 +43,7 @@ def kind_of(node: Definition, scope: Scope) -> SymbolKind:
     return 'method'
 
 
-def build_symbol(node: Definition, scope: Scope, lines: tuple[str, ...]) -> Symbol:
+def build_symbol(node: Definition, scope: Scope, lines: Sequence[str]) -> Symbol:
     qualified_name = (
         node.name if scope.qualified_name is None else f'{scope.qualified_name}.{node.name}'
     )
@@ -74,7 +74,7 @@ def assigned_names(node: ast.Assign | ast.AnnAssign) -> list[str]:
     return list(chain.from_iterable(map(target_names, targets)))
 
 
-def build_variable(node: ast.Assign | ast.AnnAssign, name: str, lines: tuple[str, ...]) -> Symbol:
+def build_variable(node: ast.Assign | ast.AnnAssign, name: str, lines: Sequence[str]) -> Symbol:
     return Symbol(
         name=name,
         qualified_name=name,
@@ -87,14 +87,14 @@ def build_variable(node: ast.Assign | ast.AnnAssign, name: str, lines: tuple[str
     )
 
 
-def collect_symbols(nodes: Sequence[ast.AST], scope: Scope, lines: tuple[str, ...]) -> list[Symbol]:
+def collect_symbols(nodes: Sequence[ast.AST], scope: Scope, lines: Sequence[str]) -> list[Symbol]:
     symbols: list[Symbol] = []
     for node in nodes:
         symbols.extend(symbols_of(node, scope, lines))
     return symbols
 
 
-def symbols_of(node: ast.AST, scope: Scope, lines: tuple[str, ...]) -> list[Symbol]:
+def symbols_of(node: ast.AST, scope: Scope, lines: Sequence[str]) -> list[Symbol]:
     if isinstance(node, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef):
         symbol = build_symbol(node, scope, lines)
         inner = Scope(qualified_name=symbol.qualified_name, in_class=isinstance(node, ast.ClassDef))

@@ -13,6 +13,7 @@ from tests.codec import YAML
 from tests.plugin.frontmatter import read_frontmatter_lines, read_scalar
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from pathlib import Path
 
 
@@ -45,17 +46,17 @@ class TestGamePlanSkill:
         assert read_scalar(read_frontmatter_lines(skill_file), 'name') == 'game-plan'
 
     def test_skill_links_every_reference(
-        self, skill_file: Path, reference_names: tuple[str, ...]
+        self, skill_file: Path, reference_names: Sequence[str]
     ) -> None:
         text = skill_file.read_text(encoding='utf-8')
 
         assert [name for name in reference_names if f'(references/{name})' not in text] == []
 
-    def test_plan_reference_holds_an_example(self, plan_examples: tuple[str, ...]) -> None:
+    def test_plan_reference_holds_an_example(self, plan_examples: Sequence[str]) -> None:
         assert plan_examples
 
     def test_example_plan_has_every_section_check_asks_for(
-        self, plan_examples: tuple[str, ...]
+        self, plan_examples: Sequence[str]
     ) -> None:
         documents = tuple(map(self.read_example, plan_examples))
         policies = (

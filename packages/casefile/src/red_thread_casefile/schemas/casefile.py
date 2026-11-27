@@ -158,7 +158,7 @@ class LedgerReader:
         head = None if matched['head'] == NO_HEAD else matched['head']
         return RoundStamp(number=int(matched['round']), day=day, head=head)
 
-    def read_block(self, lines: tuple[Line, ...], location: FindingLocation) -> Block:
+    def read_block(self, lines: Sequence[Line], location: FindingLocation) -> Block:
         if not lines or lines[0].text.rstrip() != BLOCK_OPEN:
             return (MissingBlockError(location=location),)
 

@@ -25,7 +25,7 @@ class FindingSpec:
     dangling: bool = False
 
 
-def pick_retired(earlier: list[CaseFinding], picks: tuple[int, ...]) -> tuple[str, ...]:
+def pick_retired(earlier: list[CaseFinding], picks: Sequence[int]) -> tuple[str, ...]:
     if not earlier:
         return ()
     finding_ids = (earlier[pick % len(earlier)].finding_id for pick in picks)

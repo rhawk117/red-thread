@@ -8,6 +8,7 @@ from tests.codec import decode_json
 from tests.plugin.frontmatter import read_flow_list, read_frontmatter_lines, read_scalar
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from pathlib import Path
 
 
@@ -23,7 +24,7 @@ class TestNavigatePreload:
             repository_root.joinpath('skills', 'agents', 'navigate', 'SKILL.md')
         )
 
-    def test_skill_declares_the_name_navigate(self, skill_frontmatter: tuple[str, ...]) -> None:
+    def test_skill_declares_the_name_navigate(self, skill_frontmatter: Sequence[str]) -> None:
         assert read_scalar(skill_frontmatter, 'name') == 'navigate'
 
     def test_manifest_scans_the_directory_that_holds_the_skill(self, repository_root: Path) -> None:

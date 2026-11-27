@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING
 from red_thread_core.elements import element
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from red_thread_core.documents import (
         Block,
         Code,
@@ -63,13 +65,13 @@ def write_point(point: Line) -> Element:
     return element('li').with_attributes({'class': 'finding'}).nest(element('div').nest(claim))
 
 
-def write_point_list(points: tuple[Line, ...]) -> Element | None:
+def write_point_list(points: Sequence[Line]) -> Element | None:
     if not points:
         return None
     return element('ol').with_attributes({'class': 'plain'}).nest(*map(write_point, points))
 
 
-def write_flowchart(lines: tuple[str, ...]) -> Element:
+def write_flowchart(lines: Sequence[str]) -> Element:
     return element('pre').with_attributes({'class': 'mermaid'}).set_text('\n'.join(lines))
 
 

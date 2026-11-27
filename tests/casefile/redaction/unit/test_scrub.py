@@ -13,7 +13,7 @@ from tests.casefile.ledger.builders import create_finding, create_valid_finding
 from tests.casefile.redaction.cases import LEAKED, ordinary_text_params, secret_params
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Sequence
 
     from red_thread_casefile.domain import CaseFinding
     from red_thread_casefile.errors import CaseFileError
@@ -48,7 +48,7 @@ def make_quote_finding(text: str) -> CaseFinding:
     return create_valid_finding('known').replace_with(citation='src/config.py:2', quote=text)
 
 
-def list_secrets(problems: tuple[CaseFileError, ...]) -> list[SecretInFindingError]:
+def list_secrets(problems: Sequence[CaseFileError]) -> list[SecretInFindingError]:
     return [problem for problem in problems if isinstance(problem, SecretInFindingError)]
 
 

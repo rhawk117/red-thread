@@ -1,5 +1,7 @@
 """Frontmatter: the fenced split of a file's lines."""
 
+from typing import TYPE_CHECKING
+
 import pytest
 from red_thread_core.frontmatter import (
     FenceReasons,
@@ -7,6 +9,9 @@ from red_thread_core.frontmatter import (
     find_closing,
     split_frontmatter,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 def opening_problem_cases() -> pytest.MarkDecorator:
@@ -26,7 +31,7 @@ class TestSplitFrontmatter:
         assert split_frontmatter(self.lines) == FrontSplit(front=('title: a',), closing=2)
 
     @opening_problem_cases()
-    def test_missing_opening_fence_is_no_opening(self, lines: tuple[str, ...]) -> None:
+    def test_missing_opening_fence_is_no_opening(self, lines: Sequence[str]) -> None:
         assert split_frontmatter(lines) == 'no_opening'
 
     def test_missing_closing_fence_is_no_closing(self) -> None:

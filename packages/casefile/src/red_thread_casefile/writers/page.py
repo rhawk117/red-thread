@@ -9,6 +9,8 @@ from red_thread_casefile.charts import MAIN_LEDGER
 from red_thread_casefile.documents import list_document_findings
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from red_thread_core.documents import Document
     from red_thread_core.writers.page import ChipRow
 
@@ -24,7 +26,7 @@ def name_thread(finding: FindingNode) -> str:
     return finding.thread or ''
 
 
-def list_kind_chips(findings: tuple[FindingNode, ...], headings: tuple[Heading, ...]) -> ChipRow:
+def list_kind_chips(findings: Sequence[FindingNode], headings: Sequence[Heading]) -> ChipRow:
     counted = Counter(finding.kind for finding in findings)
     return tuple(
         Chip(group='kind', value=heading.kind, label=heading.title, count=counted[heading.kind])
@@ -33,7 +35,7 @@ def list_kind_chips(findings: tuple[FindingNode, ...], headings: tuple[Heading, 
     )
 
 
-def list_thread_chips(findings: tuple[FindingNode, ...]) -> ChipRow:
+def list_thread_chips(findings: Sequence[FindingNode]) -> ChipRow:
     counted = Counter(map(name_thread, findings))
     return tuple(
         Chip(group='thread', value=name, label=name or MAIN_LEDGER, count=counted[name])
@@ -41,11 +43,11 @@ def list_thread_chips(findings: tuple[FindingNode, ...]) -> ChipRow:
     )
 
 
-def list_finding_filters(document: Document, headings: tuple[Heading, ...]) -> tuple[ChipRow, ...]:
+def list_finding_filters(document: Document, headings: Sequence[Heading]) -> tuple[ChipRow, ...]:
     findings = list_document_findings(document)
     return (list_kind_chips(findings, headings), list_thread_chips(findings))
 
 
-def render_case_page(document: Document, headings: tuple[Heading, ...]) -> str:
+def render_case_page(document: Document, headings: Sequence[Heading]) -> str:
     filters = list_finding_filters(document, headings)
     return HtmlPage(document=document, filters=filters).render()

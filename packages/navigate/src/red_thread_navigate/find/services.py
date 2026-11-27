@@ -6,6 +6,8 @@ from red_thread_navigate.budget import fit_notes, fit_text
 from red_thread_navigate.find.views import Definition, Occurrence, find_rungs, none_lines
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from red_thread_navigate.symbols.domain import FileSymbols
     from red_thread_navigate.symbols.services import Index
 
@@ -18,7 +20,7 @@ def is_match(qualified_name: str, name: str) -> bool:
     return qualified_name == name or qualified_name.endswith(f'.{name}')
 
 
-def definitions_of(files: tuple[FileSymbols, ...], name: str) -> tuple[Definition, ...]:
+def definitions_of(files: Sequence[FileSymbols], name: str) -> tuple[Definition, ...]:
     return tuple(
         Definition(path=file.path, symbol=symbol)
         for file in sorted(files, key=by_path)
@@ -27,7 +29,7 @@ def definitions_of(files: tuple[FileSymbols, ...], name: str) -> tuple[Definitio
     )
 
 
-def references_to(files: tuple[FileSymbols, ...], name: str) -> tuple[Occurrence, ...]:
+def references_to(files: Sequence[FileSymbols], name: str) -> tuple[Occurrence, ...]:
     last = name.rsplit('.', 1)[-1]
     return tuple(
         Occurrence(path=file.path, line=reference.line)

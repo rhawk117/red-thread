@@ -27,6 +27,8 @@ from tests.casefile.writers.builders import create_finding_node
 from tests.casefile.writers.reading import render_page
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from red_thread_casefile.documents import FindingNode
 
     from tests.casefile.pages.html_reading import SectionReading
@@ -49,7 +51,7 @@ def create_prose_section(title: str, *, folded: bool = False) -> Section:
     return Section(title=title, blocks=(Paragraph(line=parse_line('x')),), folded=folded)
 
 
-def create_map_section(lines: tuple[str, ...]) -> Section:
+def create_map_section(lines: Sequence[str]) -> Section:
     chart = Flowchart(lines=(read_asset('map.mmd').rstrip(), *lines))
     return Section(title='Map', blocks=(chart,), note=load_wording().map_note)
 

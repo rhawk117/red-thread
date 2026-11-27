@@ -46,7 +46,7 @@ def cut_to_budget(text: str, budget: int) -> str:
 
 @runtime_checkable
 class PrefixCheck(Protocol):
-    def fits(self, kept: tuple[str, ...]) -> bool: ...
+    def fits(self, kept: Sequence[str]) -> bool: ...
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -59,7 +59,7 @@ class PrefixGate:
         return self.check.fits(tuple(self.seen))
 
 
-def keep_prefix(items: tuple[str, ...], check: PrefixCheck) -> tuple[str, ...]:
+def keep_prefix(items: Sequence[str], check: PrefixCheck) -> tuple[str, ...]:
     return tuple(takewhile(PrefixGate(check=check).admits, items))
 
 
@@ -72,7 +72,7 @@ class NotesCheck:
     total: int
     share: int
 
-    def fits(self, kept: tuple[str, ...]) -> bool:
+    def fits(self, kept: Sequence[str]) -> bool:
         more = more_notes(self.total - len(kept))
         return estimate_tokens('\n'.join([*kept, more])) <= self.share
 
@@ -94,12 +94,12 @@ class FooterCheck:
     total: int
     budget: int
 
-    def fits(self, kept: tuple[str, ...]) -> bool:
+    def fits(self, kept: Sequence[str]) -> bool:
         footer = footer_for(kept=len(kept), total=self.total)
         return printed_tokens('\n'.join([*kept, footer])) <= self.budget
 
 
-def cut_rung(lines: tuple[str, ...], *, budget: int) -> Fitted:
+def cut_rung(lines: Sequence[str], *, budget: int) -> Fitted:
     total = len(lines)
     kept = keep_prefix(lines, FooterCheck(total=total, budget=budget))
     text = '\n'.join([*kept, footer_for(kept=len(kept), total=total)])

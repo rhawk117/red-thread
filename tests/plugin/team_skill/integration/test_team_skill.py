@@ -8,6 +8,7 @@ from tests.plugin.frontmatter import read_flow_list, read_frontmatter_lines, rea
 from tests.plugin.roster.cases import LEAD, SCOUTS, SKEPTIC
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from pathlib import Path
 
 
@@ -39,7 +40,7 @@ class TestMeetTheTeam:
     def test_skill_declares_the_name_meet_the_team(self, skill_file: Path) -> None:
         assert read_scalar(read_frontmatter_lines(skill_file), 'name') == 'meet-the-team'
 
-    def test_research_lead_preloads_the_skill(self, lead_frontmatter: tuple[str, ...]) -> None:
+    def test_research_lead_preloads_the_skill(self, lead_frontmatter: Sequence[str]) -> None:
         assert 'meet-the-team' in read_flow_list(lead_frontmatter, 'skills')
 
     @primary_skill_cases()

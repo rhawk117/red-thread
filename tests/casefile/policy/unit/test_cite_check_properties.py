@@ -8,6 +8,8 @@ from hypothesis import strategies as st
 from red_thread_casefile.policy import CitationReader
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from red_thread_casefile.policy import CitationState
 
 NOT_FOUND = 'ABSENT'
@@ -44,7 +46,7 @@ class TestCitationCheck:
 
     @given(lines=files, data=st.data())
     def test_a_quote_equal_to_the_cited_line_is_ok_however_the_line_is_padded(
-        self, lines: tuple[str, ...], data: st.DataObject
+        self, lines: Sequence[str], data: st.DataObject
     ) -> None:
         line = data.draw(st.integers(min_value=1, max_value=len(lines)))
         padded = tuple(f'  {text}\t' for text in lines)

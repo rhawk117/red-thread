@@ -1,6 +1,7 @@
 """The page's structure: sections, finding marks, diagrams, the map and the toolbar."""
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import pytest
 from red_thread_casefile.packaged import load_wording, read_asset
@@ -19,6 +20,9 @@ from tests.casefile.writers.builders import create_finding_node
 from tests.casefile.writers.reading import render_page
 from tests.params import as_params
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
 MAP_LINES = ('  subgraph main["main ledger"]', '    n0["e1 known: a claim"]:::k_known', '  end')
 
 
@@ -31,7 +35,7 @@ def create_pointer_document() -> Document:
     return Document(title='t', sections=(Section(title='Findings', blocks=(points,)),))
 
 
-def create_map_section(lines: tuple[str, ...]) -> Section:
+def create_map_section(lines: Sequence[str]) -> Section:
     chart = Flowchart(lines=(read_asset('map.mmd').rstrip(), *lines))
     return Section(title='Map', blocks=(chart,), note=load_wording().map_note)
 

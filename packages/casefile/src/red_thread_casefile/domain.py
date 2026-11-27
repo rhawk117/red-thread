@@ -4,11 +4,14 @@ import re
 from datetime import date, datetime
 from itertools import chain
 from pathlib import PurePosixPath
-from typing import Annotated, Literal
+from typing import TYPE_CHECKING, Annotated, Literal
 
 import msgspec
 from red_thread_core.dto import DTO
 from red_thread_core.timekeeping import write_compact_day
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 type FindingKind = Literal[
     'known', 'open', 'decision', 'hypothesis', 'ruled_out', 'resource', 'next'
@@ -75,7 +78,7 @@ def shorten_head(head: str | None, missing: str = NO_HEAD) -> str:
     return head[:SHORT_HEAD]
 
 
-def find_member[T](value: object, members: tuple[T, ...]) -> T | None:
+def find_member[T](value: object, members: Sequence[T]) -> T | None:
     return next((member for member in members if member == value), None)
 
 

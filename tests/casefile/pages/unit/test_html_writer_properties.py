@@ -37,6 +37,8 @@ from tests.casefile.writers.reading import render_page
 from tests.core.timekeeping.clock import DAY
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from red_thread_core.documents import Block, Line
 
 ANY_TAG = re.compile(r'<[^>]*>')
@@ -115,13 +117,13 @@ def list_prose(document: Document) -> list[str]:
     return [join_line(block.line) for block in blocks if isinstance(block, Paragraph)]
 
 
-def list_path_citations(findings: tuple[FindingNode, ...]) -> list[str]:
+def list_path_citations(findings: Sequence[FindingNode]) -> list[str]:
     return [
         finding.citation_node.target for finding in findings if finding.citation_node is not None
     ]
 
 
-def list_lead_flags(findings: tuple[FindingNode, ...]) -> list[str]:
+def list_lead_flags(findings: Sequence[FindingNode]) -> list[str]:
     return [f'lead, recorded at {finding.lead}' for finding in findings if finding.lead is not None]
 
 

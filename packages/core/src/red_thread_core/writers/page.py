@@ -18,7 +18,7 @@ from red_thread_core.writers.markup import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Iterable, Sequence
 
     from red_thread_core.documents import Document, Line, Section, Term
     from red_thread_core.elements import Element
@@ -65,7 +65,7 @@ def write_section_group(group: tuple[bool, Iterable[Section]]) -> tuple[Element,
     return (element('div').with_attributes({'class': 'columns'}).nest(*written),)
 
 
-def write_sections(sections: tuple[Section, ...]) -> tuple[Element, ...]:
+def write_sections(sections: Sequence[Section]) -> tuple[Element, ...]:
     groups = groupby(sections, key=attrgetter('column'))
     return tuple(chain.from_iterable(map(write_section_group, groups)))
 

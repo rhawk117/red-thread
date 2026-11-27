@@ -6,6 +6,8 @@ from red_thread_core.elements import element
 from red_thread_core.writers.markup import write_finding_id_button, write_line
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from red_thread_core.elements import Element
 
     from red_thread_casefile.documents import CitationNode, FindingNode, Note
@@ -120,7 +122,7 @@ def write_finding(finding: FindingNode) -> Element:
     )
 
 
-def write_findings(findings: tuple[FindingNode, ...]) -> Element | None:
+def write_findings(findings: Sequence[FindingNode]) -> Element | None:
     if not findings:
         return None
     return element('ol').with_attributes({'class': 'thread'}).nest(*map(write_finding, findings))

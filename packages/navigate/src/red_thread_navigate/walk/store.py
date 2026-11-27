@@ -19,6 +19,7 @@ from red_thread_navigate.walk.domain import (
 from red_thread_navigate.walk.errors import PathMissingError
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from pathlib import Path
 
     from red_thread_navigate.walk.domain import SkipKind, SkipTally
@@ -102,7 +103,7 @@ def list_names(base: Path) -> tuple[tuple[str, ...], int, bool]:
 
 
 def split_reads(
-    base: Path, names: tuple[str, ...], unreadable: int
+    base: Path, names: Sequence[str], unreadable: int
 ) -> tuple[tuple[SourceFile, ...], SkipTally]:
     reads = [read_source(base, base.joinpath(name), PurePosixPath(name)) for name in sorted(names)]
     files = tuple(read for read in reads if isinstance(read, SourceFile))

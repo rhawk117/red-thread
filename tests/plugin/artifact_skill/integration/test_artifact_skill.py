@@ -7,6 +7,7 @@ import pytest
 from tests.plugin.frontmatter import read_flow_list, read_frontmatter_lines, read_scalar
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from pathlib import Path
 
 
@@ -35,14 +36,14 @@ class TestArtifactAuthoring:
         return read_frontmatter_lines(repository_root.joinpath('agents', 'research-lead.md'))
 
     def test_skill_declares_the_name_artifact_authoring(
-        self, skill_frontmatter: tuple[str, ...]
+        self, skill_frontmatter: Sequence[str]
     ) -> None:
         assert read_scalar(skill_frontmatter, 'name') == 'artifact-authoring'
 
-    def test_skill_is_not_a_command(self, skill_frontmatter: tuple[str, ...]) -> None:
+    def test_skill_is_not_a_command(self, skill_frontmatter: Sequence[str]) -> None:
         assert read_scalar(skill_frontmatter, 'user-invocable') == 'false'
 
-    def test_research_lead_preloads_the_skill(self, lead_frontmatter: tuple[str, ...]) -> None:
+    def test_research_lead_preloads_the_skill(self, lead_frontmatter: Sequence[str]) -> None:
         assert 'artifact-authoring' in read_flow_list(lead_frontmatter, 'skills')
 
     @primary_skill_cases()

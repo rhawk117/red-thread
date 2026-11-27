@@ -1,15 +1,20 @@
 """Splits the flags a scenario expects into the lead flags and the citation state labels."""
 
+from typing import TYPE_CHECKING
+
 from red_thread_casefile.views import CITE_FLAG_PREFIX, LEAD_FLAG_PREFIX
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 INTACT_STATE = 'ok'
 
 
-def list_lead_flags(flags: tuple[str, ...]) -> list[str]:
+def list_lead_flags(flags: Sequence[str]) -> list[str]:
     return [flag for flag in flags if flag.startswith(LEAD_FLAG_PREFIX)]
 
 
-def list_state_labels(flags: tuple[str, ...]) -> list[str]:
+def list_state_labels(flags: Sequence[str]) -> list[str]:
     labels = [
         flag.removeprefix(CITE_FLAG_PREFIX) for flag in flags if flag.startswith(CITE_FLAG_PREFIX)
     ]

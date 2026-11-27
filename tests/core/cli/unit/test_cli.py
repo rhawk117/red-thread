@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import pytest
 from cyclopts import Parameter
@@ -14,6 +15,9 @@ from red_thread_core.cli import (
 from red_thread_core.errors import RedThreadError
 
 from tests.params import as_params
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 PROGRAM = 'probe-tool'
 CHOICES = ('init', 'render', 'check')
@@ -84,7 +88,7 @@ def run_app_exit_cases() -> pytest.MarkDecorator:
 
 class TestJoinChoices:
     @join_choices_cases()
-    def test_names_read_as_a_list_ending_in_or(self, names: tuple[str, ...], expected: str) -> None:
+    def test_names_read_as_a_list_ending_in_or(self, names: Sequence[str], expected: str) -> None:
         assert join_choices(names) == expected
 
 

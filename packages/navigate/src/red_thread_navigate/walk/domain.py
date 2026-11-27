@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 from red_thread_core.dto import DTO
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from pathlib import Path
 
 BYTES_PER_MIB = 1024 * 1024
@@ -102,5 +103,5 @@ class TrackedFiles(DTO, frozen=True, kw_only=True, gc=False):
     failed: bool = False
 
 
-def tally_skips(kinds: tuple[SkipKind, ...]) -> SkipTally:
+def tally_skips(kinds: Sequence[SkipKind]) -> SkipTally:
     return SkipTally(counts=Counter(kinds))

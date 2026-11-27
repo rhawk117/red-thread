@@ -2,12 +2,16 @@
 
 from pathlib import PurePosixPath
 from textwrap import indent
+from typing import TYPE_CHECKING
 
 from red_thread_core.dto import DTO
 
 from red_thread_navigate.budget import fit_notes
 from red_thread_navigate.symbols.domain import Symbol
 from red_thread_navigate.util import rung, span, symbol_address
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 class Found(DTO, frozen=True, kw_only=True, gc=False):
@@ -18,7 +22,7 @@ class Found(DTO, frozen=True, kw_only=True, gc=False):
     whole: bool
 
 
-def numbered(lines: tuple[str, ...], first: int) -> tuple[str, ...]:
+def numbered(lines: Sequence[str], first: int) -> tuple[str, ...]:
     return tuple(f'{number}: {line}' for number, line in enumerate(lines, start=first))
 
 
@@ -81,7 +85,7 @@ def symbol_rungs(
 
 
 def line_rungs(
-    path: PurePosixPath, *, start: int, lines: tuple[str, ...]
+    path: PurePosixPath, *, start: int, lines: Sequence[str]
 ) -> tuple[tuple[str, ...], ...]:
     header = line_address(path, start, start + len(lines) - 1)
     return (rung(header, numbered(lines, start)),)

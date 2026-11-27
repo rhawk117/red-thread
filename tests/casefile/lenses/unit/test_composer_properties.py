@@ -1,5 +1,7 @@
 """Selection and Composer: what a selection admits and how it orders the findings it selects."""
 
+from typing import TYPE_CHECKING
+
 from hypothesis import given
 from hypothesis import strategies as st
 from red_thread_casefile.domain import FINDING_KINDS, CaseFinding, CaseLedger
@@ -10,8 +12,11 @@ from tests.casefile.findings.strategies import POOLED_REFS, optional, pooled_fin
 from tests.casefile.ledger.builders import create_finding
 from tests.casefile.services.fakes import CASE
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
-def pick_finding_ids(finding_ids: tuple[str, ...]) -> st.SearchStrategy[tuple[str, ...]]:
+
+def pick_finding_ids(finding_ids: Sequence[str]) -> st.SearchStrategy[tuple[str, ...]]:
     return st.builds(
         tuple, st.lists(st.sampled_from(finding_ids), unique=True, max_size=len(finding_ids))
     )

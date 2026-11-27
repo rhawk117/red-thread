@@ -10,7 +10,7 @@ from red_thread_plans.schemas import write_plan
 from tests.codec import YAML
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Mapping, Sequence
 
 PLAN_ID = '20261126-cap-retries'
 TITLE = 'Cap the attempts of each job'
@@ -48,7 +48,7 @@ def write_sound_plan(*case_ids: str) -> str:
     )
 
 
-def edit_plan(text: str, edits: tuple[tuple[str, str], ...]) -> str:
+def edit_plan(text: str, edits: Sequence[tuple[str, str]]) -> str:
     edited = text
     for old, new in edits:
         edited = edited.replace(old, new, 1)

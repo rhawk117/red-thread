@@ -9,12 +9,12 @@ from red_thread_casefile.errors import MalformedSelectionError
 from red_thread_casefile.lenses import Selection
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Mapping
+    from collections.abc import Iterable, Mapping, Sequence
 
     from red_thread_core.codec import Codec
 
 
-def find_unknown_field(record: Mapping[str, object], allowed: tuple[str, ...]) -> str | None:
+def find_unknown_field(record: Mapping[str, object], allowed: Sequence[str]) -> str | None:
     return next((name for name in record if name not in allowed), None)
 
 

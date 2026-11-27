@@ -1,9 +1,14 @@
 """Small documents for the writer tests."""
 
+from typing import TYPE_CHECKING
+
 from red_thread_casefile.documents import FindingList, FindingNode
 from red_thread_core.documents import Document, Paragraph, Section, parse_line
 
 from tests.core.timekeeping.clock import DAY
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 def create_finding_node(text: str = 'a claim', finding_id: str = 'e1') -> FindingNode:
@@ -11,7 +16,7 @@ def create_finding_node(text: str = 'a claim', finding_id: str = 'e1') -> Findin
 
 
 def create_document(
-    *findings: FindingNode, title: str = 'A case', prose: tuple[str, ...] = ()
+    *findings: FindingNode, title: str = 'A case', prose: Sequence[str] = ()
 ) -> Document:
     paragraphs = tuple(Paragraph(line=parse_line(line)) for line in prose)
     listing = (FindingList(findings=findings),) if findings else ()

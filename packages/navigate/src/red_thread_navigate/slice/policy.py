@@ -3,6 +3,7 @@
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from pathlib import PurePosixPath
+from typing import TYPE_CHECKING
 
 from red_thread_core.dto import DTO
 
@@ -14,6 +15,9 @@ from red_thread_navigate.slice.util import (
     fill,
     shorten,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 OUTSIDE_ROOT_HINT = 'use a path under the root'
 MAP_HINT = 'map <path> to see the names there'
@@ -62,12 +66,12 @@ def refusal_text(template: str, *, refused: Refused, name: str) -> str:
     return Wording(template=template, refused=refused, name=name).text()
 
 
-def unknown_template(nearest: tuple[str, ...]) -> str:
+def unknown_template(nearest: Sequence[str]) -> str:
     hint = f'nearest names: {", ".join(nearest)}' if nearest else 'the file has no similar name'
     return f'no symbol <name> in <path>; {hint}'
 
 
-def unknown_template_with_map_hint(nearest: tuple[str, ...]) -> str:
+def unknown_template_with_map_hint(nearest: Sequence[str]) -> str:
     return f'{unknown_template(nearest)}. Next step: {MAP_HINT}.'
 
 
@@ -84,7 +88,7 @@ def file_refused_text(*, refused: Refused, reason: str, hint: str = '') -> str:
     return refusal_text(template, refused=refused, name='')
 
 
-def unknown_symbol_text(*, refused: Refused, name: str, nearest: tuple[str, ...]) -> str:
+def unknown_symbol_text(*, refused: Refused, name: str, nearest: Sequence[str]) -> str:
     template = unknown_template(nearest)
     if not nearest:
         mapped = unknown_template_with_map_hint(nearest)

@@ -18,7 +18,7 @@ from red_thread_plans.policy import PlanPolicy, create_grounds
 from red_thread_plans.schemas import read_plan, write_plan
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Mapping, Sequence
     from pathlib import Path
 
     from red_thread_casefile.domain import CaseRecord
@@ -35,7 +35,7 @@ class Checked(DTO, frozen=True, kw_only=True, gc=False):
     findings: int
 
 
-def alias_cases(case_ids: tuple[str, ...]) -> dict[str, str]:
+def alias_cases(case_ids: Sequence[str]) -> dict[str, str]:
     return {f'C{number}': case_id for number, case_id in enumerate(case_ids, 1)}
 
 
@@ -68,7 +68,7 @@ class Planner:
             cases=alias_cases(opening.case_ids),
         )
 
-    def find_missing(self, case_ids: tuple[str, ...]) -> str | None:
+    def find_missing(self, case_ids: Sequence[str]) -> str | None:
         return next((case_id for case_id in case_ids if self.shelf.find(case_id) is None), None)
 
     def open(self, opening: Opening) -> Path:
