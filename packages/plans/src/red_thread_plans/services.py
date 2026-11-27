@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from red_thread_casefile.domain import date_of, shorten_head
 from red_thread_casefile.services.casefile import EXCLUDED
 
-from red_thread_plans.domain import Frontmatter
+from red_thread_plans.domain import Frontmatter, find_refs
 from red_thread_plans.errors import (
     NoCasesError,
     PlanRejectedError,
@@ -21,9 +21,10 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
     from pathlib import Path
 
+    from red_thread_casefile.domain import CaseRecord
     from red_thread_core.store import Clock, SourceTree
 
-    from red_thread_plans.domain import CaseRecord, Opening, Outline, PlanDocument
+    from red_thread_plans.domain import Opening, Outline, PlanDocument
     from red_thread_plans.store import CaseShelf, PlanRepository
 
 
@@ -38,7 +39,7 @@ def alias_cases(case_ids: tuple[str, ...]) -> dict[str, str]:
 
 
 def count_entries(document: PlanDocument) -> int:
-    return len({ref for line in document.criteria for ref in line.refs})
+    return len({ref for line in document.criteria for ref in find_refs(line)})
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)

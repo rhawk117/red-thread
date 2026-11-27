@@ -8,4 +8,5 @@ from tests.casefile.ledger.repository_suite import RepositoryHarness
 
 @pytest.fixture
 def harness() -> RepositoryHarness:
-    return RepositoryHarness(repository=MemoryCaseRepository())
+    repository = MemoryCaseRepository()
+    return RepositoryHarness(repository=repository, sink=repository)

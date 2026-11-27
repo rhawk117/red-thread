@@ -30,8 +30,7 @@ def list_state(root: Path) -> list[str]:
 
 @pytest.fixture
 def grounded(cli: CliHarness, case: Path) -> Path:
-    added = cli.add(case, KNOWN, DECISION)
-    assert added.code == 0, added.err
+    cli.write(case, KNOWN, DECISION)
     return case
 
 

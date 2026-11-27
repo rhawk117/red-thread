@@ -4,8 +4,8 @@ from dataclasses import dataclass
 from itertools import chain
 from typing import TYPE_CHECKING, Literal
 
-import msgspec
 from red_thread_core.documents import Term, parse_line
+from red_thread_core.dto import DTO
 from red_thread_core.util import squeeze
 
 from red_thread_casefile.domain import Cite
@@ -31,7 +31,7 @@ class Note:
     text: str
 
 
-class Wording(msgspec.Struct, frozen=True, kw_only=True, forbid_unknown_fields=True):
+class Wording(DTO, frozen=True, kw_only=True, forbid_unknown_fields=True):
     headings: tuple[Heading, ...]
     prefixes: dict[NoteKind, str]
     map_note: str

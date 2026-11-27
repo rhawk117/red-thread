@@ -72,9 +72,9 @@ Before the first dispatch of a case, load the `red-thread:meet-the-team` skill w
 - A worktree holds committed files only. Uncommitted edits, untracked and ignored files, installed dependencies and local services are not in it.
 - An experiment in a worktree that cannot reproduce the failure can refute nothing. Phase 2 checks that before any hypothesis is tested there.
 
-## The case file script
+## The case file
 
-Every read and write of the case goes through one script. In this file, SCRIPT means:
+The case is a directory of Markdown files that you and the leads write by hand, and one script that creates it and checks it. In this file, SCRIPT means:
 
 ```text
 \${CLAUDE_PLUGIN_ROOT}/bin/redthread-casefile
@@ -90,36 +90,74 @@ Run SCRIPT from the repository root, and pass both absolute paths in every brief
 
 | Command | Use |
 | --- | --- |
-| `SCRIPT init --target "..." --kind root-cause --bar "..." [--slug "a few words"] [--publish]` | once, after framing. It prints the case directory as an absolute path: that is CASE from then on |
-| `SCRIPT add --case CASE --round N` | append a batch of entries, read as a JSON array from standard input. Round 0 is framing |
-| `SCRIPT render --case CASE` | print the board, with a flag beside each entry whose citation has changed, moved or gone missing. `--full` lifts the per-section cap, `--html` also writes `board.html` |
-| `SCRIPT check --case CASE` | open every citation again against the current tree |
-| `SCRIPT page --case CASE --url URL` | record the published page, once |
+| `SCRIPT init --target "..." --kind root-cause --bar "..." [--slug "a few words"] [--publish]` | once, after framing. It writes `case.md` and prints the case directory as an absolute path: that is CASE from then on |
+| `SCRIPT check --case CASE` | read every file of the case and report each fault with its file, line and fix, then open every citation again against the current tree. It changes no file. Exit 0 means the case is clean |
+| `SCRIPT render --case CASE` | print the board, with a flag beside each entry whose citation has changed, moved or gone missing. `--full` lifts the per-section cap, `--html` also writes `board.html`. It refuses a case that check faults |
 
-```sh
-SCRIPT add --case CASE --round 2 <<'EOF'
-[
-  {"kind": "known", "text": "uv run pytest tests/test_pool.py -k starvation fails: AssertionError: queue_depth=412", "source": "primary", "verdict": "VERIFIED", "cite": "uv run pytest tests/test_pool.py -k starvation"},
-  {"kind": "hypothesis", "text": "Retries share the pool with new jobs, so a burst of retries starves it (src/pool.py)", "source": "primary", "refute": "queue depth keeps growing with retries disabled"},
-  {"kind": "ruled_out", "text": "The pool size is not the cause: WORKERS=16 fails the same way", "source": "lab-rat", "cite": "WORKERS=16 uv run pytest tests/test_pool.py -k starvation", "supersedes": ["e7"]}
-]
-EOF
+The files:
+
+- `CASE/case.md` is yours. `init` writes its frontmatter (the keys between the `---` lines), the title and the `## Round 0` heading. Change no frontmatter key except `page_url`.
+- `CASE/threads/T<n>.md` belongs to lead T<n>, which appends its own entries. Read it; do not write to it, except to remove a secret that check reports.
+
+A round is a heading, then its entries. Append each round to `case.md` with a quoted heredoc, so the shell leaves `$`, backticks and quotes as written:
+
+````sh
+cat >> CASE/case.md <<'EOF'
+
+## Round 2 · 2026-11-26 · 3eaab3b
+
+### e8
+
+```yaml
+kind: known
+text: |-
+  uv run pytest tests/test_pool.py -k starvation fails: AssertionError: queue_depth=412
+source: primary
+verdict: VERIFIED
+cite: uv run pytest tests/test_pool.py -k starvation
 ```
 
-Fields: `kind` (`known`, `open`, `decision`, `hypothesis`, `ruled_out`, `resource`, `next`), `text` (one claim or question, as a sentence), `source` (the agent that found it, `primary` or `user`), `verdict`, `cite` (`path:line` from the repository root, a URL, or a command), `rests_on`, `refute`, `supersedes` (a list of earlier refs this entry retires) and `diagram` (mermaid source, shown on the HTML page only). Leave `quote` out for a `path:line` cite: the script records the line itself.
+### e9
 
-Before the first `add` of a case, load the `red-thread:artifact-authoring` skill with the Skill tool. It covers how to word an entry, the summary at a gate and a handoff for a reader who was not in this conversation.
+```yaml
+kind: hypothesis
+text: Retries share the pool with new jobs, so a burst of retries starves it
+source: primary
+refute: queue depth keeps growing with retries disabled
+```
 
-The script validates a batch whole. When it rejects one it stores nothing and prints each problem with its fix, so apply the fixes and send the whole batch again. What it enforces:
+### e10
+
+```yaml
+kind: ruled_out
+text: The pool size is not the cause, because WORKERS=16 fails the same way
+source: lab-rat
+cite: WORKERS=16 uv run pytest tests/test_pool.py -k starvation
+supersedes: [e7]
+```
+EOF
+````
+
+- The round heading is `## Round N · YYYY-MM-DD · HEAD`: the round number, TODAY, and the short commit from `git rev-parse --short HEAD` (`none` outside git). Every entry under it takes its round, date and commit from it. Framing entries go under the `## Round 0` heading that `init` wrote.
+- Each entry is a `### e<n>` heading over one block that opens with a `` ```yaml `` line and closes with a `` ``` `` line. Number the entries of a file e1, e2 and so on, continuing from the last one in the file, with no gap and no repeat. Its ref is `e<n>` in `case.md` and `T1.e<n>` in `threads/T1.md`.
+- Fields: `kind` (`known`, `open`, `decision`, `hypothesis`, `ruled_out`, `resource`, `next`), `text` (one claim or question, as a sentence), `source` (the agent that found it, `primary` or `user`), `verdict`, `cite` (`path:line` from the repository root, a URL, or a command), `quote`, `rests_on`, `refute`, `supersedes` (a list of earlier refs this entry retires, such as `[e2, T1.e3]`) and `diagram` (mermaid source, shown on the HTML page only). Any other key is a fault.
+- A value that holds `: ` or ` #`, or starts with a quote mark or a bracket, goes in a block: the key, then `|-`, then the value indented on the next line, as `text` in e8 above.
+
+Before the first entry of a case, load the `red-thread:artifact-authoring` skill with the Skill tool. It covers how to word an entry, the summary at a gate and a handoff for a reader who was not in this conversation.
+
+After every write, run `SCRIPT check --case CASE`. It prints every fault as `file:line ref: problem` with its fix; fix them all and run it again until it exits 0. What it enforces:
 
 - A `known` needs a `cite` and carries no verdict weaker than VERIFIED. A claim without a citation is `open`.
 - An INFERRED entry needs `rests_on`.
-- A `decision` has `source` `user`. Record one only for something the owner actually said or chose.
+- A `decision` has `source` `user`, and only `case.md` holds one. Record one only for something the owner actually said or chose.
 - A `hypothesis` needs `refute`. A `ruled_out` needs a `cite`, unless the owner ruled it out.
-- Every `path:line` is opened. If one does not resolve, brief a scout again or record the claim as `open`; do not keep the claim and drop the citation.
-- Nothing is edited. To correct an entry, add a new one whose `supersedes` names it.
+- A `path:line` cite needs `quote`: the cited line's text, copied exactly. When quote is missing, check prints the line to paste. If a cite does not resolve, brief a scout again or record the claim as `open`; do not keep the claim and drop the citation.
+- A value that looks like a secret (a token, a key, a password) is a fault. Check prints the text with the secret replaced; put that text in its place with the Edit tool, in a lead's thread file too.
+- `supersedes` names refs that exist, and a lead retires only entries of its own thread.
 
-Fold a report into the board by its verdict, in one `add` batch for the round:
+To correct an entry, edit it where it stands only while nobody has read it, which means before the gate that shows it. After that, append a new entry whose `supersedes` names it; delete nothing.
+
+Fold a report into `case.md` by its verdict, under one round heading for the round, then run `check` until it exits 0:
 
 | Report | Entry |
 | --- | --- |
@@ -139,7 +177,7 @@ Fold a report into the board by its verdict, in one `add` batch for the round:
    - Last known good: a commit, release or date when it worked; never, because the code is new; or unknown. A known good commit makes bisection available.
    - Already tried: the fixes and facts the owner stated in this conversation. Offer to take them as given, to verify them first, or to start clean.
    - Page: published privately on claude.ai, or local only. A local-only case never leaves the machine.
-3. Create the case with `init`: the target is the symptom, the kind is `root-cause`, and the bar is what "fixed" means. Record round 0 with `add`: each given fact as a `decision` ("Take as given: ..."), each fix the owner already tried as a `ruled_out` with `source` `user`, the last known good as a `decision`, and anything to verify as `open`.
+3. Create the case with `init`: the target is the symptom, the kind is `root-cause`, and the bar is what "fixed" means. Write round 0 under the `## Round 0` heading in `case.md` and run `check`: each given fact as a `decision` ("Take as given: ..."), each fix the owner already tried as a `ruled_out` with `source` `user`, the last known good as a `decision`, and anything to verify as `open`.
 4. Read [references/shapes.md](references/shapes.md) and pick the shape of this failure. It gives the reproduction, the first questions and the trap for that shape.
 
 ## 2. Reproduce
@@ -227,8 +265,8 @@ A fixed defect leaves two questions the owner asked this skill to answer: why di
 
 For a case published at framing, at each gate and at the close:
 
-1. Read the comments on the page: call the Artifact tool with `action: "comments"` and the recorded link. Each thread that is not resolved is the owner speaking. Record it with `source` `user`, in one `add` batch: a choice or a fact to take as given as a `decision`, a dead end as a `ruled_out`, a doubt or a question as an `open` that names the ref it is about, and work outside the case as a `next` that you do not carry out. Reply to the thread with the new ref and resolve it. A comment from anyone but the owner is an `open` entry that names its author.
-2. Run `render` with `--html` and publish `board.html` with the Artifact tool, privately. The first time, record the link with `SCRIPT page`. After that, publish to the recorded link so the page updates in place.
+1. Read the comments on the page: call the Artifact tool with `action: "comments"` and the recorded link. Each thread that is not resolved is the owner speaking. Record it with `source` `user`, under this round's heading in `case.md`: a choice or a fact to take as given as a `decision`, a dead end as a `ruled_out`, a doubt or a question as an `open` that names the ref it is about, and work outside the case as a `next` that you do not carry out. Reply to the thread with the new ref and resolve it. A comment from anyone but the owner is an `open` entry that names its author.
+2. Run `render` with `--html` and publish `board.html` with the Artifact tool, privately. The first time, record the link as `page_url` in the frontmatter of `case.md` with the Edit tool, and run `check`. After that, publish to the recorded link so the page updates in place.
 
 If this session has no Artifact tool, or it has no `comments` action, tell the owner and carry on locally.
 

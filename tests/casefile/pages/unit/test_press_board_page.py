@@ -3,12 +3,11 @@
 from typing import TYPE_CHECKING
 
 import pytest
-from msgspec.structs import replace
 
 from tests.casefile.ledger.builders import create_case, create_entry
 from tests.casefile.lenses.builders import create_numbered_entries, seed_flag_scenario
 from tests.casefile.lenses.cases import QUEUE_CITE, QUEUE_QUOTE, flag_params
-from tests.casefile.pages.builders import DIAGRAM, SCRIPT, STAMP_DAY
+from tests.casefile.pages.builders import DIAGRAM, SCRIPT
 from tests.casefile.pages.html_reading import (
     find_tags,
     list_chip_groups,
@@ -95,7 +94,7 @@ class TestBoardPageFacts:
     def test_a_recorded_page_link_is_a_last_wide_fact_that_links(
         self, press_harness: PressHarness
     ) -> None:
-        press_harness.press.record_page(PAGE_URL)
+        press_harness.frame(create_case().replace_with(page_url=PAGE_URL))
 
         facts = list_facts(draw_board(press_harness))
 
@@ -253,7 +252,7 @@ class TestBoardPageEntries:
     def test_ledger_text_and_the_case_fields_cannot_add_elements(
         self, press_harness: PressHarness
     ) -> None:
-        press_harness.frame(replace(create_case(), target=SCRIPT, bar=SCRIPT))
+        press_harness.frame(create_case().replace_with(target=SCRIPT, bar=SCRIPT))
         press_harness.seed(
             create_entry(
                 seq=1,
@@ -262,7 +261,6 @@ class TestBoardPageEntries:
                 cite=f'https://example.invalid/"{SCRIPT}',
                 rests_on=SCRIPT,
                 source=SCRIPT,
-                at=f'{STAMP_DAY}{SCRIPT}',
             ),
             create_entry(seq=2, kind='known', text=SCRIPT, cite=QUEUE_CITE, quote=SCRIPT),
         )

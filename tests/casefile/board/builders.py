@@ -2,7 +2,6 @@
 
 from typing import TYPE_CHECKING
 
-from msgspec.structs import replace
 from red_thread_casefile.domain import Capabilities, Ledger
 from red_thread_casefile.packaged import load_wording
 from red_thread_casefile.policy import Finding
@@ -36,4 +35,6 @@ def create_page_board(
 
 
 def create_case_with(*, page_url: str | None = None, languages: tuple[str, ...] = ()) -> Case:
-    return replace(create_case(), page_url=page_url, capabilities=Capabilities(languages=languages))
+    return create_case().replace_with(
+        page_url=page_url, capabilities=Capabilities(languages=languages)
+    )

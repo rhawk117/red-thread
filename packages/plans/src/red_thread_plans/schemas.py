@@ -3,11 +3,11 @@
 from typing import TYPE_CHECKING
 
 import msgspec
+from red_thread_core.frontmatter import FENCE, FenceReasons, decode_yaml, split_frontmatter
+from red_thread_core.lines import cut_at, number_lines
 
 from red_thread_plans.domain import (
-    FENCE,
     HEADING,
-    BodyLine,
     Frontmatter,
     PlanDocument,
     Section,
@@ -15,7 +15,7 @@ from red_thread_plans.domain import (
 from red_thread_plans.errors import PlanShapeError
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from red_thread_core.lines import Line
 
     from red_thread_plans.domain import Outline
 
@@ -24,27 +24,20 @@ LIGHTS_HINT = (
     'write lights: "on" or lights: "off" with the quotes, because YAML reads a bare on or off'
     ' as true or false'
 )
+FENCE_REASONS = FenceReasons(
+    no_opening='it does not open with a --- line',
+    no_closing='its frontmatter has no closing --- line',
+)
 
 
-def number_lines(lines: Sequence[str], start: int) -> tuple[BodyLine, ...]:
-    return tuple(BodyLine(number=number, text=text) for number, text in enumerate(lines, start))
-
-
-def find_closing_fence(lines: Sequence[str]) -> int | None:
-    found = (index for index, line in enumerate(lines) if index and line.strip() == FENCE)
-    return next(found, None)
-
-
-def cut_sections(lines: tuple[BodyLine, ...]) -> tuple[Section, ...]:
-    starts = [index for index, line in enumerate(lines) if line.text.startswith(HEADING)]
-    ends = [*starts[1:], len(lines)]
+def cut_sections(lines: tuple[Line, ...]) -> tuple[Section, ...]:
     return tuple(
         Section(
-            title=lines[start].text.removeprefix(HEADING).strip(),
-            number=lines[start].number,
-            lines=lines[start + 1 : end],
+            title=cut.head.text.removeprefix(HEADING).strip(),
+            number=cut.head.number,
+            lines=cut.body,
         )
-        for start, end in zip(starts, ends, strict=True)
+        for cut in cut_at(lines, HEADING).parts
     )
 
 
@@ -55,26 +48,24 @@ def explain_shape(error: msgspec.DecodeError) -> PlanShapeError:
 
 
 def decode_frontmatter(text: str) -> Frontmatter | PlanShapeError:
-    try:
-        return msgspec.yaml.decode(text, type=Frontmatter)
-    except msgspec.DecodeError as error:
-        return explain_shape(error)
+    decoded = decode_yaml(text, Frontmatter)
+    if isinstance(decoded, msgspec.DecodeError):
+        return explain_shape(decoded)
+
+    return decoded
 
 
 def read_plan(text: str) -> PlanDocument | PlanShapeError:
     lines = text.splitlines()
-    if not lines or lines[0].strip() != FENCE:
-        return PlanShapeError(reason='it does not open with a --- line')
+    split = split_frontmatter(lines)
+    if isinstance(split, str):
+        return PlanShapeError(reason=FENCE_REASONS.explain(split))
 
-    closing = find_closing_fence(lines)
-    if closing is None:
-        return PlanShapeError(reason='its frontmatter has no closing --- line')
-
-    frontmatter = decode_frontmatter('\n'.join(lines[1:closing]))
+    frontmatter = decode_frontmatter('\n'.join(split.front))
     if isinstance(frontmatter, PlanShapeError):
         return frontmatter
 
-    body = number_lines(lines[closing + 1 :], closing + 2)
+    body = number_lines(lines[split.closing + 1 :], split.closing + 2)
     return PlanDocument(frontmatter=frontmatter, sections=cut_sections(body))
 
 

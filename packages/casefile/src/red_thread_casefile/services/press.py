@@ -1,25 +1,23 @@
 """The press: writes the board page and the lens outputs of a case file."""
 
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-import msgspec
 from red_thread_core.places import BOARD_PAGE
 from red_thread_core.writers.markdown import MarkdownWriter
 
 from red_thread_casefile.boards import BoardPage
 from red_thread_casefile.lenses import Composer, Edition, Selection, count_lines
-from red_thread_casefile.policy import get_page_problem
 from red_thread_casefile.views import Board
 from red_thread_casefile.writers.page import render_case_page
 
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from red_thread_core.documents import Document
     from red_thread_core.store import PageStore
 
-    from red_thread_casefile.domain import Case
-    from red_thread_casefile.lenses import LensBook, LensName
+    from red_thread_casefile.lenses import Lens, LensBook, LensName
     from red_thread_casefile.services.casefile import CaseFile
 
 
@@ -44,11 +42,12 @@ class Press:
     book: LensBook
 
     def gather(self) -> Edition:
+        record = self.record.load()
         return Edition(
-            case=self.record.repository.read_case(),
-            ledger=self.record.repository.read_ledger(),
+            case=record.case,
+            ledger=record.ledger,
             head=self.record.tree.get_head(),
-            findings=self.record.check(),
+            findings=self.record.find_citations(record.ledger),
         )
 
     def scrub(self, text: str | None) -> str | None:
@@ -67,19 +66,28 @@ class Press:
             findings=edition.findings,
         )
         document = BoardPage(board=board, wording=wording).compose()
-        return self.pages.write(BOARD_PAGE, render_case_page(document, wording.headings))
+        return self.write_page(BOARD_PAGE, document)
 
-    def export(self, request: ExportRequest) -> Exported:
-        lens = self.book.get(request.lens)
-        title = self.scrub(request.selection.title)
-        selection = replace(request.selection, title=title, goal=self.scrub(request.selection.goal))
-        composer = Composer(
+    def write_page(self, name: str, document: Document) -> Path:
+        return self.pages.write(name, render_case_page(document, self.record.wording.headings))
+
+    def scrub_selection(self, selection: Selection) -> Selection:
+        return selection.replace_with(
+            title=self.scrub(selection.title), goal=self.scrub(selection.goal)
+        )
+
+    def build_composer(self, lens: Lens, selection: Selection) -> Composer:
+        return Composer(
             lens=lens,
             selection=selection,
             edition=self.gather(),
             wording=self.record.wording,
             reading=self.book.reading,
         )
+
+    def export(self, request: ExportRequest) -> Exported:
+        lens = self.book.get(request.lens)
+        composer = self.build_composer(lens, self.scrub_selection(request.selection))
         if problem := composer.get_selection_problem():
             raise problem
 
@@ -90,15 +98,6 @@ class Press:
 
         paths = [self.pages.write(f'out/{lens.name}.md', text)]
         if request.html:
-            page = render_case_page(document, self.record.wording.headings)
-            paths.append(self.pages.write(f'out/{lens.name}.html', page))
+            paths.append(self.write_page(f'out/{lens.name}.html', document))
 
         return Exported(paths=tuple(paths), lines=count_lines(text), budget=lens.budget)
-
-    def record_page(self, url: str) -> Case:
-        if problem := get_page_problem(url):
-            raise problem
-
-        case = msgspec.structs.replace(self.record.repository.read_case(), page_url=url)
-        self.record.repository.write_case(case)
-        return case

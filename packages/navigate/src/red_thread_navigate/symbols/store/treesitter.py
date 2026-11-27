@@ -180,7 +180,7 @@ class TreeSitterBackend:
             return f'{source.path}: parse stopped after the {self.deadline_seconds} s time limit'
         return f'{source.path}: parse failed: {reason}'
 
-    def parse(self, source: SourceFile) -> FileSymbols:
+    def parse_tree(self, source: SourceFile) -> tree_sitter.Tree | FileSymbols:
         reader = SourceReader(data=source.text.encode('utf-8'))
         parser = tree_sitter.Parser(self.grammar)
         deadline = Deadline(expires_at=time.monotonic() + self.deadline_seconds)
@@ -193,7 +193,9 @@ class TreeSitterBackend:
         if tree is None:
             note = self.get_failure_note(source, deadline, 'the parser returned no tree')
             return note_only(source.path, self.language, note)
+        return tree
 
+    def build_file_symbols(self, source: SourceFile, tree: tree_sitter.Tree) -> FileSymbols:
         error_line = first_error_line(tree.root_node)
         notes = () if error_line is None else (f'{source.path}: syntax error at line {error_line}',)
         matches = tree_sitter.QueryCursor(self.query).matches(tree.root_node)
@@ -205,6 +207,12 @@ class TreeSitterBackend:
             references=collect_references(matches, self.aliases),
             notes=notes,
         )
+
+    def parse(self, source: SourceFile) -> FileSymbols:
+        parsed = self.parse_tree(source)
+        if isinstance(parsed, FileSymbols):
+            return parsed
+        return self.build_file_symbols(source, parsed)
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)

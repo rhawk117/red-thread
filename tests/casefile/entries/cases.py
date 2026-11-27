@@ -1,16 +1,13 @@
-"""Scenarios for the shape of a submitted batch."""
+"""Scenarios for an entry's yaml block: fields it may not hold, and blocks no one can read."""
 
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
-
-from red_thread_casefile.errors import InvalidFieldError, UnknownFieldError
 
 from tests.params import as_labelled_params, as_params
 
 if TYPE_CHECKING:
     import pytest
     from _pytest.mark import ParameterSet
-    from red_thread_casefile.errors import CaseFileError
 
 VALID = {'kind': 'open', 'text': 'what stalls the queue', 'source': 'scout'}
 
@@ -19,153 +16,79 @@ VALID = {'kind': 'open', 'text': 'what stalls the queue', 'source': 'scout'}
 class ShapeCase:
     name: str
     record: dict[str, object]
-    error_type: type[CaseFileError]
     field_name: str
     marks: tuple[pytest.MarkDecorator, ...] = field(default=())
 
 
+def stamp_field_cases() -> list[ShapeCase]:
+    stamps = {'seq': 9, 'round': 2, 'at': '2026-11-21', 'head': 'abc1234', 'thread': 'T1'}
+    return [
+        ShapeCase(name=f'block-sets-{name}', record={**VALID, name: value}, field_name=name)
+        for name, value in stamps.items()
+    ]
+
+
 def shape_problem_params() -> list[ParameterSet]:
     cases = [
-        ShapeCase(
-            name='unknown-field',
-            record={**VALID, 'colour': 'red'},
-            error_type=UnknownFieldError,
-            field_name='colour',
-        ),
-        ShapeCase(
-            name='caller-supplied-seq',
-            record={**VALID, 'seq': 9},
-            error_type=UnknownFieldError,
-            field_name='seq',
-        ),
-        ShapeCase(
-            name='caller-supplied-time',
-            record={**VALID, 'at': '2026-01-01T00:00:00+00:00'},
-            error_type=UnknownFieldError,
-            field_name='at',
-        ),
-        ShapeCase(
-            name='caller-supplied-head',
-            record={**VALID, 'head': 'abc'},
-            error_type=UnknownFieldError,
-            field_name='head',
-        ),
-        ShapeCase(
-            name='caller-supplied-round',
-            record={**VALID, 'round': 2},
-            error_type=UnknownFieldError,
-            field_name='round',
-        ),
+        ShapeCase(name='unknown-field', record={**VALID, 'colour': 'red'}, field_name='colour'),
+        *stamp_field_cases(),
         ShapeCase(
             name='missing-kind',
             record={'text': 'a', 'source': 'scout'},
-            error_type=InvalidFieldError,
             field_name='kind',
         ),
+        ShapeCase(name='unknown-kind', record={**VALID, 'kind': 'guess'}, field_name='kind'),
         ShapeCase(
-            name='unknown-kind',
-            record={**VALID, 'kind': 'finding'},
-            error_type=InvalidFieldError,
-            field_name='kind',
+            name='kind-in-the-wrong-case', record={**VALID, 'kind': 'Known'}, field_name='kind'
         ),
-        ShapeCase(
-            name='kind-in-the-wrong-case',
-            record={**VALID, 'kind': 'Known'},
-            error_type=InvalidFieldError,
-            field_name='kind',
-        ),
-        ShapeCase(
-            name='blank-text',
-            record={**VALID, 'text': '   '},
-            error_type=InvalidFieldError,
-            field_name='text',
-        ),
-        ShapeCase(
-            name='non-string-text',
-            record={**VALID, 'text': 5},
-            error_type=InvalidFieldError,
-            field_name='text',
-        ),
+        ShapeCase(name='blank-text', record={**VALID, 'text': '   '}, field_name='text'),
+        ShapeCase(name='non-string-text', record={**VALID, 'text': 5}, field_name='text'),
         ShapeCase(
             name='missing-source',
             record={'kind': 'open', 'text': 'a'},
-            error_type=InvalidFieldError,
             field_name='source',
         ),
+        ShapeCase(name='blank-source', record={**VALID, 'source': ' '}, field_name='source'),
         ShapeCase(
-            name='blank-source',
-            record={**VALID, 'source': ''},
-            error_type=InvalidFieldError,
-            field_name='source',
+            name='unknown-verdict', record={**VALID, 'verdict': 'PROBABLY'}, field_name='verdict'
         ),
         ShapeCase(
-            name='unknown-verdict',
-            record={**VALID, 'verdict': 'VERIFYD'},
-            error_type=InvalidFieldError,
-            field_name='verdict',
+            name='lowercase-verdict', record={**VALID, 'verdict': 'verified'}, field_name='verdict'
+        ),
+        ShapeCase(name='non-string-cite', record={**VALID, 'cite': 3}, field_name='cite'),
+        ShapeCase(name='blank-cite', record={**VALID, 'cite': '   '}, field_name='cite'),
+        ShapeCase(name='list-quote', record={**VALID, 'quote': ['a']}, field_name='quote'),
+        ShapeCase(name='non-string-refute', record={**VALID, 'refute': 7}, field_name='refute'),
+        ShapeCase(name='blank-rests-on', record={**VALID, 'rests_on': ''}, field_name='rests_on'),
+        ShapeCase(name='non-string-diagram', record={**VALID, 'diagram': 1}, field_name='diagram'),
+        ShapeCase(
+            name='list-diagram', record={**VALID, 'diagram': ['flowchart TD']}, field_name='diagram'
         ),
         ShapeCase(
-            name='lowercase-verdict',
-            record={**VALID, 'verdict': 'verified'},
-            error_type=InvalidFieldError,
-            field_name='verdict',
-        ),
-        ShapeCase(
-            name='non-string-cite',
-            record={**VALID, 'cite': 5},
-            error_type=InvalidFieldError,
-            field_name='cite',
-        ),
-        ShapeCase(
-            name='list-quote',
-            record={**VALID, 'quote': ['a']},
-            error_type=InvalidFieldError,
-            field_name='quote',
-        ),
-        ShapeCase(
-            name='non-string-refute',
-            record={**VALID, 'refute': True},
-            error_type=InvalidFieldError,
-            field_name='refute',
-        ),
-        ShapeCase(
-            name='non-string-diagram',
-            record={**VALID, 'diagram': 5},
-            error_type=InvalidFieldError,
-            field_name='diagram',
-        ),
-        ShapeCase(
-            name='list-diagram',
-            record={**VALID, 'diagram': ['flowchart TD']},
-            error_type=InvalidFieldError,
-            field_name='diagram',
+            name='blank-diagram', record={**VALID, 'diagram': ' \n  \n'}, field_name='diagram'
         ),
         ShapeCase(
             name='supersedes-is-a-string',
             record={**VALID, 'supersedes': 'e1'},
-            error_type=InvalidFieldError,
             field_name='supersedes',
         ),
         ShapeCase(
             name='supersedes-holds-a-number',
-            record={**VALID, 'supersedes': ['e1', 2]},
-            error_type=InvalidFieldError,
+            record={**VALID, 'supersedes': [1]},
             field_name='supersedes',
         ),
     ]
     return as_params(cases)
 
 
-def malformed_batch_params() -> list[ParameterSet]:
-    texts = {
-        'not-json': 'this is not json',
-        'truncated-json': '[{"kind": "open"',
-        'empty-array': '[]',
-        'bare-number': '5',
-        'bare-string': '"open"',
-        'null': 'null',
-        'array-of-numbers': '[1, 2]',
-        'object-beside-a-number': '[{"kind": "open", "text": "a", "source": "s"}, 3]',
-        'empty-input': '',
+def unreadable_block_params() -> list[ParameterSet]:
+    blocks = {
+        'empty-block': '',
+        'null': 'null\n',
+        'bare-number': '5\n',
+        'bare-string': 'open\n',
+        'list-of-mappings': '- kind: open\n  text: a\n  source: scout\n',
+        'unclosed-quote': 'kind: open\ntext: "what stalls\nsource: scout\n',
+        'tab-indented': 'kind: open\n\ttext: a\n',
     }
-    return as_labelled_params(texts)
+    return as_labelled_params(blocks)

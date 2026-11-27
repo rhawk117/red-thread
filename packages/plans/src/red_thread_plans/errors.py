@@ -2,7 +2,7 @@
 
 from typing import TYPE_CHECKING
 
-from red_thread_casefile.errors import CaseFileError
+from red_thread_core.errors import RedThreadError
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -13,7 +13,11 @@ if TYPE_CHECKING:
 FIELDS = 'id, title, status, revision, created, head, cases, lights, epic and issue'
 
 
-class PlanShapeError(CaseFileError):
+class PlanError(RedThreadError):
+    pass
+
+
+class PlanShapeError(PlanError):
     def __init__(self, *, reason: str, hint: str | None = None) -> None:
         self.reason = reason
         self.hint = hint
@@ -21,8 +25,8 @@ class PlanShapeError(CaseFileError):
         super().__init__(f'the plan cannot be read: {reason}. {fix}.')
 
 
-class PlanRejectedError(CaseFileError):
-    def __init__(self, *, problems: Sequence[CaseFileError]) -> None:
+class PlanRejectedError(PlanError):
+    def __init__(self, *, problems: Sequence[PlanError]) -> None:
         self.problems = tuple(problems)
         listed = '\n'.join(f'- {problem}' for problem in self.problems)
         super().__init__(
@@ -30,26 +34,26 @@ class PlanRejectedError(CaseFileError):
         )
 
 
-class PlanExistsError(CaseFileError):
+class PlanExistsError(PlanError):
     def __init__(self, *, path: Path) -> None:
         self.path = path
         super().__init__(f'{path} already exists. Edit it, or give init another --slug.')
 
 
-class MissingPlanError(CaseFileError):
+class MissingPlanError(PlanError):
     def __init__(self, *, path: Path) -> None:
         self.path = path
         super().__init__(f'there is no plan at {path}. Pass the plan.md that init printed.')
 
 
-class NoCasesError(CaseFileError):
+class NoCasesError(PlanError):
     def __init__(self) -> None:
         super().__init__(
             'the plan names no case. Pass --case once for each case under .red-thread/ it rests on.'
         )
 
 
-class UnknownCaseError(CaseFileError):
+class UnknownCaseError(PlanError):
     def __init__(self, *, alias: str | None, case_id: str) -> None:
         self.alias = alias
         self.case_id = case_id
@@ -59,20 +63,20 @@ class UnknownCaseError(CaseFileError):
         )
 
 
-class MissingSectionError(CaseFileError):
+class MissingSectionError(PlanError):
     def __init__(self, *, title: str) -> None:
         self.title = title
         super().__init__(f'the plan has no "## {title}" section. Put the heading back.')
 
 
-class EmptySectionError(CaseFileError):
+class EmptySectionError(PlanError):
     def __init__(self, *, title: str, line: int) -> None:
         self.title = title
         self.line = line
         super().__init__(f'line {line}: "## {title}" is empty. Write it before checking.')
 
 
-class NoCriteriaError(CaseFileError):
+class NoCriteriaError(PlanError):
     def __init__(self, *, line: int) -> None:
         self.line = line
         super().__init__(
@@ -81,7 +85,7 @@ class NoCriteriaError(CaseFileError):
         )
 
 
-class GroundlessCriterionError(CaseFileError):
+class GroundlessCriterionError(PlanError):
     def __init__(self, *, line: int) -> None:
         self.line = line
         super().__init__(
@@ -90,14 +94,14 @@ class GroundlessCriterionError(CaseFileError):
         )
 
 
-class UnknownRefError(CaseFileError):
+class UnknownRefError(PlanError):
     def __init__(self, *, line: int, ref: str) -> None:
         self.line = line
         self.ref = ref
         super().__init__(f'line {line}: {ref} is not an entry of its case. Check the ref.')
 
 
-class RetiredRefError(CaseFileError):
+class RetiredRefError(PlanError):
     def __init__(self, *, line: int, ref: str) -> None:
         self.line = line
         self.ref = ref
@@ -106,7 +110,7 @@ class RetiredRefError(CaseFileError):
         )
 
 
-class UnfitRefError(CaseFileError):
+class UnfitRefError(PlanError):
     def __init__(self, *, line: int, ref: str, kind: EntryKind) -> None:
         self.line = line
         self.ref = ref
@@ -117,7 +121,7 @@ class UnfitRefError(CaseFileError):
         )
 
 
-class UnsetLightsError(CaseFileError):
+class UnsetLightsError(PlanError):
     def __init__(self, *, status: str) -> None:
         self.status = status
         super().__init__(

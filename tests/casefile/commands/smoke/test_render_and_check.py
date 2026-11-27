@@ -3,9 +3,10 @@
 from typing import TYPE_CHECKING
 
 import pytest
-from red_thread_casefile.domain import PROGRAM
+from red_thread_casefile.domain import CASE_FILE, PROGRAM
 
 from tests.casefile.ledger.builders import KNOWN
+from tests.casefile.ledger.markdown import append_text
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -21,11 +22,16 @@ def create_open_records(count: int) -> list[dict[str, object]]:
     ]
 
 
+def move_on(cli: CliHarness) -> None:
+    cli.git.write('src/other.py', 'x = 1\n')
+    cli.git.commit('move on')
+
+
 class TestRender:
     def test_board_lists_the_live_entries_under_their_sections(
         self, cli: CliHarness, case: Path
     ) -> None:
-        cli.add(case, KNOWN, *create_open_records(1))
+        cli.write(case, KNOWN, *create_open_records(1))
 
         result = cli.render(case)
 
@@ -36,7 +42,7 @@ class TestRender:
         assert '[e1]' in result.out
 
     def test_board_is_capped_and_full_shows_every_entry(self, cli: CliHarness, case: Path) -> None:
-        cli.add(case, *create_open_records(9))
+        cli.write(case, *create_open_records(9))
 
         capped = cli.render(case)
         full = cli.render(case, '--full')
@@ -50,17 +56,16 @@ class TestRender:
         self, cli: CliHarness, case: Path
     ) -> None:
         recorded_at = cli.git.head
-        cli.add(case, *create_open_records(1))
-        cli.git.write('src/other.py', 'x = 1\n')
-        cli.git.commit('move on')
+        cli.write(case, *create_open_records(1))
+        move_on(cli)
 
         result = cli.render(case)
 
         assert f'lead, recorded at {recorded_at[:7]}' in result.out
 
     def test_retired_entry_is_gone_from_the_board(self, cli: CliHarness, case: Path) -> None:
-        cli.add(case, *create_open_records(1))
-        cli.add(
+        cli.write(case, *create_open_records(1))
+        cli.write(
             case, {'kind': 'open', 'text': 'replacement', 'source': 'scout', 'supersedes': ['e1']}
         )
 
@@ -70,19 +75,19 @@ class TestRender:
         assert 'replacement' in result.out
         assert 'Entries: 1 live, 1 retired' in result.out
 
-    def test_corrupt_ledger_line_is_reported_with_its_file_and_line_number(
+    def test_text_outside_an_entry_stops_the_board_with_its_file_and_line(
         self, cli: CliHarness, case: Path
     ) -> None:
-        cli.add(case, *create_open_records(1))
-        ledger = case.joinpath('ledger.jsonl')
-        ledger.write_text(ledger.read_text(encoding='utf-8') + 'broken line\n', encoding='utf-8')
+        cli.write(case, *create_open_records(1))
+        append_text(case, 'broken line\n')
+        stray = len(case.joinpath(CASE_FILE).read_text(encoding='utf-8').splitlines())
 
         result = cli.render(case)
 
         assert result.code == 1
         assert result.out == ''
-        assert result.err.startswith(f'{PROGRAM}: ')
-        assert f'{ledger.resolve()} line 2' in result.err
+        assert result.err.startswith(f'{PROGRAM}: the case file cannot be read')
+        assert f'case.md:{stray}:' in result.err
 
     def test_directory_that_is_not_a_case_is_an_error(self, cli: CliHarness) -> None:
         result = cli.render(cli.git.root.joinpath('.red-thread', 'nothing-here'))
@@ -94,7 +99,8 @@ class TestRender:
 class TestCheck:
     @pytest.fixture
     def cited(self, cli: CliHarness, case: Path) -> Path:
-        cli.add(case, KNOWN)
+        cli.write(case, KNOWN)
+        move_on(cli)
         return case
 
     def test_citation_that_still_holds_exits_zero(self, cli: CliHarness, cited: Path) -> None:
@@ -138,7 +144,7 @@ class TestCheck:
         assert '- [e1] missing:' in result.out
 
     def test_url_citation_is_unchecked_and_exits_zero(self, cli: CliHarness, case: Path) -> None:
-        cli.add(case, URL_KNOWN)
+        cli.write(case, URL_KNOWN)
 
         result = cli.check(case)
 
@@ -148,7 +154,10 @@ class TestCheck:
     def test_one_failing_citation_among_good_ones_exits_one(
         self, cli: CliHarness, case: Path
     ) -> None:
-        cli.add(case, KNOWN, URL_KNOWN, {**KNOWN, 'cite': 'src/queue.py:1'})
+        cli.write(
+            case, KNOWN, URL_KNOWN, {**KNOWN, 'cite': 'src/queue.py:1', 'quote': 'import time'}
+        )
+        move_on(cli)
         queue = cli.git.root.joinpath('src', 'queue.py')
         queue.write_text('changed\ndef retry(job):\n    time.sleep(job.delay)\n', encoding='utf-8')
 
@@ -159,7 +168,7 @@ class TestCheck:
         assert '1 ok' in result.out
 
     def test_retired_citation_is_not_checked(self, cli: CliHarness, cited: Path) -> None:
-        cli.add(cited, {'kind': 'open', 'text': 'gone', 'source': 'scout', 'supersedes': ['e1']})
+        cli.write(cited, {'kind': 'open', 'text': 'gone', 'source': 'scout', 'supersedes': ['e1']})
         cli.git.root.joinpath('src', 'queue.py').unlink()
 
         result = cli.check(cited)
@@ -167,14 +176,13 @@ class TestCheck:
         assert result.code == 0
         assert result.out.startswith('checked 0 citations')
 
-    def test_corrupt_ledger_line_stops_the_check_with_its_file_and_line_number(
+    def test_text_outside_an_entry_is_a_fault_beside_the_citations(
         self, cli: CliHarness, cited: Path
     ) -> None:
-        ledger = cited.joinpath('ledger.jsonl')
-        ledger.write_text('{broken\n' + ledger.read_text(encoding='utf-8'), encoding='utf-8')
+        append_text(cited, 'broken line\n')
 
         result = cli.check(cited)
 
         assert result.code == 1
-        assert result.err.startswith(f'{PROGRAM}: ')
-        assert f'{ledger.resolve()} line 1' in result.err
+        assert result.out.startswith('1 faults; check changed no file:')
+        assert 'checked 1 citations: 1 ok' in result.out

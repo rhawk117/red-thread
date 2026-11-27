@@ -33,7 +33,7 @@ ${CLAUDE_PLUGIN_ROOT}/bin/redthread-casefile
 
 1. Find the case: `ls .red-thread`. With one case, use it. With several, ask the owner which. With none, follow "With no case open" below first. CASE is the case directory.
 2. Pick the lens. If the owner did not name one, ask with AskUserQuestion, giving the four lenses in the table below and who reads each.
-3. Check before anything else: `SCRIPT check --case CASE`. If a citation is changed or missing, ask the owner whether to verify it again with investigate, export with the flag showing, or stop. The export flags such an entry and never hides it.
+3. Check before anything else: `SCRIPT check --case CASE`. If it reports a fault in a file of the case, fix each one as it says and run it again: render and export refuse a case they cannot read. If a citation is changed or missing, ask the owner whether to verify it again with investigate, export with the flag showing, or stop. The export flags such an entry and never hides it.
 4. Read the record: `SCRIPT render --case CASE --full`.
 5. Read the lens file from the table. It says who reads the output and how to choose.
 6. Send a selection and export:
@@ -58,7 +58,7 @@ ${CLAUDE_PLUGIN_ROOT}/bin/redthread-casefile
 
    Add `--html` to also write the output as a page.
 7. If the script says the output is over its budget, cut `include` and export again. The budget is the point: an output that grows to hold everything is a second ledger, and the reader already has the first.
-8. Read the written file once and go through the lens file's checklist. To change the output, change the selection and export again. Do not edit the file: an edited output no longer matches the ledger. If the ledger itself is missing something, add the entry with `SCRIPT add`, then export again.
+8. Read the written file once and go through the lens file's checklist. To change the output, change the selection and export again. Do not edit the file: an edited output no longer matches the ledger. If the ledger itself is missing something, append the entry to `case.md` under a new round heading, the way step 2 of With no case open shows, run `check`, then export again.
 9. Deliver as the lens file says, and tell the owner the path and the line count.
 
 ## Lenses
@@ -77,8 +77,27 @@ The budget counts lines that carry text.
 Build the ledger from this conversation, then carry on from step 3.
 
 1. Confirm the target, the kind and the bar with the owner in one AskUserQuestion dialog, then run `SCRIPT init --target "..." --kind KIND --bar "..."` from the repository root. KIND is `root-cause`, `claim`, `research` or `survey`. It prints CASE.
-2. Record round 0 in one batch with `SCRIPT add --case CASE --round 0`, a JSON array on standard input:
-   - A fact with a `path:line` or URL that was opened in this conversation: `known`, with that `cite`. The script opens each `path:line` and rejects one that does not resolve.
+2. Write round 0 by hand: append the entries to `CASE/case.md`, below the `## Round 0` heading that `init` wrote, with a quoted heredoc so the shell leaves `$`, backticks and quotes as written. Each entry is a `### e<n>` heading, numbered from e1 with no gap, over a fenced yaml block:
+
+   ````sh
+   cat >> CASE/case.md <<'EOF'
+
+   ### e1
+
+   ```yaml
+   kind: known
+   text: The pool is sized from WORKERS, default 4
+   source: primary
+   verdict: VERIFIED
+   cite: src/pool.py:41
+   quote: WORKERS = int(os.environ.get("WORKERS", 4))
+   ```
+   EOF
+   ````
+
+   The fields are the ones the board shows: `kind`, `text`, `source`, `verdict`, `cite`, `quote` (the cited line, copied exactly), `rests_on`, `refute`, `supersedes` and `diagram`. A value that holds `: ` or ` #`, or starts with a quote mark or a bracket, goes in a block: the key, then `|-`, then the value indented on the next line. Then run `SCRIPT check --case CASE` and fix each fault it prints until it exits 0. What to write:
+
+   - A fact with a `path:line` or URL that was opened in this conversation: `known`, with that `cite`, and for a `path:line` the line's text as `quote`. Check opens each `path:line` and faults one that does not resolve or whose quote is not on the line.
    - Something the owner decided: `decision`, with `source` `user`.
    - A dead end the owner named: `ruled_out`, with `source` `user`.
    - Every other claim: `open`, with `rests_on` saying it was stated in conversation and not verified.
@@ -88,4 +107,4 @@ Build the ledger from this conversation, then carry on from step 3.
 
 - Peer review runs only when the owner asks for it here or chose "sufficient, verify first" at the gate in investigate. Do not start it on your own.
 - Anything that leaves the machine needs the owner's go-ahead in this conversation: creating an issue, publishing a page, posting anywhere. Ask with AskUserQuestion and name the destination.
-- The script redacts text that matches a secret pattern. It cannot know what is private to the owner, so read an output that will be shared for internal names, hosts and customer data before you ask to send it.
+- Check faults text that matches a secret pattern, and export redacts it. The script cannot know what is private to the owner, so read an output that will be shared for internal names, hosts and customer data before you ask to send it.

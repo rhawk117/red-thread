@@ -1,14 +1,13 @@
 """The command line for a ticket's plan: init writes plan.md, check reads it and changes nothing."""
 
-import sys
 from dataclasses import dataclass
-from operator import attrgetter
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
 
-from cyclopts import App, CycloptsError, Parameter
+from cyclopts import Parameter
 from red_thread_casefile.domain import STATE_DIRECTORY, build_case_id
-from red_thread_casefile.errors import CaseFileError
+from red_thread_core.cli import EXIT_OK, run_app
+from red_thread_core.cli import create_app as create_shared_app
 
 from red_thread_plans.domain import PLAN_FILE, TICKET_HOME, Opening
 from red_thread_plans.factory import Plans
@@ -16,12 +15,10 @@ from red_thread_plans.factory import Plans
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-PROGRAM = 'redthread-plan'
-EXIT_OK = 0
-EXIT_FAILED = 1
-EXIT_USAGE = 2
+    from cyclopts import App
 
-type StrayTokens = Annotated[str, Parameter(show=False)]
+PROGRAM = 'redthread-plan'
+
 type PlanOption = Annotated[
     Path, Parameter(help='the plan.md that init printed, or the directory that holds it')
 ]
@@ -84,44 +81,14 @@ class CheckCommand:
         return EXIT_OK
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class CommandMenu:
-    names: tuple[str, ...]
-
-    def report_problem(self, *tokens: StrayTokens) -> int:
-        problem = f'unknown command "{tokens[0]}"' if tokens else 'a command is required'
-        print(f'{PROGRAM}: {problem}; choose from {", ".join(self.names)}', file=sys.stderr)
-        return EXIT_USAGE
-
-
 def create_app(plans: Plans | None = None) -> App:
     plans = plans or Plans()
     commands = (
         InitCommand(plans=plans),
         CheckCommand(plans=plans),
     )
-    app = App(
-        name=PROGRAM,
-        help="A ticket's plan in red-thread.",
-        version_flags=(),
-        default_parameter=Parameter(negative=()),
-        exit_on_error=False,
-        print_error=False,
-        result_action='return_value',
-    )
-    app.default(CommandMenu(names=tuple(map(attrgetter('name'), commands))).report_problem)
-    for command in commands:
-        app.command(command.run, name=command.name, help=command.summary)
-    return app
+    return create_shared_app(PROGRAM, "A ticket's plan in red-thread.", commands)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    try:
-        code = create_app()(argv)
-    except CycloptsError as error:
-        print(f'{PROGRAM}: {error}', file=sys.stderr)
-        return EXIT_USAGE
-    except CaseFileError as error:
-        print(f'{PROGRAM}: {error}', file=sys.stderr)
-        return EXIT_FAILED
-    return code if isinstance(code, int) else EXIT_OK
+    return run_app(PROGRAM, create_app(), argv)

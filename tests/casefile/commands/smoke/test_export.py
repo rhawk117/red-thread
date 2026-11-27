@@ -30,7 +30,7 @@ def read_brief(case: Path) -> str:
 class TestExport:
     @pytest.fixture
     def stocked(self, cli: CliHarness, case: Path) -> Path:
-        cli.add(case, KNOWN, DECISION, *create_open_records(2))
+        cli.write(case, KNOWN, DECISION, *create_open_records(2))
         return case
 
     def test_export_writes_the_lens_file_in_the_case_and_reports_it(
@@ -79,7 +79,7 @@ class TestExport:
         assert [path.name for path in stocked.joinpath('out').iterdir()] == ['brief.md']
 
     def test_a_selection_file_selects_orders_and_titles(self, cli: CliHarness, case: Path) -> None:
-        cli.add(case, *create_open_records(4))
+        cli.write(case, *create_open_records(4))
         selection = json.dumps({
             'title': 'Why jobs wait',
             'include': ['e3', 'e1'],
@@ -95,7 +95,7 @@ class TestExport:
     def test_a_selection_on_standard_input_is_read_when_no_selection_file_is_given(
         self, cli: CliHarness, case: Path
     ) -> None:
-        cli.add(case, *create_open_records(4))
+        cli.write(case, *create_open_records(4))
 
         result = cli.export_from_stdin(case, 'brief', json.dumps({'include': ['e4']}))
 
@@ -103,7 +103,7 @@ class TestExport:
         assert list_refs(read_brief(case), 'Open') == ['e4']
 
     def test_no_selection_exports_every_live_entry(self, cli: CliHarness, case: Path) -> None:
-        cli.add(case, *create_open_records(3))
+        cli.write(case, *create_open_records(3))
 
         cli.export(case, 'brief')
 
@@ -119,11 +119,11 @@ class TestExport:
         for name in ('brief.md', 'brief.html'):
             written = case.joinpath('out', name).read_text(encoding='utf-8')
             assert 'AKIAIOSFODNN7EXAMPLE' not in written
-            assert '[REDACTED:aws-key]' in written
+            assert '[REDACTED:aws-access-key]' in written
 
     def test_a_retired_entry_is_not_exported(self, cli: CliHarness, case: Path) -> None:
-        cli.add(case, *create_open_records(1))
-        cli.add(
+        cli.write(case, *create_open_records(1))
+        cli.write(
             case, {'kind': 'open', 'text': 'replacement', 'source': 'scout', 'supersedes': ['e1']}
         )
 
@@ -135,7 +135,7 @@ class TestExport:
 class TestExportRefusals:
     @pytest.fixture
     def stocked(self, cli: CliHarness, case: Path) -> Path:
-        cli.add(case, KNOWN, *create_open_records(2))
+        cli.write(case, KNOWN, *create_open_records(2))
         return case
 
     def assert_refused_without_writing(self, cli: CliHarness, case: Path, selection: str) -> str:
@@ -175,7 +175,7 @@ class TestExportRefusals:
     def test_a_retired_ref_is_reported_and_nothing_is_written(
         self, cli: CliHarness, stocked: Path
     ) -> None:
-        cli.add(stocked, {'kind': 'open', 'text': 'new', 'source': 'scout', 'supersedes': ['e2']})
+        cli.write(stocked, {'kind': 'open', 'text': 'new', 'source': 'scout', 'supersedes': ['e2']})
 
         error = self.assert_refused_without_writing(cli, stocked, '{"blocking": ["e2"]}')
 
@@ -186,7 +186,7 @@ class TestExportRefusals:
     ) -> None:
         cli.export(stocked, 'brief')
         earlier = stocked.joinpath('out', 'brief.md').read_bytes()
-        cli.add(stocked, *create_open_records(70))
+        cli.write(stocked, *create_open_records(70))
 
         result = cli.export(stocked, 'brief', '--html')
 
@@ -198,7 +198,7 @@ class TestExportRefusals:
         assert not stocked.joinpath('out', 'brief.html').exists()
 
     def test_the_same_ledger_fits_the_report_budget(self, cli: CliHarness, stocked: Path) -> None:
-        cli.add(stocked, *create_open_records(70))
+        cli.write(stocked, *create_open_records(70))
 
         result = cli.export(stocked, 'report')
 

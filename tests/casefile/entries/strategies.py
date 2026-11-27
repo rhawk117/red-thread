@@ -1,4 +1,10 @@
-"""Strategies for the values most casefile properties generate: text, entries, cases and refs."""
+"""Strategies for the values most casefile properties generate: text, entries, cases and refs.
+
+entries and cases hold only what a case file can carry: a day and a short head from a round
+heading, text with something in it, and a frontmatter that git and the clock could have written.
+"""
+
+from datetime import UTC, date, datetime
 
 from hypothesis import strategies as st
 from red_thread_casefile.domain import (
@@ -26,28 +32,32 @@ free_text = st.one_of(
     st.text(max_size=40),
     st.text(alphabet=LINE_BREAKERS + '\n\r\t "\\ab', max_size=40),
 )
+filled_text = free_text.filter(str.strip)
+days = st.dates().map(date.isoformat)
+short_heads = st.from_regex(r'[0-9a-f]{7}', fullmatch=True)
+full_heads = st.from_regex(r'[0-9a-f]{40}', fullmatch=True)
+moments = st.datetimes(timezones=st.just(UTC)).map(datetime.isoformat)
 thread_names = st.sampled_from(('T1', 'T2', 'T3', 'T10', 'T11'))
 entry_kinds = st.sampled_from(ENTRY_KINDS)
 verdicts = st.sampled_from(VERDICTS)
 
 entries = st.builds(
     Entry,
-    seq=st.integers(min_value=1, max_value=10**6),
+    seq=st.just(1),
     round=st.integers(min_value=0, max_value=1000),
     kind=entry_kinds,
-    text=free_text,
-    source=free_text,
-    at=free_text,
-    head=optional(free_text),
+    text=filled_text,
+    source=filled_text,
+    at=days,
+    head=optional(short_heads),
     verdict=optional(verdicts),
-    cite=optional(free_text),
-    quote=optional(free_text),
-    addr=optional(free_text),
-    rests_on=optional(free_text),
-    refute=optional(free_text),
-    diagram=optional(free_text),
+    cite=optional(filled_text),
+    quote=optional(filled_text),
+    addr=optional(filled_text),
+    rests_on=optional(filled_text),
+    refute=optional(filled_text),
+    diagram=optional(filled_text),
     supersedes=st.builds(tuple, st.lists(free_text, max_size=3)),
-    thread=optional(thread_names),
 )
 
 pooled_entries = st.builds(
@@ -73,9 +83,9 @@ cases = st.builds(
     target=free_text,
     kind=st.sampled_from(CASE_KINDS),
     bar=free_text,
-    created=free_text,
+    created=moments,
     publish=st.booleans(),
-    head=optional(free_text),
+    head=optional(full_heads),
     page_url=optional(free_text),
     capabilities=capabilities,
 )

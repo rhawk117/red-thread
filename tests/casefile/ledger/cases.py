@@ -1,60 +1,62 @@
-"""Scenarios for what lies in a ledger file."""
+"""Scenarios for what lies in a case file: entry blocks and frontmatter that cannot be read."""
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-import pytest
-
-from tests.params import as_params
+from tests.params import as_labelled_params, as_params
 
 if TYPE_CHECKING:
+    import pytest
     from _pytest.mark import ParameterSet
 
-VALID_LINE = (
-    '{"seq": 1, "round": 1, "kind": "open", "text": "a question", '
-    '"source": "scout", "at": "2026-11-21T09:30:00+00:00"}'
-)
+VALID_BLOCK = ('kind: open', 'text: a question', 'source: scout')
+CASE_FIELDS = {
+    'id': 'id: 20261121-retry-queue-slowdown',
+    'target': 'target: why the retry queue stalls',
+    'kind': 'kind: root-cause',
+    'bar': 'bar: name the line',
+    'created': "created: '2026-11-21T09:30:00+00:00'",
+}
 
 
-def corrupt_line_params() -> list[ParameterSet]:
-    lines = {
-        'not-json': 'this is not json',
-        'truncated-json': '{"seq": 1, "round": 1, "kind": "open"',
-        'json-array': '[1, 2, 3]',
-        'json-string': '"a string"',
-        'json-null': 'null',
-        'object-missing-fields': '{"seq": 1}',
-        'object-with-an-unknown-field': VALID_LINE.replace('}', ', "colour": "red"}'),
-        'seq-is-a-string': VALID_LINE.replace('"seq": 1', '"seq": "1"'),
-        'round-is-a-float': VALID_LINE.replace('"round": 1', '"round": 1.5'),
-        'unknown-kind': VALID_LINE.replace('"open"', '"guess"'),
-        'unknown-verdict': VALID_LINE.replace('}', ', "verdict": "PROBABLY"}'),
-        'text-is-null': VALID_LINE.replace('"a question"', 'null'),
-        'supersedes-is-a-string': VALID_LINE.replace('}', ', "supersedes": "e1"}'),
-        'cite-is-a-number': VALID_LINE.replace('}', ', "cite": 3}'),
+def corrupt_block_params() -> list[ParameterSet]:
+    blocks = {
+        'not-yaml': 'kind: [open',
+        'a-list': '- open',
+        'a-string': 'just words',
+        'missing-source': 'kind: open\ntext: a question',
+        'unknown-field': '\n'.join((*VALID_BLOCK, 'colour: red')),
+        'unknown-kind': 'kind: guess\ntext: a question\nsource: scout',
+        'unknown-verdict': '\n'.join((*VALID_BLOCK, 'verdict: PROBABLY')),
+        'text-is-null': 'kind: open\ntext: null\nsource: scout',
+        'text-is-empty': "kind: open\ntext: ''\nsource: scout",
+        'supersedes-is-a-string': '\n'.join((*VALID_BLOCK, 'supersedes: e1')),
+        'cite-is-a-number': '\n'.join((*VALID_BLOCK, 'cite: 3')),
+        'value-with-a-colon': 'kind: open\ntext: why: the queue\nsource: scout',
     }
-    return [pytest.param(line, id=name) for name, line in lines.items()]
+    return as_labelled_params(blocks)
 
 
-CASE_RECORD = (
-    '{"id": "20261121-retry-queue-slowdown", "target": "why the retry queue stalls", '
-    '"kind": "root-cause", "bar": "name the line", "created": "2026-11-21T09:30:00+00:00"}'
-)
+def write_frontmatter(**changes: str | None) -> str:
+    fields = {**CASE_FIELDS, **changes}
+    lines = (line for line in fields.values() if line is not None)
+    return '---\n' + '\n'.join(lines) + '\n---\n\n# why\n'
 
 
 def corrupt_case_params() -> list[ParameterSet]:
     texts = {
-        'not-json': 'this is not json',
         'empty-file': '',
-        'truncated-json': CASE_RECORD[:-1],
-        'json-array': '[]',
-        'json-null': 'null',
-        'missing-field': CASE_RECORD.replace('"target": "why the retry queue stalls", ', ''),
-        'unknown-kind': CASE_RECORD.replace('"root-cause"', '"hunch"'),
-        'publish-is-a-string': CASE_RECORD.replace('}', ', "publish": "yes"}'),
-        'capabilities-is-a-list': CASE_RECORD.replace('}', ', "capabilities": []}'),
+        'no-frontmatter': '# why the retry queue stalls\n',
+        'unclosed-frontmatter': '---\n' + '\n'.join(CASE_FIELDS.values()) + '\n\n# why\n',
+        'not-yaml': '---\nid: [\n---\n',
+        'a-list': '---\n- one\n---\n',
+        'missing-field': write_frontmatter(target=None),
+        'unknown-kind': write_frontmatter(kind='kind: hunch'),
+        'publish-is-a-string': write_frontmatter(publish="publish: 'yes'"),
+        'capabilities-is-a-list': write_frontmatter(capabilities='capabilities: []'),
+        'unknown-field': write_frontmatter(colour='colour: red'),
     }
-    return [pytest.param(text, id=name) for name, text in texts.items()]
+    return as_labelled_params(texts)
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)

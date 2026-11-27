@@ -9,7 +9,6 @@ from tests.params import as_params
 
 if TYPE_CHECKING:
     from _pytest.mark import ParameterSet
-    from red_thread_core.redaction import PatternName
 
 LEAKED = 'AKIAIOSFODNN7EXAMPLE'
 PRIVATE_KEY = (
@@ -23,7 +22,7 @@ class SecretCase:
     name: str
     text: str
     leaked: str
-    pattern: PatternName
+    pattern: str
     marks: tuple[pytest.MarkDecorator, ...] = ()
 
 
@@ -33,7 +32,7 @@ def secret_params() -> list[ParameterSet]:
             name='aws-access-key',
             text=f'key {LEAKED} in use',
             leaked=LEAKED,
-            pattern='aws-key',
+            pattern='aws-access-key',
         ),
         SecretCase(
             name='github-token',
@@ -51,7 +50,7 @@ def secret_params() -> list[ParameterSet]:
             name='stripe-key',
             text='billing sk_live_abcdefghijklmnop1234 charged',
             leaked='sk_live_abcdefghijklmnop1234',
-            pattern='stripe-key',
+            pattern='stripe-access-key',
         ),
         SecretCase(
             name='api-key',
@@ -63,37 +62,37 @@ def secret_params() -> list[ParameterSet]:
             name='jwt',
             text='session eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0In0.c2lnbmF0dXJl expired',
             leaked='eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0In0.c2lnbmF0dXJl',
-            pattern='jwt',
+            pattern='json-web-token',
         ),
         SecretCase(
             name='bearer-header',
             text='sent Bearer abcdefghijklmnop1234 upstream',
             leaked='abcdefghijklmnop1234',
-            pattern='bearer',
+            pattern='bearer-token',
         ),
         SecretCase(
             name='url-credentials',
             text='dsn postgres://admin:hunter2pass@db.internal/app',
             leaked='admin:hunter2pass',
-            pattern='url-credentials',
+            pattern='basic-auth-credentials',
         ),
         SecretCase(
             name='password-assignment',
             text='set password=correcthorsebattery now',
             leaked='correcthorsebattery',
-            pattern='assignment',
+            pattern='secret-keyword',
         ),
         SecretCase(
             name='quoted-secret-assignment',
             text='CLIENT_SECRET: "s3cr3tValue99"',
             leaked='s3cr3tValue99',
-            pattern='assignment',
+            pattern='secret-keyword',
         ),
         SecretCase(
             name='api-key-assignment',
             text='api_key = "abcd1234efgh"',
             leaked='abcd1234efgh',
-            pattern='assignment',
+            pattern='secret-keyword',
         ),
         SecretCase(
             name='private-key-block',

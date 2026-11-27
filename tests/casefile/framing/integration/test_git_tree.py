@@ -40,7 +40,7 @@ class TestFrameInGit:
 
         assert case.head == directory_harness.git.head
         assert case.capabilities.languages == ('Python',)
-        assert directory_harness.repository.read_case() == case
+        assert directory_harness.casefile.read().case == case
 
     def test_case_framed_before_the_first_commit_has_no_head(
         self, empty_repository: GitRepository

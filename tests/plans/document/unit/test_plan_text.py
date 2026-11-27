@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
-from red_thread_plans.domain import Frontmatter, PlanDocument
+from red_thread_plans.domain import Frontmatter, PlanDocument, find_refs
 from red_thread_plans.errors import PlanShapeError
 from red_thread_plans.packaged import load_outline
 from red_thread_plans.schemas import LIGHTS_HINT, read_plan, write_plan
@@ -87,7 +87,7 @@ class TestReadPlan:
         assert [line.number for line in criteria] == [find_line_number(text, CRITERION)]
 
     def test_a_criterion_yields_the_refs_it_ends_with(self) -> None:
-        assert [line.refs for line in read_sound_plan().criteria] == [('C1.e1', 'C1.e2')]
+        assert [find_refs(line) for line in read_sound_plan().criteria] == [('C1.e1', 'C1.e2')]
 
     def test_the_case_aliases_read_back_from_the_frontmatter(self) -> None:
         assert f'{CASE_LINE}{CASE_ID}' in write_sound_plan(CASE_ID)

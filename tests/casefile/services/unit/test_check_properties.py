@@ -5,12 +5,12 @@ from typing import TYPE_CHECKING
 
 from hypothesis import given
 from hypothesis import strategies as st
-from red_thread_casefile.domain import Draft
-from red_thread_casefile.services import Batch
 
+from tests.casefile.ledger.builders import create_entry
 from tests.casefile.services.fakes import create_service_harness
 
 if TYPE_CHECKING:
+    from red_thread_casefile.domain import Entry
     from red_thread_casefile.policy import CiteState
 
     from tests.casefile.services.fakes import ServiceHarness
@@ -38,11 +38,18 @@ SOURCE_CHANGES = (
 )
 
 
-def create_batch(thread: str | None, cite: str | None, supersedes: tuple[str, ...]) -> Batch:
-    draft = Draft(
-        position=1, kind='open', text='a lead', source='scout', cite=cite, supersedes=supersedes
-    )
-    return Batch(drafts=(draft,), round=1, thread=thread)
+def create_lead(thread: str | None, cite: str | None) -> Entry:
+    quote = LINES[0] if cite == f'{SOURCE}:1' else None
+    return create_entry(thread=thread, text='a lead', cite=cite, quote=quote)
+
+
+def create_retirement(ref: str) -> Entry:
+    thread = ref.partition('.')[0] if '.' in ref else None
+    return create_entry(thread=thread, text='a retirement', supersedes=(ref,))
+
+
+def write_next(harness: ServiceHarness, entry: Entry) -> None:
+    harness.seed(entry.replace_with(seq=len(harness.scribe.files[entry.thread]) + 1))
 
 
 class TestCheckProperties:
@@ -52,13 +59,12 @@ class TestCheckProperties:
     def stock(self, adds: list[tuple[str | None, str | None]]) -> ServiceHarness:
         harness = create_service_harness({SOURCE: LINES})
         for thread, cite in adds:
-            harness.case_file.add(create_batch(thread, cite, ()))
+            write_next(harness, create_lead(thread, cite))
         return harness
 
     def retire(self, harness: ServiceHarness, refs: list[str]) -> None:
         for ref in refs:
-            thread = ref.partition('.')[0] if '.' in ref else None
-            harness.case_file.add(create_batch(thread, None, (ref,)))
+            write_next(harness, create_retirement(ref))
 
     @given(adds=cited_adds, change=changes, data=st.data())
     def test_one_finding_per_live_cited_entry_in_the_state_its_source_gives(
@@ -72,9 +78,9 @@ class TestCheckProperties:
         if change.lines is not None:
             harness.tree.write(SOURCE, change.lines)
 
-        findings = harness.case_file.check()
+        findings = harness.case_file.check().findings
 
-        live_cited = [e for e in harness.store.read_ledger().live if e.cite is not None]
+        live_cited = [e for e in harness.case_file.load().ledger.live if e.cite is not None]
         assert [finding.ref for finding in findings] == [entry.ref for entry in live_cited]
         for finding in findings:
             is_path = finding.cite == f'{SOURCE}:1'

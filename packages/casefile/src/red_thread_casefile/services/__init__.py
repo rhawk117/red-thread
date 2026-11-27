@@ -2,29 +2,21 @@
 
 from red_thread_casefile.services.casefile import (
     EXCLUDED,
-    TEXT_FIELDS,
-    Added,
-    Batch,
     CaseFile,
+    Checked,
     Framing,
-    Intake,
-    Prepared,
-    Stamp,
+    Inspector,
 )
 from red_thread_casefile.services.press import BOARD_PAGE, Exported, ExportRequest, Press
 
 __all__ = [
     'BOARD_PAGE',
     'EXCLUDED',
-    'TEXT_FIELDS',
-    'Added',
-    'Batch',
     'CaseFile',
+    'Checked',
     'ExportRequest',
     'Exported',
     'Framing',
-    'Intake',
-    'Prepared',
+    'Inspector',
     'Press',
-    'Stamp',
 ]

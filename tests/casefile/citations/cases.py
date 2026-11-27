@@ -1,17 +1,17 @@
-"""Scenarios for citations: resolving one when it is added and checking one later."""
+"""Scenarios for citations: the rules a fresh cite must meet, and the state check reports later."""
 
 from dataclasses import dataclass
+from types import NoneType
 from typing import TYPE_CHECKING
 
 import pytest
-from red_thread_casefile.errors import MisquotedCiteError, UnresolvedCiteError
+from red_thread_casefile.errors import MisquotedCiteError, MissingQuoteError, UnresolvedCiteError
 
 from tests.casefile.ledger.builders import QUEUE_LINES, QUEUE_PATH, URL_CITE
 from tests.params import as_params
 
 if TYPE_CHECKING:
     from _pytest.mark import ParameterSet
-    from red_thread_casefile.errors import CaseFileError
     from red_thread_casefile.policy import CiteState
 
 SLEEP_LINE = QUEUE_LINES[2].strip()
@@ -20,98 +20,81 @@ SLEEP_CITE = f'{QUEUE_PATH}:3'
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
-class AddCiteCase:
+class CiteRuleCase:
     name: str
     cite: str
     quote: str | None
-    error_type: type[CaseFileError] | None
-    stored_quote: str | None = None
+    error_type: type[object]
     found_at: int | None = None
     marks: tuple[pytest.MarkDecorator, ...] = ()
 
 
-def add_cite_params() -> list[ParameterSet]:
+def cite_rule_params() -> list[ParameterSet]:
     cases = [
-        AddCiteCase(
-            name='line-without-a-quote-is-captured',
-            cite=SLEEP_CITE,
-            quote=None,
-            error_type=None,
-            stored_quote=SLEEP_LINE,
+        CiteRuleCase(
+            name='quote-on-the-cited-line', cite=SLEEP_CITE, quote=SLEEP_LINE, error_type=NoneType
         ),
-        AddCiteCase(
-            name='first-line-is-a-line',
-            cite=f'{QUEUE_PATH}:1',
-            quote=None,
-            error_type=None,
-            stored_quote='import time',
-        ),
-        AddCiteCase(
-            name='last-line-is-a-line',
-            cite=f'{QUEUE_PATH}:4',
-            quote=None,
-            error_type=None,
-            stored_quote=RETURN_LINE,
-        ),
-        AddCiteCase(
-            name='range-resolves-by-its-first-line',
-            cite=f'{QUEUE_PATH}:3-4',
-            quote=None,
-            error_type=None,
-            stored_quote=SLEEP_LINE,
-        ),
-        AddCiteCase(
-            name='quote-on-the-cited-line-is-kept',
-            cite=SLEEP_CITE,
-            quote=SLEEP_LINE,
-            error_type=None,
-            stored_quote=SLEEP_LINE,
-        ),
-        AddCiteCase(
-            name='quote-of-part-of-the-line-is-kept',
+        CiteRuleCase(
+            name='quote-of-part-of-the-line',
             cite=SLEEP_CITE,
             quote='time.sleep',
-            error_type=None,
-            stored_quote='time.sleep',
+            error_type=NoneType,
         ),
-        AddCiteCase(
+        CiteRuleCase(
+            name='first-line', cite=f'{QUEUE_PATH}:1', quote='import time', error_type=NoneType
+        ),
+        CiteRuleCase(
+            name='last-line', cite=f'{QUEUE_PATH}:4', quote=RETURN_LINE, error_type=NoneType
+        ),
+        CiteRuleCase(
+            name='range-is-quoted-from-its-first-line',
+            cite=f'{QUEUE_PATH}:3-4',
+            quote=SLEEP_LINE,
+            error_type=NoneType,
+        ),
+        CiteRuleCase(
+            name='line-without-a-quote',
+            cite=SLEEP_CITE,
+            quote=None,
+            error_type=MissingQuoteError,
+        ),
+        CiteRuleCase(
             name='line-one-past-the-end',
             cite=f'{QUEUE_PATH}:5',
             quote=None,
             error_type=UnresolvedCiteError,
         ),
-        AddCiteCase(
-            name='line-far-past-the-end',
+        CiteRuleCase(
+            name='quoted-line-far-past-the-end',
             cite=f'{QUEUE_PATH}:400',
             quote=SLEEP_LINE,
             error_type=UnresolvedCiteError,
         ),
-        AddCiteCase(
+        CiteRuleCase(
             name='file-that-is-not-in-the-tree',
             cite='src/gone.py:1',
             quote=None,
             error_type=UnresolvedCiteError,
         ),
-        AddCiteCase(
+        CiteRuleCase(
             name='quote-found-on-another-line',
             cite=f'{QUEUE_PATH}:1',
             quote=RETURN_LINE,
             error_type=MisquotedCiteError,
             found_at=4,
         ),
-        AddCiteCase(
+        CiteRuleCase(
             name='quote-found-on-the-line-before',
             cite=f'{QUEUE_PATH}:3',
             quote='def retry(job):',
             error_type=MisquotedCiteError,
             found_at=2,
         ),
-        AddCiteCase(
+        CiteRuleCase(
             name='quote-found-nowhere',
             cite=f'{QUEUE_PATH}:1',
             quote='import threading',
             error_type=MisquotedCiteError,
-            found_at=None,
         ),
     ]
     return as_params(cases)

@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Annotated, Literal
 
 from cyclopts import App, CycloptsError, Parameter
+from red_thread_core.cli import EXIT_OK, EXIT_USAGE, join_choices
 
 from red_thread_navigate.address import AddressError
 from red_thread_navigate.budget import MIN_BUDGET, cut_to_budget
@@ -19,9 +20,7 @@ from red_thread_navigate.walk import DiskTree, PathMissingError
 PROGRAM = 'redthread-navigate'
 DISTRIBUTION = 'red-thread-navigate'
 DEFAULT_BUDGET = 2000
-EXIT_OK = 0
 EXIT_REFUSED = 1
-EXIT_USAGE = 2
 
 type VerbName = Literal['map', 'find', 'slice']
 type Tokens = Annotated[str, Parameter(show=False, allow_leading_hyphen=True)]
@@ -189,8 +188,7 @@ def create_verbs() -> dict[VerbName, Verb]:
 
 
 def describe_verbs() -> str:
-    *first, last = create_verbs()
-    return f'{", ".join(first)} or {last}'
+    return join_choices(tuple(create_verbs()))
 
 
 def run_verb(navigator: Navigator, request: Request) -> str:

@@ -1,16 +1,16 @@
 """Citations against real files: reading, resolving, and the files that must stay unread."""
 
-from contextlib import suppress
-from dataclasses import replace
 from typing import TYPE_CHECKING
 
 import pytest
-from red_thread_casefile.errors import BatchRejectedError
+from red_thread_casefile.errors import UnresolvedCiteError
 
 from tests.casefile.citations.cases import SLEEP_CITE, SLEEP_LINE
-from tests.casefile.ledger.builders import QUEUE_LINES, QUEUE_PATH, create_valid_draft
+from tests.casefile.ledger.builders import QUEUE_LINES, QUEUE_PATH, create_valid_entry
 
 if TYPE_CHECKING:
+    from red_thread_casefile.domain import Entry
+
     from tests.casefile.ledger.directory import DirectoryHarness
     from tests.casefile.ledger.git_repository import GitRepository
 
@@ -55,53 +55,56 @@ class TestCitesAgainstRealFiles:
     def harness(self, framed_directory_harness: DirectoryHarness) -> DirectoryHarness:
         return framed_directory_harness
 
-    def cite_line_three(self, harness: DirectoryHarness) -> None:
-        harness.add(replace(create_valid_draft('known'), cite=SLEEP_CITE))
+    def create_cited(self, harness: DirectoryHarness, cite: str, quote: str | None) -> Entry:
+        head = harness.casefile.tree.get_head()
+        return create_valid_entry('known').replace_with(cite=cite, quote=quote, head=head)
 
-    def test_cite_is_captured_from_the_file_and_checks_ok(self, harness: DirectoryHarness) -> None:
+    def cite_line_three(self, harness: DirectoryHarness) -> None:
+        harness.seed(None, self.create_cited(harness, SLEEP_CITE, SLEEP_LINE))
+
+    def test_a_quoted_cite_checks_ok_against_the_file(self, harness: DirectoryHarness) -> None:
         self.cite_line_three(harness)
 
-        [entry] = harness.repository.read_ledger().entries
-        [finding] = harness.casefile.check()
+        checked = harness.check()
 
-        assert entry.quote == SLEEP_LINE
-        assert finding.state == 'ok'
+        assert checked.problems == ()
+        assert [finding.state for finding in checked.findings] == ['ok']
 
     def test_check_follows_the_file_as_it_is_edited(self, harness: DirectoryHarness) -> None:
         self.cite_line_three(harness)
         queue = harness.git.root.joinpath(QUEUE_PATH)
 
         queue.write_text('# a new header\n' + queue.read_text(encoding='utf-8'), encoding='utf-8')
-        [moved] = harness.casefile.check()
+        [moved] = harness.check().findings
         queue.write_text('import time\ndef retry(job):\n    pass\n', encoding='utf-8')
-        [changed] = harness.casefile.check()
+        [changed] = harness.check().findings
         queue.unlink()
-        [missing] = harness.casefile.check()
+        [missing] = harness.check().findings
 
         assert (moved.state, moved.moved_to) == ('moved', 4)
         assert changed.state == 'changed'
         assert missing.state == 'missing'
 
-    def test_cite_of_a_line_past_the_end_of_the_real_file_is_rejected(
+    def test_a_cite_of_a_line_past_the_end_of_the_real_file_is_unresolved(
         self, harness: DirectoryHarness
     ) -> None:
-        draft = replace(create_valid_draft('known'), cite=f'{QUEUE_PATH}:{len(QUEUE_LINES) + 1}')
+        past_end = f'{QUEUE_PATH}:{len(QUEUE_LINES) + 1}'
+        harness.seed(None, self.create_cited(harness, past_end, None))
 
-        with pytest.raises(BatchRejectedError):
-            harness.add(draft)
+        [problem] = harness.check().problems
 
-        assert not harness.ledger_file.exists()
+        assert isinstance(problem, UnresolvedCiteError)
 
     @pytest.mark.parametrize('style', ['parent', 'absolute'])
-    def test_file_outside_the_repository_is_never_read(
+    def test_a_file_outside_the_repository_is_never_read(
         self, harness: DirectoryHarness, style: str
     ) -> None:
         outside = harness.git.root.parent.joinpath('outside.txt')
         outside.write_text(f'{OUTSIDE_TEXT}\n', encoding='utf-8')
         cite = f'../{outside.name}:1' if style == 'parent' else f'{outside}:1'
+        harness.seed(None, self.create_cited(harness, cite, None))
 
-        with suppress(BatchRejectedError):
-            harness.add(replace(create_valid_draft('known'), cite=cite))
+        checked = harness.check()
 
-        stored = harness.read_bytes(harness.ledger_file).decode('utf-8')
-        assert OUTSIDE_TEXT not in stored
+        assert [finding.state for finding in checked.findings] == ['unchecked']
+        assert not any(OUTSIDE_TEXT in str(problem) for problem in checked.problems)

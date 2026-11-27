@@ -4,37 +4,29 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
-from msgspec.structs import replace
-from red_thread_casefile.domain import Capabilities
-from red_thread_casefile.errors import CaseNotFoundError
+from red_thread_casefile.domain import LedgerSource
+from red_thread_casefile.errors import CaseExistsError, CaseNotFoundError
 from red_thread_casefile.store import CaseRepository
 
-from tests.casefile.ledger.builders import URL_CITE, create_case, create_entry
+from tests.casefile.ledger.builders import create_case, create_entry
+from tests.casefile.ledger.markdown import write_case_text, write_thread_text
 
 if TYPE_CHECKING:
-    from red_thread_casefile.domain import Entry
+    from tests.casefile.ledger.markdown import TextSink
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class RepositoryHarness:
     repository: CaseRepository
+    sink: TextSink
+
+    def read_names(self) -> list[str]:
+        return [source.name for source in self.repository.read()]
 
 
 class CaseRepositoryContract:
-    full_entry = create_entry(
-        seq=1,
-        kind='known',
-        text='the sleep blocks the queue',
-        source='scout',
-        round_number=2,
-        verdict='VERIFIED',
-        cite='src/queue.py:3',
-        quote='time.sleep(job.delay)',
-        addr='src/queue.py#retry',
-        rests_on='a docs page for another version',
-        refute='the stall ends when the sleep is removed',
-        supersedes=('e0',),
-    )
+    case_text = write_case_text(create_case())
+    thread_text = write_thread_text((create_entry(seq=1),))
 
     class TestImplementation:
         def test_repository_satisfies_the_protocol(self, harness: RepositoryHarness) -> None:
@@ -46,94 +38,55 @@ class CaseRepositoryContract:
 
         def test_reading_the_case_is_not_found(self, harness: RepositoryHarness) -> None:
             with pytest.raises(CaseNotFoundError):
-                harness.repository.read_case()
+                harness.repository.read()
 
-        def test_reading_the_ledger_is_not_found(self, harness: RepositoryHarness) -> None:
-            with pytest.raises(CaseNotFoundError):
-                harness.repository.read_ledger()
-
-    class TestCase:
-        full_case = replace(
-            create_case(),
-            publish=True,
-            page_url='https://claude.ai/artifact/retry-queue',
-            capabilities=Capabilities(languages=('Python', 'Go')),
-        )
-
-        def test_created_case_is_read_back_whole(self, harness: RepositoryHarness) -> None:
-            harness.repository.create(self.full_case)
+    class TestCreate:
+        def test_created_case_file_is_read_back_whole(self, harness: RepositoryHarness) -> None:
+            harness.repository.create(CaseRepositoryContract.case_text)
 
             assert harness.repository.exists()
-            assert harness.repository.read_case() == self.full_case
+            assert harness.repository.read() == (
+                LedgerSource(name='case.md', thread=None, text=CaseRepositoryContract.case_text),
+            )
 
-        def test_written_case_replaces_the_created_one(self, harness: RepositoryHarness) -> None:
-            harness.repository.create(create_case())
-            harness.repository.write_case(self.full_case)
+        def test_a_second_create_is_refused_and_keeps_the_first_text(
+            self, harness: RepositoryHarness
+        ) -> None:
+            harness.repository.create(CaseRepositoryContract.case_text)
 
-            assert harness.repository.read_case() == self.full_case
+            with pytest.raises(CaseExistsError):
+                harness.repository.create('---\n---\n')
 
-        def test_new_case_has_an_empty_ledger(self, harness: RepositoryHarness) -> None:
-            harness.repository.create(create_case())
+            assert harness.repository.read()[0].text == CaseRepositoryContract.case_text
 
-            assert harness.repository.read_ledger().entries == ()
-
-    class TestAppend:
+    class TestThreadFiles:
         @pytest.fixture
         def created(self, harness: RepositoryHarness) -> RepositoryHarness:
-            harness.repository.create(create_case())
+            harness.repository.create(CaseRepositoryContract.case_text)
             return harness
 
-        def read_refs(self, harness: RepositoryHarness) -> list[str]:
-            return [entry.ref for entry in harness.repository.read_ledger().entries]
-
-        def test_entry_with_every_field_is_read_back_equal(
+        def test_a_thread_file_follows_the_case_file_under_its_thread_name(
             self, created: RepositoryHarness
         ) -> None:
-            created.repository.append(None, (CaseRepositoryContract.full_entry,))
+            created.sink.write('threads/T1.md', CaseRepositoryContract.thread_text)
 
-            assert created.repository.read_ledger().entries == (CaseRepositoryContract.full_entry,)
+            sources = created.repository.read()
 
-        def test_entry_with_only_required_fields_is_read_back_equal(
-            self, created: RepositoryHarness
-        ) -> None:
-            bare = create_entry(seq=1, head=None)
-            created.repository.append(None, (bare,))
-
-            assert created.repository.read_ledger().entries == (bare,)
-
-        def test_later_append_follows_the_earlier_one(self, created: RepositoryHarness) -> None:
-            first = create_entry(seq=1)
-            second = create_entry(seq=2, cite=URL_CITE, kind='known', verdict='VERIFIED')
-            third = create_entry(seq=3)
-            created.repository.append(None, (first, second))
-            created.repository.append(None, (third,))
-
-            assert created.repository.read_ledger().entries == (first, second, third)
-
-        def test_thread_entries_carry_their_thread(self, created: RepositoryHarness) -> None:
-            created.repository.append('T1', (create_entry(seq=1), create_entry(seq=2)))
-            created.repository.append(None, (create_entry(seq=1),))
-
-            refs = self.read_refs(created)
-
-            assert sorted(refs) == ['T1.e1', 'T1.e2', 'e1']
-
-        def test_each_file_keeps_its_own_entries(self, created: RepositoryHarness) -> None:
-            primary: Entry = create_entry(seq=1, text='written by the primary')
-            lead: Entry = create_entry(seq=1, text='written by a lead', thread='T1')
-            created.repository.append(None, (primary,))
-            created.repository.append('T1', (lead,))
-
-            entries = created.repository.read_ledger().entries
-
-            assert set(entries) == {primary, lead}
-            assert created.repository.read_ledger().count_in(None) == 1
-            assert created.repository.read_ledger().count_in('T1') == 1
+            assert [source.thread for source in sources] == [None, 'T1']
+            assert sources[1].text == CaseRepositoryContract.thread_text
 
         def test_threads_are_ordered_by_number_not_by_name(
             self, created: RepositoryHarness
         ) -> None:
-            created.repository.append('T10', (create_entry(seq=1),))
-            created.repository.append('T2', (create_entry(seq=1),))
+            created.sink.write('threads/T10.md', CaseRepositoryContract.thread_text)
+            created.sink.write('threads/T2.md', CaseRepositoryContract.thread_text)
 
-            assert created.repository.read_ledger().threads == ('T2', 'T10')
+            assert created.read_names() == ['case.md', 'threads/T2.md', 'threads/T10.md']
+
+        def test_a_file_not_named_for_a_thread_comes_after_the_threads(
+            self, created: RepositoryHarness
+        ) -> None:
+            created.sink.write('threads/notes.md', CaseRepositoryContract.thread_text)
+            created.sink.write('threads/T3.md', CaseRepositoryContract.thread_text)
+
+            assert created.read_names() == ['case.md', 'threads/T3.md', 'threads/notes.md']

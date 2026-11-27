@@ -1,4 +1,4 @@
-"""What makes a draft storable and a citation still trustworthy."""
+"""What makes an entry sound and a citation still trustworthy."""
 
 from collections import Counter
 from dataclasses import dataclass
@@ -13,121 +13,133 @@ from red_thread_casefile.errors import (
     DecisionSourceError,
     ForeignSupersededError,
     InvalidPageUrlError,
+    MisquotedCiteError,
+    MissingQuoteError,
     MissingRefuteError,
     MissingRestsOnError,
     OwnerInThreadError,
     UncitedKnownError,
     UncitedRuledOutError,
     UnknownSupersededError,
+    UnresolvedCiteError,
     UpgradedVerdictError,
 )
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-    from red_thread_casefile.domain import Draft
+    from red_thread_casefile.domain import Entry, Spot
+    from red_thread_casefile.errors import CaseFileError
 
 type CiteState = Literal['ok', 'moved', 'changed', 'missing', 'unchecked']
 type ClaimProblem = UpgradedVerdictError | UncitedKnownError | MissingRestsOnError
 type AuthorityProblem = DecisionInThreadError | DecisionSourceError | OwnerInThreadError
 type KindProblem = MissingRefuteError | UncitedRuledOutError
-type DraftProblem = ClaimProblem | AuthorityProblem | KindProblem
+type EntryProblem = ClaimProblem | AuthorityProblem | KindProblem
 type SupersedeProblem = UnknownSupersededError | ForeignSupersededError
+type QuoteProblem = UnresolvedCiteError | MissingQuoteError
+type DriftProblem = UnresolvedCiteError | MisquotedCiteError
 
 CITE_STATES: tuple[CiteState, ...] = ('ok', 'moved', 'changed', 'missing', 'unchecked')
 FAILING_STATES: tuple[CiteState, ...] = ('changed', 'missing')
 QUIET_STATES: tuple[CiteState, ...] = ('ok', 'unchecked')
+MISPLACED_STATES: tuple[CiteState, ...] = ('changed', 'moved')
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
-class DraftPolicy:
-    draft: Draft
-    thread: str | None = None
+class EntryPolicy:
+    entry: Entry
+    spot: Spot
+
+    @property
+    def thread(self) -> str | None:
+        return self.entry.thread
 
     @property
     def has_cite(self) -> bool:
-        return self.draft.cite is not None
+        return self.entry.cite is not None
 
     @property
     def is_from_owner(self) -> bool:
-        return self.draft.source == OWNER
+        return self.entry.source == OWNER
 
     @property
     def is_upgraded(self) -> bool:
-        return self.draft.kind == 'known' and self.draft.verdict not in {None, 'VERIFIED'}
+        return self.entry.kind == 'known' and self.entry.verdict not in {None, 'VERIFIED'}
 
     @property
     def lacks_caveat(self) -> bool:
-        return self.draft.verdict == 'INFERRED' and self.draft.rests_on is None
+        return self.entry.verdict == 'INFERRED' and self.entry.rests_on is None
 
     def get_claim_problem(self) -> ClaimProblem | None:
         if self.is_upgraded:
-            return UpgradedVerdictError(
-                position=self.draft.position, verdict=self.draft.verdict or ''
-            )
+            return UpgradedVerdictError(spot=self.spot, verdict=self.entry.verdict or '')
 
-        if self.draft.kind == 'known' and not self.has_cite:
-            return UncitedKnownError(position=self.draft.position)
+        if self.entry.kind == 'known' and not self.has_cite:
+            return UncitedKnownError(spot=self.spot)
 
         if self.lacks_caveat:
-            return MissingRestsOnError(position=self.draft.position)
+            return MissingRestsOnError(spot=self.spot)
 
         return None
 
     def get_authority_problem(self) -> AuthorityProblem | None:
-        if self.draft.kind == 'decision' and self.thread is not None:
-            return DecisionInThreadError(position=self.draft.position, thread=self.thread)
+        if self.entry.kind == 'decision' and self.thread is not None:
+            return DecisionInThreadError(spot=self.spot, thread=self.thread)
 
-        if self.draft.kind == 'decision' and not self.is_from_owner:
-            return DecisionSourceError(position=self.draft.position, source=self.draft.source)
+        if self.entry.kind == 'decision' and not self.is_from_owner:
+            return DecisionSourceError(spot=self.spot, source=self.entry.source)
 
         if self.is_from_owner and self.thread is not None:
-            return OwnerInThreadError(position=self.draft.position, thread=self.thread)
+            return OwnerInThreadError(spot=self.spot, thread=self.thread)
 
         return None
 
     def get_kind_problem(self) -> KindProblem | None:
-        if self.draft.kind == 'hypothesis' and self.draft.refute is None:
-            return MissingRefuteError(position=self.draft.position)
+        if self.entry.kind == 'hypothesis' and self.entry.refute is None:
+            return MissingRefuteError(spot=self.spot)
 
-        if self.draft.kind != 'ruled_out':
+        if self.entry.kind != 'ruled_out':
             return None
 
         if not self.has_cite and not self.is_from_owner:
-            return UncitedRuledOutError(position=self.draft.position)
+            return UncitedRuledOutError(spot=self.spot)
 
         return None
 
-    def get_storage_problem(self) -> DraftProblem | None:
-        return self.get_claim_problem() or self.get_authority_problem() or self.get_kind_problem()
+    def get_entry_issues(self) -> tuple[EntryProblem, ...]:
+        found = (self.get_claim_problem(), self.get_authority_problem(), self.get_kind_problem())
+        return tuple(filter(None, found))
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class SupersedePolicy:
-    draft: Draft
+    entry: Entry
+    spot: Spot
     known_refs: frozenset[str]
-    thread: str | None = None
+
+    @property
+    def thread(self) -> str | None:
+        return self.entry.thread
 
     @property
     def unknown_ref(self) -> str | None:
-        return next((ref for ref in self.draft.supersedes if ref not in self.known_refs), None)
+        return next((ref for ref in self.entry.supersedes if ref not in self.known_refs), None)
 
     @property
     def foreign_ref(self) -> str | None:
         if self.thread is None:
             return None
         prefix = f'{self.thread}.'
-        return next((ref for ref in self.draft.supersedes if not ref.startswith(prefix)), None)
+        return next((ref for ref in self.entry.supersedes if not ref.startswith(prefix)), None)
 
     def get_supersede_problem(self) -> SupersedeProblem | None:
         if (unknown := self.unknown_ref) is not None:
-            return UnknownSupersededError(position=self.draft.position, ref=unknown)
+            return UnknownSupersededError(spot=self.spot, ref=unknown)
 
         foreign = self.foreign_ref
         if foreign is not None and self.thread is not None:
-            return ForeignSupersededError(
-                position=self.draft.position, ref=foreign, thread=self.thread
-            )
+            return ForeignSupersededError(spot=self.spot, ref=foreign, thread=self.thread)
 
         return None
 
@@ -192,6 +204,43 @@ class CiteCheck:
             return 'missing'
 
         return 'changed'
+
+
+@dataclass(slots=True, kw_only=True, frozen=True)
+class CitePolicy:
+    entry: Entry
+    spot: Spot
+    probe: CiteCheck
+    is_fresh: bool
+
+    @property
+    def cite(self) -> str:
+        return self.entry.cite or ''
+
+    def get_quote_problem(self) -> QuoteProblem | None:
+        if self.entry.quote is not None:
+            return None
+
+        cited = self.probe.cited_line
+        if cited is None:
+            return UnresolvedCiteError(spot=self.spot, cite=self.cite)
+
+        return MissingQuoteError(spot=self.spot, cite=self.cite, line=cited)
+
+    def get_drift_problem(self) -> DriftProblem | None:
+        if not self.is_fresh:
+            return None
+
+        if self.probe.cited_line is None:
+            return UnresolvedCiteError(spot=self.spot, cite=self.cite)
+
+        if self.probe.get_state() in MISPLACED_STATES:
+            return MisquotedCiteError(spot=self.spot, cite=self.cite, found_at=self.probe.moved_to)
+
+        return None
+
+    def get_cite_problem(self) -> CaseFileError | None:
+        return self.get_quote_problem() or self.get_drift_problem()
 
 
 def get_page_problem(url: str) -> InvalidPageUrlError | None:

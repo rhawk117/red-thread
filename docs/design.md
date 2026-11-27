@@ -84,72 +84,115 @@ Platform facts checked on 2026-11-21 against the Claude Code docs and one live p
 
 ```text
 .red-thread/<case-id>/
-  case.json          target, kind, bar, publish choice, page URL, detected capabilities
-  ledger.jsonl       entries written by the primary
-  threads/T1.jsonl   entries written by one lead; one file per thread, so writers never share a file
+  case.md            frontmatter (target, kind, bar, publish choice, page URL, capabilities), then the primary's rounds
+  threads/T1.md      the rounds of one lead; one file per thread, so writers never share a file
   board.html         rendered at every gate
   out/               brief.md, issue.md, handoff.md, report.md and their HTML
 ```
 
 `.red-thread/` is excluded from git locally and never committed. A case id is the UTC date and a slug of the target, such as `20261121-retry-queue-slowdown`.
 
+**Decided 2026-11-26** (the decision log has the owner's answers): the case file is Markdown that the skills and the leads write by hand. The script creates it, checks it and renders it, and writes no entry. That replaced `case.json`, the JSONL ledgers and the `add` and `page` commands, which put every write through the script. A case file reads like this:
+
+````markdown
+---
+id: 20261126-why-retries-starve-the-pool
+target: why retries starve the pool
+kind: root-cause
+bar: name the line that starves it
+created: '2026-11-26T22:13:41+00:00'
+publish: false
+head: 03d8e5e3e9d0a24811e535a31b02263b5576a6bf
+page_url: null
+capabilities:
+  languages:
+  - Python
+---
+
+# why retries starve the pool
+
+## Round 0 · 2026-11-26 · 03d8e5e
+
+## Round 1 · 2026-11-26 · 03d8e5e
+
+### e1
+
+```yaml
+kind: known
+text: The pool is sized from WORKERS, default 4
+source: code-sense
+verdict: VERIFIED
+cite: src/pool.py:2
+quote: WORKERS = int(os.environ.get("WORKERS", 4))
+```
+````
+
+- `init` writes the frontmatter, the `# target` title and the `## Round 0` heading. The frontmatter decodes into a frozen Struct that refuses unknown keys. Nobody edits it by hand except `page_url`.
+- A round is a `## Round N · YYYY-MM-DD · HEAD` heading: the round number, the UTC date and the short commit, or `none` outside git. Every entry under it takes its round, date and commit from it.
+- An entry is a `### e<n>` heading over one fenced `yaml` block, which `msgspec.yaml` decodes into a strict Struct. The number in the heading is its `seq`, and the file names its thread. Text outside a round heading, an entry heading or a block is a fault.
+- The skills append a round with a quoted heredoc (`cat >> CASE/case.md <<'EOF'`), so the shell leaves `$`, backticks and quotes as written, then run `check` until it exits 0. A lead does the same in its own thread file, and when `check` faults its file it removes its unread round with `sed` and appends it again, because it has Bash and no editing tool.
+
 ### The script
 
-**Decided:** one Python script is the only writer and renderer of the case file. It replaces the MCP server, the database and the recorder hooks. Its one dependency is msgspec, which reads and writes every JSON record. That reverses the earlier choice of the standard library alone. The launcher asks uv for msgspec with `--with`, so nothing is installed into the project under investigation, and the first run on a machine downloads it.
+**Decided:** one Python package reads, checks and renders the case file. It replaces the MCP server, the database and the recorder hooks. It depends on msgspec and, through `red_thread_core`, on PyYAML, which `msgspec.yaml` uses.
 
-The code is the workspace package `packages/casefile`. The stored records (`Entry`, `Case` and `Capabilities`) are frozen msgspec Structs, so a ledger line or a `case.json` that does not match its type is refused with the file and the fault named. Batches and export selections keep their own validation, so `add` still reports every fault in a batch with its fix. Each package keeps the files it ships under `src/<module>/assets/`, inside the package, and reads them through `red_thread_core.packaged` with `importlib.resources`: the page's skeleton, styles and script in core, and in casefile the map header, `wording.yaml` (the section headings, the note prefixes, the map and retired notes, and the glossary) and `lenses.yaml` (the lens parts, budgets and the reading lines). The YAML files decode into frozen Structs that refuse unknown keys, once, when the factory builds the case file, and are handed to the code that writes the board and the lenses. A built wheel carries them. The HTML fragments are Python 3.14 t-strings rendered through one escaping function. Imports inside the package are absolute.
+The code is the workspace package `packages/casefile`. The stored shapes (`Entry`, `Case` and `Capabilities`) are frozen msgspec Structs built on `red_thread_core.dto.DTO`, so a block or a frontmatter that does not match its type is a fault with its file and line named. Export selections keep their own validation. Each package keeps the files it ships under `src/<module>/assets/`, inside the package, and reads them through `red_thread_core.packaged` with `importlib.resources`: the page's skeleton, styles and script in core, and in casefile the map header, `wording.yaml` (the section headings, the note prefixes, the map and retired notes, and the glossary) and `lenses.yaml` (the lens parts, budgets and the reading lines). The YAML files decode into frozen Structs that refuse unknown keys, once, when the factory builds the case file, and are handed to the code that writes the board and the lenses. A built wheel carries them. The HTML fragments are Python 3.14 t-strings rendered through one escaping function. Imports inside the package are absolute.
 
 | Command | What it does | Status |
 | --- | --- | --- |
-| `init` | creates the case, records HEAD, and detects capabilities once (repository languages) | Built |
-| `add` | validates a batch of entries whole, stamps time and HEAD, redacts secrets, appends | Built |
-| `render` | prints the board, capped at about one screen, after opening every citation again, so a changed, moved or missing one is flagged beside its entry; writes `board.html` on request | Built |
-| `check` | re-resolves every live citation against the current tree | Built |
-| `export` | assembles a lens output from the ledger and fails when it is over its line budget | Built |
-| `page` | records the link of the published board in `case.json` | Built |
+| `init` | creates the case directory and writes `case.md`: the frontmatter with HEAD and the capabilities detected once (repository languages), the title and the `## Round 0` heading | Built |
+| `check` | reads every file of the case and reports each fault as `file:line ref: problem` with its fix, then re-resolves every live citation against the current tree. It changes no file and exits 1 on a fault | Built 2026-11-26 |
+| `render` | prints the board, capped at about one screen, after opening every citation again, so a changed, moved or missing one is flagged beside its entry; writes `board.html` on request. It refuses a case whose files cannot be read | Built |
+| `export` | assembles a lens output from the ledger and fails when it is over its line budget. It refuses a case whose files cannot be read | Built |
+| `add` | validated a batch of entries as JSON and appended it | Removed 2026-11-26: entries are written by hand |
+| `page` | recorded the link of the published board | Removed 2026-11-26: `page_url` is a frontmatter key written by hand, and `check` faults one that is not an https link |
 | `plan` | moved on 2026-11-26 to its own package and launcher, `bin/redthread-plan` (section 13) | Moved |
 
 **Decided:** the script is the workspace package `packages/casefile`, run through `bin/redthread-casefile`, which starts it with `uv run --no-project --python 3.14 --with-editable` on the package. uv takes the dependencies from the package's own `pyproject.toml` and keeps the environment in its cache, so nothing is installed into the project under investigation and the launcher repeats no requirement. The primary passes the launcher's absolute path in each brief as `SCRIPT`, since a brief already carries everything a worker needs.
 
 ### Entries
 
-**Decided** (accepted on 2026-11-21 and built).
+**Decided** (accepted on 2026-11-21 and built; the format changed on 2026-11-26).
 
 | Field | Meaning |
 | --- | --- |
-| `seq` | position in its file, shown with the thread, as in `T1.e4` |
-| `round` | 0 for framing, then the round number |
+| `seq` | the number in its `### e<n>` heading, shown with the thread, as in `T1.e4` |
+| `round` | from its round heading: 0 for framing, then the round number |
 | `kind` | `known`, `open`, `decision`, `hypothesis`, `ruled_out`, `resource` or `next` |
-| `text` | the claim or question, after secret redaction |
+| `text` | the claim or question |
 | `source` | the agent that found it, `user` or `primary` |
 | `verdict` | the scout's verdict, carried through unchanged |
 | `cite` | `path:line`, `URL#heading` or a command |
-| `quote` | the text of the cited line, so `check` can tell moved from changed |
+| `quote` | the text of the cited line, copied by hand, so `check` can tell moved from changed |
 | `addr` | optional symbol address, `path#Symbol` (**Decided:** reserve it now) |
-| `diagram` | optional mermaid source for a flow or a structure, drawn on the HTML pages only; scrubbed for secrets like every text field (**Decided 2026-11-21**) |
+| `diagram` | optional mermaid source for a flow or a structure, drawn on the HTML pages only; checked for secrets like every text field (**Decided 2026-11-21**) |
 | `rests_on` | the caveat an inference depends on, such as "a 4.x docs page" |
 | `refute` | for a hypothesis, the observation that would refute it |
 | `supersedes` | earlier entries this one retires |
-| `at`, `head` | UTC time and the commit the repository was at |
+| `at`, `head` | the UTC date and the short commit, from the round heading |
 
-Rules. The first six come from mightymodels. `add` enforces all eight.
+Rules. The first six come from mightymodels. `check` enforces all eight and reports every fault at once.
 
 1. A `known` needs a citation. A claim with no citation is `open`.
 2. A `decision` comes only from the owner.
-3. Files are append-only. An entry is retired by a later entry that names it, never edited.
-4. A batch is validated whole before anything is stored.
-5. Text matching a secret pattern is redacted before it is stored.
+3. An entry is corrected where it stands until a gate or a report has shown it. After that it is retired by a later entry that names it, never edited. (2026-11-26: was "files are append-only", which the script enforced when it was the only writer.)
+4. `check` reads every file whole and names each fault with its place and fix. `render` and `export` refuse a case whose files cannot be read. (2026-11-26: was "a batch is validated whole before anything is stored".)
+5. Text matching a secret pattern is a fault, and `check` prints the text with the secret replaced, to put in its place. (2026-11-26: was redacted before it was stored.) **Decided 2026-11-26:** the patterns come from detect-secrets: its regex detectors (every one but the public IP detector) and its keyword detector. Core adds detectors only for what it misses: a whole PEM block, Stripe test and restricted keys, `sk-` API keys, Bearer tokens, GitHub fine-grained tokens, URL credentials with punctuation, and unquoted `key=value` assignments. A hit is widened to the whole token around it and labelled `[REDACTED:<type>]` from the detector's type. Rejected: keeping the hand-written patterns, and detect-secrets' entropy detectors, which flag ordinary prose.
 6. An entry whose `head` differs from the current HEAD is a lead to re-verify, not evidence.
 7. A `hypothesis` needs a `refute` line.
 8. A `ruled_out` entry needs a citation or the owner as its source.
 
-Added while building. **Decided 2026-11-21:** the owner accepted all five as built.
+Added while building. **Decided 2026-11-21:** the owner accepted the first five as built. The rest were added on 2026-11-26 with the Markdown format.
 
-- A citation is a path, a URL or anything else. `add` opens every `path:line`. An absolute path, or one containing `..`, is never read and stays unchecked.
-- `add` compares a supplied `quote` with the cited line, and records the line itself when `quote` is left out.
-- An entry from `user` cannot be written to a thread, and a thread can retire only its own entries.
+- A citation is a path, a URL or anything else. `check` opens every `path:line`. An absolute path, or one containing `..`, is never read and stays unchecked.
+- `check` compares `quote` with the cited line. (2026-11-26: the script no longer records the line itself; a `path:line` cite without `quote` is a fault, and `check` prints the line to paste.)
+- An entry from `user` cannot be written to a thread, and a thread can retire only its own entries. A `decision` sits in `case.md` only.
 - An INFERRED entry needs `rests_on`, and a `known` cannot carry a verdict weaker than VERIFIED.
 - `check` redacts the lines it reads before comparing them, so a redacted quote still matches.
+- An entry written at the current HEAD is held to its quote: a cited line that does not exist is a fault, and a quote found elsewhere or not at all is a fault. An entry from an earlier commit is only reported as moved, changed or missing.
+- A field that is present must not be blank. YAML trims a plain value and keeps a quoted one as written.
+- `page_url`, when set, must be an https link.
+- Round headings in one file go up: a heading whose number repeats or falls below the one above it is a fault, because each round has one heading.
 
 ### The citation check
 
@@ -166,7 +209,7 @@ It runs before every export. It also catches a citation a scout invented before 
 
 - **Decided:** the script renders the HTML for the board and for every output from the ledger. The model does not write the page.
 - **Decided:** whether a case is published to claude.ai is asked once, at framing. A published case republishes its board to the same URL at every gate. Pages are private by default. A local-only case never leaves the machine.
-- **Decided 2026-11-21, built in the skill:** comments on the published page are recorded as ledger entries from `user`, so the owner can steer by annotating a finding. At each gate of a published case the investigate skill reads the page's comment threads through the Artifact tool and records each open one in the round's batch: a fact to take as given or a choice is a `decision`, a dead end is a `ruled_out`, a doubt or a question is an `open` that names the entry it is about, and a request for work outside the case is a `next` that is not carried out. It then replies on the thread with the new ref and resolves it, so a comment is recorded once. A comment from anyone but the owner is an `open` entry that names its author. The script needed no change.
+- **Decided 2026-11-21, built in the skill:** comments on the published page are recorded as ledger entries from `user`, so the owner can steer by annotating a finding. At each gate of a published case the investigate skill reads the page's comment threads through the Artifact tool and records each open one under the round's heading in `case.md`: a fact to take as given or a choice is a `decision`, a dead end is a `ruled_out`, a doubt or a question is an `open` that names the entry it is about, and a request for work outside the case is a `next` that is not carried out. It then replies on the thread with the new ref and resolves it, so a comment is recorded once. A comment from anyone but the owner is an `open` entry that names its author. The script needed no change.
 - **Decided 2026-11-21, reversing the self-contained page:** a page loads two scripts from cdnjs, each pinned to an exact version with a sha512 integrity hash: the Tailwind browser build (4.3.5), which styles the page, and mermaid (12.3.0), which draws diagrams. Nothing else is fetched, so web fonts stay out. Opened offline, a page still reads top to bottom: every entry is in the HTML, the token colors apply and the controls stay hidden. Tailwind documents its browser build as a development tool; the owner chose it for a page that one person reads.
 - Built: the page's own script, `assets/page.js`, uses no library. It filters entries by kind and by thread, folds sections and copies a ref or a citation. It draws a diagram when its section is open, and draws every diagram again from its source when the viewer's theme changes, whether the viewer chose the theme or the system switched. It holds no case data: entry text reaches the page only as escaped text and escaped attribute values.
 - Built: after its sections the board page draws a map of the case, a mermaid flowchart the script writes from the ledger. Each thread is a line of its entries in order, a retired entry has a dashed outline, and an edge runs to it from the entry that retired it. An entry's own `diagram` is drawn under its claim. Diagram text is escaped into the page and mermaid runs at its strict security level.
@@ -490,7 +533,7 @@ Build order:
 
 | Step | Status |
 | --- | --- |
-| 1. The script and its tests | built: `init`, `add`, `render`, `check`, `export` and `page`. `tests/casefile/launcher/e2e` runs `bin/redthread-casefile` as a child process from a copy of the plugin |
+| 1. The script and its tests | built: `init`, `render`, `check` and `export` (`add` and `page` were removed on 2026-11-26). `tests/casefile/launcher/e2e` runs `bin/redthread-casefile` as a child process from a copy of the plugin |
 | 2. The agent files | written, validated, and each run once headless on its model |
 | 3. `investigate`, with one file per case kind under `references/` | written |
 | 4. `distill`, with one file per lens under `references/` | written |
@@ -548,7 +591,7 @@ All made by the owner on 2026-11-21.
 | --- | --- |
 | Org chart depth | adaptive: flat for one thread, a lead per thread for two or more |
 | Skills | two: `investigate` and `distill` |
-| Ledger | one script over append-only JSONL, with msgspec for its JSON (first decided as standard library only) |
+| Ledger | one script over append-only JSONL, with msgspec for its JSON (first decided as standard library only; historical: Markdown written by hand since 2026-11-26, see below) |
 | Pages | the script renders HTML; publishing is asked once per case at framing |
 | Experiments | a lab scout in a git worktree |
 | Skeptic | offered at the gate |
@@ -776,7 +819,7 @@ Made by the owner on 2026-11-26, after the game-plan build. The owner objected t
 | Revisions | the plan is edited in place. After the owner accepts it, each change adds one to `revision` and a line under Changes. Rejected: one file per revision, which needs a command to write it |
 | Page | the Markdown file is the artifact. `plan.html` is gone, and boards no longer list or link plans |
 | YAML | PyYAML, through `msgspec.yaml`, decoding the frontmatter into a frozen Struct that refuses unknown keys. A bare `on` or `off` reads as a boolean, so `lights` is written with quotes and the refusal says so |
-| The case file | moves to Markdown with frontmatter next, by the same rule. Not started |
+| The case file | moves to Markdown with frontmatter next, by the same rule. Built on 2026-11-26: see "the case file in Markdown" below |
 
 ### 2026-11-26: wording and tables as packaged YAML
 
@@ -789,6 +832,19 @@ Made by the owner on 2026-11-26. The board's glossary was a Python module of con
 | Loading | at the edge: the `CaseFiles` and `Plans` factories load the tables once and inject them into the case file, the press, the board, the lens composer and the planner. Nothing reads a file at import |
 | Asset home | every package keeps its assets under `src/<module>/assets/` and reads them through `importlib.resources`, so a built wheel carries them. navigate's vendored queries moved to `red_thread_navigate/assets/queries/` and load through the same primitive, so navigate depends on core |
 | Checks | tests hold each table complete: a heading for every entry kind, a prefix for every note kind, a lens for every lens name, every required plan section among the sections |
+
+### 2026-11-26: the case file in Markdown
+
+Made by the owner on 2026-11-26, at the gate before the build, by the rule that moved the plan to Markdown: the case file was JSON behind a command line that every write went through.
+
+| Decision | Choice and reason |
+| --- | --- |
+| Layout | `case.md` holds the frontmatter and the primary's rounds, and each lead appends to its own `threads/T<n>.md`, so two writers never share a file. A lead appends with a quoted heredoc and runs `check`. `research-lead` keeps Agent and Bash and gets no editing tool |
+| Entry syntax | a `### e<n>` heading over a fenced `yaml` block, decoded by `msgspec.yaml` into a strict Struct. |
+| Outputs | `render` and `export` stay. They read the files and write only `board.html` and `out/`. `page` goes: `page_url` is a frontmatter key written by hand |
+| Stamps | each round is a `## Round N · YYYY-MM-DD · HEAD` heading, and its entries take their round, date and commit from it. `check` faults a missing or malformed heading, a `path:line` cite with no `quote` (and prints the line to paste) and a secret, and writes nothing |
+| Pre-approval | the skills' `allowed-tools` still name only the scripts. Appending is a plain Bash command, so a session in a permission mode that asks prompts once per round; the owner's sessions run sandboxed Bash without asking. Rejected: `Bash(cat >> *)`, which would approve an append to any file |
+| Compatibility | none. The JSON code, the `add` and `page` commands and their tests were deleted; a case made before this change is not read |
 
 ## 13. Planning
 
@@ -815,7 +871,7 @@ A plain Claude Code session in a worktree executes a ticket from the issue alone
 
 ### What crosses the boundary
 
-red-thread ends at a published ticket and its briefs. The implementation plugin starts there and never reads `ledger.jsonl`. Whatever crosses a worktree goes through the issue, because the case directory exists in one checkout only.
+red-thread ends at a published ticket and its briefs. The implementation plugin starts there and never reads the case file. Whatever crosses a worktree goes through the issue, because the case directory exists in one checkout only.
 
 | Artifact | Record | The owner reads | Read by |
 | --- | --- | --- | --- |

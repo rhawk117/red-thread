@@ -72,7 +72,7 @@ class TestFrame:
     ) -> None:
         case = case_harness.casefile.frame(self.framing)
 
-        assert case_harness.repository.read_case() == case
+        assert case_harness.casefile.read().case == case
         assert (case.id, case.target, case.kind, case.bar, case.publish) == (
             self.framing.id,
             self.framing.target,
@@ -92,11 +92,10 @@ class TestFrame:
     def test_existing_case_is_refused_and_left_as_it_was(self, case_harness: CaseHarness) -> None:
         first = case_harness.casefile.frame(self.framing)
 
-        with pytest.raises(CaseExistsError) as raised:
+        with pytest.raises(CaseExistsError):
             case_harness.casefile.frame(replace(self.framing, target='something else'))
 
-        assert raised.value.case_id == self.framing.id
-        assert case_harness.repository.read_case() == first
+        assert case_harness.casefile.read().case == first
         assert case_harness.entries == ()
 
     def test_case_file_directory_is_excluded_from_git_once_per_new_case(
