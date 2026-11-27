@@ -136,7 +136,7 @@ quote: WORKERS = int(os.environ.get("WORKERS", 4))
 
 **Decided:** one Python package reads, checks and renders the case file. It replaces the MCP server, the database and the recorder hooks. It depends on msgspec and, through `red_thread_core`, on PyYAML, which `msgspec.yaml` uses.
 
-The code is the workspace package `packages/casefile`. The stored shapes (`Entry`, `Case` and `Capabilities`) are frozen msgspec Structs built on `red_thread_core.dto.DTO`, so a block or a frontmatter that does not match its type is a fault with its file and line named. Export selections keep their own validation. Each package keeps the files it ships under `src/<module>/assets/`, inside the package, and reads them through `red_thread_core.packaged` with `importlib.resources`: the page's skeleton, styles and script in core, and in casefile the map header, `wording.yaml` (the section headings, the note prefixes, the map and retired notes, and the glossary) and `lenses.yaml` (the lens parts, budgets and the reading lines). The YAML files decode into frozen Structs that refuse unknown keys, once, when the factory builds the case file, and are handed to the code that writes the board and the lenses. A built wheel carries them. The HTML fragments are Python 3.14 t-strings rendered through one escaping function. Imports inside the package are absolute.
+The code is the workspace package `packages/casefile`. The stored shapes (`Entry`, `Case` and `Capabilities`) are frozen msgspec Structs built on `red_thread_core.dto.DTO`, so a block or a frontmatter that does not match its type is a fault with its file and line named. Export selections keep their own validation. Each package keeps the files it ships under `src/<module>/assets/`, inside the package, and reads them through `red_thread_core.packaged` with `importlib.resources`: the page's skeleton, styles and script in core, and in casefile the map header, `wording.yaml` (the section headings, the note prefixes, the map and retired notes, and the glossary) and `lenses.yaml` (the lens parts, budgets and the reading lines). The YAML files decode into frozen Structs that refuse unknown keys, once, when the factory builds the case file, and are handed to the code that writes the board and the lenses. A built wheel carries them. The HTML fragments are built with core's element builder, `red_thread_core.elements`, which escapes every text and attribute value (historical: Python 3.14 t-strings until 2026-11-27, see the decision log). Imports inside the package are absolute.
 
 | Command | What it does | Status |
 | --- | --- | --- |
@@ -243,7 +243,7 @@ The design: one typed tree between the ledger and the page and Markdown outputs.
 - The nodes are frozen dataclasses in one module: blocks (`Heading`, `Paragraph`, `EntryList`, `Facts`, `Diagram`, `Fold`) and inlines (`Text`, `Code`, `Link`, `Ref`, `Badge`). An entry node keeps its parts typed: claim, verdict, citation and its state, caveats, retirers, round, day and source. No writer parses text back.
 - One builder turns a ledger `Entry` and its finding into an entry node. The text board, the board page and every lens call it and add only what is theirs, such as a lens's blocking mark.
 - A `Writer` Protocol has one method per node kind, and the HTML, Markdown and text outputs are three writers. A new node kind adds a method to the Protocol, and ty names every writer that lacks it.
-- The HTML writer keeps the t-string `render` and its one escaping function for leaf markup. `page.html`, `page.js` and the styles stay, so an offline page still reads top to bottom with every entry in the HTML.
+- The HTML writer keeps the t-string `render` and its one escaping function for leaf markup (historical: the element builder since 2026-11-27, see the decision log). `page.html`, `page.js` and the styles stay, so an offline page still reads top to bottom with every entry in the HTML.
 - Tests assert on the tree for content and on one writer method at a time for format, in place of whole rendered strings.
 - Size, estimated from reading the code: the duplicated entry building in `views.py`, `boards.py` and `lenses.py` and the backtick regex in `pages.py` go away, each writer becomes one short method per node, and the node module adds about 80 lines. No new dependency.
 
@@ -609,7 +609,7 @@ All made by the owner on 2026-11-21.
 | Skill pre-approval | both skills pre-approve the case file script through `allowed-tools` |
 | Step 6 | each agent runs once headless on a canned brief, then the owner drives a real case |
 | Skill support files | under each skill's `references/` directory |
-| Package code | absolute imports, the page assets in `packages/casefile/assets/` (historical: inside each package since 2026-11-26, see below), t-strings for HTML fragments, msgspec Structs for stored records |
+| Package code | absolute imports, the page assets in `packages/casefile/assets/` (historical: inside each package since 2026-11-26, see below), t-strings for HTML fragments (historical: the element builder since 2026-11-27), msgspec Structs for stored records |
 | Page | Tailwind and mermaid from cdnjs, pinned with integrity hashes; filters, folding, copying and a case map in plain JavaScript; case facts, section panels with a description, entry details and a folded list of retired entries; reverses the self-contained page |
 | Entry diagrams | an optional `diagram` field on an entry, drawn on the HTML pages only |
 | Test markers | tier marks come from the directory; a regression is an `@example` on a property marked `regression` |
@@ -669,7 +669,7 @@ Made by the owner on 2026-11-25.
 | Decision | Choice and reason |
 | --- | --- |
 | Output model | one typed tree of frozen dataclass nodes, one entry builder and two writer Protocols (`InlineWriter`, `BlockWriter`) with a method per node kind, so a new kind of content has one place to start and ty names every writer that lacks it (section 4, The document model) |
-| Who draws the page | Python, through the t-string `render`; no Jinja and no TypeScript, so no new dependency and no build step, and the page still carries every entry in its HTML |
+| Who draws the page | Python, through the t-string `render` (historical: the element builder since 2026-11-27); no Jinja and no TypeScript, so no new dependency and no build step, and the page still carries every entry in its HTML |
 | Scope | the board page and the Markdown lens output; the text board keeps its own path for now |
 
 ### 2026-11-25: the debug skill
@@ -845,6 +845,19 @@ Made by the owner on 2026-11-26, at the gate before the build, by the rule that 
 | Stamps | each round is a `## Round N · YYYY-MM-DD · HEAD` heading, and its entries take their round, date and commit from it. `check` faults a missing or malformed heading, a `path:line` cite with no `quote` (and prints the line to paste) and a secret, and writes nothing |
 | Pre-approval | the skills' `allowed-tools` still name only the scripts. Appending is a plain Bash command, so a session in a permission mode that asks prompts once per round; the owner's sessions run sandboxed Bash without asking. Rejected: `Bash(cat >> *)`, which would approve an append to any file |
 | Compatibility | none. The JSON code, the `add` and `page` commands and their tests were deleted; a case made before this change is not read |
+
+### 2026-11-27: an element builder for the HTML
+
+Made by the owner on 2026-11-27. The HTML fragments moved from the t-string `render` to Jinja templates (commits b562212 and d7d129c on `chore/code-quality-fixes`), and the owner then had both commits reverted in favor of standard-library primitives.
+
+| Decision | Choice and reason |
+| --- | --- |
+| Primitive | `red_thread_core.elements`: a frozen `Element(tag, attrs, children)` built with `element(tag)`. `attributes(mapping)`, `nest(*children)` and `set_text(text)` each return a new element, and `nest` skips `None`, so a writer passes an optional part without a branch. `render()` writes it. No dependency: `html.escape` escapes every text and attribute value. Rejected: a mutable builder, and Jinja for the reasons in section 4 |
+| Attributes | `True` is written bare, `None` and `False` are left out. `href` and `src` keep only a relative URL or an http or https one, read after the characters a browser strips; any other scheme, such as `javascript:`, leaves the attribute empty |
+| Layout | indented two spaces per level. An element stays on one line when it is a `pre`, is empty, holds text, holds only phrasing children, or holds two phrasing children side by side, so no whitespace appears between inline elements a reader sees. Every other element puts each child on its own line |
+| Skeleton | `page.html` stays a `string.Template`. The writers build the fragments that fill its slots, and `render_fragment` writes each on its own line |
+| Scope | HTML only. The Markdown writer keeps drawing from the document tree |
+| Checks | the builder's tests cover escaping (as properties), the URL guard and the layout rules. The page tests read the page with whitespace allowed between tags |
 
 ## 13. Planning
 

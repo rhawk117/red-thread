@@ -21,6 +21,7 @@ from red_thread_core.documents import (
 from tests.casefile.pages.builders import PAYLOADS, payload_params
 from tests.casefile.pages.html_reading import (
     find_entries,
+    join_layout,
     list_cited_quotes,
     list_claim_markup,
     list_facts,
@@ -116,7 +117,8 @@ class TestBlocks:
         page = render_page(document)
 
         assert (
-            '<ol class="plain"><li class="entry"><div><p class="claim">see <code>x</code>' in page
+            '<ol class="plain"><li class="entry"><div><p class="claim">see <code>x</code>'
+            in join_layout(page)
         )
         assert list_item_refs(page) == []
 

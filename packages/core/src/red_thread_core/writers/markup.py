@@ -1,10 +1,10 @@
-"""HTML from the document tree: every value escaped by one function, every node one fragment."""
+"""HTML from the document tree: every node one element, built with the element builder."""
 
 import re
 from dataclasses import dataclass
-from html import escape
-from string.templatelib import Interpolation, Template, convert
 from typing import TYPE_CHECKING
+
+from red_thread_core.elements import element
 
 if TYPE_CHECKING:
     from red_thread_core.documents import (
@@ -18,103 +18,96 @@ if TYPE_CHECKING:
         Section,
         Text,
     )
+    from red_thread_core.elements import Element, Node
 
 NOT_ANCHOR = re.compile(r'[^a-z0-9]+')
 
 
-def render_value(value: object) -> str:
-    if isinstance(value, Template):
-        return render(value)
-    if isinstance(value, tuple):
-        return ''.join(map(render_value, value))
-    return escape(str(value))
-
-
-def render_part(part: str | Interpolation[object]) -> str:
-    if isinstance(part, Interpolation):
-        return render_value(convert(part.value, part.conversion))
-    return part
-
-
-def render(template: Template) -> str:
-    return ''.join(map(render_part, template))
-
-
 @dataclass(slots=True, kw_only=True, frozen=True)
 class HtmlInlines:
-    def write_text(self, node: Text) -> Template:
-        return t'{node.value}'
+    def write_text(self, node: Text) -> Node:
+        return node.value
 
-    def write_code(self, node: Code) -> Template:
-        return t'<code>{node.value}</code>'
+    def write_code(self, node: Code) -> Node:
+        return element('code').set_text(node.value)
 
-    def write_link(self, node: Link) -> Template:
-        return t'<a href="{node.url}" rel="noreferrer">{node.shown}</a>'
+    def write_link(self, node: Link) -> Node:
+        return element('a').attributes({'href': node.url, 'rel': 'noreferrer'}).set_text(node.shown)
 
-    def write_inline(self, node: Inline) -> Template:
+    def write_inline(self, node: Inline) -> Node:
         return node.write(self)
 
-    def write_line(self, line: Line) -> Template:
-        return t'{tuple(map(self.write_inline, line))}'
+    def write_line(self, line: Line) -> tuple[Node, ...]:
+        return tuple(map(self.write_inline, line))
 
 
-def write_line(line: Line) -> Template:
+def write_line(line: Line) -> tuple[Node, ...]:
     return HtmlInlines().write_line(line)
 
 
-def write_ref(ref: str) -> Template:
-    return t'<button type="button" class="ref" data-copy="{ref}" title="Copy">{ref}</button>'
+def write_ref(ref: str) -> Element:
+    marks = {'type': 'button', 'class': 'ref', 'data-copy': ref, 'title': 'Copy'}
+    return element('button').attributes(marks).set_text(ref)
 
 
-def write_paragraph(line: Line) -> Template:
-    return t'<p>{write_line(line)}</p>'
+def write_paragraph(line: Line) -> Element:
+    return element('p').nest(*write_line(line))
 
 
-def write_point(point: Line) -> Template:
-    claim = t'<p class="claim">{write_line(point)}</p>'
-    return t'<li class="entry"><div>{claim}</div></li>'
+def write_point(point: Line) -> Element:
+    claim = element('p').attributes({'class': 'claim'}).nest(*write_line(point))
+    return element('li').attributes({'class': 'entry'}).nest(element('div').nest(claim))
 
 
-def write_points(points: tuple[Line, ...]) -> Template:
+def write_points(points: tuple[Line, ...]) -> Element | None:
     if not points:
-        return t''
-    return t'<ol class="plain">{tuple(map(write_point, points))}</ol>'
+        return None
+    return element('ol').attributes({'class': 'plain'}).nest(*map(write_point, points))
 
 
-def write_flowchart(lines: tuple[str, ...]) -> Template:
-    return t'<pre class="mermaid">{"\n".join(lines)}</pre>'
+def write_flowchart(lines: tuple[str, ...]) -> Element:
+    return element('pre').attributes({'class': 'mermaid'}).set_text('\n'.join(lines))
 
 
-def write_listing(listing: CodeListing | None) -> Template:
-    if listing is None:
-        return t''
-    code = t'<code>{listing.source}</code>'
-    return t'<pre class="listing" data-language="{listing.language}">{code}</pre>'
+def write_listing(listing: CodeListing) -> Element:
+    code = element('code').set_text(listing.source)
+    marks = {'class': 'listing', 'data-language': listing.language}
+    return element('pre').attributes(marks).nest(code)
 
 
 def anchor_section(title: str) -> str:
     return 'section-' + NOT_ANCHOR.sub('-', title.lower()).strip('-')
 
 
-def write_fold(section: Section, body: Template) -> Template:
-    count = t'<span class="count">{section.count}</span>' if section.count else t''
-    note = t'<span class="about">{section.note}</span>' if section.note else t''
-    kind = t' data-kind="{section.kind}"' if section.kind is not None else t''
-    state = t'' if section.folded else t' open'
-    heading = t'<summary><h2>{section.title}</h2>{count}{note}</summary>'
-    anchor = anchor_section(section.title)
-    opening = t'<details class="section" id="{anchor}"{kind}{state}>'
-    return t'{opening}\n{heading}\n{body}\n</details>\n'
+def write_heading(section: Section) -> Element:
+    count = element('span').attributes({'class': 'count'}).set_text(section.count)
+    note = element('span').attributes({'class': 'about'}).set_text(section.note)
+    return element('summary').nest(
+        element('h2').set_text(section.title),
+        count if section.count else None,
+        note if section.note else None,
+    )
 
 
-def write_block(block: Block) -> Template:
+def write_block(block: Block) -> Element | None:
     return block.write_html()
 
 
-def write_section(section: Section) -> Template:
-    return write_fold(section, t'{tuple(map(write_block, section.blocks))}')
+def write_section(section: Section) -> Element:
+    marks = {
+        'class': 'section',
+        'id': anchor_section(section.title),
+        'data-kind': section.kind,
+        'open': not section.folded,
+    }
+    blocks = map(write_block, section.blocks)
+    return element('details').attributes(marks).nest(write_heading(section), *blocks)
 
 
-def write_fact(fact: Fact) -> Template:
+def write_fact(fact: Fact) -> Element:
     style = 'fact wide' if fact.wide else 'fact'
-    return t'<div class="{style}"><dt>{fact.label}</dt><dd>{write_line(fact.value)}</dd></div>'
+    return (
+        element('div')
+        .attributes({'class': style})
+        .nest(element('dt').set_text(fact.label), element('dd').nest(*write_line(fact.value)))
+    )

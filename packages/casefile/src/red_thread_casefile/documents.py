@@ -14,9 +14,8 @@ from red_thread_casefile.writers.markdown import write_markdown_entry
 from red_thread_casefile.writers.markup import write_entries
 
 if TYPE_CHECKING:
-    from string.templatelib import Template
-
     from red_thread_core.documents import Block, Document, Line, Section
+    from red_thread_core.elements import Element
 
     from red_thread_casefile.domain import Entry, EntryKind, Verdict
     from red_thread_casefile.policy import Finding
@@ -92,7 +91,7 @@ class EntryList:
     def count(self) -> int:
         return len(self.entries)
 
-    def write_html(self) -> Template:
+    def write_html(self) -> Element | None:
         return write_entries(self.entries)
 
     def write_markdown(self) -> tuple[str, ...]:

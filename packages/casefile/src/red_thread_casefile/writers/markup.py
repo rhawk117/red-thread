@@ -2,14 +2,15 @@
 
 from typing import TYPE_CHECKING
 
+from red_thread_core.elements import element
 from red_thread_core.writers.markup import write_line, write_ref
 
 from red_thread_casefile.domain import date_of
 
 if TYPE_CHECKING:
-    from string.templatelib import Template
+    from red_thread_core.elements import Element
 
-    from red_thread_casefile.documents import Citation, EntryNode
+    from red_thread_casefile.documents import Citation, EntryNode, Note
     from red_thread_casefile.policy import Finding
 
 STATE_TITLE = 'The citation at the last check'
@@ -21,56 +22,92 @@ def label_state(finding: Finding) -> str:
     return f'moved to line {finding.moved_to}'
 
 
-def write_state(finding: Finding | None) -> Template:
+def write_state(finding: Finding | None) -> Element | None:
     if not finding:
-        return t''
-    marks = t'class="state" data-state="{finding.state}" title="{STATE_TITLE}"'
-    return t'<span {marks}>{label_state(finding)}</span>'
+        return None
+    marks = {'class': 'state', 'data-state': finding.state, 'title': STATE_TITLE}
+    return element('span').attributes(marks).set_text(label_state(finding))
 
 
-def write_cite(citation: Citation | None) -> Template:
-    if citation is None:
-        return t''
-    target = citation.target
-    copy = t'<button type="button" class="copy" data-copy="{target}">Copy</button>'
-    tools = t'{write_state(citation.finding)}{copy}'
+def write_copy(target: str) -> Element:
+    marks = {'type': 'button', 'class': 'copy', 'data-copy': target}
+    return element('button').attributes(marks).set_text('Copy')
+
+
+def write_target(citation: Citation) -> Element:
     if citation.is_url:
-        return t'<p class="cite"><a href="{target}" rel="noreferrer">{target}</a>{tools}</p>'
-    quote = citation.quote
-    shown = t'<pre class="quote"><code>{quote}</code></pre>' if quote is not None else t''
-    return t'<p class="cite"><code>{target}</code>{tools}</p>{shown}'
+        marks = {'href': citation.target, 'rel': 'noreferrer'}
+        return element('a').attributes(marks).set_text(citation.target)
+    return element('code').set_text(citation.target)
 
 
-def write_notes(entry: EntryNode) -> Template:
-    round_stamp = t'<li class="stamp">round {entry.round}</li>'
-    day = t'<li class="stamp"><time datetime="{entry.at}">{date_of(entry.at)}</time></li>'
-    flags = tuple(t'<li class="flag">{flag}</li>' for flag in entry.flags)
-    notes = tuple(t'<li>{note.text}</li>' for note in entry.notes)
-    return t'<ul class="notes">{round_stamp}{day}{flags}{notes}</ul>'
+def write_quote(quote: str | None) -> Element | None:
+    if quote is None:
+        return None
+    return element('pre').attributes({'class': 'quote'}).nest(element('code').set_text(quote))
 
 
-def write_diagram(diagram: str | None) -> Template:
+def write_cite(citation: Citation | None) -> tuple[Element | None, ...]:
+    if citation is None:
+        return ()
+    target = write_target(citation)
+    cite = element('p').attributes({'class': 'cite'})
+    line = cite.nest(target, write_state(citation.finding), write_copy(citation.target))
+    if citation.is_url:
+        return (line,)
+    return (line, write_quote(citation.quote))
+
+
+def write_flag(flag: str) -> Element:
+    return element('li').attributes({'class': 'flag'}).set_text(flag)
+
+
+def write_note(note: Note) -> Element:
+    return element('li').set_text(note.text)
+
+
+def write_notes(entry: EntryNode) -> Element:
+    round_stamp = element('li').attributes({'class': 'stamp'}).set_text(f'round {entry.round}')
+    time = element('time').attributes({'datetime': entry.at}).set_text(date_of(entry.at))
+    day = element('li').attributes({'class': 'stamp'}).nest(time)
+    flags = map(write_flag, entry.flags)
+    notes = map(write_note, entry.notes)
+    return element('ul').attributes({'class': 'notes'}).nest(round_stamp, day, *flags, *notes)
+
+
+def write_diagram(diagram: str | None) -> Element | None:
     if diagram is None:
-        return t''
-    return t'<pre class="mermaid">{diagram}</pre>'
+        return None
+    return element('pre').attributes({'class': 'mermaid'}).set_text(diagram)
 
 
-def write_claim(entry: EntryNode) -> Template:
+def write_claim(entry: EntryNode) -> Element:
+    claim = element('p').attributes({'class': 'claim'})
     line = write_line(entry.claim)
     if not entry.verdict:
-        return t'<p class="claim">{line}</p>'
-    badge = t'<span class="verdict" data-verdict="{entry.verdict}">{entry.verdict}</span>'
-    return t'<p class="claim">{badge} {line}</p>'
+        return claim.nest(*line)
+    marks = {'class': 'verdict', 'data-verdict': entry.verdict}
+    badge = element('span').attributes(marks).set_text(entry.verdict)
+    return claim.nest(badge, ' ', *line)
 
 
-def write_entry(entry: EntryNode) -> Template:
-    details = t'{write_cite(entry.citation)}{write_notes(entry)}{write_diagram(entry.diagram)}'
-    body = t'<div>{write_claim(entry)}{details}</div>'
-    marks = t'data-kind="{entry.kind}" data-thread="{entry.thread or ""}"'
-    return t'<li class="entry" id="{entry.ref}" {marks}>{write_ref(entry.ref)}{body}</li>'
+def write_entry(entry: EntryNode) -> Element:
+    body = element('div').nest(
+        write_claim(entry),
+        *write_cite(entry.citation),
+        write_notes(entry),
+        write_diagram(entry.diagram),
+    )
+    marks = {
+        'class': 'entry',
+        'id': entry.ref,
+        'data-kind': entry.kind,
+        'data-thread': entry.thread or '',
+    }
+    return element('li').attributes(marks).nest(write_ref(entry.ref), body)
 
 
-def write_entries(entries: tuple[EntryNode, ...]) -> Template:
+def write_entries(entries: tuple[EntryNode, ...]) -> Element | None:
     if not entries:
-        return t''
-    return t'<ol class="thread">{tuple(map(write_entry, entries))}</ol>'
+        return None
+    return element('ol').attributes({'class': 'thread'}).nest(*map(write_entry, entries))

@@ -13,7 +13,7 @@ from red_thread_core.writers.markup import (
 )
 
 if TYPE_CHECKING:
-    from string.templatelib import Template
+    from red_thread_core.elements import Element
 
 CODE_SPAN = re.compile(r'`([^`]+)`')
 URL_SCHEMES = ('http://', 'https://')
@@ -33,7 +33,7 @@ class Block(Protocol):
     @property
     def count(self) -> int: ...
 
-    def write_html(self) -> Template: ...
+    def write_html(self) -> Element | None: ...
 
     def write_markdown(self) -> tuple[str, ...]: ...
 
@@ -97,7 +97,7 @@ class Paragraph:
     line: Line
     count: int = 0
 
-    def write_html(self) -> Template:
+    def write_html(self) -> Element | None:
         return write_paragraph(self.line)
 
     def write_markdown(self) -> tuple[str, ...]:
@@ -109,7 +109,7 @@ class PointList:
     points: tuple[Line, ...]
     count: int = 0
 
-    def write_html(self) -> Template:
+    def write_html(self) -> Element | None:
         return write_points(self.points)
 
     def write_markdown(self) -> tuple[str, ...]:
@@ -121,7 +121,7 @@ class Flowchart:
     lines: tuple[str, ...]
     count: int = 0
 
-    def write_html(self) -> Template:
+    def write_html(self) -> Element | None:
         return write_flowchart(self.lines)
 
     def write_markdown(self) -> tuple[str, ...]:
@@ -134,7 +134,7 @@ class CodeListing:
     source: str
     count: int = 0
 
-    def write_html(self) -> Template:
+    def write_html(self) -> Element | None:
         return write_listing(self)
 
     def write_markdown(self) -> tuple[str, ...]:

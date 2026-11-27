@@ -6,7 +6,11 @@ from typing import TYPE_CHECKING
 from red_thread_casefile.documents import EntryList
 from red_thread_core.documents import Document, Section, parse_line
 
-from tests.casefile.pages.html_reading import list_chip_groups, list_section_titles
+from tests.casefile.pages.html_reading import (
+    join_layout,
+    list_chip_groups,
+    list_section_titles,
+)
 from tests.casefile.writers.builders import create_entry_node
 from tests.casefile.writers.reading import render_page
 
@@ -56,4 +60,4 @@ class TestLayout:
     def test_the_summary_is_a_list_of_lines_with_code_spans(self) -> None:
         page = render_page(Document(title='t', summary=(parse_line('Case `c1`'),)))
 
-        assert '<ul class="meta"><li>Case <code>c1</code></li></ul>' in page
+        assert '<ul class="meta"><li>Case <code>c1</code></li></ul>' in join_layout(page)

@@ -88,7 +88,7 @@ class TestRail:
 
         rail = read_region(RAIL, page)
         assert find_tags(rail, 'details') == [{'class': 'terms'}]
-        assert re.findall(r'<dt>(.*?)</dt><dd>(.*?)</dd>', rail) == [
+        assert re.findall(r'<dt>(.*?)</dt>\s*<dd>(.*?)</dd>', rail) == [
             ('worktree', 'one git worktree'),
             ('ref', 'C1.e4'),
         ]
