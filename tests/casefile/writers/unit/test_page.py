@@ -1,6 +1,5 @@
 """HtmlPage: the toolbar's chips, the header's summary and facts, and the order of the panels."""
 
-import re
 from dataclasses import replace
 from typing import TYPE_CHECKING
 
@@ -57,4 +56,4 @@ class TestLayout:
     def test_the_summary_is_a_list_of_lines_with_code_spans(self) -> None:
         page = render_page(Document(title='t', summary=(parse_line('Case `c1`'),)))
 
-        assert re.search(r'<ul class="meta">\s*<li>Case <code>c1</code></li>\s*</ul>', page)
+        assert '<ul class="meta"><li>Case <code>c1</code></li></ul>' in page

@@ -1,8 +1,0 @@
-{% import 'entry.html.j2' as draw %}
-{% if block.entries %}
-<ol class="thread">
-  {% for entry in block.entries %}
-  {{ draw.entry(entry) }}
-  {% endfor %}
-</ol>
-{% endif %}

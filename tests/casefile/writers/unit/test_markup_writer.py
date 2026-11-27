@@ -1,6 +1,5 @@
 """HtmlWriter over the tree: what an entry, a block and a section look like on the page."""
 
-import re
 from dataclasses import replace
 
 import pytest
@@ -116,8 +115,9 @@ class TestBlocks:
 
         page = render_page(document)
 
-        plain_point = r'<ol class="plain">\s*<li class="entry">\s*<div>\s*<p class="claim">'
-        assert re.search(plain_point + 'see <code>x</code>', page)
+        assert (
+            '<ol class="plain"><li class="entry"><div><p class="claim">see <code>x</code>' in page
+        )
         assert list_item_refs(page) == []
 
     def test_a_paragraph_is_a_p_element_with_code_spans(self) -> None:

@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 type NoteKind = Literal['rests_on', 'refuted_by', 'retires', 'retired_by', 'urgency', 'source']
 
-ENTRIES_TEMPLATE = 'blocks/entries.html.j2'
+ENTRIES_TEMPLATE = 'templates/blocks/entries.html.j2'
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)

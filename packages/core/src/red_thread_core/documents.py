@@ -8,10 +8,10 @@ from red_thread_core.writers.markdown import write_markdown_line
 
 CODE_SPAN = re.compile(r'`([^`]+)`')
 URL_SCHEMES = ('http://', 'https://')
-PARAGRAPH_TEMPLATE = 'blocks/paragraph.html.j2'
-POINTS_TEMPLATE = 'blocks/points.html.j2'
-FLOWCHART_TEMPLATE = 'blocks/flowchart.html.j2'
-LISTING_TEMPLATE = 'blocks/listing.html.j2'
+PARAGRAPH_TEMPLATE = 'templates/blocks/paragraph.html.j2'
+POINTS_TEMPLATE = 'templates/blocks/points.html.j2'
+FLOWCHART_TEMPLATE = 'templates/blocks/flowchart.html.j2'
+LISTING_TEMPLATE = 'templates/blocks/listing.html.j2'
 
 type InlineKind = Literal['text', 'code', 'link']
 

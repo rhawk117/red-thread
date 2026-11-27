@@ -19,15 +19,13 @@ CODE_SPAN = re.compile(r'<code>(.*?)</code>', re.DOTALL)
 ITEM_REF = re.compile(r'<button type="button" class="ref"[^>]*>(.*?)</button>', re.DOTALL)
 FLAG = re.compile(r'<li class="flag">(.*?)</li>')
 MERMAID = re.compile(r'<pre class="mermaid">(.*?)</pre>', re.DOTALL)
-SECTION_HEAD = re.compile(r'<summary>\s*<h2>(.*?)</h2>', re.DOTALL)
+SECTION_HEAD = re.compile(r'<summary><h2>(.*?)</h2>', re.DOTALL)
 CLAIM = re.compile(r'<p class="claim">(.*?)</p>', re.DOTALL)
-FACT = re.compile(
-    r'<div class="(fact(?: wide)?)">\s*<dt>(.*?)</dt>\s*<dd>(.*?)</dd>\s*</div>', re.DOTALL
-)
+FACT = re.compile(r'<div class="(fact(?: wide)?)"><dt>(.*?)</dt><dd>(.*?)</dd></div>', re.DOTALL)
 FACT_LINK = re.compile(r'<a href="([^"]*)" rel="noreferrer">')
 SECTION = re.compile(
-    rf'<details{ATTRIBUTE_RUN}\s*>\s*<summary>\s*<h2>(.*?)</h2>\s*'
-    r'(?:<span class="count">(\d+)</span>)?\s*(?:<span class="about">(.*?)</span>)?\s*'
+    rf'<details{ATTRIBUTE_RUN}\s*>\s*<summary><h2>(.*?)</h2>'
+    r'(?:<span class="count">(\d+)</span>)?(?:<span class="about">(.*?)</span>)?'
     r'</summary>(.*?)</details>',
     re.DOTALL,
 )
@@ -39,7 +37,7 @@ CITED_QUOTE = re.compile(
 NOTE_LIST = re.compile(r'<ul class="notes">(.*?)</ul>', re.DOTALL)
 NOTE_ROW = re.compile(r'<li(?: class="(\w+)")?>(.*?)</li>', re.DOTALL)
 ANY_TAG = re.compile(r'<[^>]*>')
-CITE_BLOCK = re.compile(r'<p class="cite">\s*(.*?)\s*</p>', re.DOTALL)
+CITE_BLOCK = re.compile(r'<p class="cite">(.*?)</p>', re.DOTALL)
 PAGE_TAGS = frozenset({
     'html',
     'head',

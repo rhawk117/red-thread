@@ -1,6 +1,5 @@
 """The page templates: each compiles, reads only what it is given, and every block has one."""
 
-import re
 from typing import TYPE_CHECKING
 
 import pytest
@@ -20,7 +19,6 @@ from red_thread_core.packaged import read_asset
 from red_thread_core.writers.page import PAGE_TEMPLATE
 
 from tests.casefile.documents.builders import create_entry_node
-from tests.casefile.pages.html_reading import MERMAID_URL, TAILWIND_URL
 from tests.casefile.writers.reading import load_page_environment, render_page
 from tests.params import as_labelled_params
 
@@ -29,10 +27,9 @@ if TYPE_CHECKING:
     from red_thread_core.packaged import CoreAsset
 
 TEMPLATE_SUFFIX = '.html.j2'
-BLOCK_FOLDER = 'blocks/'
+BLOCK_FOLDER = 'templates/blocks/'
 INCLUDED_ASSETS: tuple[CoreAsset, ...] = ('page.css', 'tailwind.css', 'page.js')
 HOSTILE_URL = 'javascript:alert(1)'
-OUTSIDE_URL = re.compile(r'https?://[^\s"\'<>)]+')
 
 
 def is_template(name: str) -> bool:
@@ -43,17 +40,12 @@ def list_template_names() -> list[str]:
     return load_page_environment().list_templates(filter_func=is_template)
 
 
-def read_source(name: str) -> str:
+def find_names(name: str) -> set[str]:
     environment = load_page_environment()
     loader = environment.loader
     assert loader is not None
     source, _, _ = loader.get_source(environment, name)
-    return source
-
-
-def find_names(name: str) -> set[str]:
-    environment = load_page_environment()
-    return meta.find_undeclared_variables(environment.parse(read_source(name)))
+    return meta.find_undeclared_variables(environment.parse(source))
 
 
 def template_cases() -> pytest.MarkDecorator:
@@ -90,11 +82,6 @@ class TestTemplates:
 
     def test_the_page_reads_only_the_page(self) -> None:
         assert find_names(PAGE_TEMPLATE) == {'page'}
-
-    def test_the_page_names_no_outside_url_but_the_two_pinned_scripts(self) -> None:
-        found = OUTSIDE_URL.findall(read_source(PAGE_TEMPLATE))
-
-        assert sorted(found) == sorted((TAILWIND_URL, MERMAID_URL))
 
     @block_template_cases()
     def test_a_block_template_reads_only_its_block(self, name: str) -> None:

@@ -1,0 +1,8 @@
+{% import 'templates/macros.html.j2' as draw %}
+{% if block.points %}
+<ol class="plain">
+  {%- for point in block.points -%}
+<li class="entry"><div><p class="claim">{{ draw.line(point) }}</p></div></li>
+  {%- endfor -%}
+</ol>
+{%- endif %}

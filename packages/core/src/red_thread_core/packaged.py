@@ -10,10 +10,9 @@ from red_thread_core.errors import MalformedDocumentError
 if TYPE_CHECKING:
     from importlib.resources.abc import Traversable
 
-type CoreAsset = Literal['page.css', 'tailwind.css', 'page.js']
+type CoreAsset = Literal['templates/page.html.j2', 'page.css', 'tailwind.css', 'page.js']
 
 ASSETS = 'assets'
-TEMPLATES = 'templates'
 CORE_PACKAGE = 'red_thread_core'
 
 

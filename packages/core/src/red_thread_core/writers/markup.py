@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from jinja2 import ChoiceLoader, Environment, PackageLoader, StrictUndefined, select_autoescape
 from markupsafe import Markup
 
-from red_thread_core.packaged import ASSETS, CORE_PACKAGE, TEMPLATES
+from red_thread_core.packaged import ASSETS, CORE_PACKAGE
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -48,15 +48,13 @@ def write_attributes(attributes: Mapping[str, object]) -> Markup:
 
 
 def create_page_environment(*packages: str) -> Environment:
-    templates = [PackageLoader(package, TEMPLATES) for package in (*packages, CORE_PACKAGE)]
-    loaders = [*templates, PackageLoader(CORE_PACKAGE, ASSETS)]
+    loaders = [PackageLoader(package, ASSETS) for package in (*packages, CORE_PACKAGE)]
     environment = Environment(
         loader=ChoiceLoader(loaders),
         autoescape=select_autoescape(TEMPLATE_SUFFIXES),
         undefined=StrictUndefined,
         trim_blocks=True,
         lstrip_blocks=True,
-        keep_trailing_newline=True,
     )
     environment.filters.update(
         anchor=anchor_section, safe_url=keep_safe_url, attributes=write_attributes
