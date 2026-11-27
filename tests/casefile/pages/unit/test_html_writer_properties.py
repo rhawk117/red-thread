@@ -18,7 +18,6 @@ from red_thread_casefile.domain import FINDING_KINDS
 from red_thread_casefile.packaged import load_wording, read_asset
 from red_thread_core.documents import Document, Flowchart, Paragraph, PointList, Section, parse_line
 
-from tests.casefile.documents.builders import MOMENT
 from tests.casefile.documents.reading import join_line
 from tests.casefile.findings.strategies import optional
 from tests.casefile.pages.html_reading import (
@@ -35,6 +34,7 @@ from tests.casefile.pages.promises import assert_page_holds_only_its_own_markup
 from tests.casefile.pages.strategies import many, texts
 from tests.casefile.writers.builders import create_finding_node
 from tests.casefile.writers.reading import render_page
+from tests.core.timekeeping.clock import DAY
 
 if TYPE_CHECKING:
     from red_thread_core.documents import Block, Line
@@ -134,7 +134,7 @@ class TestHtmlPageProperties:
         kind=st.sampled_from(FINDING_KINDS),
         claim=lines,
         round=st.integers(min_value=1, max_value=9),
-        at=st.just(MOMENT),
+        at=st.just(DAY),
         thread=optional(texts),
         citation_node=optional(st.builds(CitationNode, target=texts.filter(is_not_url))),
         notes=many(notes, 2),

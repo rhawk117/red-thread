@@ -1,6 +1,7 @@
 """The case file's nodes in the document tree: a finding with its citation, notes and lead flag."""
 
 from dataclasses import dataclass
+from datetime import date
 from itertools import chain
 from typing import TYPE_CHECKING, Literal
 
@@ -67,7 +68,7 @@ class FindingNode(DTO, frozen=True, kw_only=True, gc=False):
     thread: str | None = None
     verdict: Verdict | None = None
     round: int
-    at: str
+    at: date
     citation_node: CitationNode | None = None
     notes: tuple[Note, ...] = ()
     lead: str | None = None

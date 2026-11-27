@@ -5,8 +5,6 @@ from typing import TYPE_CHECKING
 from red_thread_core.elements import element
 from red_thread_core.writers.markup import write_finding_id_button, write_line
 
-from red_thread_casefile.domain import date_of
-
 if TYPE_CHECKING:
     from red_thread_core.elements import Element
 
@@ -78,8 +76,9 @@ def write_notes(finding: FindingNode) -> Element:
     round_stamp = (
         element('li').with_attributes({'class': 'stamp'}).set_text(f'round {finding.round}')
     )
-    time = element('time').with_attributes({'datetime': finding.at}).set_text(date_of(finding.at))
-    day = element('li').with_attributes({'class': 'stamp'}).nest(time)
+    written_day = finding.at.isoformat()
+    time_element = element('time').with_attributes({'datetime': written_day}).set_text(written_day)
+    day = element('li').with_attributes({'class': 'stamp'}).nest(time_element)
     flags = map(write_flag, finding.flags)
     notes = map(write_note, finding.notes)
     return element('ul').with_attributes({'class': 'notes'}).nest(round_stamp, day, *flags, *notes)

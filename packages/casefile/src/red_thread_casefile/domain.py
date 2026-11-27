@@ -1,15 +1,14 @@
 """The values a case file holds: the case, its rounds and findings, and where each one sits."""
 
 import re
-from datetime import date
+from datetime import date, datetime
 from itertools import chain
 from pathlib import PurePosixPath
 from typing import Annotated, Literal
 
 import msgspec
 from red_thread_core.dto import DTO
-
-from red_thread_casefile.errors import InvalidTimestampError
+from red_thread_core.timekeeping import write_compact_day
 
 type FindingKind = Literal[
     'known', 'open', 'decision', 'hypothesis', 'ruled_out', 'resource', 'next'
@@ -34,7 +33,6 @@ OWNER = 'user'
 STATE_DIRECTORY = '.red-thread'
 CITE_URL_SCHEMES = ('http://', 'https://')
 PAGE_URL_SCHEME = 'https://'
-DATE_WIDTH = 10
 SHORT_HEAD = 7
 NO_HEAD = 'none'
 PROGRAM = 'redthread-casefile'
@@ -65,21 +63,6 @@ def order_thread(name: str) -> int:
     return int(name[1:])
 
 
-def date_of(timestamp: str) -> str:
-    try:
-        return date.fromisoformat(timestamp[:DATE_WIDTH]).isoformat()
-    except ValueError as error:
-        raise InvalidTimestampError(timestamp=timestamp) from error
-
-
-def is_day(text: str) -> bool:
-    try:
-        date.fromisoformat(text)
-    except ValueError:
-        return False
-    return True
-
-
 def is_current(recorded: str | None, head: str | None) -> bool:
     if recorded is None or head is None:
         return recorded == head
@@ -96,8 +79,8 @@ def find_member[T](value: object, members: tuple[T, ...]) -> T | None:
     return next((member for member in members if member == value), None)
 
 
-def build_case_id(created: str, label: str) -> str:
-    day = date_of(created).replace('-', '')
+def build_case_id(created: datetime, label: str) -> str:
+    day = write_compact_day(created.date())
     words = SLUG_BREAK.sub(' ', label.lower()).split()[:SLUG_WORDS]
     return '-'.join((day, *words))
 
@@ -153,12 +136,12 @@ class FindingLocation(DTO, frozen=True, kw_only=True, gc=False):
 
 class RoundStamp(DTO, frozen=True, kw_only=True, gc=False):
     number: int
-    day: str
+    day: date
     head: str | None = None
 
     @property
     def heading(self) -> str:
-        parts = (f'{ROUND_WORD} {self.number}', self.day, shorten_head(self.head))
+        parts = (f'{ROUND_WORD} {self.number}', self.day.isoformat(), shorten_head(self.head))
         return f'{ROUND_MARK}{STAMP_SEPARATOR.join(parts)}'
 
 
@@ -202,7 +185,7 @@ class CaseFinding(
     kind: FindingKind
     text: str
     source: str
-    at: str
+    at: date
     head: str | None = None
     verdict: Verdict | None = None
     citation: str | None = msgspec.field(default=None, name='cite')
@@ -230,7 +213,7 @@ class Case(DTO, frozen=True, kw_only=True, gc=False, forbid_unknown_fields=True)
     target: str
     kind: CaseKind
     bar: str
-    created: str
+    created: datetime
     publish: bool = False
     head: str | None = None
     page_url: str | None = None

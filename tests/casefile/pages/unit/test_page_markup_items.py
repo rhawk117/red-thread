@@ -9,7 +9,6 @@ from red_thread_casefile.packaged import load_wording
 from red_thread_casefile.policy import CITE_STATES, CitationCheck
 from red_thread_core.documents import Document, PointList, Section, parse_line
 
-from tests.casefile.ledger.memory import MOMENT
 from tests.casefile.pages.builders import PLAIN_URL, create_document
 from tests.casefile.pages.html_reading import (
     find_tags,
@@ -23,6 +22,7 @@ from tests.casefile.pages.html_reading import (
 )
 from tests.casefile.writers.builders import create_finding_node
 from tests.casefile.writers.reading import render_page
+from tests.core.timekeeping.clock import DAY, DAY_TEXT
 
 if TYPE_CHECKING:
     from red_thread_casefile.documents import FindingNode
@@ -31,7 +31,6 @@ if TYPE_CHECKING:
 
 PATH = 'src/queue.py:3'
 TWO_LINES = '    time.sleep(job.delay)\n    return job.run()'
-DAY = '2026-11-21'
 
 
 def render_finding(finding: FindingNode) -> str:
@@ -53,7 +52,7 @@ def create_path_cited(state: CitationState, moved_to: int | None = None) -> Find
 
 
 def create_stamped(round_number: int) -> FindingNode:
-    return create_finding_node('a').replace_with(round=round_number, at=MOMENT)
+    return create_finding_node('a').replace_with(round=round_number, at=DAY)
 
 
 def verdict_cases() -> pytest.MarkDecorator:
@@ -157,7 +156,7 @@ class TestQuote:
 
 
 class TestStamps:
-    def test_the_round_and_the_day_are_the_first_notes_and_the_time_is_kept_whole(self) -> None:
+    def test_the_round_and_the_day_are_the_first_notes_and_the_time_names_the_day(self) -> None:
         finding = create_stamped(2).replace_with(
             lead='1111111', notes=(load_wording().write_note('source', 'n'),)
         )
@@ -167,21 +166,21 @@ class TestStamps:
         (row,) = list_note_rows(page)
         assert row == [
             ('stamp', 'round 2'),
-            ('stamp', DAY),
+            ('stamp', DAY_TEXT),
             ('flag', 'lead, recorded at 1111111'),
             ('', 'n'),
         ]
-        assert find_tags(page, 'time') == [{'datetime': MOMENT}]
+        assert find_tags(page, 'time') == [{'datetime': DAY_TEXT}]
 
     def test_round_zero_is_still_a_stamp(self) -> None:
         (row,) = list_note_rows(render_finding(create_stamped(0)))
 
-        assert row == [('stamp', 'round 0'), ('stamp', DAY)]
+        assert row == [('stamp', 'round 0'), ('stamp', DAY_TEXT)]
 
     def test_an_finding_with_no_flag_or_note_shows_only_its_two_stamps(self) -> None:
         (row,) = list_note_rows(render_finding(create_stamped(3)))
 
-        assert row == [('stamp', 'round 3'), ('stamp', DAY)]
+        assert row == [('stamp', 'round 3'), ('stamp', DAY_TEXT)]
 
     def test_a_point_has_no_note_list(self) -> None:
         points = PointList(points=(parse_line('a'),))

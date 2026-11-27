@@ -55,6 +55,8 @@ def corrupt_case_params() -> list[ParameterSet]:
         'publish-is-a-string': write_frontmatter(publish="publish: 'yes'"),
         'capabilities-is-a-list': write_frontmatter(capabilities='capabilities: []'),
         'unknown-field': write_frontmatter(colour='colour: red'),
+        'created-is-not-a-moment': write_frontmatter(created='created: yesterday'),
+        'created-is-only-a-day': write_frontmatter(created='created: 2026-11-21'),
     }
     return as_labelled_params(texts)
 

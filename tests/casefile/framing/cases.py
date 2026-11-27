@@ -1,9 +1,10 @@
 """Scenarios for case ids and for the languages a case records."""
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from tests.casefile.ledger.memory import MOMENT
+from tests.core.timekeeping.clock import MOMENT
 from tests.params import as_params
 
 if TYPE_CHECKING:
@@ -14,7 +15,7 @@ if TYPE_CHECKING:
 @dataclass(slots=True, kw_only=True, frozen=True)
 class CaseIdCase:
     name: str
-    created: str
+    created: datetime
     label: str
     expected: str
     marks: tuple[pytest.MarkDecorator, ...] = ()
@@ -54,7 +55,7 @@ def case_id_params() -> list[ParameterSet]:
         ),
         CaseIdCase(
             name='utc-date-is-taken-from-the-timestamp',
-            created='2026-12-31T23:59:59+00:00',
+            created=datetime(2026, 12, 31, 23, 59, 59, tzinfo=UTC),
             label='year end',
             expected='20261231-year-end',
         ),

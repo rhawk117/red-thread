@@ -9,8 +9,9 @@ from red_thread_casefile.packaged import load_wording
 from tests.casefile.board.builders import create_case_with, create_citation_check, create_page_board
 from tests.casefile.board.cases import state_count_params
 from tests.casefile.documents.reading import join_line
-from tests.casefile.ledger.builders import MOMENT, create_case, create_finding
+from tests.casefile.ledger.builders import create_case, create_finding
 from tests.casefile.ledger.memory import HEAD
+from tests.core.timekeeping.clock import DAY_TEXT
 
 if TYPE_CHECKING:
     from red_thread_casefile.views import Board
@@ -83,7 +84,7 @@ class TestBoardPageFacts:
 
         assert facts['Bar'] == create_case().bar
         assert facts['Kind'] == create_case().kind
-        assert facts['Created'] == MOMENT[:10]
+        assert facts['Created'] == DAY_TEXT
         assert facts['Round'] == '3'
 
     def test_the_round_is_zero_for_an_empty_ledger(self) -> None:

@@ -3,13 +3,11 @@
 from red_thread_casefile.documents import FindingList, FindingNode
 from red_thread_core.documents import Document, Paragraph, Section, parse_line
 
-from tests.casefile.documents.builders import MOMENT
+from tests.core.timekeeping.clock import DAY
 
 
 def create_finding_node(text: str = 'a claim', finding_id: str = 'e1') -> FindingNode:
-    return FindingNode(
-        finding_id=finding_id, kind='known', claim=parse_line(text), round=1, at=MOMENT
-    )
+    return FindingNode(finding_id=finding_id, kind='known', claim=parse_line(text), round=1, at=DAY)
 
 
 def create_document(

@@ -1,10 +1,10 @@
-import time
 from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import TYPE_CHECKING, get_args
 
 import tree_sitter
 from red_thread_core.packaged import read_asset_text
+from red_thread_core.timekeeping import start_deadline
 
 from red_thread_navigate.symbols.domain import FileSymbols, Reference, Symbol, SymbolKind
 from red_thread_navigate.util import split_lines
@@ -12,6 +12,8 @@ from red_thread_navigate.util import split_lines
 if TYPE_CHECKING:
     from collections.abc import Mapping
     from pathlib import PurePosixPath
+
+    from red_thread_core.timekeeping import Deadline
 
     from red_thread_navigate.walk import SourceFile
 
@@ -44,14 +46,6 @@ class SourceReader:
 
     def read(self, offset: int, _point: tree_sitter.Point) -> bytes:
         return self.data[offset : offset + READ_CHUNK_BYTES]
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Deadline:
-    expires_at: float
-
-    def is_expired(self, *_progress: object) -> bool:
-        return time.monotonic() >= self.expires_at
 
 
 def first_text_of(captures: dict[str, list[tree_sitter.Node]], key: str) -> str | None:
@@ -183,7 +177,7 @@ class TreeSitterBackend:
     def parse_tree(self, source: SourceFile) -> tree_sitter.Tree | FileSymbols:
         reader = SourceReader(data=source.text.encode('utf-8'))
         parser = tree_sitter.Parser(self.grammar)
-        deadline = Deadline(expires_at=time.monotonic() + self.deadline_seconds)
+        deadline = start_deadline(self.deadline_seconds)
         try:
             tree = parser.parse(reader.read, progress_callback=deadline.is_expired)
         except ValueError as error:

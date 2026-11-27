@@ -10,13 +10,12 @@ from red_thread_casefile.services import CaseFile, Press
 from tests.casefile.ledger.markdown import CaseScribe
 from tests.casefile.ledger.memory import (
     HEAD,
-    MOMENT,
-    FixedClock,
     MemoryCaseRepository,
     MemoryPageStore,
     MemorySourceTree,
 )
 from tests.codec import YAML
+from tests.core.timekeeping.clock import MOMENT, FixedClock
 
 if TYPE_CHECKING:
     from red_thread_casefile.domain import CaseFinding

@@ -33,7 +33,6 @@ type DocumentField = Literal[
     'item-diagram',
     'map-line',
     'item-verdict',
-    'item-at',
     'item-quote',
     'item-state',
     'section-note',
@@ -46,7 +45,6 @@ type DocumentField = Literal[
 ]
 
 DOCUMENT_FIELDS: tuple[DocumentField, ...] = get_args(DocumentField.__value__)
-STAMP_DAY = '2026-11-21'
 PLAIN_URL = 'https://example.invalid/docs'
 CITED_PATH = 'src/queue.py:3'
 SCRIPT = '<script>alert(1)</script>'
@@ -122,7 +120,6 @@ def create_document_carrying(field: DocumentField, text: str) -> Document:
         'item-diagram': create_document(finding.replace_with(diagram=text), other),
         'map-line': base.replace_with(appendix=(chart,)),
         'item-verdict': create_document(finding.replace_with(verdict=cast('Verdict', text)), other),
-        'item-at': create_document(finding.replace_with(at=f'{STAMP_DAY}{text}'), other),
         'item-quote': create_document(
             finding.replace_with(citation_node=citation_node.replace_with(quote=text)), other
         ),

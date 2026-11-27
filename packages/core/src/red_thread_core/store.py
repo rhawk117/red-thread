@@ -1,9 +1,8 @@
-"""The source tree a citation points into, the clock that stamps a record, the page store."""
+"""The source tree a citation points into and the page store."""
 
 import shutil
 import subprocess
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
@@ -19,11 +18,6 @@ class SourceTree(Protocol):
     def read_lines(self, path: str) -> tuple[str, ...] | None: ...
 
     def exclude(self, pattern: str) -> None: ...
-
-
-@runtime_checkable
-class Clock(Protocol):
-    def now(self) -> str: ...
 
 
 def append_text(path: Path, text: str) -> None:
@@ -81,14 +75,6 @@ class GitSourceTree:
             return
         gap = '\n' if existing and not existing.endswith('\n') else ''
         append_text(path, f'{gap}{pattern}\n')
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class SystemClock:
-    precision: str = 'seconds'
-
-    def now(self) -> str:
-        return datetime.now(UTC).isoformat(timespec=self.precision)
 
 
 @runtime_checkable

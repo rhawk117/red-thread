@@ -33,7 +33,8 @@ from red_thread_casefile.views import Board, BoardOptions
 if TYPE_CHECKING:
     from red_thread_core.codec import Codec
     from red_thread_core.redaction import SecretPatterns
-    from red_thread_core.store import Clock, SourceTree
+    from red_thread_core.store import SourceTree
+    from red_thread_core.timekeeping import Clock
 
     from red_thread_casefile.documents import Wording
     from red_thread_casefile.domain import CaseLedger, CaseRecord, LocatedFinding

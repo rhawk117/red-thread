@@ -17,7 +17,6 @@ from red_thread_casefile.writers.page import (
 )
 from red_thread_core.documents import Document, PointList, Section, parse_line
 
-from tests.casefile.documents.builders import MOMENT
 from tests.casefile.findings.strategies import optional, thread_names
 from tests.casefile.pages.html_reading import (
     ChipReading,
@@ -25,6 +24,7 @@ from tests.casefile.pages.html_reading import (
     find_tags,
     list_chip_groups,
 )
+from tests.core.timekeeping.clock import DAY
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -95,7 +95,7 @@ class TestChipProperties:
         kind=st.sampled_from(FINDING_KINDS),
         claim=st.just(parse_line('a claim')),
         round=st.just(1),
-        at=st.just(MOMENT),
+        at=st.just(DAY),
         thread=optional(st.one_of(thread_names, odd_threads)),
     )
     points = st.just(parse_line('a pointer'))

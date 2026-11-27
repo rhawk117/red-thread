@@ -17,6 +17,7 @@ from tests.casefile.ledger.markdown import (
     write_thread_text,
 )
 from tests.casefile.ledger.memory import name_thread
+from tests.core.timekeeping.clock import MOMENT, MOMENT_TEXT
 
 if TYPE_CHECKING:
     from red_thread_casefile.domain import Case, CaseFinding
@@ -33,6 +34,16 @@ CASE_FIELDS = (
     'page_url',
     'capabilities',
 )
+
+
+def created_line_cases() -> pytest.MarkDecorator:
+    return pytest.mark.parametrize(
+        'line',
+        [
+            pytest.param(f"created: '{MOMENT_TEXT}'", id='quoted-as-init-writes-it'),
+            pytest.param(f'created: {MOMENT_TEXT}', id='bare-as-a-person-might-write-it'),
+        ],
+    )
 
 
 def read_files(files: dict[str, str]) -> CaseReading:
@@ -89,6 +100,22 @@ class TestFindingsReadBack:
 
 
 class TestCaseFileOpening:
+    def test_created_is_written_as_the_quoted_moment_older_case_files_hold(self) -> None:
+        lines = SCHEMA.write(create_case()).split('\n')
+
+        assert f"created: '{MOMENT_TEXT}'" in lines
+
+    @created_line_cases()
+    def test_created_reads_as_the_moment_whether_quoted_or_bare(self, line: str) -> None:
+        written = SCHEMA.write(create_case())
+        text = written.replace(f"created: '{MOMENT_TEXT}'", line)
+
+        reading = read_files({CASE_FILE: text})
+
+        assert reading.problems == ()
+        assert reading.case is not None
+        assert reading.case.created == MOMENT
+
     @pytest.mark.regression
     @given(case=cases)
     @example(case=create_case().replace_with(target='why the queue\nstalls'))

@@ -11,8 +11,8 @@ from red_thread_core.store import GitSourceTree
 
 from tests.casefile.ledger.builders import CASE_ID, create_case
 from tests.casefile.ledger.markdown import CaseScribe, name_file, write_case_text
-from tests.casefile.ledger.memory import FixedClock
 from tests.codec import YAML
+from tests.core.timekeeping.clock import FixedClock
 
 if TYPE_CHECKING:
     from pathlib import Path

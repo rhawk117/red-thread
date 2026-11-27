@@ -4,7 +4,8 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from red_thread_core.codec import create_json_codec, create_yaml_codec
-from red_thread_core.store import DirectoryPageStore, GitSourceTree, SystemClock
+from red_thread_core.store import DirectoryPageStore, GitSourceTree
+from red_thread_core.timekeeping import SystemClock
 
 from red_thread_casefile.packaged import load_lens_book, load_wording
 from red_thread_casefile.services import CaseFile, Press
@@ -14,7 +15,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from red_thread_core.codec import Codec
-    from red_thread_core.store import Clock
+    from red_thread_core.timekeeping import Clock
 
     from red_thread_casefile.documents import Wording
     from red_thread_casefile.lenses import LensBook

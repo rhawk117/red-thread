@@ -14,7 +14,7 @@ from red_thread_core.documents import (
 
 from red_thread_casefile.charts import create_case_map
 from red_thread_casefile.documents import FindingList, FindingNodeBuilder, list_findings_block
-from red_thread_casefile.domain import NO_HEAD, date_of, shorten_head
+from red_thread_casefile.domain import NO_HEAD, shorten_head
 from red_thread_casefile.packaged import read_asset
 from red_thread_casefile.policy import CITE_STATES, tally_states
 
@@ -94,7 +94,7 @@ class BoardPage:
             create_fact('Kind', case.kind),
             create_fact('Round', str(ledger.last_round)),
             create_fact('Commit', shorten_head(self.board.head)),
-            create_fact('Created', date_of(case.created)),
+            create_fact('Created', case.created.date().isoformat()),
             create_fact('Languages', ', '.join(case.capabilities.languages) or NO_HEAD),
             create_fact('Findings', f'{live} live, {len(ledger.findings) - live} retired'),
             create_fact('Threads', ledger.describe_threads() or NO_HEAD),

@@ -1,5 +1,6 @@
 """What a finding takes from its round heading, and how findings are numbered in each file."""
 
+from datetime import date
 from typing import TYPE_CHECKING
 
 import pytest
@@ -52,10 +53,10 @@ class TestRoundStamps:
         ]
 
         assert stamps == [
-            ('e1', 2, '2026-11-22', 'abc1234'),
-            ('e2', 2, '2026-11-22', 'abc1234'),
-            ('e3', 3, '2026-11-23', None),
-            ('e4', 4, '2026-11-24', HEAD),
+            ('e1', 2, date(2026, 11, 22), 'abc1234'),
+            ('e2', 2, date(2026, 11, 22), 'abc1234'),
+            ('e3', 3, date(2026, 11, 23), None),
+            ('e4', 4, date(2026, 11, 24), HEAD),
         ]
 
     def test_numbering_runs_on_across_rounds(self, harness: CaseHarness) -> None:

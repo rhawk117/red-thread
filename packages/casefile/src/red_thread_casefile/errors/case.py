@@ -55,15 +55,6 @@ class LensOverBudgetError(CaseFileError):
         )
 
 
-class InvalidTimestampError(CaseFileError):
-    def __init__(self, *, timestamp: str) -> None:
-        self.timestamp = timestamp
-        super().__init__(
-            f'{timestamp!r} does not start with a YYYY-MM-DD date. Correct the created key in '
-            'the frontmatter of case.md.'
-        )
-
-
 class InvalidPageUrlError(CaseFileError):
     def __init__(self, *, url: str) -> None:
         self.url = url

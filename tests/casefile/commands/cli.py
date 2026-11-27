@@ -10,8 +10,8 @@ from red_thread_casefile.domain import FINDING_HEADING, ROUND_HEADING, RoundStam
 from red_thread_casefile.store import DirectoryCaseRepository
 
 from tests.casefile.findings.blocks import write_findings, write_round
-from tests.casefile.ledger.builders import DAY
 from tests.casefile.ledger.markdown import SCHEMA, append_text, name_file
+from tests.core.timekeeping.clock import DAY
 
 if TYPE_CHECKING:
     from collections.abc import Mapping

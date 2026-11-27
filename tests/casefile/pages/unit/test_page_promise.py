@@ -19,6 +19,7 @@ from tests.casefile.pages.html_reading import (
 from tests.casefile.pages.promises import TAILWIND_STYLE, assert_page_holds_only_its_own_markup
 from tests.casefile.writers.builders import create_finding_node
 from tests.casefile.writers.reading import render_page
+from tests.core.timekeeping.clock import DAY
 
 if TYPE_CHECKING:
     from tests.casefile.pages.html_reading import Element
@@ -37,7 +38,7 @@ def create_rich_document() -> Document:
         kind='known',
         claim=parse_line('a claim with `code`'),
         round=1,
-        at='2026-11-21T10:00:00Z',
+        at=DAY,
         thread='T1',
         citation_node=CitationNode(
             target='src/queue.py:3',

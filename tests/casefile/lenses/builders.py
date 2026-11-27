@@ -10,8 +10,9 @@ from red_thread_casefile.services import ExportRequest, Press
 
 from tests.casefile.ledger.builders import QUEUE_PATH, create_finding, create_framed_harness
 from tests.casefile.ledger.directory import create_framed_directory_harness
-from tests.casefile.ledger.memory import FixedClock, MemoryPageStore
+from tests.casefile.ledger.memory import MemoryPageStore
 from tests.casefile.lenses.cases import QUEUE_CITE, QUEUE_QUOTE
+from tests.core.timekeeping.clock import FixedClock
 
 if TYPE_CHECKING:
     from pathlib import Path

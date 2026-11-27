@@ -4,8 +4,6 @@ findings and cases hold only what a case file can carry: a day and a short head 
 heading, text with something in it, and a frontmatter that git and the clock could have written.
 """
 
-from datetime import UTC, date, datetime
-
 from hypothesis import strategies as st
 from red_thread_casefile.domain import (
     CASE_KINDS,
@@ -16,7 +14,8 @@ from red_thread_casefile.domain import (
     CaseFinding,
 )
 
-from tests.casefile.ledger.memory import MOMENT
+from tests.core.timekeeping.clock import DAY
+from tests.core.timekeeping.strategies import days, moments
 
 LINE_BREAKERS = '\x0b\x0c\x1c\x1d\x1e\x85\N{LINE SEPARATOR}\N{PARAGRAPH SEPARATOR}'
 POOLED_THREADS = (None, 'T1', 'T2', 'T10')
@@ -33,10 +32,8 @@ free_text = st.one_of(
     st.text(alphabet=LINE_BREAKERS + '\n\r\t "\\ab', max_size=40),
 )
 filled_text = free_text.filter(str.strip)
-days = st.dates().map(date.isoformat)
 short_heads = st.from_regex(r'[0-9a-f]{7}', fullmatch=True)
 full_heads = st.from_regex(r'[0-9a-f]{40}', fullmatch=True)
-moments = st.datetimes(timezones=st.just(UTC)).map(datetime.isoformat)
 thread_names = st.sampled_from(('T1', 'T2', 'T3', 'T10', 'T11'))
 finding_kinds = st.sampled_from(FINDING_KINDS)
 verdicts = st.sampled_from(VERDICTS)
@@ -67,7 +64,7 @@ pooled_findings = st.builds(
     kind=finding_kinds,
     text=words,
     source=st.just('scout'),
-    at=st.just(MOMENT),
+    at=st.just(DAY),
     supersedes=st.builds(tuple, st.lists(st.sampled_from(POOLED_REFS), max_size=3)),
     thread=st.sampled_from(POOLED_THREADS),
 )

@@ -1,6 +1,5 @@
 """HtmlPage: where verdict, state, stamps, quote, section data and facts land, for any text."""
 
-from datetime import datetime
 from typing import TYPE_CHECKING
 
 import pytest
@@ -20,12 +19,10 @@ from red_thread_casefile.packaged import load_wording
 from red_thread_casefile.policy import CITE_STATES, CitationCheck
 from red_thread_core.documents import Document, Fact, Section, parse_line, parse_value
 
-from tests.casefile.documents.builders import MOMENT
 from tests.casefile.documents.reading import join_line
 from tests.casefile.findings.strategies import optional
 from tests.casefile.pages.builders import (
     CITED_PATH,
-    STAMP_DAY,
     create_document_carrying,
     payload_params,
 )
@@ -40,6 +37,7 @@ from tests.casefile.pages.html_reading import (
 )
 from tests.casefile.pages.strategies import many, texts
 from tests.casefile.writers.reading import render_page
+from tests.core.timekeeping.strategies import days
 
 if TYPE_CHECKING:
     from tests.casefile.pages.builders import DocumentField
@@ -102,18 +100,6 @@ class TestNewFieldsLandAsText:
         (badge,) = list_spans(self.read('item-state', payload), 'state')
 
         assert (badge.body, badge.attributes['data-state']) == (payload, payload)
-
-    @payload_cases()
-    def test_a_timestamp_is_the_datetime_attribute_and_its_day_is_the_text(
-        self, payload: str
-    ) -> None:
-        page = self.read('item-at', payload)
-
-        assert find_tags(page, 'time') == [
-            {'datetime': f'{STAMP_DAY}{payload}'},
-            {'datetime': MOMENT},
-        ]
-        assert ('stamp', STAMP_DAY) in list_note_rows(page)[0]
 
     @payload_cases()
     def test_a_quote_is_the_text_of_one_pre_element_after_the_citation(self, payload: str) -> None:
@@ -183,7 +169,7 @@ class TestNewFieldsRoundTrip:
         claim=st.builds(parse_line, texts),
         verdict=optional(st.sampled_from(VERDICTS)),
         round=st.integers(min_value=0, max_value=999),
-        at=st.datetimes().map(datetime.isoformat),
+        at=days,
         citation_node=citations,
         notes=many(st.builds(Note, kind=st.just('source'), text=texts), 2),
     )
@@ -249,7 +235,7 @@ class TestNewFieldsRoundTrip:
             f'round {finding.round}' for finding in findings
         ]
         assert [tag['datetime'] for tag in find_tags(page, 'time')] == [
-            finding.at for finding in findings
+            finding.at.isoformat() for finding in findings
         ]
 
     @given(document=documents)

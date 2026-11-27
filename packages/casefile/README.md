@@ -2,7 +2,7 @@
 
 The case file behind the red-thread plugin. A case file is Markdown with YAML frontmatter that records what an investigation found. The skills and the leads write its findings by hand; this package creates the file, checks every finding and citation, renders the board at every gate, and assembles the final outputs from the findings. It writes no finding itself.
 
-It depends on msgspec, which decodes the frontmatter and each finding's YAML block into strict Structs, and on `red-thread-core` (`packages/core`), which holds the document tree, the page and its assets, redaction and the source tree, clock and page store. This package adds what only a case file knows: the case file format, its rules, the board and the lenses, and the finding list block the core page renders. `docs/design.md` section 4 holds the format, the rules and the decisions behind them.
+It depends on msgspec, which decodes the frontmatter and each finding's YAML block into strict Structs, and on `red-thread-core` (`packages/core`), which holds the document tree, the page and its assets, redaction, the source tree and page store, and the clock and time text (`timekeeping.py`). This package adds what only a case file knows: the case file format, its rules, the board and the lenses, and the finding list block the core page renders. `docs/design.md` section 4 holds the format, the rules and the decisions behind them.
 
 ## Who uses it
 

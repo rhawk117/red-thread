@@ -8,18 +8,13 @@ from red_thread_casefile.packaged import load_wording
 from red_thread_casefile.services import CaseFile
 
 from tests.casefile.ledger.markdown import CaseScribe, write_case_text
-from tests.casefile.ledger.memory import (
-    DAY,
-    HEAD,
-    MOMENT,
-    SHORT_HEAD,
-    FixedClock,
-    MemoryCaseRepository,
-    MemorySourceTree,
-)
+from tests.casefile.ledger.memory import HEAD, SHORT_HEAD, MemoryCaseRepository, MemorySourceTree
 from tests.codec import YAML
+from tests.core.timekeeping.clock import DAY, MOMENT, FixedClock
 
 if TYPE_CHECKING:
+    from datetime import date
+
     from red_thread_casefile.domain import FindingKind, Verdict
     from red_thread_casefile.errors import CaseFileError
     from red_thread_casefile.services import Checked
@@ -62,7 +57,7 @@ def create_finding(
     text: str = 'the retry queue stalls',
     source: str = 'scout',
     round_number: int = 1,
-    at: str = DAY,
+    at: date = DAY,
     head: str | None = SHORT_HEAD,
     verdict: Verdict | None = None,
     citation: str | None = None,

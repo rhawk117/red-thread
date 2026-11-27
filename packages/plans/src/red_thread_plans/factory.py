@@ -4,7 +4,8 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from red_thread_core.codec import create_yaml_codec
-from red_thread_core.store import GitSourceTree, SystemClock
+from red_thread_core.store import GitSourceTree
+from red_thread_core.timekeeping import SystemClock
 
 from red_thread_plans.packaged import load_outline
 from red_thread_plans.services import Planner
@@ -14,7 +15,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from red_thread_core.codec import Codec
-    from red_thread_core.store import Clock
+    from red_thread_core.timekeeping import Clock
 
     from red_thread_plans.domain import Outline
 

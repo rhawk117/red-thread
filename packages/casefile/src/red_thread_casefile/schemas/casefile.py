@@ -5,10 +5,12 @@ from itertools import chain, pairwise
 from operator import attrgetter
 from typing import TYPE_CHECKING
 
+import msgspec
 from red_thread_core.dto import DTO
 from red_thread_core.errors import MalformedDocumentError
 from red_thread_core.frontmatter import FENCE, FenceReasons, FrontSplit, split_frontmatter
 from red_thread_core.lines import Line, cut_at, number_lines, split_lines, trim
+from red_thread_core.timekeeping import read_day, write_moment
 
 from red_thread_casefile.domain import (
     BLOCK_CLOSE,
@@ -29,8 +31,6 @@ from red_thread_casefile.domain import (
     FindingLocation,
     LocatedFinding,
     RoundStamp,
-    date_of,
-    is_day,
 )
 from red_thread_casefile.errors import (
     CaseFileError,
@@ -152,10 +152,11 @@ class LedgerReader:
 
     def read_stamp(self, line: Line) -> RoundStamp | MalformedRoundError:
         matched = ROUND_HEADING.fullmatch(line.mark)
-        if matched is None or not is_day(matched['day']):
+        day = None if matched is None else read_day(matched['day'])
+        if matched is None or day is None:
             return MalformedRoundError(location=self.locate(line))
         head = None if matched['head'] == NO_HEAD else matched['head']
-        return RoundStamp(number=int(matched['round']), day=matched['day'], head=head)
+        return RoundStamp(number=int(matched['round']), day=day, head=head)
 
     def read_block(self, lines: tuple[Line, ...], location: FindingLocation) -> Block:
         if not lines or lines[0].text.rstrip() != BLOCK_OPEN:
@@ -261,11 +262,15 @@ class CaseFileSchema:
     codec: Codec
 
     def decode_case(self, text: str) -> Case | MalformedFrontmatterError:
-        decoded = self.codec.decode(text, Case)
+        decoded = self.codec.decode(text, dict[str, object])
         if isinstance(decoded, MalformedDocumentError):
             return MalformedFrontmatterError(file=CASE_FILE, reason=decoded.reason)
 
-        return decoded
+        try:
+            case = Case.convert(decoded, strict=False)
+        except msgspec.ValidationError as error:
+            return MalformedFrontmatterError(file=CASE_FILE, reason=str(error))
+        return case
 
     def read_front(self, source: LedgerSource) -> Front:
         lines = split_lines(source.text)
@@ -306,6 +311,7 @@ class CaseFileSchema:
         )
 
     def write(self, case: Case) -> str:
-        fields = self.codec.encode_text(case)
-        opening = RoundStamp(number=0, day=date_of(case.created), head=case.head)
+        written = {**msgspec.to_builtins(case), 'created': write_moment(case.created)}
+        fields = self.codec.encode_text(written)
+        opening = RoundStamp(number=0, day=case.created.date(), head=case.head)
         return f'{FENCE}\n{fields}{FENCE}\n\n{write_title(case.target)}\n\n{opening.heading}\n'

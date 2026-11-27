@@ -1,10 +1,9 @@
 """The planner: starts a ticket's plan beside its cases, and checks a plan against them."""
 
 from dataclasses import dataclass
-from datetime import date
 from typing import TYPE_CHECKING
 
-from red_thread_casefile.domain import date_of, shorten_head
+from red_thread_casefile.domain import shorten_head
 from red_thread_casefile.services.casefile import EXCLUDED
 from red_thread_core.dto import DTO
 
@@ -24,7 +23,8 @@ if TYPE_CHECKING:
 
     from red_thread_casefile.domain import CaseRecord
     from red_thread_core.codec import Codec
-    from red_thread_core.store import Clock, SourceTree
+    from red_thread_core.store import SourceTree
+    from red_thread_core.timekeeping import Clock
 
     from red_thread_plans.domain import Opening, Outline, PlanDocument
     from red_thread_plans.store import CaseShelf, PlanRepository
@@ -63,7 +63,7 @@ class Planner:
         return Frontmatter(
             id=opening.id,
             title=opening.title,
-            created=date.fromisoformat(date_of(self.clock.now())),
+            created=self.clock.now().date(),
             head=None if head is None else shorten_head(head),
             cases=alias_cases(opening.case_ids),
         )

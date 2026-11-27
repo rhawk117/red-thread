@@ -881,6 +881,19 @@ Made by the owner on 2026-11-27. "Entry" did not say what it was an entry of, an
 | On disk | the case file format does not change: a block keeps its `cite`, `addr` and `refute` keys, which the Python fields `citation`, `code_address` and `refuted_if` encode to |
 | Other names | each function, constant and field says what it holds or does, such as `write_citation_state_badge` in place of `write_state` and `opening_tag` in place of `opening` |
 
+### 2026-11-27: time in one core module
+
+Made by the owner on 2026-11-27. Time handling was spread out: the clock sat in core's `store.py`, the tree-sitter deadline in navigate, and the case file kept its days and moments as strings checked by `date_of` and `is_day`.
+
+| Decision | Choice and reason |
+| --- | --- |
+| Where | `red_thread_core.timekeeping` holds the `Clock` protocol, `SystemClock`, the day and moment text (`write_moment`, `write_compact_day`, `read_day`) and `Deadline` |
+| Typed values | `Clock.now()` returns an aware `datetime`; `Case.created` is a `datetime`, and a finding's `at`, a round stamp's `day` and a finding node's `at` are `date`s. Text exists only where a file is read or written |
+| Reading `created` | the frontmatter is converted with `strict=False`, so a quoted ISO moment (what `init` writes) and a bare one both read. A bare day or a word is still refused, and so is `publish: 'yes'` |
+| Writing `created` | written through `write_moment`, so a case file keeps the quoted `'2026-11-21T09:30:00+00:00'` form older case files hold |
+| Errors | `InvalidTimestampError` is gone: a bad `created` is a `MalformedFrontmatterError`, and a bad round day a `MalformedRoundError` |
+| Tests | `tests/core/timekeeping` holds the fixed clock, `MOMENT`, `DAY` and the `days` and `moments` strategies every test tree imports |
+
 ## 13. Planning
 
 **Changed 2026-11-26** (section 12, "one ticket per plan, in Markdown"): a plan is now the Markdown plan of one ticket, `.red-thread/tickets/<plan-id>/plan.md`, started by `redthread-plan init` and checked by `redthread-plan check`. "The plan file" below describes it. The JSON plan record, its revisions, the plan page, worktrees and stacks in a plan, and the board's links to plans described further down are superseded, and their code is gone. They stay here as the record of what was built.

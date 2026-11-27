@@ -4,8 +4,8 @@ from hypothesis import strategies as st
 from red_thread_casefile.documents import CitationNode, FindingList, FindingNode, Note
 from red_thread_core.documents import Document, Paragraph, PointList, Section, parse_line
 
-from tests.casefile.documents.builders import MOMENT
 from tests.casefile.findings.strategies import optional, words
+from tests.core.timekeeping.clock import DAY
 
 
 def many[Value](
@@ -25,7 +25,7 @@ findings = st.builds(
     kind=st.just('known'),
     claim=lines,
     round=st.integers(min_value=1, max_value=9),
-    at=st.just(MOMENT),
+    at=st.just(DAY),
     citation_node=optional(citations),
     notes=many(notes, 2),
     lead=optional(st.just('1111111')),
