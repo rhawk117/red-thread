@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 import msgspec
 from red_thread_core.frontmatter import FENCE, FenceReasons, decode_yaml, split_frontmatter
+from red_thread_core.lines import Line, cut_at, number_lines, split_lines, trim
 
 from red_thread_casefile.domain import (
     BLOCK_CLOSE,
@@ -44,21 +45,14 @@ from red_thread_casefile.errors import (
     StrayTextError,
     StrayThreadFileError,
 )
-from red_thread_casefile.schemas.lines import (
-    FIRST_LINE,
-    Line,
-    Numbered,
-    cut_at,
-    number_lines,
-    split_lines,
-    trim,
-)
+from red_thread_casefile.schemas.lines import FIRST_LINE, Numbered
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
 
+    from red_thread_core.lines import Cut
+
     from red_thread_casefile.domain import LedgerSource
-    from red_thread_casefile.schemas.lines import Cut
 
 type Problems = tuple[CaseFileError, ...]
 type Reading = Placed | CaseFileError

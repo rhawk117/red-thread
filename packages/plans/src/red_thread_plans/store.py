@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 from red_thread_casefile.errors import MalformedCaseError
 from red_thread_casefile.schemas import load_record, read_case_file
 from red_thread_casefile.store import DirectoryCaseRepository
+from red_thread_core.store import create_exclusive
 
 from red_thread_plans.domain import TICKET_HOME
 from red_thread_plans.errors import MissingPlanError, PlanExistsError
@@ -46,11 +47,7 @@ class FilePlanRepository:
         return self.path.read_text(encoding='utf-8')
 
     def create(self, text: str) -> Path:
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        try:
-            with self.path.open('x', encoding='utf-8') as target:
-                target.write(text)
-        except FileExistsError as error:
+        if (error := create_exclusive(self.path, text)) is not None:
             raise PlanExistsError(path=self.path) from error
         return self.path
 

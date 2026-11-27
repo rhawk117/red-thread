@@ -2,11 +2,13 @@
 
 from typing import TYPE_CHECKING
 
+from red_thread_core.errors import RedThreadError
+
 if TYPE_CHECKING:
     from red_thread_casefile.domain import Spot
 
 
-class CaseFileError(Exception):
+class CaseFileError(RedThreadError):
     pass
 
 

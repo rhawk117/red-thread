@@ -2,11 +2,12 @@
 
 import sys
 from dataclasses import dataclass
-from operator import attrgetter
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
 
-from cyclopts import App, CycloptsError, Parameter
+from cyclopts import Parameter
+from red_thread_core.cli import EXIT_OK, run_app
+from red_thread_core.cli import create_app as create_shared_app
 
 from red_thread_casefile.domain import (
     CASE_FILE,
@@ -15,7 +16,7 @@ from red_thread_casefile.domain import (
     CaseKind,
     build_case_id,
 )
-from red_thread_casefile.errors import CaseFileError, MalformedSelectionError, UnreadableInputError
+from red_thread_casefile.errors import MalformedSelectionError, UnreadableInputError
 from red_thread_casefile.factory import CaseFiles
 from red_thread_casefile.lenses import LensName
 from red_thread_casefile.schemas import load_selection
@@ -25,11 +26,8 @@ from red_thread_casefile.views import BoardOptions, CheckReport
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-EXIT_OK = 0
-EXIT_FAILED = 1
-EXIT_USAGE = 2
+    from cyclopts import App
 
-type StrayTokens = Annotated[str, Parameter(show=False)]
 type CaseOption = Annotated[Path, Parameter(help='the case directory that init printed')]
 type RootOption = Annotated[str, Parameter(help='the repository root, by default this directory')]
 type TargetOption = Annotated[str, Parameter(help='the question, as one line')]
@@ -167,21 +165,6 @@ class ExportCommand:
         return EXIT_OK
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class CommandMenu:
-    names: tuple[str, ...]
-
-    @property
-    def choices(self) -> str:
-        *rest, last = self.names
-        return f'{", ".join(rest)} or {last}'
-
-    def report_problem(self, *tokens: StrayTokens) -> int:
-        problem = f'unknown command "{tokens[0]}"' if tokens else 'a command is required'
-        print(f'{PROGRAM}: {problem}; choose from {self.choices}', file=sys.stderr)
-        return EXIT_USAGE
-
-
 def create_app(cases: CaseFiles | None = None) -> App:
     cases = cases or CaseFiles()
     commands = (
@@ -190,28 +173,8 @@ def create_app(cases: CaseFiles | None = None) -> App:
         CheckCommand(cases=cases),
         ExportCommand(cases=cases),
     )
-    app = App(
-        name=PROGRAM,
-        help='The red-thread case file.',
-        version_flags=(),
-        default_parameter=Parameter(negative=()),
-        exit_on_error=False,
-        print_error=False,
-        result_action='return_value',
-    )
-    app.default(CommandMenu(names=tuple(map(attrgetter('name'), commands))).report_problem)
-    for command in commands:
-        app.command(command.run, name=command.name, help=command.summary)
-    return app
+    return create_shared_app(PROGRAM, 'The red-thread case file.', commands)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    try:
-        code = create_app()(argv)
-    except CycloptsError as error:
-        print(f'{PROGRAM}: {error}', file=sys.stderr)
-        return EXIT_USAGE
-    except CaseFileError as error:
-        print(f'{PROGRAM}: {error}', file=sys.stderr)
-        return EXIT_FAILED
-    return code if isinstance(code, int) else EXIT_OK
+    return run_app(PROGRAM, create_app(), argv)

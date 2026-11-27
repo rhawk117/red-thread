@@ -32,6 +32,16 @@ def append_text(path: Path, text: str) -> None:
         target.write(text)
 
 
+def create_exclusive(path: Path, text: str) -> FileExistsError | None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with path.open('x', encoding='utf-8') as target:
+            target.write(text)
+    except FileExistsError as error:
+        return error
+    return None
+
+
 @dataclass(slots=True, kw_only=True, frozen=True)
 class GitSourceTree:
     root: Path

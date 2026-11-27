@@ -4,10 +4,10 @@ from typing import TYPE_CHECKING
 
 import msgspec
 from red_thread_core.frontmatter import FENCE, FenceReasons, decode_yaml, split_frontmatter
+from red_thread_core.lines import cut_at, number_lines
 
 from red_thread_plans.domain import (
     HEADING,
-    BodyLine,
     Frontmatter,
     PlanDocument,
     Section,
@@ -15,7 +15,7 @@ from red_thread_plans.domain import (
 from red_thread_plans.errors import PlanShapeError
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from red_thread_core.lines import Line
 
     from red_thread_plans.domain import Outline
 
@@ -30,20 +30,14 @@ FENCE_REASONS = FenceReasons(
 )
 
 
-def number_lines(lines: Sequence[str], start: int) -> tuple[BodyLine, ...]:
-    return tuple(BodyLine(number=number, text=text) for number, text in enumerate(lines, start))
-
-
-def cut_sections(lines: tuple[BodyLine, ...]) -> tuple[Section, ...]:
-    starts = [index for index, line in enumerate(lines) if line.text.startswith(HEADING)]
-    ends = [*starts[1:], len(lines)]
+def cut_sections(lines: tuple[Line, ...]) -> tuple[Section, ...]:
     return tuple(
         Section(
-            title=lines[start].text.removeprefix(HEADING).strip(),
-            number=lines[start].number,
-            lines=lines[start + 1 : end],
+            title=cut.head.text.removeprefix(HEADING).strip(),
+            number=cut.head.number,
+            lines=cut.body,
         )
-        for start, end in zip(starts, ends, strict=True)
+        for cut in cut_at(lines, HEADING).parts
     )
 
 

@@ -11,6 +11,7 @@ from red_thread_core.dto import DTO
 
 if TYPE_CHECKING:
     from red_thread_casefile.domain import EntryKind
+    from red_thread_core.lines import Line
 
 type Status = Literal['draft', 'accepted', 'done']
 type Lights = Literal['on', 'off']
@@ -43,33 +44,27 @@ class Frontmatter(DTO, frozen=True, kw_only=True, forbid_unknown_fields=True, gc
     issue: str | None = None
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class BodyLine:
-    number: int
-    text: str
+def is_item(line: Line) -> bool:
+    return line.text.startswith(ITEM)
 
-    @property
-    def is_item(self) -> bool:
-        return self.text.startswith(ITEM)
 
-    @property
-    def refs(self) -> tuple[str, ...]:
-        return tuple(match.group() for match in REF.finditer(self.text))
+def find_refs(line: Line) -> tuple[str, ...]:
+    return tuple(match.group() for match in REF.finditer(line.text))
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class Section:
     title: str
     number: int
-    lines: tuple[BodyLine, ...] = ()
+    lines: tuple[Line, ...] = ()
 
     @property
     def is_empty(self) -> bool:
         return not any(line.text.strip() for line in self.lines)
 
     @property
-    def items(self) -> tuple[BodyLine, ...]:
-        return tuple(line for line in self.lines if line.is_item)
+    def items(self) -> tuple[Line, ...]:
+        return tuple(line for line in self.lines if is_item(line))
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -81,11 +76,11 @@ class PlanDocument:
         return next((section for section in self.sections if section.title == title), None)
 
     @property
-    def lines(self) -> tuple[BodyLine, ...]:
+    def lines(self) -> tuple[Line, ...]:
         return tuple(chain.from_iterable(section.lines for section in self.sections))
 
     @property
-    def criteria(self) -> tuple[BodyLine, ...]:
+    def criteria(self) -> tuple[Line, ...]:
         acceptance = self.find_section(ACCEPTANCE)
         return () if acceptance is None else acceptance.items
 

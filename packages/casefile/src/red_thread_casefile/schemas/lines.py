@@ -1,68 +1,15 @@
-"""A Markdown file as numbered lines, cut into parts at its headings."""
+"""The case file's numbering: a file's first line, and an entry or round head with its number."""
 
 from dataclasses import dataclass
-from itertools import pairwise
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from red_thread_core.lines import Line
 
 FIRST_LINE = 1
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Line:
-    number: int
-    text: str
-
-    @property
-    def is_blank(self) -> bool:
-        return not self.text.strip()
-
-    @property
-    def mark(self) -> str:
-        return self.text.strip()
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Cut:
-    head: Line
-    body: tuple[Line, ...]
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Cuts:
-    preamble: tuple[Line, ...]
-    parts: tuple[Cut, ...]
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class Numbered:
     line: Line
     seq: int
-
-
-def split_lines(text: str) -> list[str]:
-    folded = text.replace('\r\n', '\n')
-    return folded.removesuffix('\n').split('\n') if folded else []
-
-
-def number_lines(lines: Sequence[str], start: int) -> tuple[Line, ...]:
-    return tuple(Line(number=number, text=text) for number, text in enumerate(lines, start))
-
-
-def cut_at(lines: tuple[Line, ...], mark: str) -> Cuts:
-    starts = [index for index, line in enumerate(lines) if line.text.startswith(mark)]
-    parts = tuple(
-        Cut(head=lines[start], body=lines[start + 1 : end])
-        for start, end in pairwise((*starts, len(lines)))
-    )
-    first = starts[0] if starts else len(lines)
-    return Cuts(preamble=lines[:first], parts=parts)
-
-
-def trim(lines: tuple[Line, ...]) -> tuple[Line, ...]:
-    filled = [index for index, line in enumerate(lines) if not line.is_blank]
-    if not filled:
-        return ()
-    return lines[filled[0] : filled[-1] + 1]

@@ -3,13 +3,14 @@
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from red_thread_plans.domain import ACCEPTANCE, RESTING_KINDS, SETTLED
+from red_thread_plans.domain import ACCEPTANCE, RESTING_KINDS, SETTLED, find_refs
 from red_thread_plans.errors import (
     EmptySectionError,
     GroundlessCriterionError,
     MissingSectionError,
     NoCasesError,
     NoCriteriaError,
+    PlanError,
     RetiredRefError,
     UnfitRefError,
     UnknownCaseError,
@@ -21,11 +22,11 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
 
     from red_thread_casefile.domain import Entry, Ledger
-    from red_thread_casefile.errors import CaseFileError
+    from red_thread_core.lines import Line
 
-    from red_thread_plans.domain import BodyLine, Outline, PlanDocument
+    from red_thread_plans.domain import Outline, PlanDocument
 
-type Problems = tuple[CaseFileError, ...]
+type Problems = tuple[PlanError, ...]
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -33,7 +34,7 @@ class Grounds:
     live: Mapping[str, Entry] = field(default_factory=dict)
     known: frozenset[str] = frozenset()
 
-    def get_ref_problem(self, line: int, ref: str) -> CaseFileError | None:
+    def get_ref_problem(self, line: int, ref: str) -> PlanError | None:
         if ref not in self.known:
             return UnknownRefError(line=line, ref=ref)
 
@@ -42,7 +43,7 @@ class Grounds:
 
         return None
 
-    def get_resting_problem(self, line: int, ref: str) -> CaseFileError | None:
+    def get_resting_problem(self, line: int, ref: str) -> PlanError | None:
         if problem := self.get_ref_problem(line, ref):
             return problem
 
@@ -91,7 +92,7 @@ class PlanPolicy:
         )
         return (*unknown, *unset)
 
-    def get_section_problem(self, title: str) -> CaseFileError | None:
+    def get_section_problem(self, title: str) -> PlanError | None:
         section = self.document.find_section(title)
         if section is None:
             return MissingSectionError(title=title)
@@ -110,16 +111,16 @@ class PlanPolicy:
     def is_checkable(self, ref: str) -> bool:
         return find_alias(ref) not in self.missing
 
-    def get_line_issues(self, line: BodyLine) -> Problems:
-        refs = filter(self.is_checkable, line.refs)
+    def get_line_issues(self, line: Line) -> Problems:
+        refs = filter(self.is_checkable, find_refs(line))
         found = (self.grounds.get_ref_problem(line.number, ref) for ref in refs)
         return tuple(filter(None, found))
 
-    def get_criterion_issues(self, line: BodyLine) -> Problems:
-        if not line.refs:
+    def get_criterion_issues(self, line: Line) -> Problems:
+        if not find_refs(line):
             return (GroundlessCriterionError(line=line.number),)
 
-        refs = filter(self.is_checkable, line.refs)
+        refs = filter(self.is_checkable, find_refs(line))
         found = (self.grounds.get_resting_problem(line.number, ref) for ref in refs)
         return tuple(filter(None, found))
 

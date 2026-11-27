@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
+from red_thread_core.store import create_exclusive
+
 from red_thread_casefile.domain import (
     CASE_FILE,
     THREAD_HOME,
@@ -51,10 +53,7 @@ class DirectoryCaseRepository:
 
     def create(self, text: str) -> None:
         self.thread_home.mkdir(parents=True, exist_ok=True)
-        try:
-            with self.case_file.open('x', encoding='utf-8') as target:
-                target.write(text)
-        except FileExistsError as error:
+        if (error := create_exclusive(self.case_file, text)) is not None:
             raise CaseExistsError(case_id=self.directory.name) from error
 
     def read_source(self, path: Path) -> LedgerSource:
