@@ -1,9 +1,9 @@
 """HtmlWriter over the tree: what an entry, a block and a section look like on the page."""
 
 from dataclasses import replace
+from html import escape
 
 import pytest
-from markupsafe import escape
 from red_thread_casefile.documents import Citation, EntryList
 from red_thread_casefile.packaged import load_wording
 from red_thread_casefile.policy import Finding

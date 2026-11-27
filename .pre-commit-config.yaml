@@ -128,16 +128,6 @@ repos:
 
   - repo: local
     hooks:
-      - id: djlint
-        name: djlint
-        language: system
-        entry: uv run djlint --lint --profile=jinja --extension=html.j2
-        files: \.html\.j2$
-        groups: [templates, lint]
-        priority: lint
-
-  - repo: local
-    hooks:
       - id: mdformat
         name: mdformat
         language: system

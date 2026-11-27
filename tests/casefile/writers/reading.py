@@ -1,28 +1,15 @@
 """Renders a document through a writer and picks out the lines a test reads."""
 
-from functools import cache
 from typing import TYPE_CHECKING
 
 from red_thread_casefile.packaged import load_wording
-from red_thread_casefile.writers.page import create_case_page_writer
+from red_thread_casefile.writers.page import render_case_page
 from red_thread_core.documents import parse_line
 from red_thread_core.writers.markdown import MarkdownWriter
+from red_thread_core.writers.markup import HtmlInlines, render_value
 
 if TYPE_CHECKING:
-    from jinja2 import Environment
-    from red_thread_casefile.writers.page import CasePageWriter
     from red_thread_core.documents import Document
-
-LINE_TEMPLATE = "{% import 'templates/macros.html.j2' as draw %}{{ draw.line(line) }}"
-
-
-@cache
-def load_case_page_writer() -> CasePageWriter:
-    return create_case_page_writer(load_wording().headings)
-
-
-def load_page_environment() -> Environment:
-    return load_case_page_writer().writer.environment
 
 
 def render_markdown(document: Document) -> str:
@@ -30,11 +17,11 @@ def render_markdown(document: Document) -> str:
 
 
 def render_page(document: Document) -> str:
-    return load_case_page_writer().render(document)
+    return render_case_page(document, load_wording().headings)
 
 
 def render_marked_up(text: str) -> str:
-    return load_page_environment().from_string(LINE_TEMPLATE).render(line=parse_line(text))
+    return render_value(HtmlInlines().write_line(parse_line(text)))
 
 
 def list_item_lines(document: Document) -> list[str]:

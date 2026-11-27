@@ -16,7 +16,6 @@ from tests.casefile.ledger.memory import (
     MemoryPageStore,
     MemorySourceTree,
 )
-from tests.casefile.writers.reading import load_case_page_writer
 from tests.codec import YAML
 
 if TYPE_CHECKING:
@@ -42,12 +41,7 @@ class ServiceHarness:
 
     @property
     def press(self) -> Press:
-        return Press(
-            record=self.case_file,
-            pages=self.pages,
-            book=load_lens_book(),
-            renderer=load_case_page_writer(),
-        )
+        return Press(record=self.case_file, pages=self.pages, book=load_lens_book())
 
     def read_entries(self) -> tuple[Entry, ...]:
         return self.case_file.load().ledger.entries

@@ -1,15 +1,14 @@
-"""Page rendering: escaped text, code spans, the attribute writer and the web link filter."""
+"""Page rendering: escaped text, nested templates and tuples, code spans and the page assets."""
 
 import re
-from html import unescape
+from html import escape, unescape
 from typing import TYPE_CHECKING
 
 import pytest
 from hypothesis import example, given
 from hypothesis import strategies as st
-from markupsafe import escape
 from red_thread_core.packaged import read_asset
-from red_thread_core.writers.markup import keep_safe_url, write_attributes
+from red_thread_core.writers.markup import render, render_value
 
 from tests.casefile.pages.asset_names import ASSET_NAMES
 from tests.casefile.writers.reading import render_marked_up
@@ -17,31 +16,63 @@ from tests.casefile.writers.reading import render_marked_up
 if TYPE_CHECKING:
     from red_thread_core.packaged import CoreAsset
 
-BARE_AMPERSAND = re.compile(r'&(?!(?:amp|lt|gt|#34|#39);)')
+BARE_AMPERSAND = re.compile(r'&(?!(?:amp|lt|gt|quot|#x27);)')
 METACHARACTERS = '<>"\''
 plain = st.text(
     alphabet=st.characters(blacklist_categories=('Cs',), blacklist_characters='`'), max_size=30
 )
-names = st.from_regex(r'[a-z][a-z-]{0,10}', fullmatch=True)
-UNSAFE_SCHEMES = st.sampled_from(('javascript', 'JavaScript', 'data', 'vbscript', 'file'))
 
 
 def asset_cases() -> pytest.MarkDecorator:
     return pytest.mark.parametrize('name', [pytest.param(name, id=name) for name in ASSET_NAMES])
 
 
-def escape_text(text: str) -> str:
-    return str(escape(text))
-
-
-@given(text=plain)
+@given(text=st.text(max_size=60))
 @example(text='<script>alert("x")</script> & \'quoted\' &lt;')
-def test_text_without_a_backtick_marks_up_as_its_escaped_self(text: str) -> None:
-    rendered = render_marked_up(text)
+def test_render_value_escapes_every_html_metacharacter_in_any_text(text: str) -> None:
+    rendered = render_value(text)
 
     assert not any(character in rendered for character in METACHARACTERS)
     assert not BARE_AMPERSAND.search(rendered)
     assert unescape(rendered) == text
+    assert rendered == escape(text)
+
+
+@given(value=st.one_of(st.integers(), st.booleans(), st.none()))
+def test_render_value_writes_other_values_as_their_text(value: object) -> None:
+    assert render_value(value) == str(value)
+
+
+@given(first=st.text(max_size=20), second=st.text(max_size=20), third=st.text(max_size=20))
+def test_nested_templates_and_tuples_render_as_the_concatenation_of_their_parts(
+    first: str, second: str, third: str
+) -> None:
+    inner = t'<i>{second}</i>'
+    outer = t'<b>{first}</b>{(inner, third)}'
+
+    rendered = render(outer)
+
+    expected = f'<b>{escape(first)}</b><i>{escape(second)}</i>{escape(third)}'
+    assert rendered == expected
+    assert render_value(outer) == expected
+
+
+@given(parts=st.lists(st.text(max_size=15), max_size=6))
+def test_a_tuple_renders_each_member_in_order_and_nested_tuples_flatten(parts: list[str]) -> None:
+    flat = ''.join(escape(part) for part in parts)
+
+    assert render_value(tuple(parts)) == flat
+    assert render_value((tuple(parts), (tuple(parts),))) == flat * 2
+
+
+@given(text=st.text(max_size=20))
+def test_a_conversion_is_applied_before_the_text_is_escaped(text: str) -> None:
+    assert render(t'<p>{text!r}</p>') == f'<p>{escape(repr(text))}</p>'
+
+
+@given(text=plain)
+def test_text_without_a_backtick_marks_up_as_itself(text: str) -> None:
+    assert render_marked_up(text) == escape(text)
 
 
 @given(before=plain, code=plain.filter(bool), after=plain)
@@ -51,59 +82,14 @@ def test_a_code_span_becomes_a_code_element_around_its_escaped_text(
 ) -> None:
     rendered = render_marked_up(f'{before}`{code}`{after}')
 
-    assert rendered == f'{escape_text(before)}<code>{escape_text(code)}</code>{escape_text(after)}'
+    assert rendered == f'{escape(before)}<code>{escape(code)}</code>{escape(after)}'
 
 
 @given(before=plain, after=plain)
 def test_a_lone_backtick_stays_literal_text(before: str, after: str) -> None:
     text = f'{before}`{after}'
 
-    assert render_marked_up(text) == escape_text(text)
-
-
-def test_empty_text_renders_nothing() -> None:
-    assert render_marked_up('') == ''
-
-
-@given(name=names, value=st.text(max_size=20))
-def test_an_attribute_value_is_escaped_and_reads_back_as_written(name: str, value: str) -> None:
-    written = str(write_attributes({name: value}))
-
-    assert written.startswith(f' {name}="')
-    assert unescape(written.removeprefix(f' {name}="').removesuffix('"')) == value
-    assert '"' not in written.removeprefix(f' {name}="').removesuffix('"')
-
-
-def test_a_true_attribute_is_bare_and_a_missing_one_is_left_out() -> None:
-    attributes = {'open': True, 'hidden': False, 'data-kind': None, 'id': 'a'}
-
-    assert str(write_attributes(attributes)) == ' open id="a"'
-
-
-@given(path=st.text(max_size=20))
-@example(path='a?b=1&c=2#top')
-def test_a_web_url_is_kept_as_it_is(path: str) -> None:
-    url = f'https://example.invalid/{path}'
-
-    assert keep_safe_url(url) == url
-
-
-@pytest.mark.parametrize('url', ['../plans/p1/plan.html', '#section-a', 'notes.md', ''])
-def test_a_url_without_a_scheme_is_kept_as_it_is(url: str) -> None:
-    assert keep_safe_url(url) == url
-
-
-@given(scheme=UNSAFE_SCHEMES, rest=st.text(max_size=20))
-@example(scheme='javascript', rest='alert(1)')
-def test_a_url_with_any_other_scheme_is_dropped(scheme: str, rest: str) -> None:
-    assert keep_safe_url(f'{scheme}:{rest}') == ''
-
-
-@pytest.mark.parametrize(
-    'url', [' javascript:alert(1)', 'java\tscript:alert(1)', '\x01javascript:x']
-)
-def test_a_scheme_hidden_by_whitespace_or_control_characters_is_still_dropped(url: str) -> None:
-    assert keep_safe_url(url) == ''
+    assert render_marked_up(text) == escape(text)
 
 
 @asset_cases()

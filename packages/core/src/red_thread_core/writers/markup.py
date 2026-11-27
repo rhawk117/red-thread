@@ -1,62 +1,120 @@
-"""The Jinja environment pages are drawn with: each package's templates, every value escaped."""
+"""HTML from the document tree: every value escaped by one function, every node one fragment."""
 
 import re
+from dataclasses import dataclass
+from html import escape
+from string.templatelib import Interpolation, Template, convert
 from typing import TYPE_CHECKING
 
-from jinja2 import ChoiceLoader, Environment, PackageLoader, StrictUndefined, select_autoescape
-from markupsafe import Markup
-
-from red_thread_core.packaged import ASSETS, CORE_PACKAGE
-
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from red_thread_core.documents import (
+        Block,
+        Code,
+        CodeListing,
+        Fact,
+        Inline,
+        Line,
+        Link,
+        Section,
+        Text,
+    )
 
 NOT_ANCHOR = re.compile(r'[^a-z0-9]+')
-TEMPLATE_SUFFIXES = ('html.j2',)
-SAFE_SCHEMES = frozenset({'', 'http', 'https'})
-URL_SCHEME = re.compile(r'[a-z][a-z0-9+.-]*(?=:)', re.IGNORECASE)
-URL_NOISE = re.compile(r'[\t\n\r]')
-C0_AND_SPACE = ''.join(map(chr, range(0x21)))
+
+
+def render_value(value: object) -> str:
+    if isinstance(value, Template):
+        return render(value)
+    if isinstance(value, tuple):
+        return ''.join(map(render_value, value))
+    return escape(str(value))
+
+
+def render_part(part: str | Interpolation[object]) -> str:
+    if isinstance(part, Interpolation):
+        return render_value(convert(part.value, part.conversion))
+    return part
+
+
+def render(template: Template) -> str:
+    return ''.join(map(render_part, template))
+
+
+@dataclass(slots=True, kw_only=True, frozen=True)
+class HtmlInlines:
+    def write_text(self, node: Text) -> Template:
+        return t'{node.value}'
+
+    def write_code(self, node: Code) -> Template:
+        return t'<code>{node.value}</code>'
+
+    def write_link(self, node: Link) -> Template:
+        return t'<a href="{node.url}" rel="noreferrer">{node.shown}</a>'
+
+    def write_inline(self, node: Inline) -> Template:
+        return node.write(self)
+
+    def write_line(self, line: Line) -> Template:
+        return t'{tuple(map(self.write_inline, line))}'
+
+
+def write_line(line: Line) -> Template:
+    return HtmlInlines().write_line(line)
+
+
+def write_ref(ref: str) -> Template:
+    return t'<button type="button" class="ref" data-copy="{ref}" title="Copy">{ref}</button>'
+
+
+def write_paragraph(line: Line) -> Template:
+    return t'<p>{write_line(line)}</p>'
+
+
+def write_point(point: Line) -> Template:
+    claim = t'<p class="claim">{write_line(point)}</p>'
+    return t'<li class="entry"><div>{claim}</div></li>'
+
+
+def write_points(points: tuple[Line, ...]) -> Template:
+    if not points:
+        return t''
+    return t'<ol class="plain">{tuple(map(write_point, points))}</ol>'
+
+
+def write_flowchart(lines: tuple[str, ...]) -> Template:
+    return t'<pre class="mermaid">{"\n".join(lines)}</pre>'
+
+
+def write_listing(listing: CodeListing | None) -> Template:
+    if listing is None:
+        return t''
+    code = t'<code>{listing.source}</code>'
+    return t'<pre class="listing" data-language="{listing.language}">{code}</pre>'
 
 
 def anchor_section(title: str) -> str:
     return 'section-' + NOT_ANCHOR.sub('-', title.lower()).strip('-')
 
 
-def find_scheme(url: str) -> str:
-    found = URL_SCHEME.match(URL_NOISE.sub('', url).lstrip(C0_AND_SPACE))
-    return found.group().lower() if found else ''
+def write_fold(section: Section, body: Template) -> Template:
+    count = t'<span class="count">{section.count}</span>' if section.count else t''
+    note = t'<span class="about">{section.note}</span>' if section.note else t''
+    kind = t' data-kind="{section.kind}"' if section.kind is not None else t''
+    state = t'' if section.folded else t' open'
+    heading = t'<summary><h2>{section.title}</h2>{count}{note}</summary>'
+    anchor = anchor_section(section.title)
+    opening = t'<details class="section" id="{anchor}"{kind}{state}>'
+    return t'{opening}\n{heading}\n{body}\n</details>\n'
 
 
-def keep_safe_url(url: str) -> str:
-    return url if find_scheme(url) in SAFE_SCHEMES else ''
+def write_block(block: Block) -> Template:
+    return block.write_html()
 
 
-def write_attribute(name: str, value: object) -> Markup:
-    if value is True:
-        return Markup(' {}').format(name)
-    return Markup(' {}="{}"').format(name, value)
+def write_section(section: Section) -> Template:
+    return write_fold(section, t'{tuple(map(write_block, section.blocks))}')
 
 
-def is_written(value: object) -> bool:
-    return value is not None and value is not False
-
-
-def write_attributes(attributes: Mapping[str, object]) -> Markup:
-    kept = (write_attribute(name, value) for name, value in attributes.items() if is_written(value))
-    return Markup('').join(kept)
-
-
-def create_page_environment(*packages: str) -> Environment:
-    loaders = [PackageLoader(package, ASSETS) for package in (*packages, CORE_PACKAGE)]
-    environment = Environment(
-        loader=ChoiceLoader(loaders),
-        autoescape=select_autoescape(TEMPLATE_SUFFIXES),
-        undefined=StrictUndefined,
-        trim_blocks=True,
-        lstrip_blocks=True,
-    )
-    environment.filters.update(
-        anchor=anchor_section, safe_url=keep_safe_url, attributes=write_attributes
-    )
-    return environment
+def write_fact(fact: Fact) -> Template:
+    style = 'fact wide' if fact.wide else 'fact'
+    return t'<div class="{style}"><dt>{fact.label}</dt><dd>{write_line(fact.value)}</dd></div>'

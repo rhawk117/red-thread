@@ -13,6 +13,7 @@ from red_thread_casefile.writers.page import (
     list_kind_chips,
     list_thread_chips,
     order_name,
+    render_case_page,
 )
 from red_thread_core.documents import Document, PointList, Section, parse_line
 
@@ -24,7 +25,6 @@ from tests.casefile.pages.html_reading import (
     find_tags,
     list_chip_groups,
 )
-from tests.casefile.writers.reading import render_page
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -131,7 +131,7 @@ class TestChipProperties:
     def test_the_page_shows_a_chip_group_only_for_a_filter_with_two_or_more_chips(
         self, document: Document
     ) -> None:
-        page = render_page(document)
+        page = render_case_page(document, load_wording().headings)
 
         shown = list_chip_groups(page)
         offered = [expect_kind_chips(document), expect_thread_chips(document)]
@@ -142,7 +142,7 @@ class TestChipProperties:
     def test_the_toolbar_exists_exactly_when_there_is_a_section_and_holds_one_fold_button(
         self, document: Document
     ) -> None:
-        page = render_page(document)
+        page = render_case_page(document, load_wording().headings)
 
         toolbars = [nav for nav in find_tags(page, 'nav') if nav['class'] == 'toolbar']
         folds = [tool for tool in find_buttons(page, 'tool') if 'data-fold' in tool]

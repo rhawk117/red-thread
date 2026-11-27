@@ -10,7 +10,6 @@ requires-python = ">=3.14"
 dependencies = [
     "cyclopts==5.5.3",
     "detect-secrets>=1.5.0",
-    "jinja2>=3.1.6",
     "msgspec>=0.22.0",
     "pyyaml>=6.0.2",
 ]

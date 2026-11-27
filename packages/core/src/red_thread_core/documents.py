@@ -2,18 +2,21 @@
 
 import re
 from dataclasses import dataclass
-from typing import Literal, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from red_thread_core.writers.markdown import write_markdown_line
+from red_thread_core.writers.markup import (
+    write_flowchart,
+    write_listing,
+    write_paragraph,
+    write_points,
+)
+
+if TYPE_CHECKING:
+    from string.templatelib import Template
 
 CODE_SPAN = re.compile(r'`([^`]+)`')
 URL_SCHEMES = ('http://', 'https://')
-PARAGRAPH_TEMPLATE = 'templates/blocks/paragraph.html.j2'
-POINTS_TEMPLATE = 'templates/blocks/points.html.j2'
-FLOWCHART_TEMPLATE = 'templates/blocks/flowchart.html.j2'
-LISTING_TEMPLATE = 'templates/blocks/listing.html.j2'
-
-type InlineKind = Literal['text', 'code', 'link']
 
 
 @runtime_checkable
@@ -30,8 +33,7 @@ class Block(Protocol):
     @property
     def count(self) -> int: ...
 
-    @property
-    def template(self) -> str: ...
+    def write_html(self) -> Template: ...
 
     def write_markdown(self) -> tuple[str, ...]: ...
 
@@ -39,10 +41,6 @@ class Block(Protocol):
 @dataclass(slots=True, kw_only=True, frozen=True)
 class Text:
     value: str
-
-    @property
-    def kind(self) -> InlineKind:
-        return 'text'
 
     def write[T](self, writer: InlineWriter[T]) -> T:
         return writer.write_text(self)
@@ -52,10 +50,6 @@ class Text:
 class Code:
     value: str
 
-    @property
-    def kind(self) -> InlineKind:
-        return 'code'
-
     def write[T](self, writer: InlineWriter[T]) -> T:
         return writer.write_code(self)
 
@@ -64,10 +58,6 @@ class Code:
 class Link:
     url: str
     label: str = ''
-
-    @property
-    def kind(self) -> InlineKind:
-        return 'link'
 
     @property
     def shown(self) -> str:
@@ -107,9 +97,8 @@ class Paragraph:
     line: Line
     count: int = 0
 
-    @property
-    def template(self) -> str:
-        return PARAGRAPH_TEMPLATE
+    def write_html(self) -> Template:
+        return write_paragraph(self.line)
 
     def write_markdown(self) -> tuple[str, ...]:
         return (write_markdown_line(self.line),)
@@ -120,9 +109,8 @@ class PointList:
     points: tuple[Line, ...]
     count: int = 0
 
-    @property
-    def template(self) -> str:
-        return POINTS_TEMPLATE
+    def write_html(self) -> Template:
+        return write_points(self.points)
 
     def write_markdown(self) -> tuple[str, ...]:
         return tuple(f'- {write_markdown_line(point)}' for point in self.points)
@@ -133,9 +121,8 @@ class Flowchart:
     lines: tuple[str, ...]
     count: int = 0
 
-    @property
-    def template(self) -> str:
-        return FLOWCHART_TEMPLATE
+    def write_html(self) -> Template:
+        return write_flowchart(self.lines)
 
     def write_markdown(self) -> tuple[str, ...]:
         return ('```mermaid', *self.lines, '```')
@@ -147,9 +134,8 @@ class CodeListing:
     source: str
     count: int = 0
 
-    @property
-    def template(self) -> str:
-        return LISTING_TEMPLATE
+    def write_html(self) -> Template:
+        return write_listing(self)
 
     def write_markdown(self) -> tuple[str, ...]:
         return (f'```{self.language}', *self.source.splitlines(), '```')
@@ -190,8 +176,3 @@ class Document:
     sections: tuple[Section, ...] = ()
     appendix: tuple[Section, ...] = ()
     terms: tuple[Term, ...] = ()
-
-
-@runtime_checkable
-class PageRenderer(Protocol):
-    def render(self, document: Document) -> str: ...

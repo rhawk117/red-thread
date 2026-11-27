@@ -5,9 +5,7 @@ import re
 from hypothesis import given
 from hypothesis import strategies as st
 from red_thread_core.documents import Document, Paragraph, Section, parse_line
-from red_thread_core.writers.page import Chip
-
-from tests.core.pages.writing import render_core_page
+from red_thread_core.writers.page import Chip, HtmlPage
 
 CHIP_ROW = re.compile(r'<div class="chips" role="group" aria-label="Filter by ([^"]*)">')
 TWO_CHIPS = 2
@@ -33,13 +31,13 @@ class TestPageFilters:
 
     @given(sizes=sizes)
     def test_a_row_shows_in_order_when_it_has_two_chips_or_more(self, sizes: list[int]) -> None:
-        page = render_core_page(create_document(sections=True), create_rows(sizes))
+        page = HtmlPage(document=create_document(sections=True), filters=create_rows(sizes))
 
-        shown = CHIP_ROW.findall(page)
+        shown = CHIP_ROW.findall(page.render())
         assert shown == [f'g{index}' for index, size in enumerate(sizes) if size >= TWO_CHIPS]
 
     @given(sizes=sizes)
     def test_a_page_without_sections_shows_no_row(self, sizes: list[int]) -> None:
-        page = render_core_page(create_document(sections=False), create_rows(sizes))
+        page = HtmlPage(document=create_document(sections=False), filters=create_rows(sizes))
 
-        assert CHIP_ROW.findall(page) == []
+        assert CHIP_ROW.findall(page.render()) == []
