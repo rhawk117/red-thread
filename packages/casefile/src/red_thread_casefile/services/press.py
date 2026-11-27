@@ -14,9 +14,10 @@ from red_thread_casefile.writers.page import render_case_page
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from red_thread_core.documents import Document
     from red_thread_core.store import PageStore
 
-    from red_thread_casefile.lenses import LensBook, LensName
+    from red_thread_casefile.lenses import Lens, LensBook, LensName
     from red_thread_casefile.services.casefile import CaseFile
 
 
@@ -65,21 +66,28 @@ class Press:
             findings=edition.findings,
         )
         document = BoardPage(board=board, wording=wording).compose()
-        return self.pages.write(BOARD_PAGE, render_case_page(document, wording.headings))
+        return self.write_page(BOARD_PAGE, document)
 
-    def export(self, request: ExportRequest) -> Exported:
-        lens = self.book.get(request.lens)
-        title = self.scrub(request.selection.title)
-        selection = request.selection.replace_with(
-            title=title, goal=self.scrub(request.selection.goal)
+    def write_page(self, name: str, document: Document) -> Path:
+        return self.pages.write(name, render_case_page(document, self.record.wording.headings))
+
+    def scrub_selection(self, selection: Selection) -> Selection:
+        return selection.replace_with(
+            title=self.scrub(selection.title), goal=self.scrub(selection.goal)
         )
-        composer = Composer(
+
+    def build_composer(self, lens: Lens, selection: Selection) -> Composer:
+        return Composer(
             lens=lens,
             selection=selection,
             edition=self.gather(),
             wording=self.record.wording,
             reading=self.book.reading,
         )
+
+    def export(self, request: ExportRequest) -> Exported:
+        lens = self.book.get(request.lens)
+        composer = self.build_composer(lens, self.scrub_selection(request.selection))
         if problem := composer.get_selection_problem():
             raise problem
 
@@ -90,7 +98,6 @@ class Press:
 
         paths = [self.pages.write(f'out/{lens.name}.md', text)]
         if request.html:
-            page = render_case_page(document, self.record.wording.headings)
-            paths.append(self.pages.write(f'out/{lens.name}.html', page))
+            paths.append(self.write_page(f'out/{lens.name}.html', document))
 
         return Exported(paths=tuple(paths), lines=count_lines(text), budget=lens.budget)

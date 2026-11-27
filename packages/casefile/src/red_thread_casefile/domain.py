@@ -44,7 +44,6 @@ SLUG_BREAK = re.compile(r'[^a-z0-9]+')
 CASE_FILE = 'case.md'
 THREAD_HOME = 'threads'
 THREAD_SUFFIX = '.md'
-FENCE = '---'
 TITLE_MARK = '# '
 ROUND_MARK = '## '
 ENTRY_MARK = '### '

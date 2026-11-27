@@ -55,17 +55,26 @@ def is_inside(text: str, index: int) -> bool:
     return not BOUNDARY.match(text, index)
 
 
-def widen(text: str, span: Span) -> Span:
+def trim_edges(text: str, span: Span) -> Span:
     start, end = span
     while start < end and is_edge(text, start):
         start += 1
     while end > start and is_edge(text, end - 1):
         end -= 1
+    return start, end
+
+
+def grow_inside(text: str, span: Span) -> Span:
+    start, end = span
     while start > 0 and is_inside(text, start - 1):
         start -= 1
     while end < len(text) and is_inside(text, end):
         end += 1
     return start, end
+
+
+def widen(text: str, span: Span) -> Span:
+    return grow_inside(text, trim_edges(text, span))
 
 
 def widen_hit(text: str, hit: Hit) -> Hit:

@@ -17,7 +17,6 @@ type Lights = Literal['on', 'off']
 
 TICKET_HOME = 'tickets'
 PLAN_FILE = 'plan.md'
-FENCE = '---'
 HEADING = '## '
 ITEM = '- '
 RESTING_KINDS: tuple[EntryKind, ...] = ('decision', 'known')

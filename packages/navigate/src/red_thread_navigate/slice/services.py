@@ -102,6 +102,18 @@ def address_refusal(text: str, error: AddressError, *, budget: int) -> FileRefus
     )
 
 
+def explain_address_error(
+    text: str, error: AddressError, *, budget: int
+) -> HintedOutsideRootError | FileRefusedError | None:
+    if hinted := hinted_outside_root(error, budget=budget):
+        return hinted
+
+    if estimate_tokens(str(error)) <= budget:
+        return None
+
+    return address_refusal(text, error, budget=budget)
+
+
 @dataclass(slots=True, kw_only=True, frozen=True)
 class Slicer:
     tree: SourceTree
@@ -141,11 +153,9 @@ class Slicer:
         try:
             address = parse_address(text, root=resolved)
         except AddressError as error:
-            if hinted := hinted_outside_root(error, budget=budget):
-                raise hinted from error
-            if estimate_tokens(str(error)) <= budget:
+            if (replacement := explain_address_error(text, error, budget=budget)) is None:
                 raise
-            raise address_refusal(text, error, budget=budget) from error
+            raise replacement from error
         source = self.read_file(resolved, address.path, budget=budget)
         if isinstance(address.target, LineTarget):
             return slice_lines(source, address.target, budget=budget)

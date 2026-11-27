@@ -21,7 +21,7 @@ from red_thread_navigate.walk.errors import PathMissingError
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from red_thread_navigate.walk.domain import SkipKind
+    from red_thread_navigate.walk.domain import SkipKind, SkipTally
 
 
 def run_git(git: str, root: Path, *arguments: str) -> subprocess.CompletedProcess[bytes]:
@@ -72,6 +72,15 @@ def read_limited(target: Path) -> bytes | SkipKind:
         return 'unreadable'
 
 
+def decode_source(name: PurePosixPath, data: bytes) -> SourceFile | SkipKind:
+    if b'\0' in data[:SNIFF_BYTES]:
+        return 'binary'
+    try:
+        return SourceFile(path=name, text=data.decode('utf-8'))
+    except UnicodeDecodeError:
+        return 'not_utf8'
+
+
 def read_source(root: Path, path: Path, name: PurePosixPath) -> SourceFile | SkipKind:
     target = path.resolve()
     if not target.is_relative_to(root):
@@ -79,12 +88,7 @@ def read_source(root: Path, path: Path, name: PurePosixPath) -> SourceFile | Ski
     data = read_limited(target)
     if isinstance(data, str):
         return data
-    if b'\0' in data[:SNIFF_BYTES]:
-        return 'binary'
-    try:
-        return SourceFile(path=name, text=data.decode('utf-8'))
-    except UnicodeDecodeError:
-        return 'not_utf8'
+    return decode_source(name, data)
 
 
 def list_names(base: Path) -> tuple[tuple[str, ...], int, bool]:
@@ -97,16 +101,22 @@ def list_names(base: Path) -> tuple[tuple[str, ...], int, bool]:
     return names, unreadable, tracked.failed
 
 
+def split_reads(
+    base: Path, names: tuple[str, ...], unreadable: int
+) -> tuple[tuple[SourceFile, ...], SkipTally]:
+    reads = [read_source(base, base.joinpath(name), PurePosixPath(name)) for name in sorted(names)]
+    files = tuple(read for read in reads if isinstance(read, SourceFile))
+    kinds = tuple(read for read in reads if isinstance(read, str) and read != 'not_a_file')
+    return files, tally_skips((*kinds, *('unreadable',) * unreadable))
+
+
 def walk(root: Path) -> Walk:
     if not root.exists():
         raise PathMissingError(path=root)
     resolved = root.resolve()
     names, unreadable, git_failed = list_names(resolved)
     base = resolved.parent if resolved.is_file() else resolved
-    reads = [read_source(base, base.joinpath(name), PurePosixPath(name)) for name in sorted(names)]
-    files = tuple(read for read in reads if isinstance(read, SourceFile))
-    kinds = tuple(read for read in reads if isinstance(read, str) and read != 'not_a_file')
-    skipped = tally_skips((*kinds, *('unreadable',) * unreadable))
+    files, skipped = split_reads(base, names, unreadable)
     return Walk(files=files, skipped=skipped, git_failed=git_failed, single_file=resolved.is_file())
 
 

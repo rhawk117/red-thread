@@ -6,6 +6,7 @@ from operator import attrgetter
 from typing import TYPE_CHECKING
 
 import msgspec
+from red_thread_core.frontmatter import FENCE, FenceReasons, decode_yaml, split_frontmatter
 
 from red_thread_casefile.domain import (
     BLOCK_CLOSE,
@@ -13,7 +14,6 @@ from red_thread_casefile.domain import (
     CASE_FILE,
     ENTRY_HEADING,
     ENTRY_MARK,
-    FENCE,
     NO_HEAD,
     ROUND_HEADING,
     ROUND_MARK,
@@ -49,7 +49,6 @@ from red_thread_casefile.schemas.lines import (
     Line,
     Numbered,
     cut_at,
-    find_closing,
     number_lines,
     split_lines,
     trim,
@@ -90,18 +89,25 @@ class CaseReading:
         return Ledger(entries=tuple(map(attrgetter('entry'), self.placed)))
 
 
+FENCE_REASONS = FenceReasons(
+    no_opening='it does not open with a --- line', no_closing='it has no closing --- line'
+)
+
+
 def decode_case(name: str, text: str) -> Case | MalformedFrontmatterError:
-    try:
-        return msgspec.yaml.decode(text, type=Case)
-    except msgspec.DecodeError as error:
-        return MalformedFrontmatterError(file=name, reason=str(error))
+    decoded = decode_yaml(text, Case)
+    if isinstance(decoded, msgspec.DecodeError):
+        return MalformedFrontmatterError(file=name, reason=str(decoded))
+
+    return decoded
 
 
 def decode_record(text: str, spot: Spot) -> EntryRecord | MalformedBlockError:
-    try:
-        return msgspec.yaml.decode(text, type=EntryRecord)
-    except msgspec.DecodeError as error:
-        return MalformedBlockError(spot=spot, reason=str(error))
+    decoded = decode_yaml(text, EntryRecord)
+    if isinstance(decoded, msgspec.DecodeError):
+        return MalformedBlockError(spot=spot, reason=str(decoded))
+
+    return decoded
 
 
 def read_front(source: LedgerSource) -> Front:
@@ -110,19 +116,14 @@ def read_front(source: LedgerSource) -> Front:
     if source.name != CASE_FILE:
         return Front(body=every)
 
-    if not lines or lines[0].strip() != FENCE:
-        reason = 'it does not open with a --- line'
-        return Front(
-            body=every, problems=(MalformedFrontmatterError(file=CASE_FILE, reason=reason),)
-        )
+    split = split_frontmatter(lines)
+    if isinstance(split, str):
+        problem = MalformedFrontmatterError(file=CASE_FILE, reason=FENCE_REASONS.explain(split))
+        kept = () if split == 'no_closing' else every
+        return Front(body=kept, problems=(problem,))
 
-    closing = find_closing(lines)
-    if closing is None:
-        reason = 'it has no closing --- line'
-        return Front(body=(), problems=(MalformedFrontmatterError(file=CASE_FILE, reason=reason),))
-
-    decoded = decode_case(CASE_FILE, '\n'.join(lines[1:closing]))
-    body = every[closing + 1 :]
+    decoded = decode_case(CASE_FILE, '\n'.join(split.front))
+    body = every[split.closing + 1 :]
     if isinstance(decoded, MalformedFrontmatterError):
         return Front(body=body, problems=(decoded,))
 

@@ -4,8 +4,6 @@ from dataclasses import dataclass
 from itertools import pairwise
 from typing import TYPE_CHECKING
 
-from red_thread_casefile.domain import FENCE
-
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
@@ -68,8 +66,3 @@ def trim(lines: tuple[Line, ...]) -> tuple[Line, ...]:
     if not filled:
         return ()
     return lines[filled[0] : filled[-1] + 1]
-
-
-def find_closing(lines: Sequence[str]) -> int | None:
-    found = (index for index, line in enumerate(lines) if index and line.strip() == FENCE)
-    return next(found, None)

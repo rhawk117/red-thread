@@ -7,7 +7,7 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 from red_thread_casefile.errors import MisquotedCiteError, SecretInEntryError
-from red_thread_core.redaction import create_secret_patterns
+from red_thread_core.redaction import create_secret_patterns, grow_inside, trim_edges
 
 from tests.casefile.ledger.builders import create_entry, create_valid_entry
 from tests.casefile.redaction.cases import LEAKED, ordinary_text_params, secret_params
@@ -62,6 +62,30 @@ def ordinary_text_cases() -> pytest.MarkDecorator:
     return pytest.mark.parametrize('text', ordinary_text_params())
 
 
+def edge_trim_cases() -> pytest.MarkDecorator:
+    return pytest.mark.parametrize(
+        ('text', 'span', 'expected'),
+        [
+            pytest.param('"abc"', (0, 5), (1, 4), id='quotes'),
+            pytest.param(' abc ', (0, 5), (1, 4), id='spaces'),
+            pytest.param('abc', (0, 3), (0, 3), id='nothing-to-trim'),
+            pytest.param('  ', (0, 2), (2, 2), id='all-edge'),
+        ],
+    )
+
+
+def inside_growth_cases() -> pytest.MarkDecorator:
+    return pytest.mark.parametrize(
+        ('text', 'span', 'expected'),
+        [
+            pytest.param('key=abc123;', (4, 7), (4, 10), id='grows-right-to-boundary'),
+            pytest.param('xabc y', (1, 4), (0, 4), id='grows-left-to-start'),
+            pytest.param('abc', (0, 3), (0, 3), id='whole-text'),
+            pytest.param(' a ', (1, 2), (1, 2), id='bounded-by-boundaries'),
+        ],
+    )
+
+
 class TestScrub:
     patterns = create_secret_patterns()
     benign_text = st.text(alphabet=string.ascii_lowercase + string.digits + ' ', max_size=200)
@@ -95,6 +119,22 @@ class TestScrub:
 
         assert scrubbed.hits == 3
         assert scrubbed.text.count('[REDACTED:') == 3
+
+
+class TestTrimEdges:
+    @edge_trim_cases()
+    def test_drops_edge_characters_from_both_ends(
+        self, text: str, span: tuple[int, int], expected: tuple[int, int]
+    ) -> None:
+        assert trim_edges(text, span) == expected
+
+
+class TestGrowInside:
+    @inside_growth_cases()
+    def test_extends_over_inside_characters_only(
+        self, text: str, span: tuple[int, int], expected: tuple[int, int]
+    ) -> None:
+        assert grow_inside(text, span) == expected
 
 
 @pytest.fixture
