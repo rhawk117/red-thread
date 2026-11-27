@@ -8,6 +8,7 @@ import pytest
 from red_thread_casefile.domain import ENTRY_KINDS
 from red_thread_casefile.packaged import read_asset as read_case_asset
 from red_thread_core.packaged import read_asset
+from red_thread_core.writers.page import PAGE_TEMPLATE
 
 from tests.casefile.pages.asset_names import ASSET_NAMES
 from tests.casefile.pages.html_reading import MERMAID_URL, TAILWIND_URL
@@ -38,7 +39,7 @@ def style_cases() -> pytest.MarkDecorator:
 def asset_url_cases() -> pytest.MarkDecorator:
     pinned = (TAILWIND_URL, MERMAID_URL)
     urls = [
-        AssetUrls(name=name, urls=pinned if name == 'page.html' else ()) for name in ASSET_NAMES
+        AssetUrls(name=name, urls=pinned if name == PAGE_TEMPLATE else ()) for name in ASSET_NAMES
     ]
     return pytest.mark.parametrize('scenario', as_params(urls))
 

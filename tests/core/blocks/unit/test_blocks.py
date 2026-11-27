@@ -1,7 +1,6 @@
 """The core blocks: each one is a Block, counts nothing, and writes both HTML and Markdown."""
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
 import pytest
 from hypothesis import given
@@ -15,12 +14,9 @@ from red_thread_core.documents import (
     Section,
     parse_line,
 )
-from red_thread_core.writers.markup import render
 
+from tests.core.pages.writing import render_block
 from tests.params import as_labelled_params
-
-if TYPE_CHECKING:
-    from string.templatelib import Template
 
 
 def core_block_cases() -> pytest.MarkDecorator:
@@ -37,8 +33,9 @@ def core_block_cases() -> pytest.MarkDecorator:
 class CountedBlock:
     count: int
 
-    def write_html(self) -> Template:
-        return t''
+    @property
+    def template(self) -> str:
+        return ''
 
     def write_markdown(self) -> tuple[str, ...]:
         return ()
@@ -55,7 +52,7 @@ class TestCoreBlocks:
 
     @core_block_cases()
     def test_a_core_block_writes_html_and_markdown(self, block: Block) -> None:
-        assert render(block.write_html())
+        assert render_block(block)
         assert block.write_markdown()
 
     def test_a_listing_writes_a_fence_named_for_its_language(self) -> None:

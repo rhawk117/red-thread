@@ -4,9 +4,9 @@ import re
 
 from red_thread_core.documents import Document, Link, Paragraph, Section, Term, parse_line
 from red_thread_core.writers.markdown import MarkdownWriter
-from red_thread_core.writers.page import HtmlPage
 
 from tests.casefile.pages.html_reading import find_tags
+from tests.core.pages.writing import render_core_page
 
 COLUMNS = re.compile(r'<div class="columns">(.*?)</div>\n(?=<details|</main>)', re.DOTALL)
 SECTION_TITLE = re.compile(r'<h2>(.*?)</h2>')
@@ -19,7 +19,7 @@ def create_section(title: str, *, column: bool = False) -> Section:
 
 
 def render(document: Document) -> str:
-    return HtmlPage(document=document).render()
+    return render_core_page(document)
 
 
 def list_column_titles(page: str) -> list[list[str]]:

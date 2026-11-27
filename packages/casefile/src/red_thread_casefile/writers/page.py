@@ -1,19 +1,30 @@
-"""The filters a case file page offers: its entries by kind and by thread."""
+"""The case file page: its filters by entry kind and by thread, drawn with the entry templates."""
 
 from collections import Counter
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from red_thread_core.writers.page import Chip, HtmlPage
+from red_thread_core.writers.markup import create_page_environment
+from red_thread_core.writers.page import Chip, HtmlPage, PageWriter
 
 from red_thread_casefile.charts import MAIN_LEDGER
 from red_thread_casefile.documents import list_document_entries
+from red_thread_casefile.domain import date_of
+from red_thread_casefile.packaged import CASEFILE_PACKAGE
 
 if TYPE_CHECKING:
     from red_thread_core.documents import Document
     from red_thread_core.writers.page import ChipRow
 
     from red_thread_casefile.documents import EntryNode
+    from red_thread_casefile.policy import Finding
     from red_thread_casefile.views import Heading
+
+
+def label_state(finding: Finding) -> str:
+    if finding.state != 'moved' or finding.moved_to is None:
+        return finding.state
+    return f'moved to line {finding.moved_to}'
 
 
 def order_name(name: str) -> tuple[int, str]:
@@ -46,6 +57,17 @@ def list_entry_filters(document: Document, headings: tuple[Heading, ...]) -> tup
     return (list_kind_chips(entries, headings), list_thread_chips(entries))
 
 
-def render_case_page(document: Document, headings: tuple[Heading, ...]) -> str:
-    filters = list_entry_filters(document, headings)
-    return HtmlPage(document=document, filters=filters).render()
+@dataclass(slots=True, kw_only=True, frozen=True)
+class CasePageWriter:
+    writer: PageWriter
+    headings: tuple[Heading, ...]
+
+    def render(self, document: Document) -> str:
+        filters = list_entry_filters(document, self.headings)
+        return self.writer.render(HtmlPage(document=document, filters=filters))
+
+
+def create_case_page_writer(headings: tuple[Heading, ...]) -> CasePageWriter:
+    environment = create_page_environment(CASEFILE_PACKAGE)
+    environment.filters.update(state_label=label_state, date_of=date_of)
+    return CasePageWriter(writer=PageWriter(environment=environment), headings=headings)

@@ -12,6 +12,7 @@ from tests.casefile.ledger.builders import QUEUE_PATH, create_entry, create_fram
 from tests.casefile.ledger.directory import create_framed_directory_harness
 from tests.casefile.ledger.memory import FixedClock, MemoryPageStore
 from tests.casefile.lenses.cases import QUEUE_CITE, QUEUE_QUOTE
+from tests.casefile.writers.reading import load_case_page_writer
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -86,7 +87,12 @@ def create_press_harness() -> PressHarness:
     return PressHarness(
         case=case,
         pages=pages,
-        press=Press(record=case.casefile, pages=pages, book=load_lens_book()),
+        press=Press(
+            record=case.casefile,
+            pages=pages,
+            book=load_lens_book(),
+            renderer=load_case_page_writer(),
+        ),
     )
 
 

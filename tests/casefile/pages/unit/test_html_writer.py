@@ -1,12 +1,12 @@
 """HtmlPage: escaping in every place a value lands, links, copy buttons, code and content."""
 
 from dataclasses import replace
-from html import escape
 from typing import TYPE_CHECKING
 
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
+from markupsafe import escape
 from red_thread_casefile.documents import Citation
 from red_thread_casefile.packaged import load_wording
 from red_thread_core.documents import Document, Paragraph, Section, parse_line

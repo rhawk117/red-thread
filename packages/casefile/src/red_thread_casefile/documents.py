@@ -11,11 +11,8 @@ from red_thread_core.util import squeeze
 from red_thread_casefile.domain import Cite
 from red_thread_casefile.views import Heading, describe_lead, get_shown_verdict
 from red_thread_casefile.writers.markdown import write_markdown_entry
-from red_thread_casefile.writers.markup import write_entries
 
 if TYPE_CHECKING:
-    from string.templatelib import Template
-
     from red_thread_core.documents import Block, Document, Line, Section
 
     from red_thread_casefile.domain import Entry, EntryKind, Verdict
@@ -23,6 +20,8 @@ if TYPE_CHECKING:
     from red_thread_casefile.views import Annotator
 
 type NoteKind = Literal['rests_on', 'refuted_by', 'retires', 'retired_by', 'urgency', 'source']
+
+ENTRIES_TEMPLATE = 'templates/blocks/entries.html.j2'
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -92,8 +91,9 @@ class EntryList:
     def count(self) -> int:
         return len(self.entries)
 
-    def write_html(self) -> Template:
-        return write_entries(self.entries)
+    @property
+    def template(self) -> str:
+        return ENTRIES_TEMPLATE
 
     def write_markdown(self) -> tuple[str, ...]:
         return tuple(map(write_markdown_entry, self.entries))

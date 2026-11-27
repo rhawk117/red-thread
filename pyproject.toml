@@ -32,7 +32,11 @@ test = [
     "pytest-randomly>=5.0.0",
     "pytest-xdist>=3.8.0",
 ]
-dev = [{ include-group = "check" }, { include-group = "test" }]
+dev = [
+    { include-group = "check" },
+    { include-group = "test" },
+    "djlint>=1.54.2",
+]
 security = ["pysentry-rs>=0.5.0"]
 
 

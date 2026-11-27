@@ -41,9 +41,12 @@ class CaseFiles:
         )
 
     def open_press(self, directory: Path) -> Press:
+        from red_thread_casefile.writers.page import create_case_page_writer  # noqa: PLC0415 - jinja2 costs about 150 ms to import, so only the commands that draw a page load it
+
         resolved = directory.resolve()
         return Press(
             record=self.bind(resolved),
             pages=DirectoryPageStore(directory=resolved),
             book=self.book,
+            renderer=create_case_page_writer(self.wording.headings),
         )

@@ -9,12 +9,11 @@ from red_thread_core.writers.markdown import MarkdownWriter
 from red_thread_casefile.boards import BoardPage
 from red_thread_casefile.lenses import Composer, Edition, Selection, count_lines
 from red_thread_casefile.views import Board
-from red_thread_casefile.writers.page import render_case_page
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from red_thread_core.documents import Document
+    from red_thread_core.documents import Document, PageRenderer
     from red_thread_core.store import PageStore
 
     from red_thread_casefile.lenses import Lens, LensBook, LensName
@@ -40,6 +39,7 @@ class Press:
     record: CaseFile
     pages: PageStore
     book: LensBook
+    renderer: PageRenderer
 
     def gather(self) -> Edition:
         record = self.record.load()
@@ -69,7 +69,7 @@ class Press:
         return self.write_page(BOARD_PAGE, document)
 
     def write_page(self, name: str, document: Document) -> Path:
-        return self.pages.write(name, render_case_page(document, self.record.wording.headings))
+        return self.pages.write(name, self.renderer.render(document))
 
     def scrub_selection(self, selection: Selection) -> Selection:
         return selection.replace_with(
