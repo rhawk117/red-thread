@@ -4,6 +4,8 @@ from itertools import chain
 from operator import attrgetter
 from typing import TYPE_CHECKING
 
+from red_thread_core.dto import DTO
+
 from red_thread_navigate.symbols.domain import FileSymbols, Reference, Symbol
 from red_thread_navigate.util import split_lines
 
@@ -18,8 +20,7 @@ type Definition = ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef
 PROPERTY_ACCESSORS = frozenset({'setter', 'getter', 'deleter'})
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Scope:
+class Scope(DTO, frozen=True, kw_only=True, gc=False):
     qualified_name: str | None
     in_class: bool
 

@@ -1,6 +1,5 @@
 """Documents for the page and Markdown writers, with one field carrying the text under test."""
 
-from dataclasses import replace
 from typing import TYPE_CHECKING, Literal, cast, get_args
 
 import pytest
@@ -74,7 +73,7 @@ def payload_params() -> list[ParameterSet]:
 def create_marked_entry(
     *, ref: str = 'e1', kind: EntryKind = 'known', thread: str | None = None
 ) -> EntryNode:
-    return replace(create_entry_node(ref=ref), kind=kind, thread=thread)
+    return create_entry_node(ref=ref).replace_with(kind=kind, thread=thread)
 
 
 def create_finding(state: str) -> Finding:
@@ -82,7 +81,7 @@ def create_finding(state: str) -> Finding:
 
 
 def create_cited_entry(citation: Citation) -> EntryNode:
-    return replace(create_marked_entry(thread='T1'), citation=citation)
+    return create_marked_entry(thread='T1').replace_with(citation=citation)
 
 
 def create_appendix(title: str, entry: EntryNode) -> tuple[Section, ...]:
@@ -91,58 +90,58 @@ def create_appendix(title: str, entry: EntryNode) -> tuple[Section, ...]:
 
 def create_document_carrying(field: DocumentField, text: str) -> Document:
     citation = Citation(target=CITED_PATH)
-    entry = replace(
-        create_cited_entry(citation),
+    entry = create_cited_entry(citation).replace_with(
         claim=parse_line('plain text'),
         notes=(load_wording().write_note('rests_on', 'plain'),),
         lead='1111111',
     )
-    other = replace(create_entry_node('other text', 'e2'), kind='open')
-    retired = replace(create_entry_node('gone', 'e9'), kind='open')
+    other = create_entry_node('other text', 'e2').replace_with(kind='open')
+    retired = create_entry_node('gone', 'e9').replace_with(kind='open')
     base = create_document(entry, other)
     section = base.sections[0]
     chart = Section(title='Map', blocks=(Flowchart(lines=(text,)),))
     variants = {
-        'title': replace(base, title=text),
-        'summary': replace(base, summary=(parse_line(text),)),
-        'section-title': replace(base, sections=(replace(section, title=text),)),
+        'title': base.replace_with(title=text),
+        'summary': base.replace_with(summary=(parse_line(text),)),
+        'section-title': base.replace_with(sections=(section.replace_with(title=text),)),
         'prose': create_document(entry, other, prose=(text,)),
-        'item-text': create_document(replace(entry, claim=parse_line(text)), other),
-        'item-cite': create_document(replace(entry, citation=Citation(target=text)), other),
+        'item-text': create_document(entry.replace_with(claim=parse_line(text)), other),
+        'item-cite': create_document(entry.replace_with(citation=Citation(target=text)), other),
         'item-url-cite': create_document(
-            replace(entry, citation=Citation(target=f'{PLAIN_URL}/{text}')), other
+            entry.replace_with(citation=Citation(target=f'{PLAIN_URL}/{text}')), other
         ),
-        'item-ref': create_document(replace(entry, ref=text), other),
+        'item-ref': create_document(entry.replace_with(ref=text), other),
         'item-note': create_document(
-            replace(entry, notes=(load_wording().write_note('source', text),)), other
+            entry.replace_with(notes=(load_wording().write_note('source', text),)), other
         ),
-        'item-flag': create_document(replace(entry, lead=text), other),
-        'item-kind': create_document(replace(entry, kind=cast('EntryKind', text)), other),
-        'item-thread': create_document(replace(entry, thread=text), other),
-        'item-diagram': create_document(replace(entry, diagram=text), other),
-        'map-line': replace(base, appendix=(chart,)),
-        'item-verdict': create_document(replace(entry, verdict=cast('Verdict', text)), other),
-        'item-at': create_document(replace(entry, at=f'{STAMP_DAY}{text}'), other),
+        'item-flag': create_document(entry.replace_with(lead=text), other),
+        'item-kind': create_document(entry.replace_with(kind=cast('EntryKind', text)), other),
+        'item-thread': create_document(entry.replace_with(thread=text), other),
+        'item-diagram': create_document(entry.replace_with(diagram=text), other),
+        'map-line': base.replace_with(appendix=(chart,)),
+        'item-verdict': create_document(entry.replace_with(verdict=cast('Verdict', text)), other),
+        'item-at': create_document(entry.replace_with(at=f'{STAMP_DAY}{text}'), other),
         'item-quote': create_document(
-            replace(entry, citation=replace(citation, quote=text)), other
+            entry.replace_with(citation=citation.replace_with(quote=text)), other
         ),
         'item-state': create_document(
-            replace(entry, citation=replace(citation, finding=create_finding(text))), other
+            entry.replace_with(citation=citation.replace_with(finding=create_finding(text))), other
         ),
-        'section-note': replace(base, sections=(replace(section, note=text),)),
-        'section-kind': replace(base, sections=(replace(section, kind=cast('EntryKind', text)),)),
-        'fact-label': replace(base, facts=(Fact(label=text, value=parse_value('plain')),)),
-        'fact-value': replace(base, facts=(Fact(label='Label', value=parse_value(text)),)),
-        'fact-url-value': replace(
-            base, facts=(Fact(label='Label', value=parse_value(f'{PLAIN_URL}/{text}')),)
+        'section-note': base.replace_with(sections=(section.replace_with(note=text),)),
+        'section-kind': base.replace_with(
+            sections=(section.replace_with(kind=cast('EntryKind', text)),)
         ),
-        'retired-text': replace(
-            base, appendix=create_appendix('Retired', replace(retired, claim=parse_line(text)))
+        'fact-label': base.replace_with(facts=(Fact(label=text, value=parse_value('plain')),)),
+        'fact-value': base.replace_with(facts=(Fact(label='Label', value=parse_value(text)),)),
+        'fact-url-value': base.replace_with(
+            facts=(Fact(label='Label', value=parse_value(f'{PLAIN_URL}/{text}')),)
         ),
-        'retired-note': replace(
-            base,
+        'retired-text': base.replace_with(
+            appendix=create_appendix('Retired', retired.replace_with(claim=parse_line(text)))
+        ),
+        'retired-note': base.replace_with(
             appendix=create_appendix(
-                'Retired', replace(retired, notes=(load_wording().write_note('source', text),))
+                'Retired', retired.replace_with(notes=(load_wording().write_note('source', text),))
             ),
         ),
     }

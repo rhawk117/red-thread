@@ -1,7 +1,6 @@
 """The rendered page's promise: two pinned CDN scripts, its own inline script and styles."""
 
 import re
-from dataclasses import replace
 from typing import TYPE_CHECKING
 
 import pytest
@@ -48,7 +47,7 @@ def create_rich_document() -> Document:
         lead='1111111',
         diagram='flowchart TD\n  A --> B',
     )
-    other = replace(create_entry_node('a question', 'e2'), kind='open')
+    other = create_entry_node('a question', 'e2').replace_with(kind='open')
     blocks = (Paragraph(line=parse_line('a line of prose')), EntryList(entries=(entry, other)))
     map_lines = ('  subgraph main["main ledger"]', '    n0["e1 known: a claim"]:::k_known', '  end')
     chart = Flowchart(lines=(read_asset('map.mmd').rstrip(), *map_lines))

@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
 
+from red_thread_core.dto import DTO
+
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
@@ -20,8 +22,7 @@ class FenceReasons:
         return self.no_opening if problem == 'no_opening' else self.no_closing
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class FrontSplit:
+class FrontSplit(DTO, frozen=True, kw_only=True, gc=False):
     front: tuple[str, ...]
     closing: int
 

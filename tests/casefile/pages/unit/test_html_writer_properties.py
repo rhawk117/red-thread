@@ -1,7 +1,6 @@
 """HtmlPage: the text of every field comes back from the page, and only page markup appears."""
 
 import re
-from dataclasses import replace
 from html import unescape
 from typing import TYPE_CHECKING, get_args
 
@@ -248,7 +247,7 @@ class TestHtmlPageProperties:
 
     @given(url=urls)
     def test_a_url_cite_is_one_link_to_that_url_and_shows_it(self, url: str) -> None:
-        entry = replace(create_entry_node('claim'), citation=Citation(target=url))
+        entry = create_entry_node('claim').replace_with(citation=Citation(target=url))
 
         page = create_page_of(EntryList(entries=(entry,)))
 

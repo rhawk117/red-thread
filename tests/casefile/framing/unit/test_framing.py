@@ -1,7 +1,6 @@
 """Framing a case over memory fakes: its id, its record and its refusal to reuse a case."""
 
 import re
-from dataclasses import replace
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
 
@@ -93,7 +92,7 @@ class TestFrame:
         first = case_harness.casefile.frame(self.framing)
 
         with pytest.raises(CaseExistsError):
-            case_harness.casefile.frame(replace(self.framing, target='something else'))
+            case_harness.casefile.frame(self.framing.replace_with(target='something else'))
 
         assert case_harness.casefile.read().case == first
         assert case_harness.entries == ()

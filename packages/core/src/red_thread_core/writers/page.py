@@ -7,6 +7,7 @@ from operator import attrgetter
 from string import Template as PageTemplate
 from typing import TYPE_CHECKING
 
+from red_thread_core.dto import DTO
 from red_thread_core.elements import element, render_fragment
 from red_thread_core.packaged import read_asset
 from red_thread_core.writers.markup import (
@@ -27,8 +28,7 @@ MIN_CONTENTS = 2
 TERMS_TITLE = 'What the words on this page mean'
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Chip:
+class Chip(DTO, frozen=True, kw_only=True, gc=False):
     group: str
     value: str
     label: str

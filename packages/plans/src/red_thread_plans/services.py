@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from red_thread_casefile.domain import date_of, shorten_head
 from red_thread_casefile.services.casefile import EXCLUDED
+from red_thread_core.dto import DTO
 
 from red_thread_plans.domain import Frontmatter, find_refs
 from red_thread_plans.errors import (
@@ -29,8 +30,7 @@ if TYPE_CHECKING:
     from red_thread_plans.store import CaseShelf, PlanRepository
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Checked:
+class Checked(DTO, frozen=True, kw_only=True, gc=False):
     criteria: int
     entries: int
 

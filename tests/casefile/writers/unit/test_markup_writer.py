@@ -1,6 +1,5 @@
 """HtmlWriter over the tree: what an entry, a block and a section look like on the page."""
 
-from dataclasses import replace
 from html import escape
 
 import pytest
@@ -44,7 +43,7 @@ def payload_cases() -> pytest.MarkDecorator:
 
 class TestEntry:
     def test_an_entry_carries_its_ref_kind_and_thread(self) -> None:
-        entry = replace(create_entry_node('claim', 'T1.e2'), kind='open', thread='T1')
+        entry = create_entry_node('claim', 'T1.e2').replace_with(kind='open', thread='T1')
 
         page = render_page(create_document(entry))
 
@@ -59,7 +58,7 @@ class TestEntry:
         assert list_claim_markup(page) == ['run <code>make</code> first']
 
     def test_a_verdict_is_a_badge_before_the_claim(self) -> None:
-        entry = replace(create_entry_node('maybe so'), verdict='INFERRED')
+        entry = create_entry_node('maybe so').replace_with(verdict='INFERRED')
 
         page = render_page(create_document(entry))
 
@@ -71,14 +70,14 @@ class TestEntry:
         finding = Finding(ref='e1', cite=PATH, state='moved', moved_to=9)
         citation = Citation(target=PATH, quote='sleep(5)', finding=finding)
 
-        page = render_page(create_document(replace(create_entry_node(), citation=citation)))
+        page = render_page(create_document(create_entry_node().replace_with(citation=citation)))
 
         (state,) = list_spans(page, 'state')
         assert state.body == 'moved to line 9'
         assert list_cited_quotes(page) == ['sleep(5)']
 
     def test_a_url_citation_is_a_link(self) -> None:
-        entry = replace(create_entry_node(), citation=Citation(target=URL))
+        entry = create_entry_node().replace_with(citation=Citation(target=URL))
 
         page = render_page(create_document(entry))
 
@@ -89,7 +88,7 @@ class TestEntry:
             load_wording().write_note('retired_by', 'e4'),
             load_wording().write_note('source', 'scout'),
         )
-        entry = replace(create_entry_node(), lead='1111111', notes=notes)
+        entry = create_entry_node().replace_with(lead='1111111', notes=notes)
 
         page = render_page(create_document(entry))
 
@@ -104,7 +103,7 @@ class TestEntry:
         ]
 
     def test_a_diagram_is_drawn_under_the_claim(self) -> None:
-        entry = replace(create_entry_node(), diagram='flowchart TD\n  A --> B')
+        entry = create_entry_node().replace_with(diagram='flowchart TD\n  A --> B')
 
         assert list_mermaid(render_page(create_document(entry))) == ['flowchart TD\n  A --> B']
 
@@ -178,8 +177,7 @@ class TestFacts:
 class TestEscaping:
     def create_document_carrying(self, text: str) -> Document:
         citation = Citation(target=text, quote=text)
-        entry = replace(
-            create_entry_node(text),
+        entry = create_entry_node(text).replace_with(
             citation=citation,
             notes=(load_wording().write_note('source', text),),
             diagram=text,

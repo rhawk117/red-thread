@@ -1,20 +1,16 @@
 """The rungs of a slice: whole code or an outline, then labels, with notes last."""
 
-from dataclasses import dataclass
+from pathlib import PurePosixPath
 from textwrap import indent
-from typing import TYPE_CHECKING
+
+from red_thread_core.dto import DTO
 
 from red_thread_navigate.budget import fit_notes
+from red_thread_navigate.symbols.domain import Symbol
 from red_thread_navigate.util import rung, span, symbol_address
 
-if TYPE_CHECKING:
-    from pathlib import PurePosixPath
 
-    from red_thread_navigate.symbols.domain import Symbol
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Found:
+class Found(DTO, frozen=True, kw_only=True, gc=False):
     path: PurePosixPath
     symbol: Symbol
     children: tuple[Symbol, ...]

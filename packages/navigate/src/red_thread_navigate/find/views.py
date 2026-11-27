@@ -1,25 +1,20 @@
 """The rungs of a find: definitions then references, then per-file counts, then counts alone."""
 
 from collections import Counter
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from pathlib import PurePosixPath
 
+from red_thread_core.dto import DTO
+
+from red_thread_navigate.symbols.domain import Symbol
 from red_thread_navigate.util import plural, rung, span, symbol_address
 
-if TYPE_CHECKING:
-    from pathlib import PurePosixPath
 
-    from red_thread_navigate.symbols.domain import Symbol
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Definition:
+class Definition(DTO, frozen=True, kw_only=True, gc=False):
     path: PurePosixPath
     symbol: Symbol
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Occurrence:
+class Occurrence(DTO, frozen=True, kw_only=True, gc=False):
     path: PurePosixPath
     line: int
 

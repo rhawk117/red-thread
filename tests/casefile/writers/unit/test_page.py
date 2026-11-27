@@ -1,6 +1,5 @@
 """HtmlPage: the toolbar's chips, the header's summary and facts, and the order of the panels."""
 
-from dataclasses import replace
 from typing import TYPE_CHECKING
 
 from red_thread_casefile.documents import EntryList
@@ -20,7 +19,7 @@ if TYPE_CHECKING:
 
 def create_threaded_entry(ref: str) -> EntryNode:
     thread = 'T1' if '.' in ref else None
-    return replace(create_entry_node(f'claim {ref}', ref), thread=thread)
+    return create_entry_node(f'claim {ref}', ref).replace_with(thread=thread)
 
 
 def create_section(title: str, *refs: str) -> Section:
@@ -33,7 +32,7 @@ class TestToolbar:
         document = Document(
             title='t',
             sections=(create_section('Known', 'e1', 'T1.e1'),),
-            appendix=(replace(create_section('Retired', 'e2', 'e3'), kind=None),),
+            appendix=(create_section('Retired', 'e2', 'e3').replace_with(kind=None),),
         )
 
         groups = list_chip_groups(render_page(document))

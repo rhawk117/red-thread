@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from operator import attrgetter
 from typing import TYPE_CHECKING, Literal
 
+from red_thread_core.dto import DTO
 from red_thread_core.util import squeeze
 
 from red_thread_casefile.domain import OWNER, PAGE_URL_SCHEME
@@ -144,8 +145,7 @@ class SupersedePolicy:
         return None
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Finding:
+class Finding(DTO, frozen=True, kw_only=True, gc=False):
     ref: str
     cite: str
     state: CiteState

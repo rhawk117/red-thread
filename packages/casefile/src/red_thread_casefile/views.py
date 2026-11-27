@@ -82,8 +82,7 @@ class Annotator:
         return [*self.list_lead_flags(entry), *list_cite_flags(self.find(entry))]
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class BoardOptions:
+class BoardOptions(DTO, frozen=True, kw_only=True, gc=False):
     per_section: int = 6
 
     @classmethod

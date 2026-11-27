@@ -106,7 +106,9 @@ def split_reads(
 ) -> tuple[tuple[SourceFile, ...], SkipTally]:
     reads = [read_source(base, base.joinpath(name), PurePosixPath(name)) for name in sorted(names)]
     files = tuple(read for read in reads if isinstance(read, SourceFile))
-    kinds = tuple(read for read in reads if isinstance(read, str) and read != 'not_a_file')
+    kinds = tuple(
+        read for read in reads if not isinstance(read, SourceFile) and read != 'not_a_file'
+    )
     return files, tally_skips((*kinds, *('unreadable',) * unreadable))
 
 

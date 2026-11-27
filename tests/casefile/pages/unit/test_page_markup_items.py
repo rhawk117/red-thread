@@ -1,6 +1,5 @@
 """The page: what one entry shows, its verdict, citation state, quote and stamps."""
 
-from dataclasses import replace
 from typing import TYPE_CHECKING
 
 import pytest
@@ -44,7 +43,7 @@ def create_finding(state: CiteState, moved_to: int | None = None) -> Finding:
 
 
 def create_cited(citation: Citation) -> EntryNode:
-    return replace(create_entry_node('a'), citation=citation)
+    return create_entry_node('a').replace_with(citation=citation)
 
 
 def create_path_cited(state: CiteState, moved_to: int | None = None) -> EntryNode:
@@ -52,7 +51,7 @@ def create_path_cited(state: CiteState, moved_to: int | None = None) -> EntryNod
 
 
 def create_stamped(round_number: int) -> EntryNode:
-    return replace(create_entry_node('a'), round=round_number, at=MOMENT)
+    return create_entry_node('a').replace_with(round=round_number, at=MOMENT)
 
 
 def verdict_cases() -> pytest.MarkDecorator:
@@ -66,7 +65,7 @@ def state_cases() -> pytest.MarkDecorator:
 class TestVerdictBadge:
     @verdict_cases()
     def test_a_verdict_is_a_badge_that_starts_the_claim(self, verdict: Verdict) -> None:
-        page = render_entry(replace(create_entry_node('maybe so'), verdict=verdict))
+        page = render_entry(create_entry_node('maybe so').replace_with(verdict=verdict))
 
         (badge,) = list_spans(page, 'verdict')
         assert (badge.body, badge.attributes) == (
@@ -153,8 +152,8 @@ class TestQuote:
 
 class TestStamps:
     def test_the_round_and_the_day_are_the_first_notes_and_the_time_is_kept_whole(self) -> None:
-        entry = replace(
-            create_stamped(2), lead='1111111', notes=(load_wording().write_note('source', 'n'),)
+        entry = create_stamped(2).replace_with(
+            lead='1111111', notes=(load_wording().write_note('source', 'n'),)
         )
 
         page = render_entry(entry)

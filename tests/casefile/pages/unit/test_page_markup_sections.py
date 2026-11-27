@@ -1,6 +1,5 @@
 """The page: the facts, the section header, the map and the retired fold."""
 
-from dataclasses import replace
 from typing import TYPE_CHECKING
 
 from red_thread_casefile.documents import EntryList
@@ -37,7 +36,7 @@ RETIRED = 'Retired'
 
 def create_threaded(count: int, first: int = 1) -> tuple[EntryNode, ...]:
     return tuple(
-        replace(create_entry_node(f'claim {number}', f'e{number}'), kind='open')
+        create_entry_node(f'claim {number}', f'e{number}').replace_with(kind='open')
         for number in range(first, first + count)
     )
 

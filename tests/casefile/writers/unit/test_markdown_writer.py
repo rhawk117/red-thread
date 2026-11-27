@@ -1,6 +1,5 @@
 """MarkdownWriter over the tree: how an entry, its cite and its ref are written, and the layout."""
 
-from dataclasses import replace
 from typing import TYPE_CHECKING
 
 import pytest
@@ -36,8 +35,8 @@ class TestEntryLine:
     def test_entry_is_text_then_cite_then_ref_at_the_end_of_the_line(
         self, shape: CiteShape
     ) -> None:
-        entry = replace(
-            create_entry_node('the sleep blocks', 'e7'), citation=Citation(target=shape.cite)
+        entry = create_entry_node('the sleep blocks', 'e7').replace_with(
+            citation=Citation(target=shape.cite)
         )
 
         assert list_item_lines(create_document(entry)) == [
@@ -56,8 +55,7 @@ class TestEntryLine:
 
     def test_flags_cite_flags_and_notes_are_in_parentheses_in_that_order(self) -> None:
         finding = Finding(ref='e1', cite='src/a.py:1', state='changed')
-        entry = replace(
-            create_entry_node('claim'),
+        entry = create_entry_node('claim').replace_with(
             citation=Citation(target='src/a.py:1', finding=finding),
             lead='1111111',
             notes=(load_wording().write_note('rests_on', 'a page'),),

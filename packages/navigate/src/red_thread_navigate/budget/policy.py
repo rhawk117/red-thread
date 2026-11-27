@@ -4,6 +4,8 @@ from dataclasses import dataclass, field
 from itertools import takewhile
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
+from red_thread_core.dto import DTO
+
 from red_thread_navigate.budget.errors import BudgetBelowMinimumError, NoRungsError
 
 if TYPE_CHECKING:
@@ -16,8 +18,7 @@ NOTES_SHARE = 3
 ELLIPSIS = '...'
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Fitted:
+class Fitted(DTO, frozen=True, kw_only=True, gc=False):
     text: str
     rung: int
     kept: int

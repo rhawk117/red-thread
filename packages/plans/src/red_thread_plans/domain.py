@@ -1,17 +1,16 @@
 """A ticket's plan: the frontmatter the scripts read and write, and the parts of its body."""
 
 import re
-from dataclasses import dataclass
 from datetime import date
 from itertools import chain
 from typing import TYPE_CHECKING, Literal
 
 import msgspec
 from red_thread_core.dto import DTO
+from red_thread_core.lines import Line
 
 if TYPE_CHECKING:
     from red_thread_casefile.domain import EntryKind
-    from red_thread_core.lines import Line
 
 type Status = Literal['draft', 'accepted', 'done']
 type Lights = Literal['on', 'off']
@@ -52,8 +51,7 @@ def find_refs(line: Line) -> tuple[str, ...]:
     return tuple(match.group() for match in REF.finditer(line.text))
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Section:
+class Section(DTO, frozen=True, kw_only=True, gc=False):
     title: str
     number: int
     lines: tuple[Line, ...] = ()
@@ -67,8 +65,7 @@ class Section:
         return tuple(line for line in self.lines if is_item(line))
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class PlanDocument:
+class PlanDocument(DTO, frozen=True, kw_only=True, gc=False):
     frontmatter: Frontmatter
     sections: tuple[Section, ...] = ()
 
@@ -85,8 +82,7 @@ class PlanDocument:
         return () if acceptance is None else acceptance.items
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Opening:
+class Opening(DTO, frozen=True, kw_only=True, gc=False):
     id: str
     title: str
     case_ids: tuple[str, ...]

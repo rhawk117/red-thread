@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from itertools import chain
 from typing import TYPE_CHECKING
 
+from red_thread_core.dto import DTO
 from red_thread_core.redaction import create_secret_patterns
 
 from red_thread_casefile.domain import (
@@ -11,6 +12,7 @@ from red_thread_casefile.domain import (
     TEXT_FIELDS,
     Capabilities,
     Case,
+    CaseKind,
     Cite,
     is_current,
 )
@@ -33,7 +35,7 @@ if TYPE_CHECKING:
     from red_thread_core.store import Clock, SourceTree
 
     from red_thread_casefile.documents import Wording
-    from red_thread_casefile.domain import CaseKind, CaseRecord, Entry, Ledger, Placed
+    from red_thread_casefile.domain import CaseRecord, Entry, Ledger, Placed
     from red_thread_casefile.errors import CaseFileError
     from red_thread_casefile.schemas import CaseReading
     from red_thread_casefile.store import CaseRepository
@@ -43,8 +45,7 @@ type Problems = tuple[CaseFileError, ...]
 EXCLUDED = f'{STATE_DIRECTORY}/'
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Framing:
+class Framing(DTO, frozen=True, kw_only=True, gc=False):
     id: str
     target: str
     kind: CaseKind
@@ -52,8 +53,7 @@ class Framing:
     publish: bool = False
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Checked:
+class Checked(DTO, frozen=True, kw_only=True, gc=False):
     problems: Problems
     findings: tuple[Finding, ...]
 

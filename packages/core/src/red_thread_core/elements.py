@@ -1,10 +1,11 @@
 """HTML built step by step: each call returns a new element, and render escapes every value."""
 
 import re
-from dataclasses import dataclass, replace
 from html import escape
 from itertools import pairwise
 from typing import TYPE_CHECKING
+
+from red_thread_core.dto import DTO
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
@@ -66,21 +67,20 @@ def render_nested(node: Node, depth: int) -> str:
     return node.render(depth)
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Element:
+class Element(DTO, frozen=True, kw_only=True, gc=False):
     tag: str
     attrs: tuple[Attribute, ...] = ()
     children: tuple[Node, ...] = ()
 
     def attributes(self, attrs: Mapping[str, AttributeValue]) -> Element:
-        return replace(self, attrs=(*self.attrs, *attrs.items()))
+        return self.replace_with(attrs=(*self.attrs, *attrs.items()))
 
     def nest(self, *children: Node | None) -> Element:
         kept = tuple(child for child in children if child is not None)
-        return replace(self, children=(*self.children, *kept))
+        return self.replace_with(children=(*self.children, *kept))
 
     def set_text(self, text: object) -> Element:
-        return replace(self, children=(str(text),))
+        return self.replace_with(children=(str(text),))
 
     @property
     def opening(self) -> str:

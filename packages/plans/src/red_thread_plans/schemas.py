@@ -3,7 +3,7 @@
 from typing import TYPE_CHECKING
 
 from red_thread_core.errors import MalformedDocumentError
-from red_thread_core.frontmatter import FENCE, FenceReasons, split_frontmatter
+from red_thread_core.frontmatter import FENCE, FenceReasons, FrontSplit, split_frontmatter
 from red_thread_core.lines import cut_at, number_lines
 
 from red_thread_plans.domain import (
@@ -59,7 +59,7 @@ def decode_frontmatter(codec: Codec, text: str) -> Frontmatter | PlanShapeError:
 def read_plan(codec: Codec, text: str) -> PlanDocument | PlanShapeError:
     lines = text.splitlines()
     split = split_frontmatter(lines)
-    if isinstance(split, str):
+    if not isinstance(split, FrontSplit):
         return PlanShapeError(reason=FENCE_REASONS.explain(split))
 
     frontmatter = decode_frontmatter(codec, '\n'.join(split.front))

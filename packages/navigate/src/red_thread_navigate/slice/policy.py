@@ -2,7 +2,9 @@
 
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from pathlib import PurePosixPath
+
+from red_thread_core.dto import DTO
 
 from red_thread_navigate.budget import cut_to_budget, estimate_tokens
 from red_thread_navigate.slice.util import (
@@ -13,17 +15,13 @@ from red_thread_navigate.slice.util import (
     shorten,
 )
 
-if TYPE_CHECKING:
-    from pathlib import PurePosixPath
-
 OUTSIDE_ROOT_HINT = 'use a path under the root'
 MAP_HINT = 'map <path> to see the names there'
 
 type CutSteps = Callable[[str, str], Iterator[tuple[int, int]]]
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Refused:
+class Refused(DTO, frozen=True, kw_only=True, gc=False):
     path: PurePosixPath
     budget: int | None = None
 

@@ -4,28 +4,27 @@ from dataclasses import dataclass
 from itertools import chain
 from typing import TYPE_CHECKING, Literal
 
-from red_thread_core.documents import Term, parse_line
+from red_thread_core.documents import Line, Term, parse_line
 from red_thread_core.dto import DTO
 from red_thread_core.util import squeeze
 
-from red_thread_casefile.domain import Cite
+from red_thread_casefile.domain import Cite, EntryKind, Verdict
+from red_thread_casefile.policy import Finding
 from red_thread_casefile.views import Heading, describe_lead, get_shown_verdict
 from red_thread_casefile.writers.markdown import write_markdown_entry
 from red_thread_casefile.writers.markup import write_entries
 
 if TYPE_CHECKING:
-    from red_thread_core.documents import Block, Document, Line, Section
+    from red_thread_core.documents import Block, Document, Section
     from red_thread_core.elements import Element
 
-    from red_thread_casefile.domain import Entry, EntryKind, Verdict
-    from red_thread_casefile.policy import Finding
+    from red_thread_casefile.domain import Entry
     from red_thread_casefile.views import Annotator
 
 type NoteKind = Literal['rests_on', 'refuted_by', 'retires', 'retired_by', 'urgency', 'source']
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Note:
+class Note(DTO, frozen=True, kw_only=True, gc=False):
     kind: NoteKind
     text: str
 
@@ -51,8 +50,7 @@ class Wording(DTO, frozen=True, kw_only=True, forbid_unknown_fields=True):
         return (*resting, *refuted)
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Citation:
+class Citation(DTO, frozen=True, kw_only=True, gc=False):
     target: str
     quote: str | None = None
     finding: Finding | None = None
@@ -62,8 +60,7 @@ class Citation:
         return Cite(raw=self.target).is_url
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class EntryNode:
+class EntryNode(DTO, frozen=True, kw_only=True, gc=False):
     ref: str
     kind: EntryKind
     claim: Line
@@ -83,8 +80,7 @@ class EntryNode:
         return (describe_lead(self.lead),)
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class EntryList:
+class EntryList(DTO, frozen=True, kw_only=True, gc=False):
     entries: tuple[EntryNode, ...]
 
     @property

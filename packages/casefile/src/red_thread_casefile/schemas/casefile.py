@@ -5,8 +5,9 @@ from itertools import chain, pairwise
 from operator import attrgetter
 from typing import TYPE_CHECKING
 
+from red_thread_core.dto import DTO
 from red_thread_core.errors import MalformedDocumentError
-from red_thread_core.frontmatter import FENCE, FenceReasons, split_frontmatter
+from red_thread_core.frontmatter import FENCE, FenceReasons, FrontSplit, split_frontmatter
 from red_thread_core.lines import Line, cut_at, number_lines, split_lines, trim
 
 from red_thread_casefile.domain import (
@@ -60,21 +61,18 @@ type Reading = Placed | CaseFileError
 type Block = tuple[EntryRecord | CaseFileError, *tuple[CaseFileError, ...]]
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class FileReading:
+class FileReading(DTO, frozen=True, kw_only=True, gc=False):
     placed: tuple[Placed, ...] = ()
     problems: Problems = ()
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Front:
+class Front(DTO, frozen=True, kw_only=True, gc=False):
     body: tuple[Line, ...]
     case: Case | None = None
     problems: Problems = ()
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class CaseReading:
+class CaseReading(DTO, frozen=True, kw_only=True, gc=False):
     case: Case | None
     placed: tuple[Placed, ...]
     problems: Problems
@@ -255,7 +253,7 @@ class CaseFileSchema:
             return Front(body=every)
 
         split = split_frontmatter(lines)
-        if isinstance(split, str):
+        if not isinstance(split, FrontSplit):
             reason = FENCE_REASONS.explain(split)
             problem = MalformedFrontmatterError(file=CASE_FILE, reason=reason)
             kept = () if split == 'no_closing' else every

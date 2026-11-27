@@ -1,6 +1,5 @@
 """HtmlWriter: links, copy buttons and code spans."""
 
-from dataclasses import replace
 from typing import TYPE_CHECKING
 
 import pytest
@@ -26,12 +25,12 @@ if TYPE_CHECKING:
 
 
 def create_cited_node(text: str, ref: str, target: str) -> EntryNode:
-    return replace(create_entry_node(text, ref), citation=Citation(target=target))
+    return create_entry_node(text, ref).replace_with(citation=Citation(target=target))
 
 
 def create_point_document(text: str) -> Document:
     points = PointList(points=(parse_line(text),))
-    return replace(create_document(), sections=(Section(title='Findings', blocks=(points,)),))
+    return create_document().replace_with(sections=(Section(title='Findings', blocks=(points,)),))
 
 
 def non_url_cite_cases() -> pytest.MarkDecorator:
@@ -126,8 +125,7 @@ class TestBackticks:
         assert 'a ` b' in page
 
     def test_prose_and_summary_lines_get_code_spans_too(self) -> None:
-        document = replace(
-            create_document(prose=('see `prose.py`',)),
+        document = create_document(prose=('see `prose.py`',)).replace_with(
             title='t',
             summary=(parse_line('at `HEAD`'),),
         )

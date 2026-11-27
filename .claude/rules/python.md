@@ -33,7 +33,7 @@ copy the shape, never the names.
 
 ## Classes and values
 
-- Pick the type by boundary: internal values are `@dataclass(slots=True, kw_only=True, frozen=True)`; values that cross a wire or are allocated per item on a hot path are `msgspec.Struct` with `frozen=True, kw_only=True`, plus `gc=False` when it can never sit in a reference cycle; untrusted input is validated by Pydantic.
+- Pick the type by role: a value that only carries data (a record, a document node, a result, a request) subclasses the project's DTO base, `red_thread_core.dto.DTO`, with `frozen=True, kw_only=True`, plus `gc=False` when it can never sit in a reference cycle, and is copied with `replace_with`, never `dataclasses.replace`. A policy, a service, a writer or anything holding collaborators, a mutable container or a live handle is `@dataclass(slots=True, kw_only=True, frozen=True)`. Untrusted input is validated by Pydantic.
 - Three kinds of class:
   - Data: public fields plus a few derived properties.
   - Policy: everything one concept knows about its own validity. Built from the value it checks plus injected options, it exposes derived values and predicates as properties, helpers over that state, and one or more verdict methods (`get_<noun>_problem()` or `get_<noun>_issues()`), each walking several facets with guard clauses and returning the first error or `None`. The call site raises.

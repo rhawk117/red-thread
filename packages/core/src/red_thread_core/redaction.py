@@ -1,7 +1,7 @@
 """Secret redaction backed by detect-secrets, applied to every free-text field."""
 
 import re
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from functools import reduce
 from operator import attrgetter
 from typing import TYPE_CHECKING, TypeIs
@@ -10,6 +10,8 @@ from detect_secrets.core.plugins.util import get_mapping_from_secret_type_to_cla
 from detect_secrets.plugins.base import RegexBasedDetector
 from detect_secrets.plugins.ip_public import IPPublicDetector
 from detect_secrets.plugins.keyword import KeywordDetector
+
+from red_thread_core.dto import DTO
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -23,8 +25,7 @@ BOUNDARY = re.compile(r'[\s"\'`/:@=,;()<>\[\]{}]')
 MARKER = re.compile(r'\[REDACTED:[a-z0-9-]+\]')
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Hit:
+class Hit(DTO, frozen=True, kw_only=True, gc=False):
     start: int
     end: int
     label: str
@@ -37,8 +38,7 @@ class Hit:
         return self.start < span[1] and span[0] < self.end
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Redaction:
+class Redaction(DTO, frozen=True, kw_only=True, gc=False):
     text: str
     hits: int
 
@@ -79,7 +79,7 @@ def widen(text: str, span: Span) -> Span:
 
 def widen_hit(text: str, hit: Hit) -> Hit:
     start, end = widen(text, (hit.start, hit.end))
-    return replace(hit, start=start, end=end)
+    return hit.replace_with(start=start, end=end)
 
 
 def find_spans(pattern: re.Pattern[str], text: str) -> Iterator[Span]:
@@ -104,7 +104,7 @@ def absorb(merged: list[Hit], hit: Hit) -> list[Hit]:
     if last is None or hit.start >= last.end:
         return [*merged, hit]
 
-    return [*merged[:-1], replace(last, end=max(last.end, hit.end))]
+    return [*merged[:-1], last.replace_with(end=max(last.end, hit.end))]
 
 
 def write_over(text: str, hit: Hit) -> str:

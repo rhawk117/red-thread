@@ -1,9 +1,9 @@
-from dataclasses import dataclass
+from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
-if TYPE_CHECKING:
-    from pathlib import PurePosixPath
+from red_thread_core.dto import DTO
 
+if TYPE_CHECKING:
     from red_thread_navigate.walk import SourceFile
 
 type SymbolKind = Literal[
@@ -26,8 +26,7 @@ type SymbolKind = Literal[
 ]
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Symbol:
+class Symbol(DTO, frozen=True, kw_only=True, gc=False):
     name: str
     qualified_name: str
     kind: SymbolKind
@@ -45,14 +44,12 @@ class Symbol:
         return f'{self.kind} (impl {self.impl})'
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Reference:
+class Reference(DTO, frozen=True, kw_only=True, gc=False):
     name: str
     line: int
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class FileSymbols:
+class FileSymbols(DTO, frozen=True, kw_only=True, gc=False):
     path: PurePosixPath
     language: str
     symbols: tuple[Symbol, ...]

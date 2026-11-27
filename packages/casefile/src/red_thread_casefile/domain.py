@@ -1,7 +1,6 @@
 """The values a case file holds: the case, its rounds and entries, and where each one sits."""
 
 import re
-from dataclasses import dataclass
 from datetime import date
 from itertools import chain
 from pathlib import PurePosixPath
@@ -101,8 +100,7 @@ def build_case_id(created: str, label: str) -> str:
     return '-'.join((day, *words))
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Cite:
+class Cite(DTO, frozen=True, kw_only=True, gc=False):
     raw: str
 
     @property
@@ -140,8 +138,7 @@ class Cite:
         return 'other'
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Spot:
+class Spot(DTO, frozen=True, kw_only=True, gc=False):
     file: str
     line: int
     ref: str | None = None
@@ -152,8 +149,7 @@ class Spot:
         return place if self.ref is None else f'{place} {self.ref}'
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class RoundStamp:
+class RoundStamp(DTO, frozen=True, kw_only=True, gc=False):
     number: int
     day: str
     head: str | None = None
@@ -164,8 +160,7 @@ class RoundStamp:
         return f'{ROUND_MARK}{STAMP_SEPARATOR.join(parts)}'
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class LedgerSource:
+class LedgerSource(DTO, frozen=True, kw_only=True, gc=False):
     name: str
     thread: str | None
     text: str
@@ -240,8 +235,7 @@ class Case(DTO, frozen=True, kw_only=True, gc=False, forbid_unknown_fields=True)
     capabilities: Capabilities = msgspec.field(default_factory=Capabilities)
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Ledger:
+class Ledger(DTO, frozen=True, kw_only=True, gc=False):
     entries: tuple[Entry, ...] = ()
 
     @property
@@ -276,13 +270,11 @@ class Ledger:
         return ', '.join(f'{name} ({self.count_in(name)})' for name in self.threads)
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Placed:
+class Placed(DTO, frozen=True, kw_only=True, gc=False):
     entry: Entry
     spot: Spot
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class CaseRecord:
+class CaseRecord(DTO, frozen=True, kw_only=True, gc=False):
     case: Case
     ledger: Ledger

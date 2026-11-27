@@ -1,9 +1,9 @@
 """The document tree that pages and Markdown are written from, open to blocks of any package."""
 
 import re
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
+from red_thread_core.dto import DTO
 from red_thread_core.writers.markdown import write_markdown_line
 from red_thread_core.writers.markup import (
     write_flowchart,
@@ -38,24 +38,21 @@ class Block(Protocol):
     def write_markdown(self) -> tuple[str, ...]: ...
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Text:
+class Text(DTO, frozen=True, kw_only=True, gc=False):
     value: str
 
     def write[T](self, writer: InlineWriter[T]) -> T:
         return writer.write_text(self)
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Code:
+class Code(DTO, frozen=True, kw_only=True, gc=False):
     value: str
 
     def write[T](self, writer: InlineWriter[T]) -> T:
         return writer.write_code(self)
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Link:
+class Link(DTO, frozen=True, kw_only=True, gc=False):
     url: str
     label: str = ''
 
@@ -92,8 +89,7 @@ def parse_value(text: str) -> Line:
     return parse_line(text)
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Paragraph:
+class Paragraph(DTO, frozen=True, kw_only=True, gc=False):
     line: Line
     count: int = 0
 
@@ -104,8 +100,7 @@ class Paragraph:
         return (write_markdown_line(self.line),)
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class PointList:
+class PointList(DTO, frozen=True, kw_only=True, gc=False):
     points: tuple[Line, ...]
     count: int = 0
 
@@ -116,8 +111,7 @@ class PointList:
         return tuple(f'- {write_markdown_line(point)}' for point in self.points)
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Flowchart:
+class Flowchart(DTO, frozen=True, kw_only=True, gc=False):
     lines: tuple[str, ...]
     count: int = 0
 
@@ -128,8 +122,7 @@ class Flowchart:
         return ('```mermaid', *self.lines, '```')
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class CodeListing:
+class CodeListing(DTO, frozen=True, kw_only=True, gc=False):
     language: str
     source: str
     count: int = 0
@@ -141,8 +134,7 @@ class CodeListing:
         return (f'```{self.language}', *self.source.splitlines(), '```')
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Section:
+class Section(DTO, frozen=True, kw_only=True, gc=False):
     title: str
     blocks: tuple[Block, ...] = ()
     kind: str | None = None
@@ -155,21 +147,18 @@ class Section:
         return sum(block.count for block in self.blocks)
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Fact:
+class Fact(DTO, frozen=True, kw_only=True, gc=False):
     label: str
     value: Line
     wide: bool = False
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Term:
+class Term(DTO, frozen=True, kw_only=True, gc=False):
     word: str
     meaning: str
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Document:
+class Document(DTO, frozen=True, kw_only=True, gc=False):
     title: str
     summary: tuple[Line, ...] = ()
     facts: tuple[Fact, ...] = ()

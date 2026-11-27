@@ -1,6 +1,5 @@
 """HtmlPage: escaping in every place a value lands, links, copy buttons, code and content."""
 
-from dataclasses import replace
 from html import escape
 from typing import TYPE_CHECKING
 
@@ -43,7 +42,7 @@ def create_url_cite(tail: str) -> str:
 
 
 def create_cited_document(cite: str) -> Document:
-    entry = replace(create_entry_node('claim'), citation=Citation(target=cite))
+    entry = create_entry_node('claim').replace_with(citation=Citation(target=cite))
     return create_document(entry)
 
 
@@ -190,8 +189,7 @@ class TestContent:
         assert 'second claim' in page
 
     def test_flags_and_notes_are_shown_as_text(self) -> None:
-        entry = replace(
-            create_entry_node(),
+        entry = create_entry_node().replace_with(
             notes=(load_wording().write_note('rests_on', 'a page'),),
             lead='1111111',
         )

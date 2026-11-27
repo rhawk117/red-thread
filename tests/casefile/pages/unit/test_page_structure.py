@@ -1,6 +1,6 @@
 """The page's structure: sections, entry marks, diagrams, the map and the toolbar."""
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 
 import pytest
 from red_thread_casefile.packaged import load_wording, read_asset
@@ -124,7 +124,7 @@ class TestEntryMarks:
 
 class TestDiagrams:
     def test_an_entry_diagram_is_a_pre_mermaid_element_with_its_source_escaped(self) -> None:
-        entry = replace(create_entry_node(), diagram=DIAGRAM)
+        entry = create_entry_node().replace_with(diagram=DIAGRAM)
 
         page = render_page(create_document(entry))
 
@@ -144,7 +144,7 @@ class TestMap:
     def test_a_map_in_the_appendix_ends_the_page_holding_the_map_header_and_the_lines(
         self,
     ) -> None:
-        entry = replace(create_entry_node(), diagram=DIAGRAM)
+        entry = create_entry_node().replace_with(diagram=DIAGRAM)
         sections = create_document(entry).sections
         document = Document(title='t', sections=sections, appendix=(create_map_section(MAP_LINES),))
 

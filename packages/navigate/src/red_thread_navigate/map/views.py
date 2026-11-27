@@ -1,24 +1,24 @@
 """The rungs of a map: full outline, a summary per file, then counts."""
 
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from red_thread_core.dto import DTO
+
+from red_thread_navigate.symbols.domain import FileSymbols, Symbol
 from red_thread_navigate.util import plural, rung, span, symbol_address
 
 if TYPE_CHECKING:
-    from red_thread_navigate.symbols.domain import Backends, FileSymbols, Symbol
+    from red_thread_navigate.symbols.domain import Backends
 
 SUMMARY_NAMES = 3
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class RankedSymbol:
+class RankedSymbol(DTO, frozen=True, kw_only=True, gc=False):
     symbol: Symbol
     references: int
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class RankedFile:
+class RankedFile(DTO, frozen=True, kw_only=True, gc=False):
     file: FileSymbols
     symbols: tuple[RankedSymbol, ...]
 

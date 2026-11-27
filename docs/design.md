@@ -859,6 +859,17 @@ Made by the owner on 2026-11-27. The HTML fragments moved from the t-string `ren
 | Scope | HTML only. The Markdown writer keeps drawing from the document tree |
 | Checks | the builder's tests cover escaping (as properties), the URL guard and the layout rules. The page tests read the page with whitespace allowed between tags |
 
+### 2026-11-27: data values as DTOs
+
+Made by the owner on 2026-11-27. The DTO base (`red_thread_core.dto.DTO`) carried only the records read from files; every other value was a frozen dataclass copied with `dataclasses.replace`.
+
+| Decision | Choice and reason |
+| --- | --- |
+| What is a DTO | every class that only carries data: the document tree and the element builder, the case file's domain records and readings, the plan document, and navigate's symbols, addresses, walks and results. They subclass `DTO` with `gc=False` and copy with `replace_with` |
+| What stays a dataclass | policies, services, writers, stores, backends, views and the cyclopts argument classes, which hold collaborators or make decisions; and three values with a mutable or live field (`SkipTally`'s `Counter`, the tree-sitter `Definition`'s node, `Detector`'s compiled patterns) |
+| Rule | `.claude/rules/python.md` picks the type by role in place of by boundary |
+| Narrowing | ty does not treat a Struct as disjoint from `str`, so a union of `FrontSplit` and `FenceProblem`, or of `SourceFile` and `SkipKind`, narrows with `isinstance(value, TheStruct)` |
+
 ## 13. Planning
 
 **Changed 2026-11-26** (section 12, "one ticket per plan, in Markdown"): a plan is now the Markdown plan of one ticket, `.red-thread/tickets/<plan-id>/plan.md`, started by `redthread-plan init` and checked by `redthread-plan check`. "The plan file" below describes it. The JSON plan record, its revisions, the plan page, worktrees and stacks in a plan, and the board's links to plans described further down are superseded, and their code is gone. They stay here as the record of what was built.
