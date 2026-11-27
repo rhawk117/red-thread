@@ -28,7 +28,7 @@ def move_on(cli: CliHarness) -> None:
 
 
 class TestRender:
-    def test_board_lists_the_live_entries_under_their_sections(
+    def test_board_lists_the_live_findings_under_their_sections(
         self, cli: CliHarness, case: Path
     ) -> None:
         cli.write(case, KNOWN, *create_open_records(1))
@@ -41,7 +41,9 @@ class TestRender:
         assert '## Open (1)' in result.out
         assert '[e1]' in result.out
 
-    def test_board_is_capped_and_full_shows_every_entry(self, cli: CliHarness, case: Path) -> None:
+    def test_board_is_capped_and_full_shows_every_finding(
+        self, cli: CliHarness, case: Path
+    ) -> None:
         cli.write(case, *create_open_records(9))
 
         capped = cli.render(case)
@@ -52,7 +54,7 @@ class TestRender:
         assert 'earlier' not in full.out
         assert 'question 0' in full.out
 
-    def test_entry_recorded_at_an_earlier_commit_is_marked_as_a_lead(
+    def test_finding_recorded_at_an_earlier_commit_is_marked_as_a_lead(
         self, cli: CliHarness, case: Path
     ) -> None:
         recorded_at = cli.git.head
@@ -63,7 +65,7 @@ class TestRender:
 
         assert f'lead, recorded at {recorded_at[:7]}' in result.out
 
-    def test_retired_entry_is_gone_from_the_board(self, cli: CliHarness, case: Path) -> None:
+    def test_retired_finding_is_gone_from_the_board(self, cli: CliHarness, case: Path) -> None:
         cli.write(case, *create_open_records(1))
         cli.write(
             case, {'kind': 'open', 'text': 'replacement', 'source': 'scout', 'supersedes': ['e1']}
@@ -73,9 +75,9 @@ class TestRender:
 
         assert 'question 0' not in result.out
         assert 'replacement' in result.out
-        assert 'Entries: 1 live, 1 retired' in result.out
+        assert 'Findings: 1 live, 1 retired' in result.out
 
-    def test_text_outside_an_entry_stops_the_board_with_its_file_and_line(
+    def test_text_outside_an_finding_stops_the_board_with_its_file_and_line(
         self, cli: CliHarness, case: Path
     ) -> None:
         cli.write(case, *create_open_records(1))
@@ -176,7 +178,7 @@ class TestCheck:
         assert result.code == 0
         assert result.out.startswith('checked 0 citations')
 
-    def test_text_outside_an_entry_is_a_fault_beside_the_citations(
+    def test_text_outside_an_finding_is_a_fault_beside_the_citations(
         self, cli: CliHarness, cited: Path
     ) -> None:
         append_text(cited, 'broken line\n')

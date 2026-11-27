@@ -15,6 +15,7 @@ from red_thread_navigate.cli import PROGRAM
 from tests.navigate.samples import CORE
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from pathlib import Path
 
 IDENTIFIER = r'[A-Za-z_][A-Za-z0-9_]{0,40}'
@@ -103,7 +104,7 @@ class TestRefusals:
 
     @missing_path_cases()
     def test_a_missing_path_exits_one_naming_it_and_no_git_failure(
-        self, repository: Path, argv: tuple[str, ...]
+        self, repository: Path, argv: Sequence[str]
     ) -> None:
         printed = run_in(repository, *argv)
 
@@ -141,7 +142,7 @@ class TestUsage:
         assert 'valid options are --budget, --version, --help, -h' in printed.err
 
     @empty_path_cases()
-    def test_an_empty_path_exits_two(self, repository: Path, argv: tuple[str, ...]) -> None:
+    def test_an_empty_path_exits_two(self, repository: Path, argv: Sequence[str]) -> None:
         printed = run_in(repository, *argv)
 
         assert (printed.code, printed.out) == (2, '')

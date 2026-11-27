@@ -10,15 +10,15 @@ from red_thread_casefile.services import CaseFile, Press
 from tests.casefile.ledger.markdown import CaseScribe
 from tests.casefile.ledger.memory import (
     HEAD,
-    MOMENT,
-    FixedClock,
     MemoryCaseRepository,
     MemoryPageStore,
     MemorySourceTree,
 )
+from tests.codec import YAML
+from tests.core.timekeeping.clock import MOMENT, FixedClock
 
 if TYPE_CHECKING:
-    from red_thread_casefile.domain import Entry
+    from red_thread_casefile.domain import CaseFinding
 
 CASE = Case(
     id='20261121-properties',
@@ -42,12 +42,12 @@ class ServiceHarness:
     def press(self) -> Press:
         return Press(record=self.case_file, pages=self.pages, book=load_lens_book())
 
-    def read_entries(self) -> tuple[Entry, ...]:
-        return self.case_file.load().ledger.entries
+    def read_findings(self) -> tuple[CaseFinding, ...]:
+        return self.case_file.load().ledger.findings
 
-    def seed(self, *entries: Entry) -> None:
-        for entry in entries:
-            self.scribe.seed(entry.thread, entry)
+    def seed(self, *findings: CaseFinding) -> None:
+        for finding in findings:
+            self.scribe.seed(finding.thread, finding)
 
 
 def create_service_harness(files: dict[str, tuple[str, ...]] | None = None) -> ServiceHarness:
@@ -56,5 +56,7 @@ def create_service_harness(files: dict[str, tuple[str, ...]] | None = None) -> S
     scribe.frame(CASE)
     tree = MemorySourceTree(files=files or {})
     pages = MemoryPageStore()
-    case_file = CaseFile(repository=store, tree=tree, clock=FixedClock(), wording=load_wording())
+    case_file = CaseFile(
+        repository=store, tree=tree, clock=FixedClock(), wording=load_wording(), codec=YAML
+    )
     return ServiceHarness(store=store, tree=tree, pages=pages, case_file=case_file, scribe=scribe)

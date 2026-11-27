@@ -1,4 +1,4 @@
-"""Properties of reading entry blocks: one bad block costs only its own entry."""
+"""Properties of reading finding blocks: one bad block costs only its own finding."""
 
 from typing import TYPE_CHECKING
 
@@ -6,8 +6,8 @@ from hypothesis import given
 from hypothesis import strategies as st
 from red_thread_casefile.errors import MalformedBlockError
 
-from tests.casefile.entries.blocks import encode_block, read_case_text, write_blocks_case
-from tests.casefile.entries.strategies import words
+from tests.casefile.findings.blocks import encode_block, read_case_text, write_blocks_case
+from tests.casefile.findings.strategies import words
 
 if TYPE_CHECKING:
     from red_thread_casefile.schemas import CaseReading
@@ -34,26 +34,28 @@ class TestBlockProperties:
     bad_blocks = st.one_of(words.map(encode_bad_kind), words.map(encode_unknown_field))
 
     @given(before=good_blocks, bad=bad_blocks, after=good_blocks)
-    def test_one_bad_block_is_one_fault_at_its_entry_and_the_rest_are_read(
+    def test_one_bad_block_is_one_fault_at_its_finding_and_the_rest_are_read(
         self, before: list[str], bad: str, after: list[str]
     ) -> None:
         reading = read_blocks([*before, bad, *after])
 
-        bad_ref = f'e{len(before) + 1}'
+        bad_finding_id = f'e{len(before) + 1}'
         problems = [p for p in reading.problems if isinstance(p, MalformedBlockError)]
-        assert [problem.spot.ref for problem in problems] == [bad_ref]
+        assert [problem.location.finding_id for problem in problems] == [bad_finding_id]
         assert len(reading.problems) == 1
-        assert [entry.ref for entry in reading.ledger.entries] == [
-            f'e{seq}' for seq in range(1, len(before) + len(after) + 2) if f'e{seq}' != bad_ref
+        assert [finding.finding_id for finding in reading.ledger.findings] == [
+            f'e{finding_number}'
+            for finding_number in range(1, len(before) + len(after) + 2)
+            if f'e{finding_number}' != bad_finding_id
         ]
 
     @given(good=good_blocks, bad=st.lists(bad_blocks, max_size=4), data=st.data())
-    def test_every_block_is_one_entry_or_one_fault(
+    def test_every_block_is_one_finding_or_one_fault(
         self, good: list[str], bad: list[str], data: st.DataObject
     ) -> None:
         blocks = data.draw(st.permutations([*good, *bad]))
 
         reading = read_blocks(blocks)
 
-        assert len(reading.ledger.entries) == len(good)
+        assert len(reading.ledger.findings) == len(good)
         assert len(reading.problems) == len(bad)

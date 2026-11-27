@@ -1,4 +1,4 @@
-"""Reads a page the way a browser would: elements, attributes, code spans, chips and entry refs."""
+"""Reads a page the way a browser would: elements, attributes, code spans, chips and finding ids."""
 
 import re
 from dataclasses import dataclass
@@ -16,28 +16,34 @@ STYLE_ELEMENT = re.compile(rf'<style{ATTRIBUTE_RUN}\s*>(.*?)</style>', re.DOTALL
 CHIP = re.compile(rf'<button{ATTRIBUTE_RUN}\s*>([^<]*)<span class="count">(\d+)</span></button>')
 CHIP_GROUP = re.compile(r'<div class="chips"[^>]*>(.*?)</div>', re.DOTALL)
 CODE_SPAN = re.compile(r'<code>(.*?)</code>', re.DOTALL)
-ITEM_REF = re.compile(r'<button type="button" class="ref"[^>]*>(.*?)</button>', re.DOTALL)
+FINDING_ID_BUTTON = re.compile(
+    r'<button type="button" class="finding-id"[^>]*>(.*?)</button>', re.DOTALL
+)
 FLAG = re.compile(r'<li class="flag">(.*?)</li>')
 MERMAID = re.compile(r'<pre class="mermaid">(.*?)</pre>', re.DOTALL)
-SECTION_HEAD = re.compile(r'<summary><h2>(.*?)</h2>', re.DOTALL)
+SECTION_HEAD = re.compile(r'<summary>\s*<h2>(.*?)</h2>', re.DOTALL)
 CLAIM = re.compile(r'<p class="claim">(.*?)</p>', re.DOTALL)
-FACT = re.compile(r'<div class="(fact(?: wide)?)"><dt>(.*?)</dt><dd>(.*?)</dd></div>', re.DOTALL)
+FACT = re.compile(
+    r'<div class="(fact(?: wide)?)">\s*<dt>(.*?)</dt>\s*<dd>(.*?)</dd>\s*</div>', re.DOTALL
+)
 FACT_LINK = re.compile(r'<a href="([^"]*)" rel="noreferrer">')
 SECTION = re.compile(
-    rf'<details{ATTRIBUTE_RUN}\s*>\s*<summary><h2>(.*?)</h2>'
-    r'(?:<span class="count">(\d+)</span>)?(?:<span class="about">(.*?)</span>)?'
-    r'</summary>(.*?)</details>',
+    rf'<details{ATTRIBUTE_RUN}\s*>\s*<summary>\s*<h2>(.*?)</h2>'
+    r'(?:\s*<span class="count">(\d+)</span>)?(?:\s*<span class="about">(.*?)</span>)?'
+    r'\s*</summary>(.*?)</details>',
     re.DOTALL,
 )
 SPAN = re.compile(rf'<span{ATTRIBUTE_RUN}\s*>([^<]*)</span>')
 QUOTE = re.compile(r'<pre class="quote"><code>(.*?)</code></pre>', re.DOTALL)
 CITED_QUOTE = re.compile(
-    r'<p class="cite">(?:(?!</p>).)*</p>\s*<pre class="quote"><code>(.*?)</code></pre>', re.DOTALL
+    r'<p class="citation">(?:(?!</p>).)*</p>\s*<pre class="quote"><code>(.*?)</code></pre>',
+    re.DOTALL,
 )
 NOTE_LIST = re.compile(r'<ul class="notes">(.*?)</ul>', re.DOTALL)
 NOTE_ROW = re.compile(r'<li(?: class="(\w+)")?>(.*?)</li>', re.DOTALL)
 ANY_TAG = re.compile(r'<[^>]*>')
-CITE_BLOCK = re.compile(r'<p class="cite">(.*?)</p>', re.DOTALL)
+LAYOUT_BREAK = re.compile(r'>\n\s*<')
+CITE_BLOCK = re.compile(r'<p class="citation">(.*?)</p>', re.DOTALL)
 PAGE_TAGS = frozenset({
     'html',
     'head',
@@ -104,6 +110,10 @@ class SectionReading:
     body: str
 
 
+def join_layout(page: str) -> str:
+    return LAYOUT_BREAK.sub('><', page)
+
+
 def read_all(pattern: re.Pattern[str], page: str) -> list[str]:
     return list(map(unescape, pattern.findall(page)))
 
@@ -139,8 +149,8 @@ def find_buttons(page: str, role: str) -> list[dict[str, str]]:
     return [button for button in find_tags(page, 'button') if button.get('class') == role]
 
 
-def find_entries(page: str) -> list[dict[str, str]]:
-    return [item for item in find_tags(page, 'li') if item.get('class') == 'entry']
+def find_finding_items(page: str) -> list[dict[str, str]]:
+    return [item for item in find_tags(page, 'li') if item.get('class') == 'finding']
 
 
 def list_scripts(page: str) -> list[Element]:
@@ -185,7 +195,7 @@ def list_section_titles(page: str) -> list[str]:
     return read_all(SECTION_HEAD, page)
 
 
-def list_cite_blocks(page: str) -> list[str]:
+def list_citation_blocks(page: str) -> list[str]:
     return CITE_BLOCK.findall(page)
 
 
@@ -197,8 +207,8 @@ def list_code_spans(page: str) -> list[str]:
     return read_all(CODE_SPAN, page)
 
 
-def list_item_refs(page: str) -> list[str]:
-    return read_all(ITEM_REF, page)
+def list_finding_id_buttons(page: str) -> list[str]:
+    return read_all(FINDING_ID_BUTTON, page)
 
 
 def list_flags(page: str) -> list[str]:

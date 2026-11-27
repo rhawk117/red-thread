@@ -2,13 +2,14 @@
 
 import sys
 from collections.abc import Callable
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from importlib.metadata import version
 from pathlib import Path
 from typing import Annotated, Literal
 
 from cyclopts import App, CycloptsError, Parameter
 from red_thread_core.cli import EXIT_OK, EXIT_USAGE, join_choices
+from red_thread_core.dto import DTO
 
 from red_thread_navigate.address import AddressError
 from red_thread_navigate.budget import MIN_BUDGET, cut_to_budget
@@ -50,8 +51,7 @@ class BudgetTooSmallError(UsageError):
         super().__init__(problem=f'--budget {budget} is below the minimum of {MIN_BUDGET} tokens')
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Request:
+class Request(DTO, frozen=True, kw_only=True, gc=False):
     verb: VerbName
     budget: int = DEFAULT_BUDGET
     target: str
@@ -99,7 +99,7 @@ class Launcher:
         if not isinstance(request, Request):
             return None
 
-        request = replace(request, budget=budget)
+        request = request.replace_with(budget=budget)
         if problem := request.get_usage_problem():
             raise problem
 

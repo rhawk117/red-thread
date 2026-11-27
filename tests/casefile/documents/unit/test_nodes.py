@@ -1,13 +1,13 @@
-"""The document tree: notes, lead flags, the entries a section and a document hold, dispatch."""
+"""The document tree: notes, lead flags, the findings a section and a document hold, dispatch."""
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
 from red_thread_casefile.documents import (
-    EntryList,
-    list_document_entries,
-    list_section_entries,
+    FindingList,
+    list_document_findings,
+    list_section_findings,
 )
 from red_thread_casefile.packaged import load_wording
 from red_thread_core.documents import (
@@ -24,7 +24,7 @@ from red_thread_core.documents import (
     parse_line,
 )
 
-from tests.casefile.documents.builders import create_entry_node, create_entry_section
+from tests.casefile.documents.builders import create_finding_node, create_finding_section
 from tests.casefile.documents.fakes import NamingWriter
 from tests.params import as_labelled_params, as_params
 
@@ -65,7 +65,7 @@ def inline_dispatch_cases() -> pytest.MarkDecorator:
 def block_dispatch_cases() -> pytest.MarkDecorator:
     blocks: dict[str, Block] = {
         'paragraph': Paragraph(line=parse_line('a')),
-        'entries': EntryList(entries=(create_entry_node(),)),
+        'findings': FindingList(findings=(create_finding_node(),)),
         'points': PointList(points=(parse_line('a'),)),
         'flowchart': Flowchart(lines=('a',)),
         'listing': CodeListing(language='python', source='a'),
@@ -79,29 +79,29 @@ class TestNote:
         assert load_wording().write_note(case.kind, 'a page').text == case.text
 
 
-class TestEntryNode:
-    def test_an_entry_recorded_at_the_board_commit_has_no_flag(self) -> None:
-        assert create_entry_node().flags == ()
+class TestFindingNode:
+    def test_an_finding_recorded_at_the_board_commit_has_no_flag(self) -> None:
+        assert create_finding_node().flags == ()
 
-    def test_an_entry_from_another_commit_is_flagged_as_a_lead(self) -> None:
-        assert create_entry_node(lead='1111111').flags == ('lead, recorded at 1111111',)
+    def test_an_finding_from_another_commit_is_flagged_as_a_lead(self) -> None:
+        assert create_finding_node(lead='1111111').flags == ('lead, recorded at 1111111',)
 
 
-class TestEntries:
-    def test_a_section_holds_the_entries_of_its_lists_in_order(self) -> None:
-        section = create_entry_section('e1', 'e2')
+class TestFindings:
+    def test_a_section_holds_the_findings_of_its_lists_in_order(self) -> None:
+        section = create_finding_section('e1', 'e2')
         mixed = Section(title='Mixed', blocks=(Paragraph(line=()), *section.blocks))
 
-        assert [entry.ref for entry in list_section_entries(mixed)] == ['e1', 'e2']
+        assert [finding.finding_id for finding in list_section_findings(mixed)] == ['e1', 'e2']
 
-    def test_a_document_holds_the_entries_of_its_sections_and_not_of_its_appendix(self) -> None:
+    def test_a_document_holds_the_findings_of_its_sections_and_not_of_its_appendix(self) -> None:
         document = Document(
             title='A case',
-            sections=(create_entry_section('e1'), create_entry_section('e2')),
-            appendix=(create_entry_section('e9', title='Retired'),),
+            sections=(create_finding_section('e1'), create_finding_section('e2')),
+            appendix=(create_finding_section('e9', title='Retired'),),
         )
 
-        assert [entry.ref for entry in list_document_entries(document)] == ['e1', 'e2']
+        assert [finding.finding_id for finding in list_document_findings(document)] == ['e1', 'e2']
 
 
 class TestDispatch:
@@ -116,6 +116,6 @@ class TestDispatch:
         assert isinstance(node, Block)
 
     @block_dispatch_cases()
-    def test_a_block_counts_only_the_entries_it_holds(self, node: Block) -> None:
-        expected = len(node.entries) if isinstance(node, EntryList) else 0
+    def test_a_block_counts_only_the_findings_it_holds(self, node: Block) -> None:
+        expected = len(node.findings) if isinstance(node, FindingList) else 0
         assert node.count == expected

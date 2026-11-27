@@ -1,14 +1,14 @@
-"""casefile check on entries written by hand: each fault named at its file and line."""
+"""casefile check on findings written by hand: each fault named at its file and line."""
 
 from typing import TYPE_CHECKING
 
 from red_thread_casefile.domain import CASE_FILE, PROGRAM
 
-from tests.casefile.entries.blocks import ROUND, write_block_entry
+from tests.casefile.findings.blocks import ROUND, write_block_finding
 from tests.casefile.ledger.builders import KNOWN
 from tests.casefile.ledger.markdown import append_text
 from tests.casefile.redaction.cases import LEAKED
-from tests.casefile.rules.places import place_entry
+from tests.casefile.rules.places import place_finding
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -23,7 +23,7 @@ def snapshot(case: Path) -> dict[str, bytes]:
 
 
 class TestCheckPasses:
-    def test_entries_written_by_hand_pass_and_their_citations_are_counted(
+    def test_findings_written_by_hand_pass_and_their_citations_are_counted(
         self, cli: CliHarness, case: Path
     ) -> None:
         cli.write(case, OPEN, KNOWN)
@@ -54,7 +54,7 @@ class TestCheckFaults:
     def read_case_text(self, case: Path) -> str:
         return case.joinpath(CASE_FILE).read_text(encoding='utf-8')
 
-    def test_every_faulty_entry_is_listed_at_its_file_and_line(
+    def test_every_faulty_finding_is_listed_at_its_file_and_line(
         self, cli: CliHarness, case: Path
     ) -> None:
         uncited = {**KNOWN, 'cite': None, 'quote': None}
@@ -68,17 +68,21 @@ class TestCheckFaults:
         assert result.code == 1
         assert result.err == ''
         assert result.out.startswith('3 faults; check changed no file:')
-        assert all(place_entry(text, None, seq) in result.out for seq in (2, 3, 4))
-        assert place_entry(text, None, 1) not in result.out
+        assert all(
+            place_finding(text, None, finding_number) in result.out for finding_number in (2, 3, 4)
+        )
+        assert place_finding(text, None, 1) not in result.out
 
-    def test_a_thread_entry_is_named_in_its_thread_file(self, cli: CliHarness, case: Path) -> None:
+    def test_a_thread_finding_is_named_in_its_thread_file(
+        self, cli: CliHarness, case: Path
+    ) -> None:
         cli.write(case, {**OPEN, 'kind': 'finding'}, thread='T1')
         text = case.joinpath('threads', 'T1.md').read_text(encoding='utf-8')
 
         result = cli.check(case)
 
         assert result.code == 1
-        assert place_entry(text, 'T1', 1) in result.out
+        assert place_finding(text, 'T1', 1) in result.out
 
     def test_a_file_in_threads_that_is_not_a_thread_is_named(
         self, cli: CliHarness, case: Path
@@ -93,7 +97,7 @@ class TestCheckFaults:
     def test_a_block_that_is_not_yaml_is_a_fault_not_a_traceback(
         self, cli: CliHarness, case: Path
     ) -> None:
-        append_text(case, f'{ROUND}\n{write_block_entry(1, "kind: open\n\ttext: a\n")}')
+        append_text(case, f'{ROUND}\n{write_block_finding(1, "kind: open\n\ttext: a\n")}')
 
         result = cli.check(case)
 
@@ -113,7 +117,7 @@ class TestCheckFaults:
         assert LEAKED not in result.out
         assert LEAKED in self.read_case_text(case)
 
-    def test_a_cite_without_a_quote_names_the_line_to_quote(
+    def test_a_citation_without_a_quote_names_the_line_to_quote(
         self, cli: CliHarness, case: Path
     ) -> None:
         cli.write(case, {**KNOWN, 'quote': None})
@@ -133,7 +137,9 @@ class TestCheckFaults:
         assert result.code == 1
         assert 'The quoted text is at line 4' in result.out
 
-    def test_a_cite_of_a_missing_line_does_not_resolve(self, cli: CliHarness, case: Path) -> None:
+    def test_a_citation_of_a_missing_line_does_not_resolve(
+        self, cli: CliHarness, case: Path
+    ) -> None:
         cli.write(case, {**KNOWN, 'cite': 'src/queue.py:99'})
 
         result = cli.check(case)

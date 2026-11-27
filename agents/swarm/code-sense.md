@@ -119,7 +119,7 @@ Before you return, check:
 
 1. Every `path:line` in Evidence is a line you opened or saw in command output, and its path starts at the repository root.
 2. The verdict matches the evidence. A search hit you did not open is INFERRED, not VERIFIED.
-3. Every entry in `commands` is exactly what you ran.
+3. Every finding in `commands` is exactly what you ran.
 4. The report starts with `---` on the first line, the frontmatter has all four keys, and a second `---` line closes it before `## Answer`.
 5. Every command you ran through Bash is on the allowed list in the constraints.
 

@@ -9,7 +9,8 @@ from red_thread_casefile.store import DirectoryCaseRepository
 from red_thread_core.store import GitSourceTree
 
 from tests.casefile.ledger.directory import create_directory_harness
-from tests.casefile.ledger.memory import FixedClock
+from tests.codec import YAML
+from tests.core.timekeeping.clock import FixedClock
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -93,6 +94,7 @@ class TestExclusion:
             tree=GitSourceTree(root=directory_harness.git.root),
             clock=FixedClock(),
             wording=load_wording(),
+            codec=YAML,
         )
 
         second.frame(FRAMING)

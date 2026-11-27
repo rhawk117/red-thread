@@ -1,9 +1,8 @@
 """The page: the facts, the section header, the map and the retired fold."""
 
-from dataclasses import replace
 from typing import TYPE_CHECKING
 
-from red_thread_casefile.documents import EntryList
+from red_thread_casefile.documents import FindingList
 from red_thread_casefile.packaged import load_wording, read_asset
 from red_thread_core.documents import (
     Document,
@@ -20,43 +19,45 @@ from tests.casefile.pages.html_reading import (
     find_tags,
     list_code_spans,
     list_facts,
-    list_item_refs,
+    list_finding_id_buttons,
     list_section_titles,
     list_sections,
 )
-from tests.casefile.writers.builders import create_entry_node
+from tests.casefile.writers.builders import create_finding_node
 from tests.casefile.writers.reading import render_page
 
 if TYPE_CHECKING:
-    from red_thread_casefile.documents import EntryNode
+    from collections.abc import Sequence
+
+    from red_thread_casefile.documents import FindingNode
 
     from tests.casefile.pages.html_reading import SectionReading
 
 RETIRED = 'Retired'
 
 
-def create_threaded(count: int, first: int = 1) -> tuple[EntryNode, ...]:
+def create_threaded(count: int, first: int = 1) -> tuple[FindingNode, ...]:
     return tuple(
-        replace(create_entry_node(f'claim {number}', f'e{number}'), kind='open')
+        create_finding_node(f'claim {number}', f'e{number}').replace_with(kind='open')
         for number in range(first, first + count)
     )
 
 
 def create_open_section(count: int) -> Section:
-    return Section(title='Open', blocks=(EntryList(entries=create_threaded(count)),))
+    return Section(title='Open', blocks=(FindingList(findings=create_threaded(count)),))
 
 
 def create_prose_section(title: str, *, folded: bool = False) -> Section:
     return Section(title=title, blocks=(Paragraph(line=parse_line('x')),), folded=folded)
 
 
-def create_map_section(lines: tuple[str, ...]) -> Section:
+def create_map_section(lines: Sequence[str]) -> Section:
     chart = Flowchart(lines=(read_asset('map.mmd').rstrip(), *lines))
     return Section(title='Map', blocks=(chart,), note=load_wording().map_note)
 
 
-def create_retired_section(entries: tuple[EntryNode, ...]) -> Section:
-    blocks = (EntryList(entries=entries),)
+def create_retired_section(findings: tuple[FindingNode, ...]) -> Section:
+    blocks = (FindingList(findings=findings),)
     return Section(title=RETIRED, blocks=blocks, note=load_wording().retired_note, folded=True)
 
 
@@ -132,7 +133,7 @@ class TestMapAndRetiredFold:
         assert found.note != ''
         assert 'data-kind' not in found.attributes
 
-    def test_the_retired_fold_follows_the_map_is_closed_and_counts_its_entries(self) -> None:
+    def test_the_retired_fold_follows_the_map_is_closed_and_counts_its_findings(self) -> None:
         appendix = (
             create_map_section(self.map_lines),
             create_retired_section(create_threaded(2, first=5)),
@@ -144,9 +145,9 @@ class TestMapAndRetiredFold:
         assert list_section_titles(page) == ['Open', 'Map', RETIRED]
         fold = list_sections(page)[-1]
         assert (fold.count, 'open' in fold.attributes, bool(fold.note)) == (2, False, True)
-        assert list_item_refs(fold.body) == ['e5', 'e6']
+        assert list_finding_id_buttons(fold.body) == ['e5', 'e6']
 
-    def test_no_retired_entry_leaves_no_fold(self) -> None:
+    def test_no_retired_finding_leaves_no_fold(self) -> None:
         page = render_page(Document(title='t', sections=(create_open_section(1),)))
 
         assert RETIRED not in list_section_titles(page)

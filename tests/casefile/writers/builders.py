@@ -1,19 +1,24 @@
 """Small documents for the writer tests."""
 
-from red_thread_casefile.documents import EntryList, EntryNode
+from typing import TYPE_CHECKING
+
+from red_thread_casefile.documents import FindingList, FindingNode
 from red_thread_core.documents import Document, Paragraph, Section, parse_line
 
-from tests.casefile.documents.builders import MOMENT
+from tests.core.timekeeping.clock import DAY
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
-def create_entry_node(text: str = 'a claim', ref: str = 'e1') -> EntryNode:
-    return EntryNode(ref=ref, kind='known', claim=parse_line(text), round=1, at=MOMENT)
+def create_finding_node(text: str = 'a claim', finding_id: str = 'e1') -> FindingNode:
+    return FindingNode(finding_id=finding_id, kind='known', claim=parse_line(text), round=1, at=DAY)
 
 
 def create_document(
-    *entries: EntryNode, title: str = 'A case', prose: tuple[str, ...] = ()
+    *findings: FindingNode, title: str = 'A case', prose: Sequence[str] = ()
 ) -> Document:
     paragraphs = tuple(Paragraph(line=parse_line(line)) for line in prose)
-    listing = (EntryList(entries=entries),) if entries else ()
+    listing = (FindingList(findings=findings),) if findings else ()
     section = Section(title='Findings', blocks=(*paragraphs, *listing))
     return Document(title=title, summary=(parse_line('Case summary line'),), sections=(section,))

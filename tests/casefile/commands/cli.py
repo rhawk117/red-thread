@@ -6,13 +6,12 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from red_thread_casefile.cli import main
-from red_thread_casefile.domain import ENTRY_HEADING, ROUND_HEADING, RoundStamp
-from red_thread_casefile.schemas import read_case_file
+from red_thread_casefile.domain import FINDING_HEADING, ROUND_HEADING, RoundStamp
 from red_thread_casefile.store import DirectoryCaseRepository
 
-from tests.casefile.entries.blocks import write_entries, write_round
-from tests.casefile.ledger.builders import DAY
-from tests.casefile.ledger.markdown import append_text, name_file
+from tests.casefile.findings.blocks import write_findings, write_round
+from tests.casefile.ledger.markdown import SCHEMA, append_text, name_file
+from tests.core.timekeeping.clock import DAY
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -31,7 +30,7 @@ def read_file_lines(case: Path, thread: str | None) -> list[str]:
 
 def read_case(case: Path) -> Case | None:
     sources = DirectoryCaseRepository(directory=case).read()
-    return read_case_file(sources).case
+    return SCHEMA.read(sources).case
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -77,11 +76,11 @@ class CliHarness:
 
     def write(self, case: Path, *records: Mapping[str, object], thread: str | None = None) -> None:
         lines = read_file_lines(case, thread)
-        first = sum(1 for line in lines if ENTRY_HEADING.fullmatch(line)) + 1
+        first = sum(1 for line in lines if FINDING_HEADING.fullmatch(line)) + 1
         stamp = RoundStamp(number=1, day=DAY, head=self.git.head)
         rounds = (ROUND_HEADING.fullmatch(line) for line in lines)
         opened = any(found and int(found['round']) == stamp.number for found in rounds)
-        text = write_entries(first, records) if opened else write_round(stamp, first, records)
+        text = write_findings(first, records) if opened else write_round(stamp, first, records)
         append_text(case, text, thread)
 
     def render(self, case: Path, *extra: str) -> CliRun:

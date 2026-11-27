@@ -75,14 +75,14 @@ class TestScrubProperties:
         assert result.text == f'{before} {planted.redacted} {after}'
         assert result.hits == 1
 
-    @given(placed=placements)
+    @given(located=placements)
     def test_hits_count_exactly_the_secrets_planted(
-        self, placed: list[tuple[str, Planted]]
+        self, located: list[tuple[str, Planted]]
     ) -> None:
-        text = ' '.join(f'{filler} {planted.whole}' for filler, planted in placed)
-        expected = ' '.join(f'{filler} {planted.redacted}' for filler, planted in placed)
+        text = ' '.join(f'{filler} {planted.whole}' for filler, planted in located)
+        expected = ' '.join(f'{filler} {planted.redacted}' for filler, planted in located)
 
         result = scrub(text)
 
         assert result.text == expected
-        assert result.hits == len(placed)
+        assert result.hits == len(located)

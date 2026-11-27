@@ -1,10 +1,9 @@
 """HtmlWriter: links, copy buttons and code spans."""
 
-from dataclasses import replace
 from typing import TYPE_CHECKING
 
 import pytest
-from red_thread_casefile.documents import Citation
+from red_thread_casefile.documents import CitationNode
 from red_thread_core.documents import PointList, Section, parse_line
 
 from tests.casefile.pages.builders import PLAIN_URL
@@ -12,44 +11,49 @@ from tests.casefile.pages.html_reading import (
     find_buttons,
     find_tags,
     list_attribute_names,
-    list_cite_blocks,
+    list_citation_blocks,
     list_code_spans,
     list_copy_values,
     list_tag_names,
 )
-from tests.casefile.writers.builders import create_document, create_entry_node
+from tests.casefile.writers.builders import create_document, create_finding_node
 from tests.casefile.writers.reading import render_page
 
 if TYPE_CHECKING:
-    from red_thread_casefile.documents import EntryNode
+    from red_thread_casefile.documents import FindingNode
     from red_thread_core.documents import Document
 
 
-def create_cited_node(text: str, ref: str, target: str) -> EntryNode:
-    return replace(create_entry_node(text, ref), citation=Citation(target=target))
+def create_cited_node(text: str, finding_id: str, target: str) -> FindingNode:
+    return create_finding_node(text, finding_id).replace_with(
+        citation_node=CitationNode(target=target)
+    )
 
 
 def create_point_document(text: str) -> Document:
     points = PointList(points=(parse_line(text),))
-    return replace(create_document(), sections=(Section(title='Findings', blocks=(points,)),))
+    return create_document().replace_with(sections=(Section(title='Findings', blocks=(points,)),))
 
 
-def non_url_cite_cases() -> pytest.MarkDecorator:
-    cites = [
+def non_url_citation_cases() -> pytest.MarkDecorator:
+    citations = [
         pytest.param('src/queue.py:3', id='path'),
         pytest.param('git log -S sleep', id='command'),
         pytest.param('javascript:alert(1)', id='javascript-scheme'),
     ]
-    return pytest.mark.parametrize('cite', cites)
+    return pytest.mark.parametrize('citation', citations)
 
 
-def copied_cite_cases() -> pytest.MarkDecorator:
-    cites = [pytest.param(PLAIN_URL, id='url-cite'), pytest.param('src/queue.py:3', id='path-cite')]
-    return pytest.mark.parametrize('cite', cites)
+def copied_citation_cases() -> pytest.MarkDecorator:
+    citations = [
+        pytest.param(PLAIN_URL, id='url-cite'),
+        pytest.param('src/queue.py:3', id='path-cite'),
+    ]
+    return pytest.mark.parametrize('citation', citations)
 
 
-class TestCites:
-    def test_a_url_cite_becomes_a_link_that_shows_the_url(self) -> None:
+class TestCitations:
+    def test_a_url_citation_becomes_a_link_that_shows_the_url(self) -> None:
         page = render_page(create_document(create_cited_node('claim', 'e1', PLAIN_URL)))
 
         (link,) = find_tags(page, 'a')
@@ -62,11 +66,11 @@ class TestCites:
         (link,) = find_tags(page, 'a')
         assert 'noreferrer' in link['rel']
 
-    @non_url_cite_cases()
-    def test_a_cite_that_is_not_a_url_sits_in_code_with_no_link(self, cite: str) -> None:
-        page = render_page(create_document(create_cited_node('claim', 'e1', cite)))
+    @non_url_citation_cases()
+    def test_a_citation_that_is_not_a_url_sits_in_code_with_no_link(self, citation: str) -> None:
+        page = render_page(create_document(create_cited_node('claim', 'e1', citation)))
 
-        assert cite in list_code_spans(page)
+        assert citation in list_code_spans(page)
         assert find_tags(page, 'a') == []
         assert 'href' not in list_attribute_names(page)
 
@@ -77,26 +81,28 @@ class TestCites:
 
         assert [link['href'] for link in find_tags(page, 'a')] == ['http://example.invalid/a']
 
-    @copied_cite_cases()
-    def test_a_cite_is_followed_by_a_copy_button_holding_the_cite(self, cite: str) -> None:
-        page = render_page(create_document(create_cited_node('claim', 'e1', cite)))
+    @copied_citation_cases()
+    def test_a_citation_is_followed_by_a_copy_button_holding_the_citation(
+        self, citation: str
+    ) -> None:
+        page = render_page(create_document(create_cited_node('claim', 'e1', citation)))
 
-        (block,) = list_cite_blocks(page)
+        (block,) = list_citation_blocks(page)
         (button,) = find_buttons(page, 'copy')
-        assert button['data-copy'] == cite
+        assert button['data-copy'] == citation
         assert button['type'] == 'button'
         assert block.endswith('>Copy</button>')
 
-    def test_an_entry_with_no_cite_has_no_cite_block_and_no_copy_button(self) -> None:
-        page = render_page(create_document(create_entry_node('claim', 'e1')))
+    def test_an_finding_with_no_citation_has_no_citation_block_and_no_copy_button(self) -> None:
+        page = render_page(create_document(create_finding_node('claim', 'e1')))
 
-        assert list_cite_blocks(page) == []
+        assert list_citation_blocks(page) == []
         assert find_buttons(page, 'copy') == []
 
-    def test_each_cited_entry_gets_its_own_copy_button_in_order(self) -> None:
+    def test_each_cited_finding_gets_its_own_copy_button_in_order(self) -> None:
         document = create_document(
             create_cited_node('a', 'e1', 'src/a.py:1'),
-            create_entry_node('b', 'e2'),
+            create_finding_node('b', 'e2'),
             create_cited_node('c', 'e3', PLAIN_URL),
         )
 
@@ -126,8 +132,7 @@ class TestBackticks:
         assert 'a ` b' in page
 
     def test_prose_and_summary_lines_get_code_spans_too(self) -> None:
-        document = replace(
-            create_document(prose=('see `prose.py`',)),
+        document = create_document(prose=('see `prose.py`',)).replace_with(
             title='t',
             summary=(parse_line('at `HEAD`'),),
         )

@@ -76,7 +76,7 @@ class CheckCommand:
     def run(self, arguments: CheckArguments) -> int:
         path = locate_plan(arguments.plan)
         checked = self.plans.open_planner(path).check()
-        counts = f'{checked.criteria} criteria rest on {checked.entries} entries'
+        counts = f'{checked.criteria} criteria rest on {checked.findings} findings'
         print(f'checked {path.resolve()}: {counts}')
         return EXIT_OK
 

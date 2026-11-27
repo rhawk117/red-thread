@@ -7,6 +7,7 @@ import pytest
 from red_thread_navigate.cli import create_navigator
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from pathlib import Path
 
 MARKERS = ('cannot be sliced:', 'Next step:', 'nearest names:', 'is not valid:')
@@ -66,20 +67,20 @@ class TestRefusalContract:
         return tuple(marker for marker in MARKERS if any(marker in span for span in spans))
 
     @pytest.fixture
-    def printed(self, refusals: tuple[str, ...]) -> tuple[str, ...]:
+    def printed(self, refusals: Sequence[str]) -> tuple[str, ...]:
         return tuple(marker for marker in MARKERS if any(marker in text for text in refusals))
 
-    def test_every_refusal_carries_a_marker(self, refusals: tuple[str, ...]) -> None:
+    def test_every_refusal_carries_a_marker(self, refusals: Sequence[str]) -> None:
         unmarked = [text for text in refusals if not any(marker in text for marker in MARKERS)]
 
         assert unmarked == []
 
     def test_every_marker_the_package_prints_is_named_in_the_prompt(
-        self, printed: tuple[str, ...], named_in_prompt: tuple[str, ...]
+        self, printed: Sequence[str], named_in_prompt: Sequence[str]
     ) -> None:
         assert set(printed) <= set(named_in_prompt)
 
     def test_every_marker_the_prompt_names_is_still_printed(
-        self, printed: tuple[str, ...], named_in_prompt: tuple[str, ...]
+        self, printed: Sequence[str], named_in_prompt: Sequence[str]
     ) -> None:
         assert set(named_in_prompt) <= set(printed)

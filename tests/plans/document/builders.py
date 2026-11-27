@@ -7,8 +7,10 @@ from red_thread_plans.domain import HEADING, Frontmatter
 from red_thread_plans.packaged import load_outline
 from red_thread_plans.schemas import write_plan
 
+from tests.codec import YAML
+
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Mapping, Sequence
 
 PLAN_ID = '20261126-cap-retries'
 TITLE = 'Cap the attempts of each job'
@@ -41,10 +43,12 @@ def fill_plan(text: str, sections: Mapping[str, str]) -> str:
 
 
 def write_sound_plan(*case_ids: str) -> str:
-    return fill_plan(write_plan(create_frontmatter(*case_ids), load_outline()), SOUND_SECTIONS)
+    return fill_plan(
+        write_plan(YAML, create_frontmatter(*case_ids), load_outline()), SOUND_SECTIONS
+    )
 
 
-def edit_plan(text: str, edits: tuple[tuple[str, str], ...]) -> str:
+def edit_plan(text: str, edits: Sequence[tuple[str, str]]) -> str:
     edited = text
     for old, new in edits:
         edited = edited.replace(old, new, 1)

@@ -1,4 +1,4 @@
-"""The board's links: an anchor per entry, columns and its words."""
+"""The board's links: an anchor per finding, columns and its words."""
 
 from html import escape
 from typing import TYPE_CHECKING
@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING
 import pytest
 from red_thread_casefile.packaged import load_wording
 
-from tests.casefile.ledger.builders import create_entry
-from tests.casefile.pages.html_reading import find_entries, list_item_refs
+from tests.casefile.ledger.builders import create_finding
+from tests.casefile.pages.html_reading import find_finding_items, list_finding_id_buttons
 
 if TYPE_CHECKING:
     from tests.casefile.lenses.builders import PressHarness
@@ -22,17 +22,21 @@ class TestBoardLayout:
     @pytest.fixture
     def seeded(self, press_harness: PressHarness) -> PressHarness:
         press_harness.seed(
-            create_entry(seq=1, kind='known', text='the pool is shared'),
-            create_entry(seq=2, kind='open', text='does the pool resize'),
-            create_entry(seq=3, kind='open', text='an early guess'),
-            create_entry(seq=4, kind='known', text='the guess was wrong', supersedes=('e3',)),
+            create_finding(finding_number=1, kind='known', text='the pool is shared'),
+            create_finding(finding_number=2, kind='open', text='does the pool resize'),
+            create_finding(finding_number=3, kind='open', text='an early guess'),
+            create_finding(
+                finding_number=4, kind='known', text='the guess was wrong', supersedes=('e3',)
+            ),
         )
         return press_harness
 
-    def test_each_entry_is_an_anchor_named_by_its_ref(self, seeded: PressHarness) -> None:
+    def test_each_finding_is_an_anchor_named_by_its_finding_id(self, seeded: PressHarness) -> None:
         page = draw_board(seeded)
 
-        assert [entry['id'] for entry in find_entries(page)] == list_item_refs(page)
+        assert [finding['id'] for finding in find_finding_items(page)] == list_finding_id_buttons(
+            page
+        )
 
     def test_the_kind_sections_sit_side_by_side_and_the_retired_fold_does_not(
         self, seeded: PressHarness

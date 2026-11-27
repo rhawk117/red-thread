@@ -8,7 +8,7 @@ from red_thread_casefile.domain import LedgerSource
 from red_thread_casefile.errors import CaseExistsError, CaseNotFoundError
 from red_thread_casefile.store import CaseRepository
 
-from tests.casefile.ledger.builders import create_case, create_entry
+from tests.casefile.ledger.builders import create_case, create_finding
 from tests.casefile.ledger.markdown import write_case_text, write_thread_text
 
 if TYPE_CHECKING:
@@ -26,7 +26,7 @@ class RepositoryHarness:
 
 class CaseRepositoryContract:
     case_text = write_case_text(create_case())
-    thread_text = write_thread_text((create_entry(seq=1),))
+    thread_text = write_thread_text((create_finding(finding_number=1),))
 
     class TestImplementation:
         def test_repository_satisfies_the_protocol(self, harness: RepositoryHarness) -> None:

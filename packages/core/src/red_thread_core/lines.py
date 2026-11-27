@@ -1,15 +1,15 @@
 """A text as numbered lines, cut into parts at the lines that start with a mark."""
 
-from dataclasses import dataclass
 from itertools import pairwise
 from typing import TYPE_CHECKING
+
+from red_thread_core.dto import DTO
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Line:
+class Line(DTO, frozen=True, kw_only=True, gc=False):
     number: int
     text: str
 
@@ -22,14 +22,12 @@ class Line:
         return self.text.strip()
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Cut:
+class Cut(DTO, frozen=True, kw_only=True, gc=False):
     head: Line
     body: tuple[Line, ...]
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Cuts:
+class Cuts(DTO, frozen=True, kw_only=True, gc=False):
     preamble: tuple[Line, ...]
     parts: tuple[Cut, ...]
 

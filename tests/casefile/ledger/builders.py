@@ -3,23 +3,19 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from red_thread_casefile.domain import Case, Entry
+from red_thread_casefile.domain import Case, CaseFinding
 from red_thread_casefile.packaged import load_wording
 from red_thread_casefile.services import CaseFile
 
 from tests.casefile.ledger.markdown import CaseScribe, write_case_text
-from tests.casefile.ledger.memory import (
-    DAY,
-    HEAD,
-    MOMENT,
-    SHORT_HEAD,
-    FixedClock,
-    MemoryCaseRepository,
-    MemorySourceTree,
-)
+from tests.casefile.ledger.memory import HEAD, SHORT_HEAD, MemoryCaseRepository, MemorySourceTree
+from tests.codec import YAML
+from tests.core.timekeeping.clock import DAY, MOMENT, FixedClock
 
 if TYPE_CHECKING:
-    from red_thread_casefile.domain import EntryKind, Verdict
+    from datetime import date
+
+    from red_thread_casefile.domain import FindingKind, Verdict
     from red_thread_casefile.errors import CaseFileError
     from red_thread_casefile.services import Checked
 
@@ -53,27 +49,27 @@ def create_case() -> Case:
     )
 
 
-def create_entry(
+def create_finding(
     *,
-    seq: int = 1,
+    finding_number: int = 1,
     thread: str | None = None,
-    kind: EntryKind = 'open',
+    kind: FindingKind = 'open',
     text: str = 'the retry queue stalls',
     source: str = 'scout',
     round_number: int = 1,
-    at: str = DAY,
+    at: date = DAY,
     head: str | None = SHORT_HEAD,
     verdict: Verdict | None = None,
-    cite: str | None = None,
+    citation: str | None = None,
     quote: str | None = None,
-    addr: str | None = None,
+    code_address: str | None = None,
     rests_on: str | None = None,
-    refute: str | None = None,
+    refuted_if: str | None = None,
     diagram: str | None = None,
     supersedes: tuple[str, ...] = (),
-) -> Entry:
-    return Entry(
-        seq=seq,
+) -> CaseFinding:
+    return CaseFinding(
+        finding_number=finding_number,
         round=round_number,
         kind=kind,
         text=text,
@@ -81,32 +77,34 @@ def create_entry(
         at=at,
         head=head,
         verdict=verdict,
-        cite=cite,
+        citation=citation,
         quote=quote,
-        addr=addr,
+        code_address=code_address,
         rests_on=rests_on,
-        refute=refute,
+        refuted_if=refuted_if,
         diagram=diagram,
         supersedes=supersedes,
         thread=thread,
     )
 
 
-def create_valid_entry(kind: EntryKind, seq: int = 1) -> Entry:
-    entry = create_entry(seq=seq, kind=kind, text=f'a {kind} about the queue')
+def create_valid_finding(kind: FindingKind, finding_number: int = 1) -> CaseFinding:
+    finding = create_finding(
+        finding_number=finding_number, kind=kind, text=f'a {kind} about the queue'
+    )
     if kind == 'known':
-        return entry.replace_with(cite=URL_CITE, verdict='VERIFIED')
+        return finding.replace_with(citation=URL_CITE, verdict='VERIFIED')
 
     if kind == 'hypothesis':
-        return entry.replace_with(refute='the stall disappears when the sleep is removed')
+        return finding.replace_with(refuted_if='the stall disappears when the sleep is removed')
 
     if kind == 'ruled_out':
-        return entry.replace_with(cite=URL_CITE)
+        return finding.replace_with(citation=URL_CITE)
 
     if kind == 'decision':
-        return entry.replace_with(source='user')
+        return finding.replace_with(source='user')
 
-    return entry
+    return finding
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -118,11 +116,11 @@ class CaseHarness:
     scribe: CaseScribe
 
     @property
-    def entries(self) -> tuple[Entry, ...]:
-        return self.casefile.load().ledger.entries
+    def findings(self) -> tuple[CaseFinding, ...]:
+        return self.casefile.load().ledger.findings
 
-    def seed(self, thread: str | None, *entries: Entry) -> None:
-        self.scribe.seed(thread, *entries)
+    def seed(self, thread: str | None, *findings: CaseFinding) -> None:
+        self.scribe.seed(thread, *findings)
 
     def frame(self, case: Case) -> None:
         self.scribe.frame(case)
@@ -138,7 +136,9 @@ def create_case_harness() -> CaseHarness:
     repository = MemoryCaseRepository()
     tree = MemorySourceTree(files={QUEUE_PATH: QUEUE_LINES})
     clock = FixedClock()
-    casefile = CaseFile(repository=repository, tree=tree, clock=clock, wording=load_wording())
+    casefile = CaseFile(
+        repository=repository, tree=tree, clock=clock, wording=load_wording(), codec=YAML
+    )
     scribe = CaseScribe(sink=repository, cases=[create_case()])
     return CaseHarness(
         repository=repository, tree=tree, clock=clock, casefile=casefile, scribe=scribe

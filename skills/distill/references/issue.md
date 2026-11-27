@@ -2,7 +2,7 @@
 
 Reader: maintainers on GitHub. They do not have the case file, so the issue has to stand without it.
 
-Sections the script writes: Summary, Findings (the `known` entries), Open questions, Ruled out, Next steps, References (the `resource` entries), Pointers. Budget: 80 lines.
+Sections the script writes: Summary, Findings (the `known` findings), Open questions, Ruled out, Next steps, References (the `resource` findings), Pointers. Budget: 80 lines.
 
 ## Choosing
 
@@ -25,4 +25,4 @@ Creating an issue is public and hard to take back. Ask the owner first with AskU
 tail -n +3 CASE/out/issue.md | gh issue create --title "TITLE" --body-file -
 ```
 
-Afterwards record the issue link as a `resource` entry, so the case points at where the work went.
+Afterwards record the issue link as a `resource` finding, so the case points at where the work went.

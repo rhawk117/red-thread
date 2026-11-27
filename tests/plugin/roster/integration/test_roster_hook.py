@@ -1,11 +1,11 @@
 """hooks/roster.py and its wiring in hooks/hooks.json, run as a child process."""
 
-import json
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
 
+from tests.codec import JSON
 from tests.plugin.roster.cases import (
     LEAD,
     SCOUTS,
@@ -104,7 +104,7 @@ class TestRosterWiring:
     def test_the_wired_command_denies_a_dispatch_outside_the_roster(
         self, roster_hook: RosterHook
     ) -> None:
-        finished = roster_hook.send_as_wired(json.dumps(create_payload(LEAD, SKEPTIC)))
+        finished = roster_hook.send_as_wired(JSON.encode_text(create_payload(LEAD, SKEPTIC)))
 
         assert finished.code == 0
         assert read_decision(finished)['permissionDecision'] == 'deny'
@@ -112,6 +112,6 @@ class TestRosterWiring:
     def test_the_wired_command_leaves_a_dispatch_inside_the_roster_alone(
         self, roster_hook: RosterHook
     ) -> None:
-        finished = roster_hook.send_as_wired(json.dumps(create_payload(LEAD, SCOUTS[0])))
+        finished = roster_hook.send_as_wired(JSON.encode_text(create_payload(LEAD, SCOUTS[0])))
 
         assert (finished.code, finished.out) == (0, '')

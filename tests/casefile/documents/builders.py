@@ -1,16 +1,16 @@
-"""Entry nodes and sections for the document tree tests."""
+"""Finding nodes and sections for the document tree tests."""
 
-from red_thread_casefile.documents import EntryList, EntryNode
+from red_thread_casefile.documents import FindingList, FindingNode
 from red_thread_core.documents import Section, parse_line
 
-MOMENT = '2026-11-21T10:00:00Z'
+from tests.core.timekeeping.clock import DAY
 
 
-def create_entry_node(ref: str = 'e1', *, lead: str | None = None) -> EntryNode:
-    claim = parse_line(f'claim {ref}')
-    return EntryNode(ref=ref, kind='known', claim=claim, round=1, at=MOMENT, lead=lead)
+def create_finding_node(finding_id: str = 'e1', *, lead: str | None = None) -> FindingNode:
+    claim = parse_line(f'claim {finding_id}')
+    return FindingNode(finding_id=finding_id, kind='known', claim=claim, round=1, at=DAY, lead=lead)
 
 
-def create_entry_section(*refs: str, title: str = 'Known') -> Section:
-    entries = tuple(map(create_entry_node, refs))
-    return Section(title=title, blocks=(EntryList(entries=entries),), kind='known')
+def create_finding_section(*finding_ids: str, title: str = 'Known') -> Section:
+    findings = tuple(map(create_finding_node, finding_ids))
+    return Section(title=title, blocks=(FindingList(findings=findings),), kind='known')

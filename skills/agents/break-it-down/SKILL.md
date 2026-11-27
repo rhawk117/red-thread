@@ -38,6 +38,6 @@ The tasks of a ticket are the order its work is done in.
 When the owner asks to split a ticket or a task, or one fails the sizes above:
 
 1. Find the cuts by the rules above. Every criterion of the original lands in exactly one piece, in its own words. A criterion that two pieces each need half of is two criteria: write both and say it was divided, because that changes what is promised.
-2. Write the pieces out in full in your message: for tickets, each one's title, criteria with their refs and tasks; for tasks, each one's words and place in the order. Below them, list what the split changes outside them: each criterion that was divided, each task that moves.
+2. Write the pieces out in full in your message: for tickets, each one's title, criteria with their finding ids and tasks; for tasks, each one's words and place in the order. Below them, list what the split changes outside them: each criterion that was divided, each task that moves.
 3. Ask with AskUserQuestion: split as shown, keep it whole, or change the split (the owner says what through the free text). Nothing changes until the owner answers. A dialog that came back empty is not an answer: ask again.
 4. On "split as shown", change the plan: the pieces of a task replace it in the order; of a ticket, this plan keeps the piece the owner picks and names the others under Non-goals. On "keep it", change nothing. On "change the split", go back to step 1 with what the owner said.

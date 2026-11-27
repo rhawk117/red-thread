@@ -11,13 +11,13 @@ from red_thread_casefile.errors import (
     UndecodableFileError,
 )
 
-from tests.casefile.ledger.builders import create_case, create_entry
+from tests.casefile.ledger.builders import create_case, create_finding
 from tests.casefile.ledger.cases import (
     corrupt_block_params,
     corrupt_case_params,
     line_separator_params,
 )
-from tests.casefile.ledger.markdown import write_case_text, write_entry, write_thread_text
+from tests.casefile.ledger.markdown import write_case_text, write_finding, write_thread_text
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -68,22 +68,22 @@ class TestDirectoryFiles:
         assert harness.case_file.is_file()
         assert harness.directory.joinpath('threads').is_dir()
 
-    def test_each_entry_is_read_from_the_file_it_was_written_in(
+    def test_each_finding_is_read_from_the_file_it_was_written_in(
         self, harness: DirectoryHarness
     ) -> None:
-        harness.seed(None, create_entry(seq=1), create_entry(seq=2))
-        harness.seed('T1', create_entry(seq=1))
+        harness.seed(None, create_finding(finding_number=1), create_finding(finding_number=2))
+        harness.seed('T1', create_finding(finding_number=1))
 
-        refs = [entry.ref for entry in harness.casefile.load().ledger.entries]
+        finding_ids = [finding.finding_id for finding in harness.casefile.load().ledger.findings]
 
-        assert refs == ['e1', 'e2', 'T1.e1']
+        assert finding_ids == ['e1', 'e2', 'T1.e1']
         assert harness.thread_file('T1').is_file()
 
     def test_check_leaves_every_file_byte_for_byte_as_it_was(
         self, harness: DirectoryHarness
     ) -> None:
-        harness.seed(None, create_entry(seq=1, kind='known'))
-        harness.seed('T1', create_entry(seq=2))
+        harness.seed(None, create_finding(finding_number=1, kind='known'))
+        harness.seed('T1', create_finding(finding_number=2))
         before = snapshot(harness.directory)
 
         problems = harness.check().problems
@@ -92,7 +92,7 @@ class TestDirectoryFiles:
         assert snapshot(harness.directory) == before
 
     @corrupt_block_cases()
-    def test_a_block_that_is_not_an_entry_is_named_by_file_and_heading_line(
+    def test_a_block_that_is_not_an_finding_is_named_by_file_and_heading_line(
         self, harness: DirectoryHarness, block: str
     ) -> None:
         text = self.write_block(harness, block)
@@ -101,41 +101,43 @@ class TestDirectoryFiles:
 
         assert len(problems) == 1
         assert isinstance(problems[0], MalformedBlockError)
-        assert problems[0].spot.file == 'case.md'
-        assert problems[0].spot.line == find_line(text, '### e1')
+        assert problems[0].location.file == 'case.md'
+        assert problems[0].location.line == find_line(text, '### e1')
 
     def test_text_outside_a_block_in_a_thread_file_names_the_thread_file(
         self, harness: DirectoryHarness
     ) -> None:
-        stray = write_thread_text((create_entry(seq=1),)) + '\nbroken\n'
+        stray = write_thread_text((create_finding(finding_number=1),)) + '\nbroken\n'
         harness.thread_file('T4').write_text(stray, encoding='utf-8')
 
         problems = harness.check().problems
 
         assert len(problems) == 1
         assert isinstance(problems[0], StrayTextError)
-        assert problems[0].spot.file == 'threads/T4.md'
-        assert problems[0].spot.line == find_line(stray, 'broken')
+        assert problems[0].location.file == 'threads/T4.md'
+        assert problems[0].location.line == find_line(stray, 'broken')
 
-    def test_blank_lines_between_entries_do_not_lose_entries(
+    def test_blank_lines_between_findings_do_not_lose_findings(
         self, harness: DirectoryHarness
     ) -> None:
-        first = write_entry(create_entry(seq=1))
-        second = write_entry(create_entry(seq=2))
-        opening = write_case_text(create_case(), (create_entry(seq=1),)).removesuffix(first)
+        first = write_finding(create_finding(finding_number=1))
+        second = write_finding(create_finding(finding_number=2))
+        opening = write_case_text(create_case(), (create_finding(finding_number=1),)).removesuffix(
+            first
+        )
         text = f'{opening}\n\n\n{first}\n   \n\n{second}\n\n'
         harness.case_file.write_text(text, encoding='utf-8')
 
-        assert len(harness.casefile.load().ledger.entries) == 2
+        assert len(harness.casefile.load().ledger.findings) == 2
 
     @line_separator_cases()
-    def test_entry_text_with_a_unicode_line_separator_is_read_back_whole(
+    def test_finding_text_with_a_unicode_line_separator_is_read_back_whole(
         self, harness: DirectoryHarness, case: SeparatorCase
     ) -> None:
-        entry = create_entry(seq=1).replace_with(text=f'before{case.separator}after')
-        harness.seed(None, entry)
+        finding = create_finding(finding_number=1).replace_with(text=f'before{case.separator}after')
+        harness.seed(None, finding)
 
-        assert harness.casefile.load().ledger.entries == (entry,)
+        assert harness.casefile.load().ledger.findings == (finding,)
 
     def test_a_case_file_that_is_not_utf8_is_refused_with_its_path(
         self, harness: DirectoryHarness
@@ -170,7 +172,7 @@ class TestCorruptCaseFile:
     def test_corrupt_frontmatter_is_left_as_it_was_and_the_case_will_not_load(
         self, harness: DirectoryHarness, text: str
     ) -> None:
-        harness.seed('T1', create_entry(seq=1))
+        harness.seed('T1', create_finding(finding_number=1))
         harness.case_file.write_text(text, encoding='utf-8')
 
         with pytest.raises(MalformedCaseError):

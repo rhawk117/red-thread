@@ -1,18 +1,17 @@
-"""Frontmatter: the fenced split of a file's lines and the YAML decode of its header."""
+"""Frontmatter: the fenced split of a file's lines."""
 
-import msgspec
+from typing import TYPE_CHECKING
+
 import pytest
 from red_thread_core.frontmatter import (
     FenceReasons,
     FrontSplit,
-    decode_yaml,
     find_closing,
     split_frontmatter,
 )
 
-
-class Header(msgspec.Struct, frozen=True, kw_only=True):
-    title: str
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 def opening_problem_cases() -> pytest.MarkDecorator:
@@ -32,7 +31,7 @@ class TestSplitFrontmatter:
         assert split_frontmatter(self.lines) == FrontSplit(front=('title: a',), closing=2)
 
     @opening_problem_cases()
-    def test_missing_opening_fence_is_no_opening(self, lines: tuple[str, ...]) -> None:
+    def test_missing_opening_fence_is_no_opening(self, lines: Sequence[str]) -> None:
         assert split_frontmatter(lines) == 'no_opening'
 
     def test_missing_closing_fence_is_no_closing(self) -> None:
@@ -51,11 +50,3 @@ class TestFenceReasons:
 
         assert reasons.explain('no_opening') == 'no opening fence'
         assert reasons.explain('no_closing') == 'no closing fence'
-
-
-class TestDecodeYaml:
-    def test_valid_yaml_returns_the_decoded_value(self) -> None:
-        assert decode_yaml('title: a', Header) == Header(title='a')
-
-    def test_bad_yaml_returns_a_decode_error(self) -> None:
-        assert isinstance(decode_yaml('title: [', Header), msgspec.DecodeError)

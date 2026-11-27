@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Mapping, Sequence
     from pathlib import Path
 
 TIME_LIMIT = 120
@@ -24,7 +24,7 @@ class ChildRunner:
     cwd: Path
     env: Mapping[str, str] | None = None
 
-    async def wait(self, command: tuple[str, ...], stdin: str) -> Finished:
+    async def wait(self, command: Sequence[str], stdin: str) -> Finished:
         child = await asyncio.create_subprocess_exec(
             *command, cwd=self.cwd, env=self.env, stdin=PIPE, stdout=PIPE, stderr=PIPE
         )

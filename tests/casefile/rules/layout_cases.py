@@ -1,11 +1,11 @@
-"""Scenarios for a thread file whose round or entry headings cannot be read."""
+"""Scenarios for a thread file whose round or finding headings cannot be read."""
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from red_thread_casefile.errors import (
-    EntryBeforeRoundError,
-    MalformedEntryHeadingError,
+    FindingBeforeRoundError,
+    MalformedFindingHeadingError,
     MalformedRoundError,
     MissingBlockError,
     RoundOrderError,
@@ -23,7 +23,7 @@ ROUND = '## Round 1 · 2026-11-21 · none\n\n'
 BLOCK = '```yaml\nkind: open\ntext: a question\nsource: scout\n```\n'
 
 
-def write_raw_entry(heading: str) -> str:
+def write_raw_finding(heading: str) -> str:
     return f'{heading}\n\n{BLOCK}'
 
 
@@ -39,17 +39,17 @@ class LayoutCase:
 def round_heading_case(name: str, heading: str) -> LayoutCase:
     return LayoutCase(
         name=name,
-        text=f'{heading}\n\n{write_raw_entry("### e1")}',
+        text=f'{heading}\n\n{write_raw_finding("### e1")}',
         error_type=MalformedRoundError,
         place='threads/T1.md:1:',
     )
 
 
-def entry_heading_case(name: str, heading: str) -> LayoutCase:
+def finding_heading_case(name: str, heading: str) -> LayoutCase:
     return LayoutCase(
         name=name,
-        text=f'{ROUND}{write_raw_entry(heading)}',
-        error_type=MalformedEntryHeadingError,
+        text=f'{ROUND}{write_raw_finding(heading)}',
+        error_type=MalformedFindingHeadingError,
         place='threads/T1.md:3:',
     )
 
@@ -57,7 +57,7 @@ def entry_heading_case(name: str, heading: str) -> LayoutCase:
 def round_order_case(name: str, first: str) -> LayoutCase:
     return LayoutCase(
         name=name,
-        text=f'{first}\n\n{write_raw_entry("### e1")}{ROUND}{write_raw_entry("### e2")}',
+        text=f'{first}\n\n{write_raw_finding("### e1")}{ROUND}{write_raw_finding("### e2")}',
         error_type=RoundOrderError,
         place='threads/T1.md:10:',
     )
@@ -74,24 +74,24 @@ def layout_params() -> list[ParameterSet]:
         round_heading_case('round-with-another-word', '## Step 1 · 2026-11-21 · none'),
         round_order_case('round-heading-repeated', '## Round 1 · 2026-11-21 · none'),
         round_order_case('round-number-going-down', '## Round 2 · 2026-11-21 · none'),
-        entry_heading_case('entry-numbered-zero', '### e0'),
-        entry_heading_case('entry-with-a-capital', '### E1'),
-        entry_heading_case('entry-named-in-words', '### entry 1'),
+        finding_heading_case('finding-numbered-zero', '### e0'),
+        finding_heading_case('finding-with-a-capital', '### E1'),
+        finding_heading_case('finding-named-in-words', '### finding 1'),
         LayoutCase(
-            name='entry-before-any-round',
-            text=write_raw_entry('### e1'),
-            error_type=EntryBeforeRoundError,
+            name='finding-before-any-round',
+            text=write_raw_finding('### e1'),
+            error_type=FindingBeforeRoundError,
             place='threads/T1.md:1:',
         ),
         LayoutCase(
-            name='entry-without-a-block',
+            name='finding-without-a-block',
             text=f'{ROUND}### e1\n\nkind: open\n',
             error_type=MissingBlockError,
             place='threads/T1.md:3 T1.e1:',
         ),
         LayoutCase(
-            name='notes-between-the-round-and-its-entry',
-            text=f'{ROUND}some notes\n\n{write_raw_entry("### e1")}',
+            name='notes-between-the-round-and-its-finding',
+            text=f'{ROUND}some notes\n\n{write_raw_finding("### e1")}',
             error_type=StrayTextError,
             place='threads/T1.md:3:',
         ),

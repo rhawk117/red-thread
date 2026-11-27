@@ -7,8 +7,6 @@ from red_thread_casefile.domain import CASE_FILE, LedgerSource
 from red_thread_casefile.errors import CaseExistsError, CaseNotFoundError
 from red_thread_casefile.store import order_thread_file
 
-MOMENT = '2026-11-21T09:30:00+00:00'
-DAY = '2026-11-21'
 HEAD = '1111111111111111111111111111111111111111'
 SHORT_HEAD = HEAD[:7]
 NEXT_HEAD = '2222222222222222222222222222222222222222'
@@ -93,11 +91,3 @@ class MemoryPageStore:
 
     def read(self, name: str) -> str | None:
         return self.files.get(name)
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class FixedClock:
-    moment: str = MOMENT
-
-    def now(self) -> str:
-        return self.moment

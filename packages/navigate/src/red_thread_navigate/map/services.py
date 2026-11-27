@@ -9,6 +9,8 @@ from red_thread_navigate.budget import fit_notes, fit_text
 from red_thread_navigate.map.views import RankedFile, RankedSymbol, empty_lines, map_rungs
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from red_thread_navigate.symbols.domain import Backends, FileSymbols
     from red_thread_navigate.symbols.services import Index
 
@@ -30,7 +32,7 @@ def rank_file(file: FileSymbols, counts: Counter[str], *, key: SymbolKey) -> Ran
     return RankedFile(file=file, symbols=tuple(sorted(symbols, key=key)))
 
 
-def rank_files(files: tuple[FileSymbols, ...], *, key: SymbolKey) -> tuple[RankedFile, ...]:
+def rank_files(files: Sequence[FileSymbols], *, key: SymbolKey) -> tuple[RankedFile, ...]:
     counts = Counter(reference.name for file in files for reference in file.references)
     ranked = (rank_file(file, counts, key=key) for file in files)
     return tuple(sorted(ranked, key=by_file_rank))

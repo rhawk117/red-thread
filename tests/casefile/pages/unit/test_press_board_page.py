@@ -4,8 +4,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from tests.casefile.ledger.builders import create_case, create_entry
-from tests.casefile.lenses.builders import create_numbered_entries, seed_flag_scenario
+from tests.casefile.ledger.builders import create_case, create_finding
+from tests.casefile.lenses.builders import create_numbered_findings, seed_flag_scenario
 from tests.casefile.lenses.cases import QUEUE_CITE, QUEUE_QUOTE, flag_params
 from tests.casefile.pages.builders import DIAGRAM, SCRIPT
 from tests.casefile.pages.html_reading import (
@@ -14,7 +14,7 @@ from tests.casefile.pages.html_reading import (
     list_cited_quotes,
     list_claim_markup,
     list_facts,
-    list_item_refs,
+    list_finding_id_buttons,
     list_mermaid,
     list_note_rows,
     list_section_titles,
@@ -39,7 +39,7 @@ FACT_LABELS = [
     'Commit',
     'Created',
     'Languages',
-    'Entries',
+    'Findings',
     'Threads',
     'Citations',
 ]
@@ -64,12 +64,12 @@ class TestBoardPageFacts:
         assert written.name == 'board.html'
         assert set(press_harness.snapshot()) == {'board.html'}
 
-    def test_an_empty_ledger_gives_facts_and_no_entry_no_map_no_toolbar(
+    def test_an_empty_ledger_gives_facts_and_no_finding_no_map_no_toolbar(
         self, press_harness: PressHarness
     ) -> None:
         page = draw_board(press_harness)
 
-        assert list_item_refs(page) == []
+        assert list_finding_id_buttons(page) == []
         assert list_section_titles(page) == []
         assert list_mermaid(page) == []
         assert find_tags(page, 'nav') == []
@@ -78,14 +78,14 @@ class TestBoardPageFacts:
     def test_the_header_shows_the_case_line_and_the_facts_in_order(
         self, press_harness: PressHarness
     ) -> None:
-        press_harness.seed(*create_numbered_entries('open', 2))
+        press_harness.seed(*create_numbered_findings('open', 2))
 
         page = draw_board(press_harness)
 
         facts = {fact.label: fact for fact in list_facts(page)}
         assert [fact.label for fact in list_facts(page)] == FACT_LABELS
         assert facts['Bar'].value == create_case().bar
-        assert facts['Entries'].value == '2 live, 0 retired'
+        assert facts['Findings'].value == '2 live, 0 retired'
         assert facts['Created'].value == '2026-11-21'
         assert facts['Commit'].value == '1111111'
         assert {label for label, fact in facts.items() if fact.wide} == {'Bar', 'Citations'}
@@ -103,7 +103,13 @@ class TestBoardPageFacts:
 
     def test_the_board_page_keeps_the_page_promise(self, press_harness: PressHarness) -> None:
         press_harness.seed(
-            create_entry(seq=1, kind='known', text='a claim', cite=QUEUE_CITE, quote=QUEUE_QUOTE)
+            create_finding(
+                finding_number=1,
+                kind='known',
+                text='a claim',
+                citation=QUEUE_CITE,
+                quote=QUEUE_QUOTE,
+            )
         )
 
         page = draw_board(press_harness)
@@ -113,53 +119,61 @@ class TestBoardPageFacts:
 
 
 class TestBoardPageSections:
-    def test_the_sections_show_every_live_entry_beyond_the_text_boards_cap(
+    def test_the_sections_show_every_live_finding_beyond_the_text_boards_cap(
         self, press_harness: PressHarness
     ) -> None:
         press_harness.seed(
-            *create_numbered_entries('known', 12),
-            *create_numbered_entries('open', 9, start=13),
-            create_entry(seq=22, kind='open', text='replacement', supersedes=('e1', 'e13')),
+            *create_numbered_findings('known', 12),
+            *create_numbered_findings('open', 9, start=13),
+            create_finding(
+                finding_number=22, kind='open', text='replacement', supersedes=('e1', 'e13')
+            ),
         )
 
         page = draw_board(press_harness)
 
         sections = [section for section in list_sections(page) if section.title != RETIRED]
-        shown = [ref for section in sections for ref in list_item_refs(section.body)]
+        shown = [
+            finding_id
+            for section in sections
+            for finding_id in list_finding_id_buttons(section.body)
+        ]
         live = {f'e{number}' for number in range(1, 23)} - {'e1', 'e13'}
         assert sorted(shown) == sorted(live)
 
-    def test_a_retired_entry_sits_in_the_last_fold_closed_and_names_who_retired_it(
+    def test_a_retired_finding_sits_in_the_last_fold_closed_and_names_who_retired_it(
         self, press_harness: PressHarness
     ) -> None:
         press_harness.seed(
-            create_entry(seq=1, kind='open', text='the stale question'),
-            create_entry(seq=2, kind='open', text='the fresh question', supersedes=('e1',)),
+            create_finding(finding_number=1, kind='open', text='the stale question'),
+            create_finding(
+                finding_number=2, kind='open', text='the fresh question', supersedes=('e1',)
+            ),
         )
 
         page = draw_board(press_harness)
 
         *others, last = list_sections(page)
-        entry_sections = [section for section in others if section.title != 'Map']
+        finding_sections = [section for section in others if section.title != 'Map']
         assert last.title == RETIRED
         assert 'open' not in last.attributes
-        assert list_item_refs(last.body) == ['e1']
+        assert list_finding_id_buttons(last.body) == ['e1']
         assert ('', 'retired by e2') in list_note_rows(last.body)[0]
-        assert all('retired by' not in str(list_note_rows(s.body)) for s in entry_sections)
-        assert 'the stale question' not in ''.join(s.body for s in entry_sections)
+        assert all('retired by' not in str(list_note_rows(s.body)) for s in finding_sections)
+        assert 'the stale question' not in ''.join(s.body for s in finding_sections)
 
-    def test_no_retired_entry_leaves_no_retired_fold(self, press_harness: PressHarness) -> None:
-        press_harness.seed(*create_numbered_entries('open', 2))
+    def test_no_retired_finding_leaves_no_retired_fold(self, press_harness: PressHarness) -> None:
+        press_harness.seed(*create_numbered_findings('open', 2))
 
         page = draw_board(press_harness)
 
         assert RETIRED not in list_section_titles(page)
 
-    def test_the_chips_count_live_entries_only(self, press_harness: PressHarness) -> None:
+    def test_the_chips_count_live_findings_only(self, press_harness: PressHarness) -> None:
         press_harness.seed(
-            create_entry(seq=1, kind='open', text='stale'),
-            create_entry(seq=2, kind='open', text='fresh', supersedes=('e1',)),
-            create_entry(seq=3, kind='known', text='a', cite=QUEUE_CITE),
+            create_finding(finding_number=1, kind='open', text='stale'),
+            create_finding(finding_number=2, kind='open', text='fresh', supersedes=('e1',)),
+            create_finding(finding_number=3, kind='known', text='a', citation=QUEUE_CITE),
         )
 
         groups = list_chip_groups(draw_board(press_harness))
@@ -171,23 +185,29 @@ class TestBoardPageSections:
         self, press_harness: PressHarness
     ) -> None:
         press_harness.seed(
-            create_entry(seq=1, kind='open', text='the stale question'),
-            create_entry(seq=2, kind='open', text='the fresh question', supersedes=('e1',)),
+            create_finding(finding_number=1, kind='open', text='the stale question'),
+            create_finding(
+                finding_number=2, kind='open', text='the fresh question', supersedes=('e1',)
+            ),
         )
-        press_harness.seed_thread('T1', create_entry(seq=1, thread='T1', kind='known', text='deep'))
+        press_harness.seed_thread(
+            'T1', create_finding(finding_number=1, thread='T1', kind='known', text='deep')
+        )
 
         page = draw_board(press_harness)
 
         assert list_section_titles(page)[-2:] == ['Map', RETIRED]
         assert 'e1 open: the stale question' in list_mermaid(page)[-1]
 
-    def test_without_a_retired_entry_the_map_is_last(self, press_harness: PressHarness) -> None:
-        press_harness.seed(*create_numbered_entries('open', 2))
+    def test_without_a_retired_finding_the_map_is_last(self, press_harness: PressHarness) -> None:
+        press_harness.seed(*create_numbered_findings('open', 2))
 
         assert list_section_titles(draw_board(press_harness))[-1] == 'Map'
 
-    def test_an_entry_diagram_is_drawn_before_the_map(self, press_harness: PressHarness) -> None:
-        press_harness.seed(create_entry(seq=1, kind='known', text='a claim', diagram=DIAGRAM))
+    def test_an_finding_diagram_is_drawn_before_the_map(self, press_harness: PressHarness) -> None:
+        press_harness.seed(
+            create_finding(finding_number=1, kind='known', text='a claim', diagram=DIAGRAM)
+        )
 
         diagram, drawn = list_mermaid(draw_board(press_harness))
 
@@ -195,9 +215,9 @@ class TestBoardPageSections:
         assert drawn.startswith('flowchart TD')
 
 
-class TestBoardPageEntries:
+class TestBoardPageFindings:
     @flag_cases()
-    def test_the_board_page_carries_the_flags_and_state_badge_of_each_entry(
+    def test_the_board_page_carries_the_flags_and_state_badge_of_each_finding(
         self, press_harness: PressHarness, scenario: FlagScenario
     ) -> None:
         seed_flag_scenario(press_harness, scenario)
@@ -208,8 +228,10 @@ class TestBoardPageEntries:
         self, press_harness: PressHarness
     ) -> None:
         press_harness.seed(
-            create_entry(seq=1, kind='open', text='maybe', verdict='INFERRED'),
-            create_entry(seq=2, kind='known', text='sure', verdict='VERIFIED', cite=QUEUE_CITE),
+            create_finding(finding_number=1, kind='open', text='maybe', verdict='INFERRED'),
+            create_finding(
+                finding_number=2, kind='known', text='sure', verdict='VERIFIED', citation=QUEUE_CITE
+            ),
         )
 
         page = draw_board(press_harness)
@@ -223,11 +245,13 @@ class TestBoardPageEntries:
         assert 'INFERRED:' not in page
         assert 'VERIFIED' not in markup[0]
 
-    def test_a_cited_entry_shows_its_quote_after_the_cite_and_its_round_and_day(
+    def test_a_cited_finding_shows_its_quote_after_the_citation_and_its_round_and_day(
         self, press_harness: PressHarness
     ) -> None:
-        entry = create_entry(seq=1, kind='known', text='a', cite=QUEUE_CITE, quote=QUEUE_QUOTE)
-        press_harness.seed(entry)
+        finding = create_finding(
+            finding_number=1, kind='known', text='a', citation=QUEUE_CITE, quote=QUEUE_QUOTE
+        )
+        press_harness.seed(finding)
 
         page = draw_board(press_harness)
 
@@ -238,7 +262,7 @@ class TestBoardPageEntries:
         self, press_harness: PressHarness
     ) -> None:
         press_harness.seed(
-            *create_numbered_entries('open', 3), *create_numbered_entries('next', 1, start=4)
+            *create_numbered_findings('open', 3), *create_numbered_findings('next', 1, start=4)
         )
 
         sections = list_sections(draw_board(press_harness))
@@ -254,15 +278,17 @@ class TestBoardPageEntries:
     ) -> None:
         press_harness.frame(create_case().replace_with(target=SCRIPT, bar=SCRIPT))
         press_harness.seed(
-            create_entry(
-                seq=1,
+            create_finding(
+                finding_number=1,
                 kind='known',
                 text=SCRIPT,
-                cite=f'https://example.invalid/"{SCRIPT}',
+                citation=f'https://example.invalid/"{SCRIPT}',
                 rests_on=SCRIPT,
                 source=SCRIPT,
             ),
-            create_entry(seq=2, kind='known', text=SCRIPT, cite=QUEUE_CITE, quote=SCRIPT),
+            create_finding(
+                finding_number=2, kind='known', text=SCRIPT, citation=QUEUE_CITE, quote=SCRIPT
+            ),
         )
 
         page = draw_board(press_harness)

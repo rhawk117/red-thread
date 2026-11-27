@@ -1,11 +1,11 @@
 """Runs the roster hook as Claude Code does: one JSON payload on standard input."""
 
-import json
 import sys
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from tests.casefile.launcher.children import ChildRunner
+from tests.codec import JSON, decode_json
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -37,8 +37,7 @@ class RosterHook:
     @property
     def wiring(self) -> dict[str, Any]:
         text = self.root.joinpath('hooks', 'hooks.json').read_text(encoding='utf-8')
-        wiring: dict[str, Any] = json.loads(text)
-        return wiring
+        return decode_json(text, dict[str, Any])
 
     @property
     def wired_command(self) -> tuple[str, ...]:
@@ -54,9 +53,8 @@ class RosterHook:
         return ChildRunner(cwd=self.root).run(*self.wired_command, stdin=text)
 
     def dispatch(self, caller: str | None, callee: object) -> Finished:
-        return self.send(json.dumps(create_payload(caller, callee)))
+        return self.send(JSON.encode_text(create_payload(caller, callee)))
 
 
 def read_decision(finished: Finished) -> dict[str, str]:
-    decision: dict[str, str] = json.loads(finished.out)['hookSpecificOutput']
-    return decision
+    return decode_json(finished.out, dict[str, dict[str, str]])['hookSpecificOutput']

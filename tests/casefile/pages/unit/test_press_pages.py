@@ -6,14 +6,14 @@ import pytest
 from red_thread_casefile.lenses import Selection
 from red_thread_casefile.packaged import load_wording
 
-from tests.casefile.ledger.builders import create_entry
-from tests.casefile.lenses.builders import create_numbered_entries, export, seed_flag_scenario
+from tests.casefile.ledger.builders import create_finding
+from tests.casefile.lenses.builders import create_numbered_findings, export, seed_flag_scenario
 from tests.casefile.lenses.cases import QUEUE_CITE, QUEUE_QUOTE, flag_params, lens_name_params
-from tests.casefile.lenses.reading import list_all_refs
+from tests.casefile.lenses.reading import list_all_finding_ids
 from tests.casefile.pages.builders import DIAGRAM, SCRIPT
 from tests.casefile.pages.html_reading import (
     find_outbound_links,
-    list_item_refs,
+    list_finding_id_buttons,
     list_mermaid,
     list_section_titles,
     list_sections,
@@ -54,20 +54,20 @@ class TestLensPage:
         assert [path.name for path in exported.paths] == ['brief.md']
         assert set(press_harness.snapshot()) == {'out/brief.md'}
 
-    def test_page_and_markdown_list_the_same_entries(self, press_harness: PressHarness) -> None:
+    def test_page_and_markdown_list_the_same_findings(self, press_harness: PressHarness) -> None:
         press_harness.seed(
-            *create_numbered_entries('known', 3),
-            *create_numbered_entries('open', 2, start=4),
+            *create_numbered_findings('known', 3),
+            *create_numbered_findings('open', 2, start=4),
         )
 
         export(press_harness, 'brief', Selection(include=('e3', 'e1', 'e5')), html=True)
 
-        markdown_refs = list_all_refs(press_harness.read_markdown('brief'))
-        assert list_item_refs(press_harness.read_page('brief')) == markdown_refs
-        assert markdown_refs == ['e3', 'e1', 'e5']
+        markdown_finding_ids = list_all_finding_ids(press_harness.read_markdown('brief'))
+        assert list_finding_id_buttons(press_harness.read_page('brief')) == markdown_finding_ids
+        assert markdown_finding_ids == ['e3', 'e1', 'e5']
 
     @flag_cases()
-    def test_the_page_carries_the_flags_of_each_entry(
+    def test_the_page_carries_the_flags_of_each_finding(
         self, press_harness: PressHarness, scenario: FlagScenario
     ) -> None:
         seed_flag_scenario(press_harness, scenario)
@@ -77,7 +77,7 @@ class TestLensPage:
         assert_page_shows_flags(press_harness.read_page('brief'), scenario.flags)
 
     def test_the_urgency_label_is_shown_on_the_page(self, press_harness: PressHarness) -> None:
-        press_harness.seed(*create_numbered_entries('open', 2))
+        press_harness.seed(*create_numbered_findings('open', 2))
 
         export(press_harness, 'brief', Selection(blocking=('e2',)), html=True)
 
@@ -85,11 +85,13 @@ class TestLensPage:
         assert 'not blocking' in page
         assert page.count('blocking') == 2
 
-    def test_selection_title_goal_and_entries_cannot_add_elements(
+    def test_selection_title_goal_and_findings_cannot_add_elements(
         self, press_harness: PressHarness
     ) -> None:
         press_harness.seed(
-            create_entry(seq=1, kind='open', text=SCRIPT, rests_on=SCRIPT, cite=SCRIPT)
+            create_finding(
+                finding_number=1, kind='open', text=SCRIPT, rests_on=SCRIPT, citation=SCRIPT
+            )
         )
 
         export(press_harness, 'brief', Selection(title=SCRIPT, goal=SCRIPT), html=True)
@@ -98,10 +100,12 @@ class TestLensPage:
         assert_page_holds_only_its_own_markup(page)
         assert page.lower().count('<script') == 3
 
-    def test_a_lens_page_draws_an_entry_diagram_and_no_map(
+    def test_a_lens_page_draws_an_finding_diagram_and_no_map(
         self, press_harness: PressHarness
     ) -> None:
-        press_harness.seed(create_entry(seq=1, kind='open', text='a question', diagram=DIAGRAM))
+        press_harness.seed(
+            create_finding(finding_number=1, kind='open', text='a question', diagram=DIAGRAM)
+        )
 
         export(press_harness, 'brief', html=True)
 
@@ -110,17 +114,25 @@ class TestLensPage:
         assert 'Map' not in list_section_titles(page)
 
     def test_a_diagram_is_not_in_the_markdown_output(self, press_harness: PressHarness) -> None:
-        press_harness.seed(create_entry(seq=1, kind='open', text='a question', diagram=DIAGRAM))
+        press_harness.seed(
+            create_finding(finding_number=1, kind='open', text='a question', diagram=DIAGRAM)
+        )
 
         export(press_harness, 'brief', html=True)
 
         assert 'flowchart' not in press_harness.read_markdown('brief')
         assert 'a question' in press_harness.read_markdown('brief')
 
-    def test_a_url_cite_is_a_link_and_a_path_cite_is_not(self, press_harness: PressHarness) -> None:
+    def test_a_url_citation_is_a_link_and_a_path_citation_is_not(
+        self, press_harness: PressHarness
+    ) -> None:
         press_harness.seed(
-            create_entry(seq=1, kind='known', text='a', cite='https://example.invalid/a'),
-            create_entry(seq=2, kind='known', text='b', cite=QUEUE_CITE, quote=QUEUE_QUOTE),
+            create_finding(
+                finding_number=1, kind='known', text='a', citation='https://example.invalid/a'
+            ),
+            create_finding(
+                finding_number=2, kind='known', text='b', citation=QUEUE_CITE, quote=QUEUE_QUOTE
+            ),
         )
 
         export(press_harness, 'brief', html=True)
@@ -128,16 +140,18 @@ class TestLensPage:
         links = find_outbound_links(press_harness.read_page('brief'))
         assert [link['href'] for link in links] == ['https://example.invalid/a']
 
-    def test_a_url_cite_with_a_quote_cannot_break_out_of_the_href(
+    def test_a_url_citation_with_a_quote_cannot_break_out_of_the_href(
         self, press_harness: PressHarness
     ) -> None:
-        cite = 'https://example.invalid/x" onmouseover="alert(1)'
-        press_harness.seed(create_entry(seq=1, kind='known', text='a', cite=cite))
+        citation = 'https://example.invalid/x" onmouseover="alert(1)'
+        press_harness.seed(
+            create_finding(finding_number=1, kind='known', text='a', citation=citation)
+        )
 
         export(press_harness, 'brief', html=True)
 
         (link,) = find_outbound_links(press_harness.read_page('brief'))
-        assert link['href'] == cite
+        assert link['href'] == citation
         assert set(link) == {'href', 'rel'}
 
 
@@ -145,7 +159,7 @@ class TestLensSections:
     def test_a_section_made_from_a_kind_carries_the_kind_and_its_note(
         self, press_harness: PressHarness
     ) -> None:
-        press_harness.seed(*create_numbered_entries('known', 2))
+        press_harness.seed(*create_numbered_findings('known', 2))
 
         export(press_harness, 'brief', Selection(include=('e1', 'e2')), html=True)
 
@@ -156,7 +170,7 @@ class TestLensSections:
         assert sections['Constraints'].note == load_wording().describe_kind('known')
 
     def test_a_fixed_part_carries_no_kind_and_no_note(self, press_harness: PressHarness) -> None:
-        press_harness.seed(*create_numbered_entries('known', 2))
+        press_harness.seed(*create_numbered_findings('known', 2))
 
         export(press_harness, 'brief', Selection(include=('e1', 'e2')), html=True)
 

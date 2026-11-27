@@ -6,11 +6,12 @@ from dataclasses import dataclass
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
-from red_thread_plans.domain import Frontmatter, PlanDocument, find_refs
+from red_thread_plans.domain import Frontmatter, PlanDocument, find_cited_finding_ids
 from red_thread_plans.errors import PlanShapeError
 from red_thread_plans.packaged import load_outline
 from red_thread_plans.schemas import LIGHTS_HINT, read_plan, write_plan
 
+from tests.codec import YAML
 from tests.params import as_params
 from tests.plans.document.builders import (
     CASE_LINE,
@@ -40,7 +41,7 @@ def plan_shape_fault_cases() -> pytest.MarkDecorator:
 
 
 def read_sound_plan() -> PlanDocument:
-    document = read_plan(write_sound_plan(CASE_ID))
+    document = read_plan(YAML, write_sound_plan(CASE_ID))
     assert isinstance(document, PlanDocument), document
     return document
 
@@ -65,14 +66,14 @@ class TestWritePlan:
     def test_the_frontmatter_init_writes_reads_back_unchanged(
         self, frontmatter: Frontmatter
     ) -> None:
-        document = read_plan(write_plan(frontmatter, load_outline()))
+        document = read_plan(YAML, write_plan(YAML, frontmatter, load_outline()))
 
         assert isinstance(document, PlanDocument), document
         assert document.frontmatter == frontmatter
 
     @given(frontmatter=frontmatters)
     def test_the_skeleton_holds_every_section_in_order(self, frontmatter: Frontmatter) -> None:
-        document = read_plan(write_plan(frontmatter, load_outline()))
+        document = read_plan(YAML, write_plan(YAML, frontmatter, load_outline()))
 
         assert isinstance(document, PlanDocument), document
         assert tuple(section.title for section in document.sections) == load_outline().sections
@@ -86,8 +87,10 @@ class TestReadPlan:
 
         assert [line.number for line in criteria] == [find_line_number(text, CRITERION)]
 
-    def test_a_criterion_yields_the_refs_it_ends_with(self) -> None:
-        assert [find_refs(line) for line in read_sound_plan().criteria] == [('C1.e1', 'C1.e2')]
+    def test_a_criterion_yields_the_finding_ids_it_ends_with(self) -> None:
+        assert [find_cited_finding_ids(line) for line in read_sound_plan().criteria] == [
+            ('C1.e1', 'C1.e2')
+        ]
 
     def test_the_case_aliases_read_back_from_the_frontmatter(self) -> None:
         assert f'{CASE_LINE}{CASE_ID}' in write_sound_plan(CASE_ID)
@@ -95,7 +98,7 @@ class TestReadPlan:
 
     @plan_shape_fault_cases()
     def test_a_broken_frontmatter_is_refused_with_its_hint(self, fault: ShapeFault) -> None:
-        refused = read_plan(edit_plan(write_sound_plan(CASE_ID), fault.edits))
+        refused = read_plan(YAML, edit_plan(write_sound_plan(CASE_ID), fault.edits))
 
         assert isinstance(refused, PlanShapeError)
         assert refused.hint == fault.hint

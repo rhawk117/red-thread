@@ -1,14 +1,14 @@
-"""Where check names an entry: its file, the line of its heading and its ref."""
+"""Where check names a finding: its file, the line of its heading and its finding id."""
 
-from red_thread_casefile.domain import ENTRY_MARK
+from red_thread_casefile.domain import FINDING_MARK
 
 from tests.casefile.ledger.markdown import name_file
 
 
-def name_entry_ref(thread: str | None, seq: int) -> str:
-    return f'e{seq}' if thread is None else f'{thread}.e{seq}'
+def name_finding_id(thread: str | None, finding_number: int) -> str:
+    return f'e{finding_number}' if thread is None else f'{thread}.e{finding_number}'
 
 
-def place_entry(text: str, thread: str | None, seq: int) -> str:
-    line = text.split('\n').index(f'{ENTRY_MARK}e{seq}') + 1
-    return f'{name_file(thread)}:{line} {name_entry_ref(thread, seq)}:'
+def place_finding(text: str, thread: str | None, finding_number: int) -> str:
+    line = text.split('\n').index(f'{FINDING_MARK}e{finding_number}') + 1
+    return f'{name_file(thread)}:{line} {name_finding_id(thread, finding_number)}:'

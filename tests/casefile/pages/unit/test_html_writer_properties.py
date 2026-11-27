@@ -1,30 +1,28 @@
 """HtmlPage: the text of every field comes back from the page, and only page markup appears."""
 
 import re
-from dataclasses import replace
 from html import unescape
 from typing import TYPE_CHECKING, get_args
 
 from hypothesis import example, given
 from hypothesis import strategies as st
 from red_thread_casefile.documents import (
-    Citation,
-    EntryList,
-    EntryNode,
+    CitationNode,
+    FindingList,
+    FindingNode,
     Note,
     NoteKind,
-    list_document_entries,
+    list_document_findings,
 )
-from red_thread_casefile.domain import ENTRY_KINDS
+from red_thread_casefile.domain import FINDING_KINDS
 from red_thread_casefile.packaged import load_wording, read_asset
 from red_thread_core.documents import Document, Flowchart, Paragraph, PointList, Section, parse_line
 
-from tests.casefile.documents.builders import MOMENT
 from tests.casefile.documents.reading import join_line
-from tests.casefile.entries.strategies import optional
+from tests.casefile.findings.strategies import optional
 from tests.casefile.pages.html_reading import (
     find_buttons,
-    find_entries,
+    find_finding_items,
     find_tags,
     list_code_spans,
     list_copy_values,
@@ -34,10 +32,13 @@ from tests.casefile.pages.html_reading import (
 )
 from tests.casefile.pages.promises import assert_page_holds_only_its_own_markup
 from tests.casefile.pages.strategies import many, texts
-from tests.casefile.writers.builders import create_entry_node
+from tests.casefile.writers.builders import create_finding_node
 from tests.casefile.writers.reading import render_page
+from tests.core.timekeeping.clock import DAY
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from red_thread_core.documents import Block, Line
 
 ANY_TAG = re.compile(r'<[^>]*>')
@@ -48,8 +49,8 @@ LIST_ITEM = re.compile(r'<li>(.*?)</li>', re.DOTALL)
 SECTION_TITLE = re.compile(r'<h2>(.*?)</h2>', re.DOTALL)
 PROSE = re.compile(r'<p>(.*?)</p>', re.DOTALL)
 CLAIM = re.compile(r'<p class="claim">(.*?)</p>', re.DOTALL)
-REF = re.compile(r'<button type="button" class="ref"[^>]*>(.*?)</button>', re.DOTALL)
-PATH_CITE = re.compile(r'<p class="cite"><code>(.*?)</code>', re.DOTALL)
+FINDING_ID = re.compile(r'<button type="button" class="finding-id"[^>]*>(.*?)</button>', re.DOTALL)
+PATH_CITE = re.compile(r'<p class="citation"><code>(.*?)</code>', re.DOTALL)
 FLAG = re.compile(r'<li class="flag">(.*?)</li>', re.DOTALL)
 NOTE_LIST = re.compile(r'<ul class="notes">(.*?)</ul>', re.DOTALL)
 ANCHOR = re.compile(r'<a [^>]*>(.*?)</a>', re.DOTALL)
@@ -97,8 +98,8 @@ def list_blocks(document: Document) -> list[Block]:
 
 
 def list_block_claims(block: Block) -> tuple[Line, ...]:
-    if isinstance(block, EntryList):
-        return tuple(entry.claim for entry in block.entries)
+    if isinstance(block, FindingList):
+        return tuple(finding.claim for finding in block.findings)
 
     if isinstance(block, PointList):
         return block.points
@@ -116,33 +117,35 @@ def list_prose(document: Document) -> list[str]:
     return [join_line(block.line) for block in blocks if isinstance(block, Paragraph)]
 
 
-def list_path_cites(entries: tuple[EntryNode, ...]) -> list[str]:
-    return [entry.citation.target for entry in entries if entry.citation is not None]
+def list_path_citations(findings: Sequence[FindingNode]) -> list[str]:
+    return [
+        finding.citation_node.target for finding in findings if finding.citation_node is not None
+    ]
 
 
-def list_lead_flags(entries: tuple[EntryNode, ...]) -> list[str]:
-    return [f'lead, recorded at {entry.lead}' for entry in entries if entry.lead is not None]
+def list_lead_flags(findings: Sequence[FindingNode]) -> list[str]:
+    return [f'lead, recorded at {finding.lead}' for finding in findings if finding.lead is not None]
 
 
 class TestHtmlPageProperties:
     lines = st.builds(parse_line, texts)
     notes = st.builds(Note, kind=st.sampled_from(get_args(NoteKind.__value__)), text=texts)
-    entries = st.builds(
-        EntryNode,
-        ref=texts,
-        kind=st.sampled_from(ENTRY_KINDS),
+    findings = st.builds(
+        FindingNode,
+        finding_id=texts,
+        kind=st.sampled_from(FINDING_KINDS),
         claim=lines,
         round=st.integers(min_value=1, max_value=9),
-        at=st.just(MOMENT),
+        at=st.just(DAY),
         thread=optional(texts),
-        citation=optional(st.builds(Citation, target=texts.filter(is_not_url))),
+        citation_node=optional(st.builds(CitationNode, target=texts.filter(is_not_url))),
         notes=many(notes, 2),
         lead=optional(texts),
         diagram=optional(texts),
     )
     blocks = st.one_of(
         st.builds(Paragraph, line=lines),
-        st.builds(EntryList, entries=many(entries, 3)),
+        st.builds(FindingList, findings=many(findings, 3)),
         st.builds(PointList, points=many(lines, 3)),
     )
     sections = st.builds(Section, title=texts, blocks=many(blocks, 3))
@@ -161,7 +164,7 @@ class TestHtmlPageProperties:
     def test_the_text_of_every_field_is_what_the_page_reads_back(self, document: Document) -> None:
         page = render_page(document)
 
-        entries = list_document_entries(document)
+        findings = list_document_findings(document)
         meta = ''.join(META.findall(page))
         assert read_texts(page, TITLE) == [document.title]
         assert read_texts(page, HEADING) == [document.title]
@@ -170,40 +173,46 @@ class TestHtmlPageProperties:
         assert read_texts(page, SECTION_TITLE) == [*titles, *(['Map'] * bool(document.appendix))]
         assert read_texts(page, PROSE) == list_prose(document)
         assert read_texts(page, CLAIM) == list_claims(document)
-        assert read_texts(page, REF) == [entry.ref for entry in entries]
-        assert read_texts(page, PATH_CITE) == list_path_cites(entries)
-        assert read_texts(page, FLAG) == list_lead_flags(entries)
-        assert list_notes(page) == [note.text for entry in entries for note in entry.notes]
+        assert read_texts(page, FINDING_ID) == [finding.finding_id for finding in findings]
+        assert read_texts(page, PATH_CITE) == list_path_citations(findings)
+        assert read_texts(page, FLAG) == list_lead_flags(findings)
+        assert list_notes(page) == [note.text for finding in findings for note in finding.notes]
 
     @given(document=documents)
-    def test_every_value_that_lands_in_an_attribute_is_the_value_the_entry_held(
+    def test_every_value_that_lands_in_an_attribute_is_the_value_the_finding_held(
         self, document: Document
     ) -> None:
         page = render_page(document)
 
-        entries = list_document_entries(document)
-        assert [entry.get('data-kind') for entry in find_entries(page) if 'data-kind' in entry] == [
-            entry.kind for entry in entries
+        findings = list_document_findings(document)
+        assert [
+            finding.get('data-kind')
+            for finding in find_finding_items(page)
+            if 'data-kind' in finding
+        ] == [finding.kind for finding in findings]
+        assert [
+            finding.get('data-thread')
+            for finding in find_finding_items(page)
+            if 'data-thread' in finding
+        ] == [finding.thread or '' for finding in findings]
+        assert [button['data-copy'] for button in find_buttons(page, 'finding-id')] == [
+            finding.finding_id for finding in findings
         ]
         assert [
-            entry.get('data-thread') for entry in find_entries(page) if 'data-thread' in entry
-        ] == [entry.thread or '' for entry in entries]
-        assert [button['data-copy'] for button in find_buttons(page, 'ref')] == [
-            entry.ref for entry in entries
-        ]
-        assert [button['data-copy'] for button in find_buttons(page, 'copy')] == list_path_cites(
-            entries
-        )
-        assert len(find_entries(page)) == len(list_claims(document))
+            button['data-copy'] for button in find_buttons(page, 'copy')
+        ] == list_path_citations(findings)
+        assert len(find_finding_items(page)) == len(list_claims(document))
 
     @given(document=documents)
-    def test_every_entry_diagram_and_the_map_come_back_as_mermaid_source(
+    def test_every_finding_diagram_and_the_map_come_back_as_mermaid_source(
         self, document: Document
     ) -> None:
         page = render_page(document)
 
         diagrams = [
-            entry.diagram for entry in list_document_entries(document) if entry.diagram is not None
+            finding.diagram
+            for finding in list_document_findings(document)
+            if finding.diagram is not None
         ]
         drawn = list_mermaid(page)
         assert drawn[: len(diagrams)] == diagrams
@@ -247,15 +256,15 @@ class TestHtmlPageProperties:
         assert read_texts(page, CLAIM) == [text]
 
     @given(url=urls)
-    def test_a_url_cite_is_one_link_to_that_url_and_shows_it(self, url: str) -> None:
-        entry = replace(create_entry_node('claim'), citation=Citation(target=url))
+    def test_a_url_citation_is_one_link_to_that_url_and_shows_it(self, url: str) -> None:
+        finding = create_finding_node('claim').replace_with(citation_node=CitationNode(target=url))
 
-        page = create_page_of(EntryList(entries=(entry,)))
+        page = create_page_of(FindingList(findings=(finding,)))
 
         assert find_tags(page, 'a') == [{'href': url, 'rel': 'noreferrer'}]
         assert read_texts(page, ANCHOR) == [url]
         assert list_code_spans(page) == []
-        assert list_copy_values(page) == [entry.ref, url]
+        assert list_copy_values(page) == [finding.finding_id, url]
         assert [button['data-copy'] for button in find_buttons(page, 'copy')] == [url]
 
     @given(text=st.text(alphabet='$${}abtitlesumry '))

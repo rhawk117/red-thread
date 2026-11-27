@@ -11,12 +11,13 @@ from red_thread_core.store import GitSourceTree
 
 from tests.casefile.ledger.builders import CASE_ID, create_case
 from tests.casefile.ledger.markdown import CaseScribe, name_file, write_case_text
-from tests.casefile.ledger.memory import FixedClock
+from tests.codec import YAML
+from tests.core.timekeeping.clock import FixedClock
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from red_thread_casefile.domain import Case, Entry
+    from red_thread_casefile.domain import Case, CaseFinding
     from red_thread_casefile.services import Checked
 
     from tests.casefile.ledger.git_repository import GitRepository
@@ -50,8 +51,8 @@ class DirectoryHarness:
     def read_bytes(self, path: Path) -> bytes:
         return path.read_bytes() if path.is_file() else b''
 
-    def seed(self, thread: str | None, *entries: Entry) -> None:
-        self.scribe.seed(thread, *entries)
+    def seed(self, thread: str | None, *findings: CaseFinding) -> None:
+        self.scribe.seed(thread, *findings)
 
     def frame(self, case: Case) -> None:
         self.scribe.frame(case)
@@ -68,6 +69,7 @@ def create_directory_harness(git: GitRepository) -> DirectoryHarness:
         tree=GitSourceTree(root=git.root),
         clock=FixedClock(),
         wording=load_wording(),
+        codec=YAML,
     )
     scribe = CaseScribe(sink=DirectorySink(directory=directory), cases=[create_case()])
     return DirectoryHarness(

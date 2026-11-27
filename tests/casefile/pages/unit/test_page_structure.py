@@ -1,23 +1,27 @@
-"""The page's structure: sections, entry marks, diagrams, the map and the toolbar."""
+"""The page's structure: sections, finding marks, diagrams, the map and the toolbar."""
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import pytest
 from red_thread_casefile.packaged import load_wording, read_asset
 from red_thread_core.documents import Document, Flowchart, Paragraph, PointList, Section, parse_line
 
-from tests.casefile.pages.builders import DIAGRAM, create_document, create_marked_entry
+from tests.casefile.pages.builders import DIAGRAM, create_document, create_marked_finding
 from tests.casefile.pages.html_reading import (
     find_buttons,
-    find_entries,
+    find_finding_items,
     find_tags,
     list_chip_groups,
     list_mermaid,
     list_section_titles,
 )
-from tests.casefile.writers.builders import create_entry_node
+from tests.casefile.writers.builders import create_finding_node
 from tests.casefile.writers.reading import render_page
 from tests.params import as_params
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 MAP_LINES = ('  subgraph main["main ledger"]', '    n0["e1 known: a claim"]:::k_known', '  end')
 
@@ -31,7 +35,7 @@ def create_pointer_document() -> Document:
     return Document(title='t', sections=(Section(title='Findings', blocks=(points,)),))
 
 
-def create_map_section(lines: tuple[str, ...]) -> Section:
+def create_map_section(lines: Sequence[str]) -> Section:
     chart = Flowchart(lines=(read_asset('map.mmd').rstrip(), *lines))
     return Section(title='Map', blocks=(chart,), note=load_wording().map_note)
 
@@ -46,31 +50,35 @@ class ChipRule:
 
 def chip_rule_cases() -> pytest.MarkDecorator:
     rules = [
-        ChipRule(name='no-entry', document=create_pointer_document(), groups=()),
+        ChipRule(name='no-finding', document=create_pointer_document(), groups=()),
         ChipRule(
             name='one-kind-and-one-thread',
-            document=create_document(create_marked_entry(ref='e1'), create_marked_entry(ref='e2')),
+            document=create_document(
+                create_marked_finding(finding_id='e1'), create_marked_finding(finding_id='e2')
+            ),
             groups=(),
         ),
         ChipRule(
             name='two-kinds-and-one-thread',
             document=create_document(
-                create_marked_entry(ref='e1'), create_marked_entry(ref='e2', kind='open')
+                create_marked_finding(finding_id='e1'),
+                create_marked_finding(finding_id='e2', kind='open'),
             ),
             groups=('kind',),
         ),
         ChipRule(
             name='one-kind-and-two-threads',
             document=create_document(
-                create_marked_entry(ref='e1'), create_marked_entry(ref='T1.e1', thread='T1')
+                create_marked_finding(finding_id='e1'),
+                create_marked_finding(finding_id='T1.e1', thread='T1'),
             ),
             groups=('thread',),
         ),
         ChipRule(
             name='two-kinds-and-two-threads',
             document=create_document(
-                create_marked_entry(ref='e1'),
-                create_marked_entry(ref='T1.e1', kind='open', thread='T1'),
+                create_marked_finding(finding_id='e1'),
+                create_marked_finding(finding_id='T1.e1', kind='open', thread='T1'),
             ),
             groups=('kind', 'thread'),
         ),
@@ -91,50 +99,50 @@ class TestSections:
         assert list_section_titles(page) == ['First', 'Second']
 
 
-class TestEntryMarks:
-    def test_an_entry_carries_its_ref_as_an_anchor_with_its_kind_and_thread(self) -> None:
-        entry = create_marked_entry(ref='T1.e2', kind='open', thread='T1')
+class TestFindingMarks:
+    def test_an_finding_carries_its_finding_id_as_an_anchor_with_its_kind_and_thread(self) -> None:
+        finding = create_marked_finding(finding_id='T1.e2', kind='open', thread='T1')
 
-        page = render_page(create_document(entry))
+        page = render_page(create_document(finding))
 
-        assert find_entries(page) == [
-            {'class': 'entry', 'id': 'T1.e2', 'data-kind': 'open', 'data-thread': 'T1'}
+        assert find_finding_items(page) == [
+            {'class': 'finding', 'id': 'T1.e2', 'data-kind': 'open', 'data-thread': 'T1'}
         ]
 
     def test_the_main_ledger_is_an_empty_thread_string(self) -> None:
-        page = render_page(create_document(create_marked_entry(thread=None)))
+        page = render_page(create_document(create_marked_finding(thread=None)))
 
-        assert find_entries(page) == [
-            {'class': 'entry', 'id': 'e1', 'data-kind': 'known', 'data-thread': ''}
+        assert find_finding_items(page) == [
+            {'class': 'finding', 'id': 'e1', 'data-kind': 'known', 'data-thread': ''}
         ]
 
-    def test_a_point_carries_no_mark_and_no_ref_button(self) -> None:
+    def test_a_point_carries_no_mark_and_no_finding_id_button(self) -> None:
         page = render_page(create_pointer_document())
 
-        assert find_entries(page) == [{'class': 'entry'}]
-        assert find_buttons(page, 'ref') == []
+        assert find_finding_items(page) == [{'class': 'finding'}]
+        assert find_buttons(page, 'finding-id') == []
 
-    def test_the_ref_is_a_button_that_copies_it(self) -> None:
-        page = render_page(create_document(create_marked_entry(ref='T1.e2', thread='T1')))
+    def test_the_finding_id_is_a_button_that_copies_it(self) -> None:
+        page = render_page(create_document(create_marked_finding(finding_id='T1.e2', thread='T1')))
 
-        (button,) = find_buttons(page, 'ref')
+        (button,) = find_buttons(page, 'finding-id')
         assert button['type'] == 'button'
         assert button['data-copy'] == 'T1.e2'
 
 
 class TestDiagrams:
-    def test_an_entry_diagram_is_a_pre_mermaid_element_with_its_source_escaped(self) -> None:
-        entry = replace(create_entry_node(), diagram=DIAGRAM)
+    def test_an_finding_diagram_is_a_pre_mermaid_element_with_its_source_escaped(self) -> None:
+        finding = create_finding_node().replace_with(diagram=DIAGRAM)
 
-        page = render_page(create_document(entry))
+        page = render_page(create_document(finding))
 
         assert list_mermaid(page) == [DIAGRAM]
         assert find_tags(page, 'pre') == [{'class': 'mermaid'}]
         assert 'B --&gt; C' in page
         assert 'B --> C' not in page
 
-    def test_an_entry_with_no_diagram_has_no_pre_element(self) -> None:
-        page = render_page(create_document(create_entry_node()))
+    def test_an_finding_with_no_diagram_has_no_pre_element(self) -> None:
+        page = render_page(create_document(create_finding_node()))
 
         assert find_tags(page, 'pre') == []
         assert list_mermaid(page) == []
@@ -144,8 +152,8 @@ class TestMap:
     def test_a_map_in_the_appendix_ends_the_page_holding_the_map_header_and_the_lines(
         self,
     ) -> None:
-        entry = replace(create_entry_node(), diagram=DIAGRAM)
-        sections = create_document(entry).sections
+        finding = create_finding_node().replace_with(diagram=DIAGRAM)
+        sections = create_document(finding).sections
         document = Document(title='t', sections=sections, appendix=(create_map_section(MAP_LINES),))
 
         page = render_page(document)
@@ -160,7 +168,7 @@ class TestMap:
         assert drawn.splitlines() == [*read_asset('map.mmd').splitlines(), *MAP_LINES]
 
     def test_no_appendix_leaves_no_map_section(self) -> None:
-        page = render_page(create_document(create_marked_entry()))
+        page = render_page(create_document(create_marked_finding()))
 
         assert 'Map' not in list_section_titles(page)
         assert list_mermaid(page) == []
@@ -179,7 +187,7 @@ class TestToolbar:
         assert find_tags(page, 'nav') == []
         assert find_buttons(page, 'tool') == []
 
-    def test_a_document_with_sections_but_no_entry_has_only_the_fold_button(self) -> None:
+    def test_a_document_with_sections_but_no_finding_has_only_the_fold_button(self) -> None:
         page = render_page(Document(title='t', sections=(create_prose_section('s', 'a'),)))
 
         assert find_tags(page, 'nav') == [{'class': 'toolbar', 'aria-label': 'Page controls'}]
@@ -188,7 +196,7 @@ class TestToolbar:
         assert 'data-fold' in tool
 
     def test_the_toolbar_comes_before_the_first_section(self) -> None:
-        page = render_page(create_document(create_marked_entry()))
+        page = render_page(create_document(create_marked_finding()))
 
         assert page.index('class="toolbar"') < page.index('<details')
 

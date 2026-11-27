@@ -1,9 +1,9 @@
-"""MarkdownWriter: the order of the sections, prose lines and one list line per entry."""
+"""MarkdownWriter: the order of the sections, prose lines and one list line per finding."""
 
 import pytest
 from red_thread_core.documents import Document, Paragraph, Section, parse_line
 
-from tests.casefile.writers.builders import create_document, create_entry_node
+from tests.casefile.writers.builders import create_document, create_finding_node
 from tests.casefile.writers.reading import list_item_lines, render_markdown
 
 
@@ -11,9 +11,9 @@ def create_prose_section(title: str, text: str) -> Section:
     return Section(title=title, blocks=(Paragraph(line=parse_line(text)),))
 
 
-def entry_count_cases() -> pytest.MarkDecorator:
-    counts = [pytest.param(1, id='one-entry'), pytest.param(4, id='four-entries')]
-    return pytest.mark.parametrize('entries', counts)
+def finding_count_cases() -> pytest.MarkDecorator:
+    counts = [pytest.param(1, id='one-finding'), pytest.param(4, id='four-findings')]
+    return pytest.mark.parametrize('findings', counts)
 
 
 class TestDocumentLayout:
@@ -37,10 +37,10 @@ class TestDocumentLayout:
         assert 'second sentence' in lines
         assert list_item_lines(create_document(prose=('first sentence',))) == []
 
-    @entry_count_cases()
-    def test_each_entry_is_one_list_line(self, entries: int) -> None:
+    @finding_count_cases()
+    def test_each_finding_is_one_list_line(self, findings: int) -> None:
         document = create_document(
-            *(create_entry_node(f'claim {n}', f'e{n}') for n in range(1, entries + 1))
+            *(create_finding_node(f'claim {n}', f'e{n}') for n in range(1, findings + 1))
         )
 
-        assert len(list_item_lines(document)) == entries
+        assert len(list_item_lines(document)) == findings

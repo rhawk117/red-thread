@@ -4,7 +4,8 @@ from importlib import resources
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, Literal
 
-import msgspec
+from red_thread_core.codec import create_yaml_codec
+from red_thread_core.errors import MalformedDocumentError
 
 if TYPE_CHECKING:
     from importlib.resources.abc import Traversable
@@ -24,7 +25,11 @@ def read_asset_text(package: str, name: str) -> str:
 
 
 def load_asset[T](package: str, name: str, shape: type[T]) -> T:
-    return msgspec.yaml.decode(find_asset(package, name).read_bytes(), type=shape)
+    decoded = create_yaml_codec().decode(find_asset(package, name).read_bytes(), shape)
+    if isinstance(decoded, MalformedDocumentError):
+        raise decoded
+
+    return decoded
 
 
 def read_asset(name: CoreAsset) -> str:

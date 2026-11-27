@@ -1,8 +1,7 @@
 """Framing a case over memory fakes: its id, its record and its refusal to reuse a case."""
 
 import re
-from dataclasses import replace
-from datetime import datetime, timedelta
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import pytest
@@ -11,10 +10,10 @@ from hypothesis import strategies as st
 from red_thread_casefile.domain import build_case_id
 from red_thread_casefile.errors import CaseExistsError
 from red_thread_casefile.services import Framing
-from red_thread_core.store import SystemClock
 
 from tests.casefile.framing.cases import case_id_params, language_params
-from tests.casefile.ledger.memory import HEAD, MOMENT
+from tests.casefile.ledger.memory import HEAD
+from tests.core.timekeeping.clock import MOMENT
 
 if TYPE_CHECKING:
     from datetime import date
@@ -25,8 +24,8 @@ if TYPE_CHECKING:
 CASE_ID_SHAPE = re.compile(r'\d{8}(-[a-z0-9]+){0,5}')
 
 
-def make_timestamp(day: date) -> str:
-    return f'{day.isoformat()}T10:00:00+00:00'
+def make_moment(day: date) -> datetime:
+    return datetime(day.year, day.month, day.day, 10, tzinfo=UTC)
 
 
 def case_id_cases() -> pytest.MarkDecorator:
@@ -38,24 +37,21 @@ def language_cases() -> pytest.MarkDecorator:
 
 
 class TestCaseId:
-    days = st.dates().map(make_timestamp)
+    moments = st.dates().map(make_moment)
     labels = st.text(max_size=120)
 
     @case_id_cases()
     def test_id_is_the_utc_date_and_the_leading_words(self, case: CaseIdCase) -> None:
         assert build_case_id(case.created, case.label) == case.expected
 
-    @given(created=days, label=labels)
-    def test_id_is_a_date_and_at_most_five_lowercase_words(self, created: str, label: str) -> None:
+    @given(created=moments, label=labels)
+    def test_id_is_a_date_and_at_most_five_lowercase_words(
+        self, created: datetime, label: str
+    ) -> None:
         case_id = build_case_id(created, label)
 
         assert CASE_ID_SHAPE.fullmatch(case_id)
-        assert case_id.startswith(created[:10].replace('-', ''))
-
-    def test_system_clock_stamps_utc(self) -> None:
-        stamped = datetime.fromisoformat(SystemClock().now())
-
-        assert stamped.utcoffset() == timedelta(0)
+        assert case_id.startswith(created.date().isoformat().replace('-', ''))
 
 
 class TestFrame:
@@ -93,10 +89,10 @@ class TestFrame:
         first = case_harness.casefile.frame(self.framing)
 
         with pytest.raises(CaseExistsError):
-            case_harness.casefile.frame(replace(self.framing, target='something else'))
+            case_harness.casefile.frame(self.framing.replace_with(target='something else'))
 
         assert case_harness.casefile.read().case == first
-        assert case_harness.entries == ()
+        assert case_harness.findings == ()
 
     def test_case_file_directory_is_excluded_from_git_once_per_new_case(
         self, case_harness: CaseHarness

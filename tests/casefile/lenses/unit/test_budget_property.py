@@ -1,4 +1,4 @@
-"""export: whatever the entries say, the output fits its budget or nothing is written."""
+"""export: whatever the findings say, the output fits its budget or nothing is written."""
 
 from typing import TYPE_CHECKING
 
@@ -7,7 +7,7 @@ from hypothesis import strategies as st
 from red_thread_casefile.errors import LensOverBudgetError
 from red_thread_casefile.lenses import count_lines
 
-from tests.casefile.ledger.builders import create_entry
+from tests.casefile.ledger.builders import create_finding
 from tests.casefile.lenses.builders import create_press_harness, export
 from tests.casefile.lenses.cases import lens_shapes
 
@@ -36,11 +36,11 @@ class TestBudgetProperty:
 
     def stock(self, shape: LensShape, texts: list[str]) -> PressHarness:
         harness = create_press_harness()
-        entries = (
-            create_entry(seq=seq, kind=shape.fill_kind, text=text)
-            for seq, text in enumerate(texts, 1)
+        findings = (
+            create_finding(finding_number=finding_number, kind=shape.fill_kind, text=text)
+            for finding_number, text in enumerate(texts, 1)
         )
-        harness.seed(*entries)
+        harness.seed(*findings)
         return harness
 
     @given(shape=shapes, texts=texts)

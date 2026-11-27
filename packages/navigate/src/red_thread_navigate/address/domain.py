@@ -2,9 +2,10 @@
 
 import posixpath
 import re
-from dataclasses import dataclass
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
+
+from red_thread_core.dto import DTO
 
 from red_thread_navigate.address.errors import (
     MalformedAddressError,
@@ -18,13 +19,11 @@ if TYPE_CHECKING:
 LINE_PATTERN = re.compile(r'L(\d+)(?:-L(\d+))?')
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class SymbolTarget:
+class SymbolTarget(DTO, frozen=True, kw_only=True, gc=False):
     parts: tuple[str, ...]
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class LineTarget:
+class LineTarget(DTO, frozen=True, kw_only=True, gc=False):
     start: int
     end: int
 
@@ -32,8 +31,7 @@ class LineTarget:
 type Target = SymbolTarget | LineTarget
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Address:
+class Address(DTO, frozen=True, kw_only=True, gc=False):
     path: PurePosixPath
     target: Target
 

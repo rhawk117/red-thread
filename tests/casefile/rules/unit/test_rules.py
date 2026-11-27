@@ -1,9 +1,9 @@
-"""Every fault check finds in the entries of a case file, and where it names it."""
+"""Every fault check finds in the findings of a case file, and where it names it."""
 
 from typing import TYPE_CHECKING
 
 import pytest
-from red_thread_casefile.domain import ENTRY_KINDS
+from red_thread_casefile.domain import FINDING_KINDS
 from red_thread_casefile.errors import (
     CaseNotFoundError,
     DecisionInThreadError,
@@ -12,7 +12,7 @@ from red_thread_casefile.errors import (
     UncitedKnownError,
 )
 
-from tests.casefile.ledger.builders import create_entry, create_valid_entry
+from tests.casefile.ledger.builders import create_finding, create_valid_finding
 from tests.casefile.ledger.markdown import name_file, write_thread_text
 from tests.casefile.rules.cases import (
     authority_rule_params,
@@ -21,7 +21,7 @@ from tests.casefile.rules.cases import (
     status_rule_params,
     stray_thread_file_params,
 )
-from tests.casefile.rules.places import place_entry
+from tests.casefile.rules.places import place_finding
 
 if TYPE_CHECKING:
     from tests.casefile.ledger.builders import CaseHarness
@@ -48,8 +48,8 @@ def stray_thread_file_cases() -> pytest.MarkDecorator:
     return pytest.mark.parametrize('name', stray_thread_file_params())
 
 
-def place_in(harness: CaseHarness, thread: str | None, seq: int) -> str:
-    return place_entry(harness.repository.files[name_file(thread)], thread, seq)
+def place_in(harness: CaseHarness, thread: str | None, finding_number: int) -> str:
+    return place_finding(harness.repository.files[name_file(thread)], thread, finding_number)
 
 
 class TestCheckReportsEveryFault:
@@ -57,14 +57,18 @@ class TestCheckReportsEveryFault:
     def harness(self, framed_harness: CaseHarness) -> CaseHarness:
         framed_harness.seed(
             None,
-            create_valid_entry('open', 1),
-            create_valid_entry('known', 2).replace_with(cite=None),
-            create_valid_entry('hypothesis', 3).replace_with(refute=None),
+            create_valid_finding('open', 1),
+            create_valid_finding('known', 2).replace_with(citation=None),
+            create_valid_finding('hypothesis', 3).replace_with(refuted_if=None),
         )
-        framed_harness.seed('T1', create_valid_entry('open', 1), create_valid_entry('decision', 2))
+        framed_harness.seed(
+            'T1', create_valid_finding('open', 1), create_valid_finding('decision', 2)
+        )
         return framed_harness
 
-    def test_every_fault_is_named_with_its_file_line_and_ref(self, harness: CaseHarness) -> None:
+    def test_every_fault_is_named_with_its_file_line_and_finding_id(
+        self, harness: CaseHarness
+    ) -> None:
         expected = (
             (UncitedKnownError, place_in(harness, None, 2)),
             (MissingRefuteError, place_in(harness, None, 3)),
@@ -84,12 +88,15 @@ class TestCheckReportsEveryFault:
 
         assert harness.repository.files == before
 
-    def test_valid_entry_of_every_kind_gives_no_fault(self, framed_harness: CaseHarness) -> None:
-        entries = [create_valid_entry(kind, seq) for seq, kind in enumerate(ENTRY_KINDS, 1)]
-        framed_harness.seed(None, *entries)
+    def test_valid_finding_of_every_kind_gives_no_fault(self, framed_harness: CaseHarness) -> None:
+        findings = [
+            create_valid_finding(kind, finding_number)
+            for finding_number, kind in enumerate(FINDING_KINDS, 1)
+        ]
+        framed_harness.seed(None, *findings)
 
         assert framed_harness.find_problems() == ()
-        assert [entry.text for entry in framed_harness.entries] == [e.text for e in entries]
+        assert [finding.text for finding in framed_harness.findings] == [e.text for e in findings]
 
     def test_missing_case_is_not_found(self, case_harness: CaseHarness) -> None:
         with pytest.raises(CaseNotFoundError):
@@ -98,25 +105,25 @@ class TestCheckReportsEveryFault:
     @stray_thread_file_cases()
     def test_stray_thread_file_is_a_fault(self, framed_harness: CaseHarness, name: str) -> None:
         stray = f'threads/{name}.md'
-        framed_harness.repository.write(stray, write_thread_text([create_entry()]))
+        framed_harness.repository.write(stray, write_thread_text([create_finding()]))
 
         problems = framed_harness.find_problems()
 
         assert [p.file for p in problems if isinstance(p, StrayThreadFileError)] == [stray]
 
 
-class TestEntryRules:
+class TestFindingRules:
     @pytest.fixture
     def harness(self, framed_harness: CaseHarness) -> CaseHarness:
         return framed_harness
 
     def assert_rule_outcome(self, harness: CaseHarness, case: RuleCase) -> None:
-        harness.seed(case.thread, case.entry)
+        harness.seed(case.thread, case.finding)
 
         problems = harness.find_problems()
 
         assert tuple(map(type, problems)) == case.error_types
-        place = place_in(harness, case.thread, case.entry.seq)
+        place = place_in(harness, case.thread, case.finding.finding_number)
         assert all(str(problem).startswith(place) for problem in problems)
 
     @status_rule_cases()
@@ -130,13 +137,13 @@ class TestEntryRules:
         self.assert_rule_outcome(harness, case)
 
     @kind_rule_cases()
-    def test_hypotheses_and_ruled_out_entries_carry_their_proof(
+    def test_hypotheses_and_ruled_out_findings_carry_their_proof(
         self, harness: CaseHarness, case: RuleCase
     ) -> None:
         self.assert_rule_outcome(harness, case)
 
     @combined_rule_cases()
-    def test_every_rule_an_entry_breaks_is_reported(
+    def test_every_rule_an_finding_breaks_is_reported(
         self, harness: CaseHarness, case: RuleCase
     ) -> None:
         self.assert_rule_outcome(harness, case)

@@ -1,31 +1,28 @@
 """HtmlPage: where verdict, state, stamps, quote, section data and facts land, for any text."""
 
-from datetime import datetime
 from typing import TYPE_CHECKING
 
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 from red_thread_casefile.documents import (
-    Citation,
-    EntryList,
-    EntryNode,
+    CitationNode,
+    FindingList,
+    FindingNode,
     Note,
-    list_document_entries,
-    list_entries_block,
-    list_section_entries,
+    list_document_findings,
+    list_findings_block,
+    list_section_findings,
 )
-from red_thread_casefile.domain import ENTRY_KINDS, VERDICTS
+from red_thread_casefile.domain import FINDING_KINDS, VERDICTS
 from red_thread_casefile.packaged import load_wording
-from red_thread_casefile.policy import CITE_STATES, Finding
+from red_thread_casefile.policy import CITE_STATES, CitationCheck
 from red_thread_core.documents import Document, Fact, Section, parse_line, parse_value
 
-from tests.casefile.documents.builders import MOMENT
 from tests.casefile.documents.reading import join_line
-from tests.casefile.entries.strategies import optional
+from tests.casefile.findings.strategies import optional
 from tests.casefile.pages.builders import (
     CITED_PATH,
-    STAMP_DAY,
     create_document_carrying,
     payload_params,
 )
@@ -33,13 +30,14 @@ from tests.casefile.pages.html_reading import (
     find_tags,
     list_cited_quotes,
     list_facts,
-    list_item_refs,
+    list_finding_id_buttons,
     list_note_rows,
     list_sections,
     list_spans,
 )
 from tests.casefile.pages.strategies import many, texts
 from tests.casefile.writers.reading import render_page
+from tests.core.timekeeping.strategies import days
 
 if TYPE_CHECKING:
     from tests.casefile.pages.builders import DocumentField
@@ -51,34 +49,36 @@ def is_not_url(text: str) -> bool:
     return not text.startswith(URL_PREFIX)
 
 
-def label_state(finding: Finding) -> str:
-    if finding.state == 'moved' and finding.moved_to is not None:
-        return f'moved to line {finding.moved_to}'
-    return finding.state
+def describe_citation_state(citation_check: CitationCheck) -> str:
+    if citation_check.state == 'moved' and citation_check.moved_to is not None:
+        return f'moved to line {citation_check.moved_to}'
+    return citation_check.state
 
 
-def create_retired(entries: tuple[EntryNode, ...]) -> tuple[Section, ...]:
-    if not entries:
+def create_retired(findings: tuple[FindingNode, ...]) -> tuple[Section, ...]:
+    if not findings:
         return ()
-    blocks = (EntryList(entries=entries),)
+    blocks = (FindingList(findings=findings),)
     return (Section(title='Retired', blocks=blocks, note=load_wording().retired_note, folded=True),)
 
 
-def list_all_entries(document: Document) -> list[EntryNode]:
-    retired = [entry for section in document.appendix for entry in list_section_entries(section)]
-    return [*list_document_entries(document), *retired]
+def list_all_findings(document: Document) -> list[FindingNode]:
+    retired = [
+        finding for section in document.appendix for finding in list_section_findings(section)
+    ]
+    return [*list_document_findings(document), *retired]
 
 
-def find_finding(entry: EntryNode) -> Finding | None:
-    if entry.citation is None:
+def find_citation_check(finding: FindingNode) -> CitationCheck | None:
+    if finding.citation_node is None:
         return None
-    return entry.citation.finding
+    return finding.citation_node.citation_check
 
 
-def find_quote(entry: EntryNode) -> str | None:
-    if entry.citation is None:
+def find_quote(finding: FindingNode) -> str | None:
+    if finding.citation_node is None:
         return None
-    return entry.citation.quote
+    return finding.citation_node.quote
 
 
 def payload_cases() -> pytest.MarkDecorator:
@@ -102,19 +102,7 @@ class TestNewFieldsLandAsText:
         assert (badge.body, badge.attributes['data-state']) == (payload, payload)
 
     @payload_cases()
-    def test_a_timestamp_is_the_datetime_attribute_and_its_day_is_the_text(
-        self, payload: str
-    ) -> None:
-        page = self.read('item-at', payload)
-
-        assert find_tags(page, 'time') == [
-            {'datetime': f'{STAMP_DAY}{payload}'},
-            {'datetime': MOMENT},
-        ]
-        assert ('stamp', STAMP_DAY) in list_note_rows(page)[0]
-
-    @payload_cases()
-    def test_a_quote_is_the_text_of_one_pre_element_after_the_cite(self, payload: str) -> None:
+    def test_a_quote_is_the_text_of_one_pre_element_after_the_citation(self, payload: str) -> None:
         page = self.read('item-quote', payload)
 
         assert list_cited_quotes(page) == [payload]
@@ -149,42 +137,47 @@ class TestNewFieldsLandAsText:
         ]
 
     @payload_cases()
-    def test_a_retired_entry_text_and_note_are_text_in_the_retired_fold(self, payload: str) -> None:
+    def test_a_retired_finding_text_and_note_are_text_in_the_retired_fold(
+        self, payload: str
+    ) -> None:
         text_page = self.read('retired-text', payload)
         note_page = self.read('retired-note', payload)
 
-        assert list_item_refs(text_page)[-1] == 'e9'
+        assert list_finding_id_buttons(text_page)[-1] == 'e9'
         assert list_sections(text_page)[-1].title == 'Retired'
         assert ('', payload) in list_note_rows(note_page)[-1]
 
 
 class TestNewFieldsRoundTrip:
-    findings = st.builds(
-        Finding,
-        ref=st.just('e1'),
-        cite=st.just(CITED_PATH),
+    citation_checks = st.builds(
+        CitationCheck,
+        finding_id=st.just('e1'),
+        citation=st.just(CITED_PATH),
         state=st.sampled_from(CITE_STATES),
         moved_to=optional(st.integers(min_value=1, max_value=999)),
     )
     citations = st.builds(
-        Citation, target=st.just(CITED_PATH), quote=optional(texts), finding=optional(findings)
+        CitationNode,
+        target=st.just(CITED_PATH),
+        quote=optional(texts),
+        citation_check=optional(citation_checks),
     )
-    entries = st.builds(
-        EntryNode,
-        ref=st.just('e1'),
-        kind=st.sampled_from(ENTRY_KINDS),
+    findings = st.builds(
+        FindingNode,
+        finding_id=st.just('e1'),
+        kind=st.sampled_from(FINDING_KINDS),
         claim=st.builds(parse_line, texts),
         verdict=optional(st.sampled_from(VERDICTS)),
         round=st.integers(min_value=0, max_value=999),
-        at=st.datetimes().map(datetime.isoformat),
-        citation=citations,
+        at=days,
+        citation_node=citations,
         notes=many(st.builds(Note, kind=st.just('source'), text=texts), 2),
     )
     sections = st.builds(
         Section,
         title=texts,
-        blocks=st.builds(list_entries_block, many(entries, 3)),
-        kind=optional(st.sampled_from(ENTRY_KINDS)),
+        blocks=st.builds(list_findings_block, many(findings, 3)),
+        kind=optional(st.sampled_from(FINDING_KINDS)),
         note=texts,
     )
     facts = st.builds(
@@ -198,7 +191,7 @@ class TestNewFieldsRoundTrip:
         title=texts,
         sections=many(sections, 3),
         facts=many(facts, 4),
-        appendix=st.builds(create_retired, many(entries, 3)),
+        appendix=st.builds(create_retired, many(findings, 3)),
     )
 
     @given(document=documents)
@@ -218,12 +211,14 @@ class TestNewFieldsRoundTrip:
     def test_every_verdict_and_state_comes_back_in_page_order(self, document: Document) -> None:
         page = render_page(document)
 
-        entries = list_all_entries(document)
+        findings = list_all_findings(document)
         assert [span.body for span in list_spans(page, 'verdict')] == [
-            entry.verdict for entry in entries if entry.verdict
+            finding.verdict for finding in findings if finding.verdict
         ]
         assert [span.body for span in list_spans(page, 'state')] == [
-            label_state(finding) for finding in map(find_finding, entries) if finding
+            describe_citation_state(citation_check)
+            for citation_check in map(find_citation_check, findings)
+            if citation_check
         ]
 
     @given(document=documents)
@@ -232,15 +227,15 @@ class TestNewFieldsRoundTrip:
     ) -> None:
         page = render_page(document)
 
-        entries = list_all_entries(document)
+        findings = list_all_findings(document)
         stamps = [text for row in list_note_rows(page) for role, text in row if role == 'stamp']
-        quotes = [quote for quote in map(find_quote, entries) if quote is not None]
+        quotes = [quote for quote in map(find_quote, findings) if quote is not None]
         assert list_cited_quotes(page) == quotes
         assert [stamp for stamp in stamps if stamp.startswith('round ')] == [
-            f'round {entry.round}' for entry in entries
+            f'round {finding.round}' for finding in findings
         ]
         assert [tag['datetime'] for tag in find_tags(page, 'time')] == [
-            entry.at for entry in entries
+            finding.at.isoformat() for finding in findings
         ]
 
     @given(document=documents)

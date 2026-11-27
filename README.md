@@ -5,7 +5,7 @@ red-thread is a Claude Code plugin for investigating before you build. You ask a
 ## How it works
 
 1. **Frame.** `investigate` agrees the target, the kind of case (`root-cause`, `claim`, `research` or `survey`) and the bar the answer must meet. It then creates a case under `.red-thread/<case-id>/` in the repository you are investigating.
-2. **Research.** Each round sends scouts for facts. A scout reports each claim with a verdict and a citation: a `path:line` with the quoted line, a URL or a command. The findings are written into the case file as Markdown, and the case file script checks every entry and citation, naming each fault with its line and fix.
+2. **Research.** Each round sends scouts for facts. A scout reports each claim with a verdict and a citation: a `path:line` with the quoted line, a URL or a command. The findings are written into the case file as Markdown, and the case file script checks every finding and citation, naming each fault with its line and fix.
 3. **Gate.** After each round the board is printed and you steer: another round, a review of the conclusion, or stop. The board flags a citation whose line has changed, moved or gone missing since it was recorded.
 4. **Distill.** `distill` turns the case into one output for one reader: a brief, a GitHub issue, a handoff or a report. The script assembles it from the case file, so every line keeps its citation.
 
@@ -52,7 +52,7 @@ When something is broken and you want it working, start from the failure instead
 | `skills/debug` | a failure taken to a confirmed cause, a fix you approve and a decision on preventing it; one reference file for failure shapes and one for the escape analysis |
 | `skills/agents/navigate` | how the scouts use the navigate script; preloaded into them, not a command you run |
 | `skills/agents/meet-the-team` | who the agents are and how to brief each one; preloaded into `research-lead` and loaded by name from `investigate` and `debug`, not a command you run |
-| `skills/agents/artifact-authoring` | how an agent words what it writes for a reader who was not there: entries, reports, gate summaries, distill titles and handoffs; preloaded into `research-lead` and loaded by name from `investigate`, `debug` and `distill`, not a command you run |
+| `skills/agents/artifact-authoring` | how an agent words what it writes for a reader who was not there: findings, reports, gate summaries, distill titles and handoffs; preloaded into `research-lead` and loaded by name from `investigate`, `debug` and `distill`, not a command you run |
 | `agents/` | `research-lead`, which runs one thread of a case, the scouts in `agents/swarm/` (`code-sense`, `code-lens`, `web-head` and `lab-rat`), and the skeptic `peer-review` |
 | `hooks/roster.py` | a hook that denies a red-thread agent's dispatch outside its roster |
 | `packages/casefile` | the only writer and renderer of a case file: `init`, `render`, `check` and `export` |

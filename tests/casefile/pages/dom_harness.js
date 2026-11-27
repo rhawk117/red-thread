@@ -359,13 +359,13 @@ const describe = (document) => {
       value: chip.dataset.value,
       pressed: chip.getAttribute('aria-pressed') === 'true',
     })),
-    entries: document.querySelectorAll('.entry[data-kind], .entry[data-worktree]').map((entry) => ({
-      ref: entry.querySelector('.ref').textContent,
-      kind: entry.dataset.kind,
-      thread: entry.dataset.thread,
-      worktree: entry.dataset.worktree,
-      status: entry.dataset.status,
-      hidden: entry.hidden,
+    findings: document.querySelectorAll('.finding[data-kind], .finding[data-worktree]').map((finding) => ({
+      finding_id: finding.querySelector('.finding-id').textContent,
+      kind: finding.dataset.kind,
+      thread: finding.dataset.thread,
+      worktree: finding.dataset.worktree,
+      status: finding.dataset.status,
+      hidden: finding.hidden,
     })),
     sections: document.querySelectorAll('details.section').map((section) => ({
       title: section.querySelector('h2').textContent,

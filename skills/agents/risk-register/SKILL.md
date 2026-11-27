@@ -15,21 +15,21 @@ You drafted the plan, so you are the worst-placed reader to say what is wrong wi
 
 - **After a review.** The reviewer's risks are the register. Keep each one's risk and signal in the reviewer's words; fix only a task number the plan does not have. Do not merge, soften or drop one: if you think a risk is wrong, say so in its question, with your evidence, and let the owner choose accept.
 - **What the interview left open.** Add, after the reviewer's, every question the design interview left open and every assumption it made because its depth ran out, when the reviewer did not already name it. The signal of an open question is what would settle it; the signal of an assumption is it proving false. Mark each as yours.
-- **Without a review.** Write the risks yourself, from the plan and the interview: an `open` entry a criterion would otherwise need, a caller no task reaches, a version the plan assumes. Say in the first risk question that a reviewer did not check them.
+- **Without a review.** Write the risks yourself, from the plan and the interview: an `open` finding a criterion would otherwise need, a caller no task reaches, a version the plan assumes. Say in the first risk question that a reviewer did not check them.
 
 ## Writing a risk
 
 - **The risk**: one sentence saying what could go wrong, with its subject named in full.
 - **The signal**: something a person or a test can see happen while the work runs, not only after it. "A test or a caller expects a sixth attempt" is a signal; "things go wrong" is not.
 - **The tasks**: the tasks it touches, by number, or `all`.
-- **The ground**: what it rests on, shown in the question and not stored in the plan: an entry ref, a `path:line` or the reviewer's finding. A risk you cannot ground is a guess; say so.
+- **The ground**: what it rests on, shown in the question and not stored in the plan: a finding id, a `path:line` or the reviewer's finding. A risk you cannot ground is a guess; say so.
 
 State a risk so that the person who built the plan and the person who doubts it would both call it fair: no "might possibly", no "unlikely", no word that sizes it before the owner does.
 
 ## The handlings
 
 - **Accept**: proceed, and note the signal. Nothing changes in the plan.
-- **Mitigate**: show the change itself, so the owner judges a diff and not a promise: the criterion you would add, word for word with its refs, or the task you would add and where it goes in the order. The criterion rests on the decision this dialog records.
+- **Mitigate**: show the change itself, so the owner judges a diff and not a promise: the criterion you would add, word for word with its finding ids, or the task you would add and where it goes in the order. The criterion rests on the decision this dialog records.
 - **You intervene**: work on the touched tasks stops when the signal appears, and the owner decides. Name which of the risk's tasks would be done again.
 
 Offer only the handlings a senior engineer could pick for this risk. When only two are sensible, offer two. Do not fill the dialog with the full list: a fixed list of four is what padded the risk dialogs of mightymodels, where this rule came from (`game-plan`). Put up to four risks in one AskUserQuestion call.
@@ -44,4 +44,4 @@ Offer only the handlings a senior engineer could pick for this risk. When only t
 
 ## Recording
 
-Record each answer as a `decision` with `source` `user` before you write it into the plan, in the case it bears on, as cross-examine records an answer. A mitigation's criterion names that decision among its refs. The game-plan skill's plan reference gives the Markdown shape of a risk and its handling.
+Record each answer as a `decision` with `source` `user` before you write it into the plan, in the case it bears on, as cross-examine records an answer. A mitigation's criterion names that decision among its finding ids. The game-plan skill's plan reference gives the Markdown shape of a risk and its handling.

@@ -11,7 +11,7 @@ from tests.params import as_params
 
 if TYPE_CHECKING:
     from _pytest.mark import ParameterSet
-    from red_thread_casefile.domain import EntryKind
+    from red_thread_casefile.domain import FindingKind
     from red_thread_casefile.lenses import LensName
 
 QUEUE_CITE = 'src/queue.py:3'
@@ -26,7 +26,7 @@ class LensShape:
     name: LensName
     headings: tuple[str, ...]
     budget: int
-    fill_kind: EntryKind
+    fill_kind: FindingKind
     marks: tuple[pytest.MarkDecorator, ...] = ()
 
 
@@ -110,7 +110,7 @@ def lens_with_decisions_params() -> list[ParameterSet]:
 @dataclass(slots=True, kw_only=True, frozen=True)
 class FlagScenario:
     name: str
-    entry_head: str | None = HEAD
+    finding_head: str | None = HEAD
     tree_head: str | None = HEAD
     tree_lines: tuple[str, ...] | None = QUEUE_LINES
     flags: tuple[str, ...] = ()
@@ -127,7 +127,7 @@ def flag_scenarios() -> list[FlagScenario]:
         ),
         FlagScenario(
             name='recorded-with-no-commit',
-            entry_head=None,
+            finding_head=None,
             flags=('lead, recorded at no commit',),
         ),
         FlagScenario(
@@ -163,20 +163,20 @@ def flag_params() -> list[ParameterSet]:
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
-class CiteShape:
+class CitationShape:
     name: str
-    cite: str
+    citation: str
     written: str
     marks: tuple[pytest.MarkDecorator, ...] = ()
 
 
-def cite_shape_params() -> list[ParameterSet]:
+def citation_shape_params() -> list[ParameterSet]:
     shapes = [
-        CiteShape(name='path-in-backticks', cite=QUEUE_CITE, written=f'`{QUEUE_CITE}`'),
-        CiteShape(name='https-url-as-autolink', cite=URL_CITE, written=f'<{URL_CITE}>'),
-        CiteShape(
+        CitationShape(name='path-in-backticks', citation=QUEUE_CITE, written=f'`{QUEUE_CITE}`'),
+        CitationShape(name='https-url-as-autolink', citation=URL_CITE, written=f'<{URL_CITE}>'),
+        CitationShape(
             name='http-url-as-autolink',
-            cite='http://example.invalid/docs',
+            citation='http://example.invalid/docs',
             written='<http://example.invalid/docs>',
         ),
     ]

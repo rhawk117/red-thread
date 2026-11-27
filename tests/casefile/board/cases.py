@@ -8,7 +8,7 @@ from tests.params import as_params
 if TYPE_CHECKING:
     import pytest
     from _pytest.mark import ParameterSet
-    from red_thread_casefile.policy import CiteState
+    from red_thread_casefile.policy import CitationState
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -33,7 +33,7 @@ def section_cap_params() -> list[ParameterSet]:
 @dataclass(slots=True, kw_only=True, frozen=True)
 class LeadCase:
     name: str
-    entry_head: str | None
+    finding_head: str | None
     board_head: str | None
     is_lead: bool
     recorded: str | None = None
@@ -43,30 +43,30 @@ class LeadCase:
 def lead_marker_params() -> list[ParameterSet]:
     cases = [
         LeadCase(
-            name='same-head', entry_head='1111111aaaa', board_head='1111111aaaa', is_lead=False
+            name='same-head', finding_head='1111111aaaa', board_head='1111111aaaa', is_lead=False
         ),
         LeadCase(
             name='different-head',
-            entry_head='1111111aaaa',
+            finding_head='1111111aaaa',
             board_head='2222222bbbb',
             is_lead=True,
             recorded='1111111',
         ),
         LeadCase(
-            name='entry-had-no-commit',
-            entry_head=None,
+            name='finding-had-no-commit',
+            finding_head=None,
             board_head='2222222bbbb',
             is_lead=True,
             recorded='no commit',
         ),
         LeadCase(
             name='tree-has-no-commit-now',
-            entry_head='1111111aaaa',
+            finding_head='1111111aaaa',
             board_head=None,
             is_lead=True,
             recorded='1111111',
         ),
-        LeadCase(name='no-commit-then-or-now', entry_head=None, board_head=None, is_lead=False),
+        LeadCase(name='no-commit-then-or-now', finding_head=None, board_head=None, is_lead=False),
     ]
     return as_params(cases)
 
@@ -74,7 +74,7 @@ def lead_marker_params() -> list[ParameterSet]:
 @dataclass(slots=True, kw_only=True, frozen=True)
 class StateCount:
     name: str
-    states: tuple[CiteState, ...]
+    states: tuple[CitationState, ...]
     written: str
     marks: tuple[pytest.MarkDecorator, ...] = ()
 

@@ -37,7 +37,7 @@ type SlugOption = Annotated[
     str | None, Parameter(help='words for the case id, by default taken from the target')
 ]
 type PublishFlag = Annotated[bool, Parameter(help='the owner chose a published page')]
-type FullFlag = Annotated[bool, Parameter(help='show every live entry')]
+type FullFlag = Annotated[bool, Parameter(help='show every live finding')]
 type BoardFlag = Annotated[bool, Parameter(help='also write board.html in the case')]
 type LensOption = Annotated[LensName, Parameter(help='the output to write')]
 type SelectionOption = Annotated[
@@ -110,7 +110,7 @@ class InitCommand:
         languages = ', '.join(case.capabilities.languages) or 'none detected'
         print(f'created {directory.resolve()}')
         print(f'languages: {languages}')
-        print(f'write entries in {directory.resolve().joinpath(CASE_FILE)}, then run check')
+        print(f'write findings in {directory.resolve().joinpath(CASE_FILE)}, then run check')
         return EXIT_OK
 
 
@@ -137,7 +137,7 @@ class CheckCommand:
 
     def run(self, arguments: CaseArguments) -> int:
         checked = self.cases.bind(arguments.case).check()
-        report = CheckReport(findings=checked.findings, problems=checked.problems)
+        report = CheckReport(citation_checks=checked.citation_checks, problems=checked.problems)
         print(report.render())
         return int(report.has_failures)
 
@@ -150,7 +150,9 @@ class ExportCommand:
 
     def run(self, arguments: ExportArguments) -> int:
         unselected = arguments.selection is None and sys.stdin.isatty()
-        loaded = load_selection('' if unselected else read_input(arguments.selection))
+        loaded = load_selection(
+            self.cases.json, '' if unselected else read_input(arguments.selection)
+        )
         if isinstance(loaded, MalformedSelectionError):
             raise loaded
 

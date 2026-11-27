@@ -1,4 +1,4 @@
-"""Scenarios for what lies in a case file: entry blocks and frontmatter that cannot be read."""
+"""Scenarios for what lies in a case file: finding blocks and frontmatter that cannot be read."""
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -55,6 +55,8 @@ def corrupt_case_params() -> list[ParameterSet]:
         'publish-is-a-string': write_frontmatter(publish="publish: 'yes'"),
         'capabilities-is-a-list': write_frontmatter(capabilities='capabilities: []'),
         'unknown-field': write_frontmatter(colour='colour: red'),
+        'created-is-not-a-moment': write_frontmatter(created='created: yesterday'),
+        'created-is-only-a-day': write_frontmatter(created='created: 2026-11-21'),
     }
     return as_labelled_params(texts)
 

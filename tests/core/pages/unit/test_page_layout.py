@@ -54,7 +54,10 @@ class TestColumns:
 
 
 class TestRail:
-    terms = (Term(word='worktree', meaning='one git worktree'), Term(word='ref', meaning='C1.e4'))
+    terms = (
+        Term(word='worktree', meaning='one git worktree'),
+        Term(word='finding_id', meaning='C1.e4'),
+    )
 
     def test_the_title_facts_and_controls_sit_in_the_rail_and_the_sections_beside_it(
         self,
@@ -88,9 +91,9 @@ class TestRail:
 
         rail = read_region(RAIL, page)
         assert find_tags(rail, 'details') == [{'class': 'terms'}]
-        assert re.findall(r'<dt>(.*?)</dt><dd>(.*?)</dd>', rail) == [
+        assert re.findall(r'<dt>(.*?)</dt>\s*<dd>(.*?)</dd>', rail) == [
             ('worktree', 'one git worktree'),
-            ('ref', 'C1.e4'),
+            ('finding_id', 'C1.e4'),
         ]
 
     def test_a_page_without_terms_has_no_terms_fold(self) -> None:

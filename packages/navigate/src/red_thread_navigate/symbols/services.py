@@ -1,17 +1,18 @@
 """Indexing the readable source files under a path into symbols and references."""
 
-from dataclasses import dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from red_thread_core.dto import DTO
 
-    from red_thread_navigate.symbols.domain import Backends, FileSymbols
+from red_thread_navigate.symbols.domain import FileSymbols
+
+if TYPE_CHECKING:
+    from red_thread_navigate.symbols.domain import Backends
     from red_thread_navigate.walk import SourceTree
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Index:
+class Index(DTO, frozen=True, kw_only=True, gc=False):
     path: Path
     files: tuple[FileSymbols, ...]
     notes: tuple[str, ...]

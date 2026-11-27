@@ -15,8 +15,8 @@ One `code-sense` lookup for the layout of the area: its packages, entry points, 
 Give each `research-lead` its area as SCOPE, the kinds of finding that count, and a cap on findings. Tell it that a finding is recorded as:
 
 - what and where: a `known` with the `path:line` in `cite`;
-- why it happened, when history shows it: part of the same entry if `git log` or `git blame` supports it, or else an `open` entry with `rests_on`;
-- what to do: a `next` entry that starts with the ref of the finding it addresses.
+- why it happened, when history shows it: part of the same finding if `git log` or `git blame` supports it, or else an `open` finding with `rests_on`;
+- what to do: a `next` finding that starts with the finding id of the finding it addresses.
 
 A finding without a citation is `open`. A survey of impressions is worth less than five cited findings.
 
@@ -24,4 +24,4 @@ A finding without a citation is `open`. A survey of impressions is worth less th
 
 Show coverage per thread: done, partial or untouched, with the count of findings. Ask which threads advance. Rank findings only when the owner asks, and say what the ranking rests on.
 
-Stop when the coverage the owner set is reached, even if more could be found. The rest is one `next` entry per area left out.
+Stop when the coverage the owner set is reached, even if more could be found. The rest is one `next` finding per area left out.

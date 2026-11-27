@@ -1,6 +1,5 @@
 """A release repository: a working clone of main beside a bare origin, at version 0.1.0."""
 
-import json
 import shutil
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -8,6 +7,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from tests.casefile.launcher.children import ChildRunner
+from tests.codec import JSON
 from tests.git import GIT_SETTINGS
 
 if TYPE_CHECKING:
@@ -36,7 +36,7 @@ class ReleaseRepository:
 
     def write_manifest_version(self, version: str) -> None:
         self.root.joinpath('.claude-plugin', 'plugin.json').write_text(
-            json.dumps({'name': 'red-thread', 'version': version}), encoding='utf-8'
+            JSON.encode_text({'name': 'red-thread', 'version': version}), encoding='utf-8'
         )
 
     def release(self, bump: str) -> Finished:

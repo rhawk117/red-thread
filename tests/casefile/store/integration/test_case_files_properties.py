@@ -7,14 +7,14 @@ from hypothesis import example, given
 from hypothesis import strategies as st
 from red_thread_casefile.domain import order_thread
 from red_thread_casefile.errors import CaseExistsError, CaseNotFoundError, UndecodableFileError
-from red_thread_casefile.schemas import read_case_file, write_case_file
 from red_thread_casefile.store import DirectoryCaseRepository
 
-from tests.casefile.entries.strategies import entries, thread_names
-from tests.casefile.ledger.builders import create_case, create_entry
+from tests.casefile.findings.strategies import findings, thread_names
+from tests.casefile.ledger.builders import create_case, create_finding
 from tests.casefile.ledger.markdown import (
+    SCHEMA,
     name_file,
-    number_entries,
+    number_findings,
     write_case_text,
     write_thread_text,
 )
@@ -22,11 +22,13 @@ from tests.casefile.ledger.markdown import (
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from red_thread_casefile.domain import Entry
+    from red_thread_casefile.domain import CaseFinding
 
-type Threads = dict[str, list[Entry]]
+type Threads = dict[str, list[CaseFinding]]
 
-SEPARATED = create_entry(seq=1, text='a\x85b\N{LINE SEPARATOR}c\N{PARAGRAPH SEPARATOR}d')
+SEPARATED = create_finding(
+    finding_number=1, text='a\x85b\N{LINE SEPARATOR}c\N{PARAGRAPH SEPARATOR}d'
+)
 NO_CARRIAGE_RETURN = st.characters(blacklist_categories=('Cs',), blacklist_characters='\r')
 
 
@@ -39,8 +41,8 @@ def is_undecodable(content: bytes) -> bool:
 
 
 class TestCaseFilesProperties:
-    entry_lists = st.lists(entries, max_size=3)
-    threads = st.dictionaries(thread_names, entry_lists, max_size=3)
+    finding_lists = st.lists(findings, max_size=3)
+    threads = st.dictionaries(thread_names, finding_lists, max_size=3)
     stray_names = st.sets(st.text(alphabet='abcxyz', min_size=1, max_size=6), max_size=3)
     texts = st.text(alphabet=NO_CARRIAGE_RETURN, max_size=40)
     undecodable = st.binary(min_size=1, max_size=40).filter(is_undecodable)
@@ -54,31 +56,31 @@ class TestCaseFilesProperties:
         return path
 
     @pytest.mark.regression
-    @given(own=entry_lists, threads=threads)
+    @given(own=finding_lists, threads=threads)
     @example(own=[SEPARATED], threads={'T1': [SEPARATED]})
-    def test_entries_written_to_the_files_read_back_case_first_then_threads_by_number(
-        self, tmp_path_factory: pytest.TempPathFactory, own: list[Entry], threads: Threads
+    def test_findings_written_to_the_files_read_back_case_first_then_threads_by_number(
+        self, tmp_path_factory: pytest.TempPathFactory, own: list[CaseFinding], threads: Threads
     ) -> None:
         repository = self.create_repository(tmp_path_factory)
-        in_case = number_entries(own, None)
+        in_case = number_findings(own, None)
         repository.create(write_case_text(create_case(), in_case))
-        in_threads = {name: number_entries(written, name) for name, written in threads.items()}
+        in_threads = {name: number_findings(written, name) for name, written in threads.items()}
         for name, written in in_threads.items():
             self.write_file(repository, name_file(name), write_thread_text(written))
 
-        reading = read_case_file(repository.read())
+        reading = SCHEMA.read(repository.read())
 
         ordered = sorted(in_threads, key=order_thread)
-        expected = [*in_case, *(entry for name in ordered for entry in in_threads[name])]
+        expected = [*in_case, *(finding for name in ordered for finding in in_threads[name])]
         assert reading.problems == ()
-        assert list(reading.ledger.entries) == expected
+        assert list(reading.ledger.findings) == expected
 
     @given(numbers=st.sets(st.integers(min_value=1, max_value=30), max_size=4), strays=stray_names)
     def test_thread_files_are_listed_by_number_and_stray_files_after_them(
         self, tmp_path_factory: pytest.TempPathFactory, numbers: set[int], strays: set[str]
     ) -> None:
         repository = self.create_repository(tmp_path_factory)
-        repository.create(write_case_file(create_case()))
+        repository.create(SCHEMA.write(create_case()))
         for stem in (*(f'T{number}' for number in numbers), *strays):
             self.write_file(repository, name_file(stem), '')
 
@@ -105,7 +107,7 @@ class TestCaseFilesProperties:
         repository = self.create_repository(tmp_path_factory)
         repository.create(text)
 
-        reading = read_case_file(repository.read())
+        reading = SCHEMA.read(repository.read())
 
         assert reading.case is not None or reading.problems
 
@@ -114,7 +116,7 @@ class TestCaseFilesProperties:
         self, tmp_path_factory: pytest.TempPathFactory, content: bytes, thread: bool
     ) -> None:
         repository = self.create_repository(tmp_path_factory)
-        repository.create(write_case_file(create_case()))
+        repository.create(SCHEMA.write(create_case()))
         path = repository.directory.joinpath(name_file('T1' if thread else None))
         path.write_bytes(content)
 

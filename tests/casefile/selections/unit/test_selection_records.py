@@ -7,6 +7,7 @@ from red_thread_casefile.errors import MalformedSelectionError
 from red_thread_casefile.lenses import Selection
 from red_thread_casefile.schemas import SelectionRecord, load_selection
 
+from tests.codec import JSON
 from tests.params import as_params
 
 
@@ -53,7 +54,7 @@ def malformed_selection_cases() -> pytest.MarkDecorator:
 
 
 def find_selection_problem(text: str) -> MalformedSelectionError | None:
-    loaded = load_selection(text)
+    loaded = load_selection(JSON, text)
     if isinstance(loaded, MalformedSelectionError):
         return loaded
 
@@ -61,7 +62,7 @@ def find_selection_problem(text: str) -> MalformedSelectionError | None:
 
 
 def read_selection(text: str) -> Selection:
-    loaded = load_selection(text)
+    loaded = load_selection(JSON, text)
     assert isinstance(loaded, SelectionRecord)
     return loaded.parse()
 
@@ -86,7 +87,7 @@ class TestUsableSelections:
             pytest.param('{}', id='empty-object'),
             pytest.param('{"title": "T", "goal": "G"}', id='title-and-goal'),
             pytest.param('{"include": [], "blocking": []}', id='empty-lists'),
-            pytest.param('{"include": ["e1", "T1.e2"], "blocking": ["e1"]}', id='refs'),
+            pytest.param('{"include": ["e1", "T1.e2"], "blocking": ["e1"]}', id='finding_ids'),
         ],
     )
     def test_selection_has_no_problem(self, text: str) -> None:

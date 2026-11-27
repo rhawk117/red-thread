@@ -2,10 +2,14 @@
 
 from collections import Counter
 from dataclasses import dataclass, field
+from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
+from red_thread_core.dto import DTO
+
 if TYPE_CHECKING:
-    from pathlib import Path, PurePosixPath
+    from collections.abc import Sequence
+    from pathlib import Path
 
 BYTES_PER_MIB = 1024 * 1024
 MAX_FILE_BYTES = BYTES_PER_MIB
@@ -31,8 +35,7 @@ type SkipKind = Literal[
 ]
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class SkipLabel:
+class SkipLabel(DTO, frozen=True, kw_only=True, gc=False):
     note: str
     reason: str
 
@@ -50,8 +53,7 @@ SKIP_LABELS: dict[SkipKind, SkipLabel] = {
 }
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class SourceFile:
+class SourceFile(DTO, frozen=True, kw_only=True, gc=False):
     path: PurePosixPath
     text: str
 
@@ -73,8 +75,7 @@ class SkipTally:
         )
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Walk:
+class Walk(DTO, frozen=True, kw_only=True, gc=False):
     files: tuple[SourceFile, ...]
     skipped: SkipTally
     git_failed: bool = False
@@ -97,11 +98,10 @@ class SourceTree(Protocol):
     def read(self, root: Path, name: PurePosixPath) -> SourceFile | SkipKind: ...
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class TrackedFiles:
+class TrackedFiles(DTO, frozen=True, kw_only=True, gc=False):
     names: tuple[str, ...] | None
     failed: bool = False
 
 
-def tally_skips(kinds: tuple[SkipKind, ...]) -> SkipTally:
+def tally_skips(kinds: Sequence[SkipKind]) -> SkipTally:
     return SkipTally(counts=Counter(kinds))

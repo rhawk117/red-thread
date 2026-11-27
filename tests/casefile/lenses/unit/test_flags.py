@@ -1,4 +1,4 @@
-"""export: what an entry is flagged with in the Markdown output."""
+"""export: what a finding is flagged with in the Markdown output."""
 
 from typing import TYPE_CHECKING
 
@@ -19,7 +19,7 @@ def flag_cases() -> pytest.MarkDecorator:
 
 class TestFlagsInMarkdown:
     @flag_cases()
-    def test_entry_carries_exactly_the_flags_its_situation_calls_for(
+    def test_finding_carries_exactly_the_flags_its_situation_calls_for(
         self, press_harness: PressHarness, scenario: FlagScenario
     ) -> None:
         seed_flag_scenario(press_harness, scenario)
@@ -28,7 +28,7 @@ class TestFlagsInMarkdown:
 
         assert list_remarks(find_item(text, 'e1')) == list(scenario.flags)
 
-    def test_a_flag_is_written_in_every_lens_that_lists_the_entry(
+    def test_a_flag_is_written_in_every_lens_that_lists_the_finding(
         self, press_harness: PressHarness
     ) -> None:
         scenario = next(

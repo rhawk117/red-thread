@@ -29,12 +29,12 @@ The headings come from init, in this order, and check refuses a plan that drops 
 | Approach | the strategy, and why it beats the alternative the owner considered |
 | Invariants | what must stay true after every task, one `- ` line each, with what shows it |
 | Non-goals | what the ticket leaves out, one `- ` line each, with its reason |
-| Acceptance | the criteria, one `- ` line each, ending with the refs of the entries that require it |
+| Acceptance | the criteria, one `- ` line each, ending with the finding ids of the findings that require it |
 | Tasks | the work, numbered in the order it is done |
 | Risks | what could go wrong, empty until the review and the risk dialog |
 | Changes | one line per revision after the first, saying what changed and the decision behind it |
 
-A ref names a case entry through its case's alias: `C1.e4`, or `C2.T1.e2` for entry e2 of thread T1. Check reads every ref in the body: it must be an entry of its case, not retired by a later one. A criterion's refs must also be a `decision` or a `known`.
+A finding id names a case finding through its case's alias: `C1.e4`, or `C2.T1.e2` for finding e2 of thread T1. Check reads every finding id in the body: it must be a finding of its case, not retired by a later one. A criterion's finding ids must also be a `decision` or a `known`.
 
 ## Example
 
@@ -101,19 +101,19 @@ Cap the attempts of each job where the retry decision is made, and keep retries 
 From mightymodels `game-plan`, unless marked otherwise.
 
 - **Altitude is not vagueness.** The plan says what and where, and what outcome shows it done. A task says what changes and where, never the code; detail waits until the task starts, against the code as it is then.
-- **A criterion is an observable outcome sentence**: what a person or a test can see happen, with no ids and no commands, then its refs in parentheses. "Asking for a job that does not exist returns a not-found message instead of a stack trace" is one. "Error handling works correctly", "handles errors appropriately" and "is consistent with the rest of the code" are not: rewrite them or drop them. One to four criteria; a ticket that needs more is two tickets (break-it-down).
+- **A criterion is an observable outcome sentence**: what a person or a test can see happen, with no ids and no commands, then its finding ids in parentheses. "Asking for a job that does not exist returns a not-found message instead of a stack trace" is one. "Error handling works correctly", "handles errors appropriately" and "is consistent with the rest of the code" are not: rewrite them or drop them. One to four criteria; a ticket that needs more is two tickets (break-it-down).
 - **A task** is one change a reviewer could check alone, in the order it is done, and leaves the repository passing. Cut them by the `red-thread:break-it-down` skill.
 - **An invariant** says what shows it holds: a test, a CI job or a read, in words. An invariant without that is a wish.
 - **A non-goal** carries its reason, so a later session does not reopen it.
 - **A risk** is one `- R<n>:` line with its subject named in full, then three nested lines: `signal`, the `tasks` it touches by number, and the `handling` the owner chose (`accept`, `mitigate, by` the criterion or task that does it, or `you intervene`). The `red-thread:risk-register` skill says how each is found and chosen.
-- **No `path:line` in plan text.** A line number goes stale with the first task that lands and is trusted anyway. The citations live in the entries, and the plan reaches them through refs.
+- **No `path:line` in plan text.** A line number goes stale with the first task that lands and is trusted anyway. The citations live in the findings, and the plan reaches them through finding ids.
 
 ## From the interview
 
 From mightymodels `game-plan`. Lift what the cross-examine interview settled into the plan before you write anything of your own:
 
 - A decision becomes the approach, an invariant, a non-goal or a criterion. A decision that fits none of these is a task, or a sign that the work is more than one ticket.
-- A verified fact becomes ground a criterion rests on, through its ref.
+- A verified fact becomes ground a criterion rests on, through its finding id.
 - An open question or an assumption goes on a list for the risk dialog, which adds it after the reviewer's risks, as risk-register describes. It stays out of the plan until then.
 
 ## Consistency check
@@ -121,7 +121,7 @@ From mightymodels `game-plan`. Lift what the cross-examine interview settled int
 From mightymodels `game-plan`. Run it before the owner sees the plan, together with `PLANNER check --plan PLAN`. Each item is a yes or no question.
 
 - The plan has one to four criteria, and each is an observable outcome sentence.
-- Each criterion follows from the entries it names: read each one on the board. An entry that says less than the criterion promises means a narrower criterion or a question for the owner.
+- Each criterion follows from the findings it names: read each one on the board. A finding that says less than the criterion promises means a narrower criterion or a question for the owner.
 - Every decision on the boards that bears on the intent shows in the plan as the approach, an invariant, a non-goal or a criterion, and nothing in the plan contradicts one.
 - Every task can be done in the order written, and each criterion is met once the last task lands.
 - Once risk-register has run, every open question and assumption from the cross-examine interview is a risk.
@@ -132,7 +132,7 @@ From mightymodels `game-plan`. Run it before the owner sees the plan, together w
 
 ## Showing the plan
 
-At the gate, give the owner the path of PLAN and show the plan in your message, section by section as the file holds it, with each ref followed by its entry's kind: `(C1.e1 known, C2.e1 decision)`. When the plan revises an accepted one, open with what changed since that revision.
+At the gate, give the owner the path of PLAN and show the plan in your message, section by section as the file holds it, with each finding id followed by its finding's kind: `(C1.e1 known, C2.e1 decision)`. When the plan revises an accepted one, open with what changed since that revision.
 
 ## Revising
 

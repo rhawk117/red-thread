@@ -21,7 +21,7 @@ When the version is not known yet, send `code-sense` first, since a page for the
 
 - A page that documents another version than the pinned one is INFERRED, with `rests_on` naming both versions.
 - A page worth keeping for the next session is a `resource`: the URL in `cite`, and one line in `text` on what it is for.
-- A gap between what the docs say and what the call sites assume is its own `open` entry with both citations. It is often the finding the plan needs most.
+- A gap between what the docs say and what the call sites assume is its own `open` finding with both citations. It is often the finding the plan needs most.
 
 ## Large subjects
 
@@ -31,4 +31,4 @@ Security questions follow the same shape: scouts read, and `lab-rat` runs an exp
 
 ## At the gate
 
-Say what the plan can now assume, what it cannot, and which open entry would change the design if it went the other way.
+Say what the plan can now assume, what it cannot, and which open finding would change the design if it went the other way.

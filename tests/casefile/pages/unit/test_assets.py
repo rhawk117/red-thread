@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
-from red_thread_casefile.domain import ENTRY_KINDS
+from red_thread_casefile.domain import FINDING_KINDS
 from red_thread_casefile.packaged import read_asset as read_case_asset
 from red_thread_core.packaged import read_asset
 
@@ -73,8 +73,8 @@ class TestAssetPromises:
     def test_the_map_header_styles_every_class_a_map_node_can_take(self) -> None:
         header = read_case_asset('map.mmd')
 
-        classes = {name for name in (*ENTRY_KINDS, 'retired') if f'classDef k_{name} ' in header}
-        assert classes == {*ENTRY_KINDS, 'retired'}
+        classes = {name for name in (*FINDING_KINDS, 'retired') if f'classDef k_{name} ' in header}
+        assert classes == {*FINDING_KINDS, 'retired'}
 
     def test_the_map_header_opens_a_top_down_flowchart(self) -> None:
         assert read_case_asset('map.mmd').startswith('flowchart TD\n')

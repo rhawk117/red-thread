@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from tests.casefile.commands.cli import CliHarness, CliRun
 
 OPEN = {'kind': 'open', 'text': 'who owns the queue', 'source': 'scout'}
-BROKEN_LINE = 'this is not an entry'
+BROKEN_LINE = 'this is not a finding'
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)

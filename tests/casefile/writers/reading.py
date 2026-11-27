@@ -5,8 +5,9 @@ from typing import TYPE_CHECKING
 from red_thread_casefile.packaged import load_wording
 from red_thread_casefile.writers.page import render_case_page
 from red_thread_core.documents import parse_line
+from red_thread_core.elements import render_inline
 from red_thread_core.writers.markdown import MarkdownWriter
-from red_thread_core.writers.markup import HtmlInlines, render_value
+from red_thread_core.writers.markup import write_line
 
 if TYPE_CHECKING:
     from red_thread_core.documents import Document
@@ -21,7 +22,7 @@ def render_page(document: Document) -> str:
 
 
 def render_marked_up(text: str) -> str:
-    return render_value(HtmlInlines().write_line(parse_line(text)))
+    return ''.join(map(render_inline, write_line(parse_line(text))))
 
 
 def list_item_lines(document: Document) -> list[str]:

@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from tests.casefile.ledger.builders import PAGE_URL, create_case, create_entry
+from tests.casefile.ledger.builders import PAGE_URL, create_case, create_finding
 from tests.casefile.lenses.cases import lens_name_params
 from tests.casefile.lenses.reading import list_section_lines
 from tests.casefile.pages.html_reading import list_facts
@@ -20,7 +20,7 @@ def lens_name_cases() -> pytest.MarkDecorator:
 
 
 def seed_question(harness: PressHarness) -> PressHarness:
-    harness.seed(create_entry(seq=1, kind='open', text='who owns the queue'))
+    harness.seed(create_finding(finding_number=1, kind='open', text='who owns the queue'))
     return harness
 
 

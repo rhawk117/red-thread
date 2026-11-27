@@ -1,13 +1,12 @@
-"""MarkdownWriter over the tree: how an entry, its cite and its ref are written, and the layout."""
+"""MarkdownWriter: how a finding, its citation and its id are written, and the layout."""
 
-from dataclasses import replace
 from typing import TYPE_CHECKING
 
 import pytest
 from hypothesis import example, given
-from red_thread_casefile.documents import Citation, list_section_entries
+from red_thread_casefile.documents import CitationNode, list_section_findings
 from red_thread_casefile.packaged import load_wording
-from red_thread_casefile.policy import Finding
+from red_thread_casefile.policy import CitationCheck
 from red_thread_core.documents import (
     Document,
     Flowchart,
@@ -18,64 +17,63 @@ from red_thread_core.documents import (
     parse_line,
 )
 
-from tests.casefile.lenses.cases import cite_shape_params
-from tests.casefile.writers.builders import create_document, create_entry_node
+from tests.casefile.lenses.cases import citation_shape_params
+from tests.casefile.writers.builders import create_document, create_finding_node
 from tests.casefile.writers.reading import list_item_lines, render_markdown
 from tests.casefile.writers.strategies import documents
 
 if TYPE_CHECKING:
-    from tests.casefile.lenses.cases import CiteShape
+    from tests.casefile.lenses.cases import CitationShape
 
 
-def cite_shape_cases() -> pytest.MarkDecorator:
-    return pytest.mark.parametrize('shape', cite_shape_params())
+def citation_shape_cases() -> pytest.MarkDecorator:
+    return pytest.mark.parametrize('shape', citation_shape_params())
 
 
-class TestEntryLine:
-    @cite_shape_cases()
-    def test_entry_is_text_then_cite_then_ref_at_the_end_of_the_line(
-        self, shape: CiteShape
+class TestFindingLine:
+    @citation_shape_cases()
+    def test_finding_is_text_then_citation_then_finding_id_at_the_end_of_the_line(
+        self, shape: CitationShape
     ) -> None:
-        entry = replace(
-            create_entry_node('the sleep blocks', 'e7'), citation=Citation(target=shape.cite)
+        finding = create_finding_node('the sleep blocks', 'e7').replace_with(
+            citation_node=CitationNode(target=shape.citation)
         )
 
-        assert list_item_lines(create_document(entry)) == [
+        assert list_item_lines(create_document(finding)) == [
             f'- the sleep blocks {shape.written} [e7]'
         ]
 
-    def test_a_thread_ref_is_written_whole(self) -> None:
-        entry = create_entry_node('a lead', 'T2.e3')
+    def test_a_thread_finding_id_is_written_whole(self) -> None:
+        finding = create_finding_node('a lead', 'T2.e3')
 
-        assert list_item_lines(create_document(entry)) == ['- a lead [T2.e3]']
+        assert list_item_lines(create_document(finding)) == ['- a lead [T2.e3]']
 
     def test_code_spans_in_the_claim_are_written_in_backticks(self) -> None:
-        entry = create_entry_node('run `make` first')
+        finding = create_finding_node('run `make` first')
 
-        assert list_item_lines(create_document(entry)) == ['- run `make` first [e1]']
+        assert list_item_lines(create_document(finding)) == ['- run `make` first [e1]']
 
-    def test_flags_cite_flags_and_notes_are_in_parentheses_in_that_order(self) -> None:
-        finding = Finding(ref='e1', cite='src/a.py:1', state='changed')
-        entry = replace(
-            create_entry_node('claim'),
-            citation=Citation(target='src/a.py:1', finding=finding),
+    def test_flags_citation_flags_and_notes_are_in_parentheses_in_that_order(self) -> None:
+        citation_check = CitationCheck(finding_id='e1', citation='src/a.py:1', state='changed')
+        finding = create_finding_node('claim').replace_with(
+            citation_node=CitationNode(target='src/a.py:1', citation_check=citation_check),
             lead='1111111',
             notes=(load_wording().write_note('rests_on', 'a page'),),
         )
 
-        (line,) = list_item_lines(create_document(entry))
+        (line,) = list_item_lines(create_document(finding))
 
         expected = '(lead, recorded at 1111111; citation changed; rests on: a page)'
         assert line == f'- claim {expected} `src/a.py:1` [e1]'
 
-    def test_an_entry_with_no_flag_and_no_note_has_no_parentheses(self) -> None:
-        (line,) = list_item_lines(create_document(create_entry_node('claim')))
+    def test_an_finding_with_no_flag_and_no_note_has_no_parentheses(self) -> None:
+        (line,) = list_item_lines(create_document(create_finding_node('claim')))
 
         assert '(' not in line
 
 
 class TestBlocks:
-    def test_points_are_list_lines_without_refs(self) -> None:
+    def test_points_are_list_lines_without_finding_ids(self) -> None:
         points = PointList(points=(parse_line('a pointer'), parse_line('see `x`')))
         document = Document(title='t', sections=(Section(title='Pointers', blocks=(points,)),))
 
@@ -112,7 +110,7 @@ class TestDocumentLayout:
         assert text.splitlines()[3:7] == ['', '## Findings', '', 'first sentence']
 
     def test_output_ends_with_one_newline(self) -> None:
-        text = render_markdown(create_document(create_entry_node('claim')))
+        text = render_markdown(create_document(create_finding_node('claim')))
 
         assert text.endswith('[e1]\n')
         assert not text.endswith('\n\n')
@@ -128,14 +126,18 @@ class TestMarkdownWriterProperties:
     @pytest.mark.regression
     @given(document=documents)
     @example(document=BRACKET_POINT)
-    def test_every_entry_is_one_line_ending_with_its_ref_in_order(self, document: Document) -> None:
-        entries = [
-            entry for section in document.sections for entry in list_section_entries(section)
+    def test_every_finding_is_one_line_ending_with_its_finding_id_in_order(
+        self, document: Document
+    ) -> None:
+        findings = [
+            finding for section in document.sections for finding in list_section_findings(section)
         ]
 
         lines = [line for line in list_item_lines(document) if ' [' in line and line.endswith(']')]
 
-        assert [line.rsplit(' [', 1)[1] for line in lines] == [f'{entry.ref}]' for entry in entries]
+        assert [line.rsplit(' [', 1)[1] for line in lines] == [
+            f'{finding.finding_id}]' for finding in findings
+        ]
 
     @given(document=documents)
     def test_the_output_ends_with_a_newline(self, document: Document) -> None:

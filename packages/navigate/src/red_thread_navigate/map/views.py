@@ -1,24 +1,26 @@
 """The rungs of a map: full outline, a summary per file, then counts."""
 
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from red_thread_core.dto import DTO
+
+from red_thread_navigate.symbols.domain import FileSymbols, Symbol
 from red_thread_navigate.util import plural, rung, span, symbol_address
 
 if TYPE_CHECKING:
-    from red_thread_navigate.symbols.domain import Backends, FileSymbols, Symbol
+    from collections.abc import Sequence
+
+    from red_thread_navigate.symbols.domain import Backends
 
 SUMMARY_NAMES = 3
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class RankedSymbol:
+class RankedSymbol(DTO, frozen=True, kw_only=True, gc=False):
     symbol: Symbol
     references: int
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class RankedFile:
+class RankedFile(DTO, frozen=True, kw_only=True, gc=False):
     file: FileSymbols
     symbols: tuple[RankedSymbol, ...]
 
@@ -39,7 +41,7 @@ def symbol_line(ranked_file: RankedFile, ranked: RankedSymbol) -> str:
     return f'  {label}  {span(symbol)}  {address}  {ranked.references} refs'
 
 
-def header_line(files: tuple[RankedFile, ...]) -> str:
+def header_line(files: Sequence[RankedFile]) -> str:
     symbols = sum(len(ranked.symbols) for ranked in files)
     return f'{plural(len(files), "file")}  {plural(symbols, "symbol")}'
 
@@ -49,7 +51,7 @@ def outline_lines(ranked_file: RankedFile) -> tuple[str, ...]:
     return (file_line(ranked_file), *symbols)
 
 
-def full_rung(files: tuple[RankedFile, ...]) -> tuple[str, ...]:
+def full_rung(files: Sequence[RankedFile]) -> tuple[str, ...]:
     return rung(header_line(files), *map(outline_lines, files))
 
 
@@ -60,15 +62,15 @@ def summary_line(ranked_file: RankedFile) -> str:
     return f'{file_line(ranked_file)}  {names}{tail}' if names else file_line(ranked_file)
 
 
-def summary_rung(files: tuple[RankedFile, ...]) -> tuple[str, ...]:
+def summary_rung(files: Sequence[RankedFile]) -> tuple[str, ...]:
     return rung(header_line(files), map(summary_line, files))
 
 
-def counts_rung(files: tuple[RankedFile, ...]) -> tuple[str, ...]:
+def counts_rung(files: Sequence[RankedFile]) -> tuple[str, ...]:
     return rung(header_line(files), map(file_line, files))
 
 
-def map_rungs(files: tuple[RankedFile, ...]) -> tuple[tuple[str, ...], ...]:
+def map_rungs(files: Sequence[RankedFile]) -> tuple[tuple[str, ...], ...]:
     return (full_rung(files), summary_rung(files), counts_rung(files))
 
 

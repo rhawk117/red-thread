@@ -1,9 +1,9 @@
-"""What makes a plan sound: its sections written, and every criterion resting on live entries."""
+"""What makes a plan sound: its sections written, and every criterion resting on live findings."""
 
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from red_thread_plans.domain import ACCEPTANCE, RESTING_KINDS, SETTLED, find_refs
+from red_thread_plans.domain import ACCEPTANCE, RESTING_KINDS, SETTLED, find_cited_finding_ids
 from red_thread_plans.errors import (
     EmptySectionError,
     GroundlessCriterionError,
@@ -11,17 +11,17 @@ from red_thread_plans.errors import (
     NoCasesError,
     NoCriteriaError,
     PlanError,
-    RetiredRefError,
-    UnfitRefError,
+    RetiredFindingError,
     UnknownCaseError,
-    UnknownRefError,
+    UnknownFindingError,
     UnsetLightsError,
+    WrongFindingKindError,
 )
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-    from red_thread_casefile.domain import Entry, Ledger
+    from red_thread_casefile.domain import CaseFinding, CaseLedger
     from red_thread_core.lines import Line
 
     from red_thread_plans.domain import Outline, PlanDocument
@@ -31,38 +31,44 @@ type Problems = tuple[PlanError, ...]
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class Grounds:
-    live: Mapping[str, Entry] = field(default_factory=dict)
+    live: Mapping[str, CaseFinding] = field(default_factory=dict)
     known: frozenset[str] = frozenset()
 
-    def get_ref_problem(self, line: int, ref: str) -> PlanError | None:
-        if ref not in self.known:
-            return UnknownRefError(line=line, ref=ref)
+    def get_finding_id_problem(self, line: int, finding_id: str) -> PlanError | None:
+        if finding_id not in self.known:
+            return UnknownFindingError(line=line, finding_id=finding_id)
 
-        if ref not in self.live:
-            return RetiredRefError(line=line, ref=ref)
+        if finding_id not in self.live:
+            return RetiredFindingError(line=line, finding_id=finding_id)
 
         return None
 
-    def get_resting_problem(self, line: int, ref: str) -> PlanError | None:
-        if problem := self.get_ref_problem(line, ref):
+    def get_resting_problem(self, line: int, finding_id: str) -> PlanError | None:
+        if problem := self.get_finding_id_problem(line, finding_id):
             return problem
 
-        kind = self.live[ref].kind
+        kind = self.live[finding_id].kind
         if kind not in RESTING_KINDS:
-            return UnfitRefError(line=line, ref=ref, kind=kind)
+            return WrongFindingKindError(line=line, finding_id=finding_id, kind=kind)
 
         return None
 
 
-def create_grounds(ledgers: Mapping[str, Ledger]) -> Grounds:
+def create_grounds(ledgers: Mapping[str, CaseLedger]) -> Grounds:
     cited = ledgers.items()
-    live = {f'{alias}.{entry.ref}': entry for alias, ledger in cited for entry in ledger.live}
-    known = frozenset(f'{alias}.{ref}' for alias, ledger in cited for ref in ledger.refs)
+    live = {
+        f'{alias}.{finding.finding_id}': finding
+        for alias, ledger in cited
+        for finding in ledger.live
+    }
+    known = frozenset(
+        f'{alias}.{finding_id}' for alias, ledger in cited for finding_id in ledger.finding_ids
+    )
     return Grounds(live=live, known=known)
 
 
-def find_alias(ref: str) -> str:
-    return ref.partition('.')[0]
+def find_alias(finding_id: str) -> str:
+    return finding_id.partition('.')[0]
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -108,23 +114,28 @@ class PlanPolicy:
     def get_section_issues(self) -> Problems:
         return tuple(filter(None, map(self.get_section_problem, self.outline.sections)))
 
-    def is_checkable(self, ref: str) -> bool:
-        return find_alias(ref) not in self.missing
+    def is_checkable(self, finding_id: str) -> bool:
+        return find_alias(finding_id) not in self.missing
 
     def get_line_issues(self, line: Line) -> Problems:
-        refs = filter(self.is_checkable, find_refs(line))
-        found = (self.grounds.get_ref_problem(line.number, ref) for ref in refs)
+        finding_ids = filter(self.is_checkable, find_cited_finding_ids(line))
+        found = (
+            self.grounds.get_finding_id_problem(line.number, finding_id)
+            for finding_id in finding_ids
+        )
         return tuple(filter(None, found))
 
     def get_criterion_issues(self, line: Line) -> Problems:
-        if not find_refs(line):
+        if not find_cited_finding_ids(line):
             return (GroundlessCriterionError(line=line.number),)
 
-        refs = filter(self.is_checkable, find_refs(line))
-        found = (self.grounds.get_resting_problem(line.number, ref) for ref in refs)
+        finding_ids = filter(self.is_checkable, find_cited_finding_ids(line))
+        found = (
+            self.grounds.get_resting_problem(line.number, finding_id) for finding_id in finding_ids
+        )
         return tuple(filter(None, found))
 
-    def get_ref_issues(self) -> Problems:
+    def get_finding_id_issues(self) -> Problems:
         criteria = self.document.criteria
         others = (line for line in self.document.lines if line not in criteria)
         checked = (*map(self.get_line_issues, others), *map(self.get_criterion_issues, criteria))
@@ -134,5 +145,5 @@ class PlanPolicy:
         return (
             *self.get_frontmatter_issues(),
             *self.get_section_issues(),
-            *self.get_ref_issues(),
+            *self.get_finding_id_issues(),
         )

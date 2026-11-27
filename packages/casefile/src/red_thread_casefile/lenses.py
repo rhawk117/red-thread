@@ -1,4 +1,4 @@
-"""Lens outputs: a selection picks and ranks live entries, and the ledger supplies their words."""
+"""Lens outputs: a selection picks and ranks live findings, and the ledger supplies their words."""
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
@@ -7,22 +7,22 @@ from red_thread_core.documents import Document, Paragraph, PointList, Section, p
 from red_thread_core.dto import DTO
 from red_thread_core.util import squeeze
 
-from red_thread_casefile.documents import EntryBuilder, list_entries_block
+from red_thread_casefile.documents import FindingNodeBuilder, list_findings_block
 from red_thread_casefile.domain import (
     CASE_FILE,
     PROGRAM,
     STATE_DIRECTORY,
     THREAD_HOME,
-    EntryKind,
+    FindingKind,
     shorten_head,
 )
-from red_thread_casefile.errors import LensOverBudgetError, UnknownSelectionRefError
+from red_thread_casefile.errors import LensOverBudgetError, UnknownSelectedFindingError
 from red_thread_casefile.views import Annotator, CheckReport
 
 if TYPE_CHECKING:
-    from red_thread_casefile.documents import EntryNode, Note, Wording
-    from red_thread_casefile.domain import Case, Entry, Ledger
-    from red_thread_casefile.policy import Finding
+    from red_thread_casefile.documents import FindingNode, Note, Wording
+    from red_thread_casefile.domain import Case, CaseFinding, CaseLedger
+    from red_thread_casefile.policy import CitationCheck
 
 type LensName = Literal['brief', 'issue', 'handoff', 'report']
 type FixedPart = Literal['goal', 'pointers', 'reading']
@@ -32,7 +32,7 @@ LENS_NAMES: tuple[LensName, ...] = ('brief', 'issue', 'handoff', 'report')
 
 class Part(DTO, frozen=True, kw_only=True, forbid_unknown_fields=True, gc=False):
     title: str
-    kind: EntryKind | None = None
+    kind: FindingKind | None = None
     fixed: FixedPart | None = None
 
 
@@ -65,26 +65,26 @@ class Selection(DTO, frozen=True, kw_only=True, gc=False):
     def named(self) -> tuple[str, ...]:
         return (*(self.include or ()), *(self.blocking or ()))
 
-    def is_blocking(self, entry: Entry) -> bool:
-        return entry.ref in (self.blocking or ())
+    def is_blocking(self, finding: CaseFinding) -> bool:
+        return finding.finding_id in (self.blocking or ())
 
-    def admits(self, entry: Entry) -> bool:
-        if self.include is None or entry.kind == 'decision':
+    def admits(self, finding: CaseFinding) -> bool:
+        if self.include is None or finding.kind == 'decision':
             return True
-        return entry.ref in self.include or self.is_blocking(entry)
+        return finding.finding_id in self.include or self.is_blocking(finding)
 
-    def rank(self, entry: Entry) -> tuple[bool, int]:
+    def rank(self, finding: CaseFinding) -> tuple[bool, int]:
         chosen = self.include or ()
-        position = chosen.index(entry.ref) if entry.ref in chosen else len(chosen)
-        return (not self.is_blocking(entry), position)
+        position = chosen.index(finding.finding_id) if finding.finding_id in chosen else len(chosen)
+        return (not self.is_blocking(finding), position)
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class Edition:
     case: Case
-    ledger: Ledger
+    ledger: CaseLedger
     head: str | None = None
-    findings: tuple[Finding, ...] = ()
+    citation_checks: tuple[CitationCheck, ...] = ()
 
     @property
     def short_head(self) -> str:
@@ -92,7 +92,7 @@ class Edition:
 
     @property
     def annotator(self) -> Annotator:
-        return Annotator(head=self.head, findings=self.findings)
+        return Annotator(head=self.head, citation_checks=self.citation_checks)
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -103,12 +103,14 @@ class Composer:
     wording: Wording
     reading: tuple[str, ...]
 
-    def get_selection_problem(self) -> UnknownSelectionRefError | None:
-        live = {entry.ref for entry in self.edition.ledger.live}
-        unknown = next((ref for ref in self.selection.named if ref not in live), None)
+    def get_selection_problem(self) -> UnknownSelectedFindingError | None:
+        live = {finding.finding_id for finding in self.edition.ledger.live}
+        unknown = next(
+            (finding_id for finding_id in self.selection.named if finding_id not in live), None
+        )
         if unknown is None:
             return None
-        return UnknownSelectionRefError(ref=unknown)
+        return UnknownSelectedFindingError(finding_id=unknown)
 
     def get_budget_problem(self, text: str) -> LensOverBudgetError | None:
         lines = count_lines(text)
@@ -116,25 +118,25 @@ class Composer:
             return None
         return LensOverBudgetError(lens=self.lens.name, lines=lines, budget=self.lens.budget)
 
-    def select(self, kind: EntryKind) -> tuple[Entry, ...]:
+    def select(self, kind: FindingKind) -> tuple[CaseFinding, ...]:
         admitted = filter(self.selection.admits, self.edition.ledger.select(kind))
         return tuple(sorted(admitted, key=self.selection.rank))
 
-    def list_notes(self, entry: Entry) -> tuple[Note, ...]:
-        notes = self.wording.list_caveat_notes(entry)
-        if self.selection.blocking is None or entry.kind != 'open':
+    def list_notes(self, finding: CaseFinding) -> tuple[Note, ...]:
+        notes = self.wording.list_caveat_notes(finding)
+        if self.selection.blocking is None or finding.kind != 'open':
             return notes
-        urgency = 'blocking' if self.selection.is_blocking(entry) else 'not blocking'
+        urgency = 'blocking' if self.selection.is_blocking(finding) else 'not blocking'
         return (self.wording.write_note('urgency', urgency), *notes)
 
-    def create_entry(self, entry: Entry) -> EntryNode:
-        builder = EntryBuilder(annotator=self.edition.annotator)
-        return builder.build(entry, self.list_notes(entry))
+    def create_finding(self, finding: CaseFinding) -> FindingNode:
+        builder = FindingNodeBuilder(annotator=self.edition.annotator)
+        return builder.build(finding, self.list_notes(finding))
 
     def list_pointers(self) -> PointList:
         case = self.edition.case
         location = f'{STATE_DIRECTORY}/{case.id}'
-        checked = CheckReport(findings=self.edition.findings).summary
+        checked = CheckReport(citation_checks=self.edition.citation_checks).summary
         threads = f'with one file per thread under `{THREAD_HOME}/`'
         pointers = [
             f'Case file: `{location}/{CASE_FILE}`, {threads}.',
@@ -153,8 +155,8 @@ class Composer:
 
     def compose_part(self, part: Part) -> Section:
         if part.kind:
-            entries = tuple(map(self.create_entry, self.select(part.kind)))
-            blocks = list_entries_block(entries)
+            findings = tuple(map(self.create_finding, self.select(part.kind)))
+            blocks = list_findings_block(findings)
             note = self.wording.describe_kind(part.kind)
             return Section(title=part.title, blocks=blocks, kind=part.kind, note=note)
 

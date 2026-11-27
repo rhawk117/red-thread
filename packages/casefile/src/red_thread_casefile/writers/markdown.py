@@ -1,29 +1,29 @@
-"""Markdown for the case file's own nodes: an entry with its remarks, citation and ref."""
+"""Markdown for the case file's own nodes: a finding with its remarks, citation and finding id."""
 
 from typing import TYPE_CHECKING
 
 from red_thread_core.writers.markdown import write_markdown_line
 
-from red_thread_casefile.views import list_cite_flags
+from red_thread_casefile.views import list_citation_flags
 
 if TYPE_CHECKING:
-    from red_thread_casefile.documents import Citation, EntryNode
+    from red_thread_casefile.documents import CitationNode, FindingNode
 
 
-def write_citation(citation: Citation | None) -> str:
-    if citation is None:
+def write_citation(citation_node: CitationNode | None) -> str:
+    if citation_node is None:
         return ''
 
-    if citation.is_url:
-        return f' <{citation.target}>'
+    if citation_node.is_url:
+        return f' <{citation_node.target}>'
 
-    return f' `{citation.target}`'
+    return f' `{citation_node.target}`'
 
 
-def write_markdown_entry(entry: EntryNode) -> str:
-    finding = entry.citation.finding if entry.citation else None
-    notes = (note.text for note in entry.notes)
-    remarks = '; '.join((*entry.flags, *list_cite_flags(finding), *notes))
+def write_markdown_finding(finding: FindingNode) -> str:
+    citation_check = finding.citation_node.citation_check if finding.citation_node else None
+    notes = (note.text for note in finding.notes)
+    remarks = '; '.join((*finding.flags, *list_citation_flags(citation_check), *notes))
     noted = f' ({remarks})' if remarks else ''
-    cite = write_citation(entry.citation)
-    return f'- {write_markdown_line(entry.claim)}{noted}{cite} [{entry.ref}]'
+    citation = write_citation(finding.citation_node)
+    return f'- {write_markdown_line(finding.claim)}{noted}{citation} [{finding.finding_id}]'

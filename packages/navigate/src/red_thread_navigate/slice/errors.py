@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from red_thread_navigate.address import AddressError
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from pathlib import PurePosixPath
 
 
@@ -20,7 +21,7 @@ class FileRefusedError(SliceError):
 
 
 class UnknownSymbolError(SliceError):
-    def __init__(self, *, name: str, nearest: tuple[str, ...], message: str) -> None:
+    def __init__(self, *, name: str, nearest: Sequence[str], message: str) -> None:
         self.name = name
         self.nearest = nearest
         super().__init__(message)

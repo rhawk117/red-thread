@@ -10,10 +10,12 @@ from tests.casefile.commands.cli import CliRun
 from tests.plans.document.builders import TITLE
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     import pytest
 
 
-def name_cases(case_ids: tuple[str, ...]) -> list[str]:
+def name_cases(case_ids: Sequence[str]) -> list[str]:
     return [token for case_id in case_ids for token in ('--case', case_id)]
 
 
