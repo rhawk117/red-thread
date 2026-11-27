@@ -122,6 +122,27 @@ class TestReferences:
         assert use_line in lines_by_name['helper']
 
 
+class TestReferencesOncePerLine:
+    repeat_sample = 'def f():\n    return 1\n\n\nx = f() + f() + g()\ny = value.size + value.size\n'
+
+    @pytest.fixture
+    def references(self) -> list[tuple[str, int]]:
+        return [
+            (reference.name, reference.line) for reference in parse(self.repeat_sample).references
+        ]
+
+    def test_a_name_used_twice_on_one_line_is_one_reference(
+        self, references: list[tuple[str, int]]
+    ) -> None:
+        assert references.count(('f', 5)) == 1
+        assert references.count(('size', 6)) == 1
+
+    def test_different_names_on_one_line_are_one_reference_each(
+        self, references: list[tuple[str, int]]
+    ) -> None:
+        assert {('f', 5), ('g', 5)} <= set(references)
+
+
 class TestEdges:
     def test_definitions_in_case_bodies_are_reported(self) -> None:
         parsed = parse(MATCH_SAMPLE)
