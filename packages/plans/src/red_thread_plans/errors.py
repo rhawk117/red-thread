@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
-    from red_thread_casefile.domain import EntryKind
+    from red_thread_casefile.domain import FindingKind
 
 FIELDS = 'id, title, status, revision, created, head, cases, lights, epic and issue'
 
@@ -89,35 +89,39 @@ class GroundlessCriterionError(PlanError):
     def __init__(self, *, line: int) -> None:
         self.line = line
         super().__init__(
-            f'line {line}: this criterion names no entry. End it with the refs of the decision or'
-            ' known entries that require it, such as (C1.e4, C1.e2).'
+            f'line {line}: this criterion names no finding. End it with the finding ids of the '
+            'decision or known findings that require it, such as (C1.e4, C1.e2).'
         )
 
 
-class UnknownRefError(PlanError):
-    def __init__(self, *, line: int, ref: str) -> None:
+class UnknownFindingError(PlanError):
+    def __init__(self, *, line: int, finding_id: str) -> None:
         self.line = line
-        self.ref = ref
-        super().__init__(f'line {line}: {ref} is not an entry of its case. Check the ref.')
-
-
-class RetiredRefError(PlanError):
-    def __init__(self, *, line: int, ref: str) -> None:
-        self.line = line
-        self.ref = ref
+        self.finding_id = finding_id
         super().__init__(
-            f'line {line}: {ref} was retired by a later entry. Name the entry that replaced it.'
+            f'line {line}: {finding_id} is not a finding of its case. Check the finding id.'
         )
 
 
-class UnfitRefError(PlanError):
-    def __init__(self, *, line: int, ref: str, kind: EntryKind) -> None:
+class RetiredFindingError(PlanError):
+    def __init__(self, *, line: int, finding_id: str) -> None:
         self.line = line
-        self.ref = ref
+        self.finding_id = finding_id
+        super().__init__(
+            f'line {line}: {finding_id} was retired by a later finding. '
+            'Name the finding that replaced it.'
+        )
+
+
+class WrongFindingKindError(PlanError):
+    def __init__(self, *, line: int, finding_id: str, kind: FindingKind) -> None:
+        self.line = line
+        self.finding_id = finding_id
         self.kind = kind
         super().__init__(
-            f'line {line}: {ref} is a {kind} entry, and a criterion rests only on a decision or a'
-            ' known. Record what the owner decided or a scout verified, then name that.'
+            f'line {line}: {finding_id} is a {kind} finding, and a criterion rests only on a '
+            'decision or a known. Record what the owner decided or a scout verified, then '
+            'name that.'
         )
 
 

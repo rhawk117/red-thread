@@ -1,10 +1,10 @@
-"""The page script, run under Node against a fake DOM built from a rendered board."""
+"""The page script, run under ElementChild against a fake DOM built from a rendered board."""
 
 from typing import TYPE_CHECKING
 
 import pytest
 
-from tests.casefile.ledger.builders import create_entry
+from tests.casefile.ledger.builders import create_finding
 from tests.casefile.lenses.cases import QUEUE_CITE, QUEUE_QUOTE
 from tests.casefile.pages.script import (
     ScriptHarness,
@@ -34,24 +34,30 @@ RETIRED_INDEX = 3
 @pytest.fixture
 def script(node: str, tmp_path: Path, press_harness: PressHarness) -> ScriptHarness:
     press_harness.seed(
-        create_entry(
-            seq=1, kind='known', text='the pool is shared', cite=QUEUE_CITE, quote=QUEUE_QUOTE
+        create_finding(
+            finding_number=1,
+            kind='known',
+            text='the pool is shared',
+            citation=QUEUE_CITE,
+            quote=QUEUE_QUOTE,
         ),
-        create_entry(seq=2, kind='open', text='does the pool resize', diagram=FLOW),
-        create_entry(seq=3, kind='open', text='an early guess', diagram=OLD_FLOW),
-        create_entry(seq=4, kind='known', text='the guess was wrong', supersedes=('e3',)),
+        create_finding(finding_number=2, kind='open', text='does the pool resize', diagram=FLOW),
+        create_finding(finding_number=3, kind='open', text='an early guess', diagram=OLD_FLOW),
+        create_finding(
+            finding_number=4, kind='known', text='the guess was wrong', supersedes=('e3',)
+        ),
     )
     press_harness.seed_thread(
         'T1',
-        create_entry(seq=1, kind='known', thread='T1', text='backoff doubles'),
-        create_entry(seq=2, kind='open', thread='T1', text='is there jitter'),
+        create_finding(finding_number=1, kind='known', thread='T1', text='backoff doubles'),
+        create_finding(finding_number=2, kind='open', thread='T1', text='is there jitter'),
     )
     press_harness.press.draw()
     return ScriptHarness(node=node, workdir=tmp_path, page=press_harness.pages.files['board.html'])
 
 
-def list_hidden_refs(state: PageState) -> list[str]:
-    return [entry['ref'] for entry in state['entries'] if entry['hidden']]
+def list_hidden_finding_ids(state: PageState) -> list[str]:
+    return [finding['finding_id'] for finding in state['findings'] if finding['hidden']]
 
 
 def list_hidden_sections(state: PageState) -> list[str]:
@@ -74,34 +80,36 @@ class TestFilters:
     def test_the_script_marks_the_page_as_scripted(self, script: ScriptHarness) -> None:
         assert script.play()['root_classes'] == ['js']
 
-    def test_a_kind_chip_hides_its_entries_and_the_section_left_empty(
+    def test_a_kind_chip_hides_its_findings_and_the_section_left_empty(
         self, script: ScriptHarness
     ) -> None:
         state = script.play(click_chip('kind', 'known'))
 
-        assert list_hidden_refs(state) == ['e1', 'e4', 'T1.e1']
+        assert list_hidden_finding_ids(state) == ['e1', 'e4', 'T1.e1']
         assert list_hidden_sections(state) == ['Known']
         assert [chip['value'] for chip in state['chips'] if not chip['pressed']] == ['known']
 
     def test_a_second_click_on_a_chip_shows_everything_again(self, script: ScriptHarness) -> None:
         state = script.play(click_chip('kind', 'known'), click_chip('kind', 'known'))
 
-        assert list_hidden_refs(state) == []
+        assert list_hidden_finding_ids(state) == []
         assert list_hidden_sections(state) == []
         assert all(chip['pressed'] for chip in state['chips'])
 
-    def test_a_thread_chip_hides_that_thread_and_keeps_a_section_with_entries_left(
+    def test_a_thread_chip_hides_that_thread_and_keeps_a_section_with_findings_left(
         self, script: ScriptHarness
     ) -> None:
         state = script.play(click_chip('thread', 'T1'))
 
-        assert list_hidden_refs(state) == ['T1.e1', 'T1.e2']
+        assert list_hidden_finding_ids(state) == ['T1.e1', 'T1.e2']
         assert list_hidden_sections(state) == []
 
     def test_kind_and_thread_filters_add_up(self, script: ScriptHarness) -> None:
         state = script.play(click_chip('thread', ''), click_chip('kind', 'open'))
 
-        assert [entry['ref'] for entry in state['entries'] if not entry['hidden']] == ['T1.e1']
+        assert [
+            finding['finding_id'] for finding in state['findings'] if not finding['hidden']
+        ] == ['T1.e1']
         assert list_hidden_sections(state) == ['Open', RETIRED]
 
     def test_a_click_on_the_count_inside_a_chip_counts_as_the_chip(
@@ -153,8 +161,8 @@ class TestCopying:
 
         assert (state['copied'], state['timers']) == ([], 0)
 
-    def test_a_ref_copies_the_entry_address(self, script: ScriptHarness) -> None:
-        state = script.play(click('.ref', 2))
+    def test_a_finding_id_copies_the_finding_address(self, script: ScriptHarness) -> None:
+        state = script.play(click('.finding-id', 2))
 
         assert state['clipboard'] == ['T1.e1']
 
@@ -173,7 +181,7 @@ class TestLinks:
         assert RETIRED in list_open_sections(state)
         assert list_drawn(state) == [True, True, True]
 
-    def test_a_link_to_a_retired_entry_opens_the_fold_that_holds_it(
+    def test_a_link_to_a_retired_finding_opens_the_fold_that_holds_it(
         self, script: ScriptHarness
     ) -> None:
         state = script.play(load(), navigate('e3'))

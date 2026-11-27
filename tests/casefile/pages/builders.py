@@ -3,18 +3,18 @@
 from typing import TYPE_CHECKING, Literal, cast, get_args
 
 import pytest
-from red_thread_casefile.documents import Citation, EntryList
+from red_thread_casefile.documents import CitationNode, FindingList
 from red_thread_casefile.packaged import load_wording
-from red_thread_casefile.policy import Finding
+from red_thread_casefile.policy import CitationCheck
 from red_thread_core.documents import Fact, Flowchart, Section, parse_line, parse_value
 
-from tests.casefile.writers.builders import create_document, create_entry_node
+from tests.casefile.writers.builders import create_document, create_finding_node
 
 if TYPE_CHECKING:
     from _pytest.mark import ParameterSet
-    from red_thread_casefile.documents import EntryNode
-    from red_thread_casefile.domain import EntryKind, Verdict
-    from red_thread_casefile.policy import CiteState
+    from red_thread_casefile.documents import FindingNode
+    from red_thread_casefile.domain import FindingKind, Verdict
+    from red_thread_casefile.policy import CitationState
     from red_thread_core.documents import Document
 
 type DocumentField = Literal[
@@ -25,7 +25,7 @@ type DocumentField = Literal[
     'item-text',
     'item-cite',
     'item-url-cite',
-    'item-ref',
+    'item-finding-id',
     'item-note',
     'item-flag',
     'item-kind',
@@ -70,66 +70,71 @@ def payload_params() -> list[ParameterSet]:
     ]
 
 
-def create_marked_entry(
-    *, ref: str = 'e1', kind: EntryKind = 'known', thread: str | None = None
-) -> EntryNode:
-    return create_entry_node(ref=ref).replace_with(kind=kind, thread=thread)
+def create_marked_finding(
+    *, finding_id: str = 'e1', kind: FindingKind = 'known', thread: str | None = None
+) -> FindingNode:
+    return create_finding_node(finding_id=finding_id).replace_with(kind=kind, thread=thread)
 
 
-def create_finding(state: str) -> Finding:
-    return Finding(ref='e1', cite=CITED_PATH, state=cast('CiteState', state))
+def create_citation_check(state: str) -> CitationCheck:
+    return CitationCheck(finding_id='e1', citation=CITED_PATH, state=cast('CitationState', state))
 
 
-def create_cited_entry(citation: Citation) -> EntryNode:
-    return create_marked_entry(thread='T1').replace_with(citation=citation)
+def create_cited_finding(citation_node: CitationNode) -> FindingNode:
+    return create_marked_finding(thread='T1').replace_with(citation_node=citation_node)
 
 
-def create_appendix(title: str, entry: EntryNode) -> tuple[Section, ...]:
-    return (Section(title=title, blocks=(EntryList(entries=(entry,)),), folded=True),)
+def create_appendix(title: str, finding: FindingNode) -> tuple[Section, ...]:
+    return (Section(title=title, blocks=(FindingList(findings=(finding,)),), folded=True),)
 
 
 def create_document_carrying(field: DocumentField, text: str) -> Document:
-    citation = Citation(target=CITED_PATH)
-    entry = create_cited_entry(citation).replace_with(
+    citation_node = CitationNode(target=CITED_PATH)
+    finding = create_cited_finding(citation_node).replace_with(
         claim=parse_line('plain text'),
         notes=(load_wording().write_note('rests_on', 'plain'),),
         lead='1111111',
     )
-    other = create_entry_node('other text', 'e2').replace_with(kind='open')
-    retired = create_entry_node('gone', 'e9').replace_with(kind='open')
-    base = create_document(entry, other)
+    other = create_finding_node('other text', 'e2').replace_with(kind='open')
+    retired = create_finding_node('gone', 'e9').replace_with(kind='open')
+    base = create_document(finding, other)
     section = base.sections[0]
     chart = Section(title='Map', blocks=(Flowchart(lines=(text,)),))
     variants = {
         'title': base.replace_with(title=text),
         'summary': base.replace_with(summary=(parse_line(text),)),
         'section-title': base.replace_with(sections=(section.replace_with(title=text),)),
-        'prose': create_document(entry, other, prose=(text,)),
-        'item-text': create_document(entry.replace_with(claim=parse_line(text)), other),
-        'item-cite': create_document(entry.replace_with(citation=Citation(target=text)), other),
+        'prose': create_document(finding, other, prose=(text,)),
+        'item-text': create_document(finding.replace_with(claim=parse_line(text)), other),
+        'item-cite': create_document(
+            finding.replace_with(citation_node=CitationNode(target=text)), other
+        ),
         'item-url-cite': create_document(
-            entry.replace_with(citation=Citation(target=f'{PLAIN_URL}/{text}')), other
+            finding.replace_with(citation_node=CitationNode(target=f'{PLAIN_URL}/{text}')), other
         ),
-        'item-ref': create_document(entry.replace_with(ref=text), other),
+        'item-finding-id': create_document(finding.replace_with(finding_id=text), other),
         'item-note': create_document(
-            entry.replace_with(notes=(load_wording().write_note('source', text),)), other
+            finding.replace_with(notes=(load_wording().write_note('source', text),)), other
         ),
-        'item-flag': create_document(entry.replace_with(lead=text), other),
-        'item-kind': create_document(entry.replace_with(kind=cast('EntryKind', text)), other),
-        'item-thread': create_document(entry.replace_with(thread=text), other),
-        'item-diagram': create_document(entry.replace_with(diagram=text), other),
+        'item-flag': create_document(finding.replace_with(lead=text), other),
+        'item-kind': create_document(finding.replace_with(kind=cast('FindingKind', text)), other),
+        'item-thread': create_document(finding.replace_with(thread=text), other),
+        'item-diagram': create_document(finding.replace_with(diagram=text), other),
         'map-line': base.replace_with(appendix=(chart,)),
-        'item-verdict': create_document(entry.replace_with(verdict=cast('Verdict', text)), other),
-        'item-at': create_document(entry.replace_with(at=f'{STAMP_DAY}{text}'), other),
+        'item-verdict': create_document(finding.replace_with(verdict=cast('Verdict', text)), other),
+        'item-at': create_document(finding.replace_with(at=f'{STAMP_DAY}{text}'), other),
         'item-quote': create_document(
-            entry.replace_with(citation=citation.replace_with(quote=text)), other
+            finding.replace_with(citation_node=citation_node.replace_with(quote=text)), other
         ),
         'item-state': create_document(
-            entry.replace_with(citation=citation.replace_with(finding=create_finding(text))), other
+            finding.replace_with(
+                citation_node=citation_node.replace_with(citation_check=create_citation_check(text))
+            ),
+            other,
         ),
         'section-note': base.replace_with(sections=(section.replace_with(note=text),)),
         'section-kind': base.replace_with(
-            sections=(section.replace_with(kind=cast('EntryKind', text)),)
+            sections=(section.replace_with(kind=cast('FindingKind', text)),)
         ),
         'fact-label': base.replace_with(facts=(Fact(label=text, value=parse_value('plain')),)),
         'fact-value': base.replace_with(facts=(Fact(label='Label', value=parse_value(text)),)),

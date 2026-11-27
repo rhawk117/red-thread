@@ -8,7 +8,7 @@ from red_thread_casefile.domain import date_of, shorten_head
 from red_thread_casefile.services.casefile import EXCLUDED
 from red_thread_core.dto import DTO
 
-from red_thread_plans.domain import Frontmatter, find_refs
+from red_thread_plans.domain import Frontmatter, find_cited_finding_ids
 from red_thread_plans.errors import (
     NoCasesError,
     PlanRejectedError,
@@ -32,15 +32,17 @@ if TYPE_CHECKING:
 
 class Checked(DTO, frozen=True, kw_only=True, gc=False):
     criteria: int
-    entries: int
+    findings: int
 
 
 def alias_cases(case_ids: tuple[str, ...]) -> dict[str, str]:
     return {f'C{number}': case_id for number, case_id in enumerate(case_ids, 1)}
 
 
-def count_entries(document: PlanDocument) -> int:
-    return len({ref for line in document.criteria for ref in find_refs(line)})
+def count_findings(document: PlanDocument) -> int:
+    return len({
+        finding_id for line in document.criteria for finding_id in find_cited_finding_ids(line)
+    })
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -98,4 +100,4 @@ class Planner:
         if problems := policy.get_plan_issues():
             raise PlanRejectedError(problems=problems)
 
-        return Checked(criteria=len(document.criteria), entries=count_entries(document))
+        return Checked(criteria=len(document.criteria), findings=count_findings(document))

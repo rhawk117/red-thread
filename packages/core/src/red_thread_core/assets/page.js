@@ -1,21 +1,21 @@
 /* Filters, folding, copying, links into folded sections and diagrams for a board, lens or plan
-   page. The page reads the same without this script: every entry is in the HTML, and the
+   page. The page reads the same without this script: every finding is in the HTML, and the
    controls stay hidden. */
 (() => {
   const root = document.documentElement;
   const status = document.getElementById('status');
-  const FILTERED = '.entry[data-kind], .entry[data-worktree]';
+  const FILTERED = '.finding[data-kind], .finding[data-worktree]';
   const off = {};
   const listSections = () => [...document.querySelectorAll('details.section')];
 
   const applyFilters = () => {
     const groups = Object.entries(off);
-    for (const entry of document.querySelectorAll(FILTERED)) {
-      entry.hidden = groups.some(([group, values]) => values.has(entry.dataset[group] ?? ''));
+    for (const finding of document.querySelectorAll(FILTERED)) {
+      finding.hidden = groups.some(([group, values]) => values.has(finding.dataset[group] ?? ''));
     }
     for (const section of listSections()) {
-      const entries = [...section.querySelectorAll(FILTERED)];
-      section.hidden = entries.length > 0 && entries.every((entry) => entry.hidden);
+      const findings = [...section.querySelectorAll(FILTERED)];
+      section.hidden = findings.length > 0 && findings.every((finding) => finding.hidden);
     }
   };
 

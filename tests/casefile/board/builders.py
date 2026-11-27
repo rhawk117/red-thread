@@ -1,35 +1,39 @@
-"""Builders for the board page: a board over entries, a finding and a case with a given page."""
+"""Builders for the board page: a board over findings, a finding and a case with a given page."""
 
 from typing import TYPE_CHECKING
 
-from red_thread_casefile.domain import Capabilities, Ledger
+from red_thread_casefile.domain import Capabilities, CaseLedger
 from red_thread_casefile.packaged import load_wording
-from red_thread_casefile.policy import Finding
+from red_thread_casefile.policy import CitationCheck
 from red_thread_casefile.views import Board
 
 from tests.casefile.ledger.builders import create_case
 from tests.casefile.ledger.memory import HEAD
 
 if TYPE_CHECKING:
-    from red_thread_casefile.domain import Case, Entry
-    from red_thread_casefile.policy import CiteState
+    from red_thread_casefile.domain import Case, CaseFinding
+    from red_thread_casefile.policy import CitationState
 
 
-def create_finding(ref: str, state: CiteState, moved_to: int | None = None) -> Finding:
-    return Finding(ref=ref, cite='src/queue.py:3', state=state, moved_to=moved_to)
+def create_citation_check(
+    finding_id: str, state: CitationState, moved_to: int | None = None
+) -> CitationCheck:
+    return CitationCheck(
+        finding_id=finding_id, citation='src/queue.py:3', state=state, moved_to=moved_to
+    )
 
 
 def create_page_board(
-    *entries: Entry,
+    *findings: CaseFinding,
     head: str | None = HEAD,
-    findings: tuple[Finding, ...] = (),
+    citation_checks: tuple[CitationCheck, ...] = (),
     case: Case | None = None,
 ) -> Board:
     return Board(
         case=case or create_case(),
-        ledger=Ledger(entries=entries),
+        ledger=CaseLedger(findings=findings),
         head=head,
-        findings=findings,
+        citation_checks=citation_checks,
         headings=load_wording().headings,
     )
 

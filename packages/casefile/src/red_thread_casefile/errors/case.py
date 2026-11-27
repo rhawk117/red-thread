@@ -35,12 +35,12 @@ class MalformedSelectionError(CaseFileError):
         )
 
 
-class UnknownSelectionRefError(CaseFileError):
-    def __init__(self, *, ref: str) -> None:
-        self.ref = ref
+class UnknownSelectedFindingError(CaseFileError):
+    def __init__(self, *, finding_id: str) -> None:
+        self.finding_id = finding_id
         super().__init__(
-            f'the selection names {ref}, which is not a live entry. '
-            'Run render --full and use the refs it shows.'
+            f'the selection names {finding_id}, which is not a live finding. '
+            'Run render --full and use the finding ids it shows.'
         )
 
 
@@ -51,7 +51,7 @@ class LensOverBudgetError(CaseFileError):
         self.budget = budget
         super().__init__(
             f'the {lens} came to {lines} lines and its budget is {budget}, so nothing was '
-            'written. Send a selection whose include lists fewer entries, most important first.'
+            'written. Send a selection whose include lists fewer findings, most important first.'
         )
 
 

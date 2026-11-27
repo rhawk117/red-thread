@@ -10,7 +10,7 @@ from red_thread_core.dto import DTO
 from red_thread_core.lines import Line
 
 if TYPE_CHECKING:
-    from red_thread_casefile.domain import EntryKind
+    from red_thread_casefile.domain import FindingKind
 
 type Status = Literal['draft', 'accepted', 'done']
 type Lights = Literal['on', 'off']
@@ -19,9 +19,9 @@ TICKET_HOME = 'tickets'
 PLAN_FILE = 'plan.md'
 HEADING = '## '
 ITEM = '- '
-RESTING_KINDS: tuple[EntryKind, ...] = ('decision', 'known')
+RESTING_KINDS: tuple[FindingKind, ...] = ('decision', 'known')
 SETTLED: tuple[Status, ...] = ('accepted', 'done')
-REF = re.compile(r'\bC[1-9]\d*\.(?:T[1-9]\d*\.)?e[1-9]\d*\b')
+FINDING_ID = re.compile(r'\bC[1-9]\d*\.(?:T[1-9]\d*\.)?e[1-9]\d*\b')
 ACCEPTANCE = 'Acceptance'
 
 
@@ -47,8 +47,8 @@ def is_item(line: Line) -> bool:
     return line.text.startswith(ITEM)
 
 
-def find_refs(line: Line) -> tuple[str, ...]:
-    return tuple(match.group() for match in REF.finditer(line.text))
+def find_cited_finding_ids(line: Line) -> tuple[str, ...]:
+    return tuple(match.group() for match in FINDING_ID.finditer(line.text))
 
 
 class Section(DTO, frozen=True, kw_only=True, gc=False):

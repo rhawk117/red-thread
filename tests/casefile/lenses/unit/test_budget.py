@@ -6,7 +6,7 @@ import pytest
 from red_thread_casefile.errors import LensOverBudgetError
 from red_thread_casefile.lenses import count_lines
 
-from tests.casefile.lenses.builders import create_numbered_entries, create_press_harness, export
+from tests.casefile.lenses.builders import create_numbered_findings, create_press_harness, export
 from tests.casefile.lenses.cases import lens_shape_params
 
 if TYPE_CHECKING:
@@ -32,7 +32,7 @@ class TestBudgetBoundary:
 
     def fill_to(self, harness: PressHarness, shape: LensShape, lines: int) -> None:
         count = lines - measure_empty_output(shape) - SECTION_HEADING_LINES
-        harness.seed(*create_numbered_entries(shape.fill_kind, count))
+        harness.seed(*create_numbered_findings(shape.fill_kind, count))
 
     @lens_shape_cases()
     def test_output_exactly_at_the_budget_is_written(
@@ -79,7 +79,7 @@ class TestBudgetBoundary:
     def test_the_same_ledger_fits_the_report_budget_but_not_the_brief_budget(
         self, harness: PressHarness
     ) -> None:
-        harness.seed(*create_numbered_entries('known', 50))
+        harness.seed(*create_numbered_findings('known', 50))
 
         report = export(harness, 'report')
 

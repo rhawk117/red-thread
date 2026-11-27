@@ -5,7 +5,7 @@ from html import unescape
 import pytest
 from hypothesis import example, given
 from hypothesis import strategies as st
-from red_thread_core.elements import element, keep_safe_url, render_fragment
+from red_thread_core.elements import blank_unsafe_url, element, render_fragment
 
 METACHARACTERS = '<>"\''
 
@@ -40,7 +40,7 @@ class TestBuilding:
     def test_a_call_returns_a_new_element_and_leaves_the_first_unchanged(self) -> None:
         bare = element('p')
 
-        built = bare.attributes({'class': 'claim'}).set_text('a')
+        built = bare.with_attributes({'class': 'claim'}).set_text('a')
 
         assert bare.render() == '<p></p>'
         assert built.render() == '<p class="claim">a</p>'
@@ -56,7 +56,9 @@ class TestBuilding:
     def test_true_is_a_bare_attribute_and_none_and_false_are_left_out(self) -> None:
         marks = {'open': True, 'hidden': False, 'data-kind': None, 'id': 'x'}
 
-        assert element('details').attributes(marks).render() == '<details open id="x"></details>'
+        assert (
+            element('details').with_attributes(marks).render() == '<details open id="x"></details>'
+        )
 
 
 class TestEscaping:
@@ -70,7 +72,7 @@ class TestEscaping:
 
     @given(value=st.text(max_size=60))
     def test_an_attribute_value_cannot_leave_its_quotes(self, value: str) -> None:
-        rendered = element('p').attributes({'title': value}).render()
+        rendered = element('p').with_attributes({'title': value}).render()
 
         written = rendered.removeprefix('<p title="').removesuffix('"></p>')
         assert '"' not in written
@@ -82,13 +84,13 @@ class TestLinks:
     def test_a_link_that_is_not_to_the_web_keeps_its_text_and_loses_its_target(
         self, url: str
     ) -> None:
-        link = element('a').attributes({'href': url}).set_text('docs')
+        link = element('a').with_attributes({'href': url}).set_text('docs')
 
         assert link.render() == '<a href="">docs</a>'
 
     @safe_url_cases()
     def test_a_web_or_relative_link_keeps_its_target(self, url: str) -> None:
-        assert keep_safe_url(url) == url
+        assert blank_unsafe_url(url) == url
 
 
 class TestLayout:

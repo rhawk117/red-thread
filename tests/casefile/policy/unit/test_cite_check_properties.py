@@ -5,10 +5,10 @@ from typing import TYPE_CHECKING
 
 from hypothesis import given
 from hypothesis import strategies as st
-from red_thread_casefile.policy import CiteCheck
+from red_thread_casefile.policy import CitationReader
 
 if TYPE_CHECKING:
-    from red_thread_casefile.policy import CiteState
+    from red_thread_casefile.policy import CitationState
 
 NOT_FOUND = 'ABSENT'
 
@@ -17,7 +17,7 @@ def number_lines(texts: list[str]) -> tuple[str, ...]:
     return tuple(f'#{number:03d} {text}' for number, text in enumerate(texts, 1))
 
 
-class TestCiteCheck:
+class TestCitationCheck:
     texts = st.text(alphabet=string.ascii_lowercase, min_size=1, max_size=10)
     files = st.builds(number_lines, st.lists(texts, min_size=2, max_size=30))
     out_of_range = st.one_of(st.integers(max_value=0), st.integers(min_value=31))
@@ -26,7 +26,7 @@ class TestCiteCheck:
 
     def expect(
         self, quote: str, line: int, lines: list[str] | None
-    ) -> tuple[CiteState, int | None]:
+    ) -> tuple[CitationState, int | None]:
         if lines is None:
             return ('missing', None)
 
@@ -49,7 +49,7 @@ class TestCiteCheck:
         line = data.draw(st.integers(min_value=1, max_value=len(lines)))
         padded = tuple(f'  {text}\t' for text in lines)
 
-        check = CiteCheck(quote=lines[line - 1], line=line, lines=padded)
+        check = CitationReader(quote=lines[line - 1], line=line, lines=padded)
 
         assert (check.get_state(), check.moved_to) == ('ok', None)
 
@@ -60,7 +60,7 @@ class TestCiteCheck:
         line = data.draw(st.integers(min_value=1, max_value=len(lines)))
         found = data.draw(st.integers(min_value=1, max_value=len(lines)).filter(line.__ne__))
 
-        check = CiteCheck(quote=lines[found - 1], line=line, lines=lines)
+        check = CitationReader(quote=lines[found - 1], line=line, lines=lines)
 
         assert (check.get_state(), check.moved_to) == ('moved', found)
 
@@ -70,7 +70,7 @@ class TestCiteCheck:
     ) -> None:
         line = data.draw(st.integers(min_value=1, max_value=len(lines)))
 
-        check = CiteCheck(quote=NOT_FOUND, line=line, lines=lines)
+        check = CitationReader(quote=NOT_FOUND, line=line, lines=lines)
 
         assert (check.get_state(), check.moved_to) == ('changed', None)
 
@@ -78,7 +78,7 @@ class TestCiteCheck:
     def test_a_quote_on_no_line_is_missing_when_the_cited_line_does_not_exist(
         self, lines: tuple[str, ...], line: int
     ) -> None:
-        check = CiteCheck(quote=NOT_FOUND, line=line, lines=lines)
+        check = CitationReader(quote=NOT_FOUND, line=line, lines=lines)
 
         assert (check.get_state(), check.moved_to) == ('missing', None)
 
@@ -86,7 +86,7 @@ class TestCiteCheck:
     def test_a_file_that_cannot_be_read_is_missing_whatever_the_quote_and_line(
         self, quote: str, line: int
     ) -> None:
-        check = CiteCheck(quote=quote, line=line, lines=None)
+        check = CitationReader(quote=quote, line=line, lines=None)
 
         assert (check.get_state(), check.moved_to) == ('missing', None)
 
@@ -96,6 +96,8 @@ class TestCiteCheck:
     ) -> None:
         expected = self.expect(quote, line, lines)
 
-        check = CiteCheck(quote=quote, line=line, lines=None if lines is None else tuple(lines))
+        check = CitationReader(
+            quote=quote, line=line, lines=None if lines is None else tuple(lines)
+        )
 
         assert (check.get_state(), check.moved_to) == expected

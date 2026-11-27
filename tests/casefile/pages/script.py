@@ -1,4 +1,4 @@
-"""Runs the script of a rendered page under Node, against the fake DOM in dom_harness.js."""
+"""Runs the script of a rendered page under ElementChild, against the fake DOM in dom_harness.js."""
 
 from dataclasses import dataclass
 from pathlib import Path

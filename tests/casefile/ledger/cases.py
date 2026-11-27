@@ -1,4 +1,4 @@
-"""Scenarios for what lies in a case file: entry blocks and frontmatter that cannot be read."""
+"""Scenarios for what lies in a case file: finding blocks and frontmatter that cannot be read."""
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING

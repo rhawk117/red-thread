@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import pytest
 from red_thread_casefile.domain import RoundStamp
 
-from tests.casefile.entries.blocks import write_round
+from tests.casefile.findings.blocks import write_round
 from tests.casefile.launcher.children import ChildRunner
 from tests.casefile.ledger.builders import DAY
 from tests.casefile.ledger.markdown import append_text

@@ -6,10 +6,10 @@ import pytest
 from red_thread_casefile.boards import BoardPage
 from red_thread_casefile.packaged import load_wording
 
-from tests.casefile.board.builders import create_case_with, create_finding, create_page_board
+from tests.casefile.board.builders import create_case_with, create_citation_check, create_page_board
 from tests.casefile.board.cases import state_count_params
 from tests.casefile.documents.reading import join_line
-from tests.casefile.ledger.builders import MOMENT, create_case, create_entry
+from tests.casefile.ledger.builders import MOMENT, create_case, create_finding
 from tests.casefile.ledger.memory import HEAD
 
 if TYPE_CHECKING:
@@ -25,7 +25,7 @@ LABELS = [
     'Commit',
     'Created',
     'Languages',
-    'Entries',
+    'Findings',
     'Threads',
     'Citations',
 ]
@@ -56,7 +56,7 @@ class TestBoardPageFacts:
         self,
     ) -> None:
         facts = (
-            BoardPage(board=create_page_board(create_entry()), wording=load_wording())
+            BoardPage(board=create_page_board(create_finding()), wording=load_wording())
             .compose()
             .facts
         )
@@ -65,13 +65,13 @@ class TestBoardPageFacts:
 
     def test_the_bar_and_the_citation_count_are_wide_and_no_other_fact_is(self) -> None:
         facts = BoardPage(
-            board=create_page_board(create_entry()), wording=load_wording()
+            board=create_page_board(create_finding()), wording=load_wording()
         ).list_facts()
 
         assert {fact.label for fact in facts if fact.wide} == {'Bar', 'Citations'}
 
     def test_a_recorded_page_link_is_a_wide_fact_after_the_others(self) -> None:
-        board = create_page_board(create_entry(), case=create_case_with(page_url=PAGE_URL))
+        board = create_page_board(create_finding(), case=create_case_with(page_url=PAGE_URL))
 
         *others, page = BoardPage(board=board, wording=load_wording()).list_facts()
 
@@ -79,7 +79,7 @@ class TestBoardPageFacts:
         assert (page.label, join_line(page.value), page.wide) == ('Page', PAGE_URL, True)
 
     def test_the_case_fields_are_shown_as_they_are_written(self) -> None:
-        facts = read_facts(create_page_board(create_entry(round_number=3)))
+        facts = read_facts(create_page_board(create_finding(round_number=3)))
 
         assert facts['Bar'] == create_case().bar
         assert facts['Kind'] == create_case().kind
@@ -99,38 +99,41 @@ class TestBoardPageFacts:
         assert read_facts(listed)['Languages'] == 'python, go'
         assert read_facts(create_page_board())['Languages'] == 'none'
 
-    def test_the_entry_count_splits_live_from_retired(self) -> None:
+    def test_the_finding_count_splits_live_from_retired(self) -> None:
         board = create_page_board(
-            create_entry(seq=1),
-            create_entry(seq=2),
-            create_entry(seq=3, supersedes=('e1',)),
+            create_finding(finding_number=1),
+            create_finding(finding_number=2),
+            create_finding(finding_number=3, supersedes=('e1',)),
         )
 
-        assert read_facts(board)['Entries'] == '2 live, 1 retired'
+        assert read_facts(board)['Findings'] == '2 live, 1 retired'
 
-    def test_the_threads_are_listed_in_thread_order_with_every_entry_each_holds(self) -> None:
+    def test_the_threads_are_listed_in_thread_order_with_every_finding_each_holds(self) -> None:
         board = create_page_board(
-            create_entry(seq=1, thread='T10'),
-            create_entry(seq=1, thread='T2'),
-            create_entry(seq=2, thread='T2'),
-            create_entry(seq=3, thread='T2', supersedes=('T2.e1',)),
-            create_entry(seq=1),
+            create_finding(finding_number=1, thread='T10'),
+            create_finding(finding_number=1, thread='T2'),
+            create_finding(finding_number=2, thread='T2'),
+            create_finding(finding_number=3, thread='T2', supersedes=('T2.e1',)),
+            create_finding(finding_number=1),
         )
 
         assert read_facts(board)['Threads'] == 'T2 (3), T10 (1)'
 
     def test_no_thread_is_none(self) -> None:
-        assert read_facts(create_page_board(create_entry()))['Threads'] == 'none'
+        assert read_facts(create_page_board(create_finding()))['Threads'] == 'none'
 
 
 class TestBoardPageCitationCount:
     @state_count_cases()
-    def test_the_citation_fact_counts_the_findings_by_state(self, scenario: StateCount) -> None:
-        findings = tuple(
-            create_finding(f'e{number}', state) for number, state in enumerate(scenario.states, 1)
+    def test_the_citation_fact_counts_the_citation_checks_by_state(
+        self, scenario: StateCount
+    ) -> None:
+        citation_checks = tuple(
+            create_citation_check(f'e{number}', state)
+            for number, state in enumerate(scenario.states, 1)
         )
 
-        board = create_page_board(create_entry(), findings=findings)
+        board = create_page_board(create_finding(), citation_checks=citation_checks)
 
         assert join_line(find_fact(board, 'Citations').value) == scenario.written
         assert BoardPage(board=board, wording=load_wording()).count_states() == scenario.written

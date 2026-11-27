@@ -1,4 +1,4 @@
-"""The case file's nodes in the document tree: an entry with its citation, notes and lead flag."""
+"""The case file's nodes in the document tree: a finding with its citation, notes and lead flag."""
 
 from dataclasses import dataclass
 from itertools import chain
@@ -8,17 +8,17 @@ from red_thread_core.documents import Line, Term, parse_line
 from red_thread_core.dto import DTO
 from red_thread_core.util import squeeze
 
-from red_thread_casefile.domain import Cite, EntryKind, Verdict
-from red_thread_casefile.policy import Finding
+from red_thread_casefile.domain import Citation, FindingKind, Verdict
+from red_thread_casefile.policy import CitationCheck
 from red_thread_casefile.views import Heading, describe_lead, get_shown_verdict
-from red_thread_casefile.writers.markdown import write_markdown_entry
-from red_thread_casefile.writers.markup import write_entries
+from red_thread_casefile.writers.markdown import write_markdown_finding
+from red_thread_casefile.writers.markup import write_findings
 
 if TYPE_CHECKING:
     from red_thread_core.documents import Block, Document, Section
     from red_thread_core.elements import Element
 
-    from red_thread_casefile.domain import Entry
+    from red_thread_casefile.domain import CaseFinding
     from red_thread_casefile.views import Annotator
 
 type NoteKind = Literal['rests_on', 'refuted_by', 'retires', 'retired_by', 'urgency', 'source']
@@ -36,39 +36,39 @@ class Wording(DTO, frozen=True, kw_only=True, forbid_unknown_fields=True):
     retired_note: str
     terms: tuple[Term, ...]
 
-    def describe_kind(self, kind: EntryKind) -> str:
+    def describe_kind(self, kind: FindingKind) -> str:
         return next(heading.note for heading in self.headings if heading.kind == kind)
 
     def write_note(self, kind: NoteKind, value: str) -> Note:
         return Note(kind=kind, text=f'{self.prefixes[kind]}{value}')
 
-    def list_caveat_notes(self, entry: Entry) -> tuple[Note, ...]:
-        rests_on = entry.rests_on
-        refute = entry.refute
+    def list_caveat_notes(self, finding: CaseFinding) -> tuple[Note, ...]:
+        rests_on = finding.rests_on
+        refuted_if = finding.refuted_if
         resting = (self.write_note('rests_on', rests_on),) if rests_on is not None else ()
-        refuted = (self.write_note('refuted_by', refute),) if refute is not None else ()
+        refuted = (self.write_note('refuted_by', refuted_if),) if refuted_if is not None else ()
         return (*resting, *refuted)
 
 
-class Citation(DTO, frozen=True, kw_only=True, gc=False):
+class CitationNode(DTO, frozen=True, kw_only=True, gc=False):
     target: str
     quote: str | None = None
-    finding: Finding | None = None
+    citation_check: CitationCheck | None = None
 
     @property
     def is_url(self) -> bool:
-        return Cite(raw=self.target).is_url
+        return Citation(raw=self.target).is_url
 
 
-class EntryNode(DTO, frozen=True, kw_only=True, gc=False):
-    ref: str
-    kind: EntryKind
+class FindingNode(DTO, frozen=True, kw_only=True, gc=False):
+    finding_id: str
+    kind: FindingKind
     claim: Line
     thread: str | None = None
     verdict: Verdict | None = None
     round: int
     at: str
-    citation: Citation | None = None
+    citation_node: CitationNode | None = None
     notes: tuple[Note, ...] = ()
     lead: str | None = None
     diagram: str | None = None
@@ -80,55 +80,59 @@ class EntryNode(DTO, frozen=True, kw_only=True, gc=False):
         return (describe_lead(self.lead),)
 
 
-class EntryList(DTO, frozen=True, kw_only=True, gc=False):
-    entries: tuple[EntryNode, ...]
+class FindingList(DTO, frozen=True, kw_only=True, gc=False):
+    findings: tuple[FindingNode, ...]
 
     @property
     def count(self) -> int:
-        return len(self.entries)
+        return len(self.findings)
 
     def write_html(self) -> Element | None:
-        return write_entries(self.entries)
+        return write_findings(self.findings)
 
     def write_markdown(self) -> tuple[str, ...]:
-        return tuple(map(write_markdown_entry, self.entries))
+        return tuple(map(write_markdown_finding, self.findings))
 
 
-def list_section_entries(section: Section) -> tuple[EntryNode, ...]:
-    lists = (block.entries for block in section.blocks if isinstance(block, EntryList))
+def list_section_findings(section: Section) -> tuple[FindingNode, ...]:
+    lists = (block.findings for block in section.blocks if isinstance(block, FindingList))
     return tuple(chain.from_iterable(lists))
 
 
-def list_document_entries(document: Document) -> tuple[EntryNode, ...]:
-    return tuple(chain.from_iterable(map(list_section_entries, document.sections)))
+def list_document_findings(document: Document) -> tuple[FindingNode, ...]:
+    return tuple(chain.from_iterable(map(list_section_findings, document.sections)))
 
 
-def list_entries_block(entries: tuple[EntryNode, ...]) -> tuple[Block, ...]:
-    if not entries:
+def list_findings_block(findings: tuple[FindingNode, ...]) -> tuple[Block, ...]:
+    if not findings:
         return ()
-    return (EntryList(entries=entries),)
+    return (FindingList(findings=findings),)
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
-class EntryBuilder:
+class FindingNodeBuilder:
     annotator: Annotator
 
-    def create_citation(self, entry: Entry) -> Citation | None:
-        if entry.cite is None:
+    def create_citation(self, finding: CaseFinding) -> CitationNode | None:
+        if finding.citation is None:
             return None
-        return Citation(target=entry.cite, quote=entry.quote, finding=self.annotator.find(entry))
+        return CitationNode(
+            target=finding.citation,
+            quote=finding.quote,
+            citation_check=self.annotator.find(finding),
+        )
 
-    def build(self, entry: Entry, notes: tuple[Note, ...] = ()) -> EntryNode:
-        return EntryNode(
-            ref=entry.ref,
-            kind=entry.kind,
-            claim=parse_line(squeeze(entry.text)),
-            round=entry.round,
-            at=entry.at,
-            thread=entry.thread,
-            verdict=get_shown_verdict(entry),
-            citation=self.create_citation(entry),
+    def build(self, finding: CaseFinding, notes: tuple[Note, ...] = ()) -> FindingNode:
+        return FindingNode(
+            finding_id=finding.finding_id,
+            kind=finding.kind,
+            claim=parse_line(squeeze(finding.text)),
+            round=finding.round,
+            at=finding.at,
+            thread=finding.thread,
+            verdict=get_shown_verdict(finding),
+            citation_node=self.create_citation(finding),
             notes=notes,
-            lead=self.annotator.get_recorded_head(entry),
-            diagram=entry.diagram,
+            lead=self.annotator.get_recorded_head(finding),
+            diagram=finding.diagram,
         )

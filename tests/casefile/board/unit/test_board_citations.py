@@ -23,7 +23,7 @@ def find_claim_line(text: str) -> str:
 
 class TestShownCitations:
     @flag_cases()
-    def test_shown_board_carries_the_flags_of_a_cited_entry(
+    def test_shown_board_carries_the_flags_of_a_cited_finding(
         self, press_harness: PressHarness, scenario: FlagScenario
     ) -> None:
         seed_flag_scenario(press_harness, scenario)
@@ -31,4 +31,4 @@ class TestShownCitations:
         line = find_claim_line(press_harness.case.casefile.show())
 
         assert [flag for flag in scenario.flags if flag not in line] == []
-        assert ('citation' in line) == any('citation' in flag for flag in scenario.flags)
+        assert ('citation_node' in line) == any('citation_node' in flag for flag in scenario.flags)

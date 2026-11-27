@@ -8,7 +8,7 @@ from red_thread_casefile.lenses import Selection
 from red_thread_casefile.packaged import load_lens_book
 from red_thread_casefile.services import ExportRequest, Press
 
-from tests.casefile.ledger.builders import QUEUE_PATH, create_entry, create_framed_harness
+from tests.casefile.ledger.builders import QUEUE_PATH, create_finding, create_framed_harness
 from tests.casefile.ledger.directory import create_framed_directory_harness
 from tests.casefile.ledger.memory import FixedClock, MemoryPageStore
 from tests.casefile.lenses.cases import QUEUE_CITE, QUEUE_QUOTE
@@ -16,7 +16,7 @@ from tests.casefile.lenses.cases import QUEUE_CITE, QUEUE_QUOTE
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from red_thread_casefile.domain import Case, Entry, EntryKind
+    from red_thread_casefile.domain import Case, CaseFinding, FindingKind
     from red_thread_casefile.lenses import LensName
     from red_thread_casefile.services import Exported
 
@@ -26,12 +26,17 @@ if TYPE_CHECKING:
     from tests.casefile.lenses.cases import FlagScenario
 
 
-def create_numbered_entries(
-    kind: EntryKind, count: int, *, start: int = 1, thread: str | None = None
-) -> tuple[Entry, ...]:
+def create_numbered_findings(
+    kind: FindingKind, count: int, *, start: int = 1, thread: str | None = None
+) -> tuple[CaseFinding, ...]:
     return tuple(
-        create_entry(seq=seq, kind=kind, thread=thread, text=f'{kind} number {seq}')
-        for seq in range(start, start + count)
+        create_finding(
+            finding_number=finding_number,
+            kind=kind,
+            thread=thread,
+            text=f'{kind} number {finding_number}',
+        )
+        for finding_number in range(start, start + count)
     )
 
 
@@ -57,11 +62,11 @@ class PressHarness:
     pages: MemoryPageStore
     press: Press
 
-    def seed(self, *entries: Entry) -> None:
-        self.case.seed(None, *entries)
+    def seed(self, *findings: CaseFinding) -> None:
+        self.case.seed(None, *findings)
 
-    def seed_thread(self, thread: str, *entries: Entry) -> None:
-        self.case.seed(thread, *entries)
+    def seed_thread(self, thread: str, *findings: CaseFinding) -> None:
+        self.case.seed(thread, *findings)
 
     def frame(self, case: Case) -> None:
         self.case.frame(case)
@@ -91,13 +96,13 @@ def create_press_harness() -> PressHarness:
 
 
 def seed_flag_scenario(harness: PressHarness, scenario: FlagScenario) -> None:
-    cited = create_entry(
-        seq=1,
+    cited = create_finding(
+        finding_number=1,
         kind='known',
         text=FLAGGED_TEXT,
-        cite=QUEUE_CITE,
+        citation=QUEUE_CITE,
         quote=QUEUE_QUOTE,
-        head=scenario.entry_head,
+        head=scenario.finding_head,
     )
     harness.seed(cited)
     harness.case.tree.advance(scenario.tree_head)
@@ -120,9 +125,9 @@ class DirectoryPressHarness:
     def out_file(self, name: str) -> Path:
         return self.case_directory.joinpath(name)
 
-    def seed(self, *entries: Entry) -> None:
+    def seed(self, *findings: CaseFinding) -> None:
         head = self.directory.git.head
-        self.directory.seed(None, *(entry.replace_with(head=head) for entry in entries))
+        self.directory.seed(None, *(finding.replace_with(head=head) for finding in findings))
 
     def write_page_url(self, url: str) -> None:
         case_file = self.directory.case_file

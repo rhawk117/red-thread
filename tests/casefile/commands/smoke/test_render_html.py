@@ -3,7 +3,7 @@
 from typing import TYPE_CHECKING
 
 from tests.casefile.pages.builders import SCRIPT
-from tests.casefile.pages.html_reading import list_item_refs, list_spans
+from tests.casefile.pages.html_reading import list_finding_id_buttons, list_spans
 from tests.casefile.pages.promises import assert_page_holds_only_its_own_markup
 
 if TYPE_CHECKING:
@@ -41,7 +41,7 @@ class TestRenderHtml:
         assert with_page.out.splitlines()[:-1] == plain.out.splitlines()
         assert with_page.out.splitlines()[-1].startswith('wrote ')
 
-    def test_the_page_shows_every_live_entry_though_the_text_board_is_capped(
+    def test_the_page_shows_every_live_finding_though_the_text_board_is_capped(
         self, cli: CliHarness, case: Path
     ) -> None:
         cli.write(case, *create_open_records(9))
@@ -50,7 +50,7 @@ class TestRenderHtml:
 
         assert '(+3 earlier, shown by render --full)' in result.out
         page = case.joinpath('board.html').read_text(encoding='utf-8')
-        assert list_item_refs(page) == [f'e{number}' for number in range(1, 10)]
+        assert list_finding_id_buttons(page) == [f'e{number}' for number in range(1, 10)]
 
     def test_without_html_no_page_is_written(self, cli: CliHarness, case: Path) -> None:
         cli.write(case, *create_open_records(1))
@@ -59,7 +59,7 @@ class TestRenderHtml:
 
         assert not case.joinpath('board.html').exists()
 
-    def test_the_page_holds_no_raw_script_from_a_stored_entry(
+    def test_the_page_holds_no_raw_script_from_a_stored_finding(
         self, cli: CliHarness, case: Path
     ) -> None:
         cli.write(
@@ -79,7 +79,7 @@ class TestRenderHtml:
         assert_page_holds_only_its_own_markup(page)
         assert page.lower().count('<script') == 3
 
-    def test_the_page_flags_an_entry_whose_citation_changed(
+    def test_the_page_flags_an_finding_whose_citation_changed(
         self, cli: CliHarness, case: Path
     ) -> None:
         cli.write(

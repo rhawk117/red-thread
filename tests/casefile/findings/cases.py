@@ -1,4 +1,4 @@
-"""Scenarios for an entry's yaml block: fields it may not hold, and blocks no one can read."""
+"""Scenarios for a finding's yaml block: fields it may not hold, and blocks no one can read."""
 
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
@@ -21,7 +21,13 @@ class ShapeCase:
 
 
 def stamp_field_cases() -> list[ShapeCase]:
-    stamps = {'seq': 9, 'round': 2, 'at': '2026-11-21', 'head': 'abc1234', 'thread': 'T1'}
+    stamps = {
+        'finding_number': 9,
+        'round': 2,
+        'at': '2026-11-21',
+        'head': 'abc1234',
+        'thread': 'T1',
+    }
     return [
         ShapeCase(name=f'block-sets-{name}', record={**VALID, name: value}, field_name=name)
         for name, value in stamps.items()

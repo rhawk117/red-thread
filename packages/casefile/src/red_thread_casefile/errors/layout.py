@@ -8,9 +8,9 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
-    from red_thread_casefile.domain import Spot
+    from red_thread_casefile.domain import FindingLocation
 
-ENTRY_FIELDS = (
+FINDING_FIELDS = (
     'kind, text, source, verdict, cite, quote, addr, rests_on, refute, diagram, supersedes'
 )
 
@@ -34,82 +34,82 @@ class MalformedFrontmatterError(CaseFileError):
 
 
 class MalformedRoundError(CaseFileError):
-    def __init__(self, *, spot: Spot) -> None:
-        self.spot = spot
+    def __init__(self, *, location: FindingLocation) -> None:
+        self.location = location
         super().__init__(
-            f'{name_place(spot)} this is not a round heading. Write ## Round N · YYYY-MM-DD · '
+            f'{name_place(location)} this is not a round heading. Write ## Round N · YYYY-MM-DD · '
             'HEAD, with the date from date -u +%F and HEAD from git rev-parse --short HEAD, '
             'or none outside git.'
         )
 
 
-class MalformedEntryHeadingError(CaseFileError):
-    def __init__(self, *, spot: Spot) -> None:
-        self.spot = spot
+class MalformedFindingHeadingError(CaseFileError):
+    def __init__(self, *, location: FindingLocation) -> None:
+        self.location = location
         super().__init__(
-            f'{name_place(spot)} this is not an entry heading. Write ### e and the next number '
-            'in this file, such as ### e4.'
+            f'{name_place(location)} this is not a finding heading. Write ### e and the next '
+            'number in this file, such as ### e4.'
         )
 
 
-class EntryBeforeRoundError(CaseFileError):
-    def __init__(self, *, spot: Spot) -> None:
-        self.spot = spot
+class FindingBeforeRoundError(CaseFileError):
+    def __init__(self, *, location: FindingLocation) -> None:
+        self.location = location
         super().__init__(
-            f'{name_place(spot)} this entry comes before any round heading. Write '
+            f'{name_place(location)} this finding comes before any round heading. Write '
             '## Round N · YYYY-MM-DD · HEAD above it.'
         )
 
 
 class StrayTextError(CaseFileError):
-    def __init__(self, *, spot: Spot) -> None:
-        self.spot = spot
+    def __init__(self, *, location: FindingLocation) -> None:
+        self.location = location
         super().__init__(
-            f"{name_place(spot)} this text is outside an entry's yaml block, so nothing reads "
-            'it. Move it into the text of an entry, or delete it.'
+            f"{name_place(location)} this text is outside a finding's yaml block, so nothing reads "
+            'it. Move it into the text of a finding, or delete it.'
         )
 
 
 class MissingBlockError(CaseFileError):
-    def __init__(self, *, spot: Spot) -> None:
-        self.spot = spot
+    def __init__(self, *, location: FindingLocation) -> None:
+        self.location = location
         super().__init__(
-            f'{name_place(spot)} this entry has no yaml block. Under its heading, open a fence '
-            'with ```yaml, write the fields, and close it with ```.'
+            f'{name_place(location)} this finding has no yaml block. Under its heading, open a '
+            'fence with ```yaml, write the fields, and close it with ```.'
         )
 
 
 class MalformedBlockError(CaseFileError):
-    def __init__(self, *, spot: Spot, reason: str) -> None:
-        self.spot = spot
+    def __init__(self, *, location: FindingLocation, reason: str) -> None:
+        self.location = location
         self.reason = reason
         super().__init__(
-            f'{name_place(spot)} the yaml block cannot be read: {reason}. The fields are '
-            f'{ENTRY_FIELDS}. Write a value that holds ": " or " #", or starts with a quote '
+            f'{name_place(location)} the yaml block cannot be read: {reason}. The fields are '
+            f'{FINDING_FIELDS}. Write a value that holds ": " or " #", or starts with a quote '
             'mark or a bracket, as a block: the key, then |-, then the value indented on the '
             'next line.'
         )
 
 
 class NumberingError(CaseFileError):
-    def __init__(self, *, spot: Spot, expected: int) -> None:
-        self.spot = spot
+    def __init__(self, *, location: FindingLocation, expected: int) -> None:
+        self.location = location
         self.expected = expected
         super().__init__(
-            f'{name_place(spot)} this entry should be e{expected}. Entries in one file are '
+            f'{name_place(location)} this finding should be e{expected}. Findings in one file are '
             'numbered e1, e2 and so on, in order, with no gap and no repeat.'
         )
 
 
 class RoundOrderError(CaseFileError):
-    def __init__(self, *, spot: Spot, number: int, previous: int) -> None:
-        self.spot = spot
+    def __init__(self, *, location: FindingLocation, number: int, previous: int) -> None:
+        self.location = location
         self.number = number
         self.previous = previous
         super().__init__(
-            f'{name_place(spot)} this is round {number}, but the round heading above it is '
+            f'{name_place(location)} this is round {number}, but the round heading above it is '
             f'round {previous}. Rounds in one file go up, with one heading each: delete this '
-            f'heading if its entries belong to round {previous}, or number it above {previous}.'
+            f'heading if its findings belong to round {previous}, or number it above {previous}.'
         )
 
 

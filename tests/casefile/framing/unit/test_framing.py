@@ -95,7 +95,7 @@ class TestFrame:
             case_harness.casefile.frame(self.framing.replace_with(target='something else'))
 
         assert case_harness.casefile.read().case == first
-        assert case_harness.entries == ()
+        assert case_harness.findings == ()
 
     def test_case_file_directory_is_excluded_from_git_once_per_new_case(
         self, case_harness: CaseHarness

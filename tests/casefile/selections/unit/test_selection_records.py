@@ -87,7 +87,7 @@ class TestUsableSelections:
             pytest.param('{}', id='empty-object'),
             pytest.param('{"title": "T", "goal": "G"}', id='title-and-goal'),
             pytest.param('{"include": [], "blocking": []}', id='empty-lists'),
-            pytest.param('{"include": ["e1", "T1.e2"], "blocking": ["e1"]}', id='refs'),
+            pytest.param('{"include": ["e1", "T1.e2"], "blocking": ["e1"]}', id='finding_ids'),
         ],
     )
     def test_selection_has_no_problem(self, text: str) -> None:

@@ -5,14 +5,18 @@ from types import NoneType
 from typing import TYPE_CHECKING
 
 import pytest
-from red_thread_casefile.errors import MisquotedCiteError, MissingQuoteError, UnresolvedCiteError
+from red_thread_casefile.errors import (
+    MisquotedCitationError,
+    MissingQuoteError,
+    UnresolvedCitationError,
+)
 
 from tests.casefile.ledger.builders import QUEUE_LINES, QUEUE_PATH, URL_CITE
 from tests.params import as_params
 
 if TYPE_CHECKING:
     from _pytest.mark import ParameterSet
-    from red_thread_casefile.policy import CiteState
+    from red_thread_casefile.policy import CitationState
 
 SLEEP_LINE = QUEUE_LINES[2].strip()
 RETURN_LINE = QUEUE_LINES[3].strip()
@@ -20,88 +24,91 @@ SLEEP_CITE = f'{QUEUE_PATH}:3'
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
-class CiteRuleCase:
+class CitationRuleCase:
     name: str
-    cite: str
+    citation: str
     quote: str | None
     error_type: type[object]
     found_at: int | None = None
     marks: tuple[pytest.MarkDecorator, ...] = ()
 
 
-def cite_rule_params() -> list[ParameterSet]:
+def citation_rule_params() -> list[ParameterSet]:
     cases = [
-        CiteRuleCase(
-            name='quote-on-the-cited-line', cite=SLEEP_CITE, quote=SLEEP_LINE, error_type=NoneType
+        CitationRuleCase(
+            name='quote-on-the-cited-line',
+            citation=SLEEP_CITE,
+            quote=SLEEP_LINE,
+            error_type=NoneType,
         ),
-        CiteRuleCase(
+        CitationRuleCase(
             name='quote-of-part-of-the-line',
-            cite=SLEEP_CITE,
+            citation=SLEEP_CITE,
             quote='time.sleep',
             error_type=NoneType,
         ),
-        CiteRuleCase(
-            name='first-line', cite=f'{QUEUE_PATH}:1', quote='import time', error_type=NoneType
+        CitationRuleCase(
+            name='first-line', citation=f'{QUEUE_PATH}:1', quote='import time', error_type=NoneType
         ),
-        CiteRuleCase(
-            name='last-line', cite=f'{QUEUE_PATH}:4', quote=RETURN_LINE, error_type=NoneType
+        CitationRuleCase(
+            name='last-line', citation=f'{QUEUE_PATH}:4', quote=RETURN_LINE, error_type=NoneType
         ),
-        CiteRuleCase(
+        CitationRuleCase(
             name='range-is-quoted-from-its-first-line',
-            cite=f'{QUEUE_PATH}:3-4',
+            citation=f'{QUEUE_PATH}:3-4',
             quote=SLEEP_LINE,
             error_type=NoneType,
         ),
-        CiteRuleCase(
+        CitationRuleCase(
             name='line-without-a-quote',
-            cite=SLEEP_CITE,
+            citation=SLEEP_CITE,
             quote=None,
             error_type=MissingQuoteError,
         ),
-        CiteRuleCase(
+        CitationRuleCase(
             name='line-one-past-the-end',
-            cite=f'{QUEUE_PATH}:5',
+            citation=f'{QUEUE_PATH}:5',
             quote=None,
-            error_type=UnresolvedCiteError,
+            error_type=UnresolvedCitationError,
         ),
-        CiteRuleCase(
+        CitationRuleCase(
             name='quoted-line-far-past-the-end',
-            cite=f'{QUEUE_PATH}:400',
+            citation=f'{QUEUE_PATH}:400',
             quote=SLEEP_LINE,
-            error_type=UnresolvedCiteError,
+            error_type=UnresolvedCitationError,
         ),
-        CiteRuleCase(
+        CitationRuleCase(
             name='file-that-is-not-in-the-tree',
-            cite='src/gone.py:1',
+            citation='src/gone.py:1',
             quote=None,
-            error_type=UnresolvedCiteError,
+            error_type=UnresolvedCitationError,
         ),
-        CiteRuleCase(
+        CitationRuleCase(
             name='quote-found-on-another-line',
-            cite=f'{QUEUE_PATH}:1',
+            citation=f'{QUEUE_PATH}:1',
             quote=RETURN_LINE,
-            error_type=MisquotedCiteError,
+            error_type=MisquotedCitationError,
             found_at=4,
         ),
-        CiteRuleCase(
+        CitationRuleCase(
             name='quote-found-on-the-line-before',
-            cite=f'{QUEUE_PATH}:3',
+            citation=f'{QUEUE_PATH}:3',
             quote='def retry(job):',
-            error_type=MisquotedCiteError,
+            error_type=MisquotedCitationError,
             found_at=2,
         ),
-        CiteRuleCase(
+        CitationRuleCase(
             name='quote-found-nowhere',
-            cite=f'{QUEUE_PATH}:1',
+            citation=f'{QUEUE_PATH}:1',
             quote='import threading',
-            error_type=MisquotedCiteError,
+            error_type=MisquotedCitationError,
         ),
     ]
     return as_params(cases)
 
 
-def unread_cite_params() -> list[ParameterSet]:
-    cites = {
+def unread_citation_params() -> list[ParameterSet]:
+    citations = {
         'absolute-path': '/etc/passwd:1',
         'parent-directory': '../queue.py:1',
         'parent-directory-after-a-directory': 'src/../../queue.py:1',
@@ -109,14 +116,14 @@ def unread_cite_params() -> list[ParameterSet]:
         'url': URL_CITE,
         'command': 'grep -n sleep src/queue.py',
     }
-    return [pytest.param(cite, id=name) for name, cite in cites.items()]
+    return [pytest.param(citation, id=name) for name, citation in citations.items()]
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class CheckCase:
     name: str
     after: tuple[str, ...] | None
-    state: CiteState
+    state: CitationState
     moved_to: int | None = None
     marks: tuple[pytest.MarkDecorator, ...] = ()
 
@@ -161,12 +168,12 @@ def check_state_params() -> list[ParameterSet]:
     return as_params(cases)
 
 
-def unchecked_cite_params() -> list[ParameterSet]:
-    cites = {
+def unchecked_citation_params() -> list[ParameterSet]:
+    citations = {
         'url': URL_CITE,
         'url-with-heading': 'https://example.invalid/docs#retries',
         'command': 'grep -n sleep src/queue.py',
         'absolute-path': '/etc/passwd:1',
         'parent-directory': '../queue.py:3',
     }
-    return [pytest.param(cite, id=name) for name, cite in cites.items()]
+    return [pytest.param(citation, id=name) for name, citation in citations.items()]

@@ -1,4 +1,4 @@
-"""The filters a case file page offers: its entries by kind and by thread."""
+"""The filters a case file page offers: its findings by kind and by thread."""
 
 from collections import Counter
 from typing import TYPE_CHECKING
@@ -6,13 +6,13 @@ from typing import TYPE_CHECKING
 from red_thread_core.writers.page import Chip, HtmlPage
 
 from red_thread_casefile.charts import MAIN_LEDGER
-from red_thread_casefile.documents import list_document_entries
+from red_thread_casefile.documents import list_document_findings
 
 if TYPE_CHECKING:
     from red_thread_core.documents import Document
     from red_thread_core.writers.page import ChipRow
 
-    from red_thread_casefile.documents import EntryNode
+    from red_thread_casefile.documents import FindingNode
     from red_thread_casefile.views import Heading
 
 
@@ -20,12 +20,12 @@ def order_name(name: str) -> tuple[int, str]:
     return (len(name), name)
 
 
-def name_thread(entry: EntryNode) -> str:
-    return entry.thread or ''
+def name_thread(finding: FindingNode) -> str:
+    return finding.thread or ''
 
 
-def list_kind_chips(entries: tuple[EntryNode, ...], headings: tuple[Heading, ...]) -> ChipRow:
-    counted = Counter(entry.kind for entry in entries)
+def list_kind_chips(findings: tuple[FindingNode, ...], headings: tuple[Heading, ...]) -> ChipRow:
+    counted = Counter(finding.kind for finding in findings)
     return tuple(
         Chip(group='kind', value=heading.kind, label=heading.title, count=counted[heading.kind])
         for heading in headings
@@ -33,19 +33,19 @@ def list_kind_chips(entries: tuple[EntryNode, ...], headings: tuple[Heading, ...
     )
 
 
-def list_thread_chips(entries: tuple[EntryNode, ...]) -> ChipRow:
-    counted = Counter(map(name_thread, entries))
+def list_thread_chips(findings: tuple[FindingNode, ...]) -> ChipRow:
+    counted = Counter(map(name_thread, findings))
     return tuple(
         Chip(group='thread', value=name, label=name or MAIN_LEDGER, count=counted[name])
         for name in sorted(counted, key=order_name)
     )
 
 
-def list_entry_filters(document: Document, headings: tuple[Heading, ...]) -> tuple[ChipRow, ...]:
-    entries = list_document_entries(document)
-    return (list_kind_chips(entries, headings), list_thread_chips(entries))
+def list_finding_filters(document: Document, headings: tuple[Heading, ...]) -> tuple[ChipRow, ...]:
+    findings = list_document_findings(document)
+    return (list_kind_chips(findings, headings), list_thread_chips(findings))
 
 
 def render_case_page(document: Document, headings: tuple[Heading, ...]) -> str:
-    filters = list_entry_filters(document, headings)
+    filters = list_finding_filters(document, headings)
     return HtmlPage(document=document, filters=filters).render()

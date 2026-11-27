@@ -1,4 +1,4 @@
-"""Scenarios for superseding entries and for numbering them."""
+"""Scenarios for superseding findings and for numbering them."""
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 class SupersedeCase:
     name: str
     thread: str | None
-    refs: tuple[str, ...]
+    finding_ids: tuple[str, ...]
     error_type: type[CaseFileError] | None
     marks: tuple[pytest.MarkDecorator, ...] = ()
 
@@ -28,78 +28,87 @@ class SupersedeCase:
 def list_supersede_cases() -> list[SupersedeCase]:
     return [
         SupersedeCase(
-            name='primary-retires-a-case-file-entry', thread=None, refs=('e1',), error_type=None
-        ),
-        SupersedeCase(
-            name='primary-retires-a-thread-entry', thread=None, refs=('T1.e2',), error_type=None
-        ),
-        SupersedeCase(
-            name='primary-retires-entries-from-both-files',
+            name='primary-retires-a-case-file-finding',
             thread=None,
-            refs=('e1', 'T2.e1'),
+            finding_ids=('e1',),
             error_type=None,
         ),
         SupersedeCase(
-            name='thread-retires-its-own-entry', thread='T1', refs=('T1.e1',), error_type=None
+            name='primary-retires-a-thread-finding',
+            thread=None,
+            finding_ids=('T1.e2',),
+            error_type=None,
         ),
         SupersedeCase(
-            name='thread-retires-a-case-file-entry',
+            name='primary-retires-findings-from-both-files',
+            thread=None,
+            finding_ids=('e1', 'T2.e1'),
+            error_type=None,
+        ),
+        SupersedeCase(
+            name='thread-retires-its-own-finding',
             thread='T1',
-            refs=('e1',),
+            finding_ids=('T1.e1',),
+            error_type=None,
+        ),
+        SupersedeCase(
+            name='thread-retires-a-case-file-finding',
+            thread='T1',
+            finding_ids=('e1',),
             error_type=ForeignSupersededError,
         ),
         SupersedeCase(
-            name='thread-retires-another-threads-entry',
+            name='thread-retires-another-threads-finding',
             thread='T1',
-            refs=('T2.e1',),
+            finding_ids=('T2.e1',),
             error_type=ForeignSupersededError,
         ),
         SupersedeCase(
             name='thread-retires-a-thread-whose-name-it-prefixes',
             thread='T1',
-            refs=('T10.e1',),
+            finding_ids=('T10.e1',),
             error_type=ForeignSupersededError,
         ),
         SupersedeCase(
             name='thread-retires-a-thread-whose-name-prefixes-its-own',
             thread='T10',
-            refs=('T1.e1',),
+            finding_ids=('T1.e1',),
             error_type=ForeignSupersededError,
         ),
         SupersedeCase(
-            name='thread-retires-its-own-entry-and-a-foreign-one',
+            name='thread-retires-its-own-finding-and-a-foreign-one',
             thread='T1',
-            refs=('T1.e1', 'e2'),
+            finding_ids=('T1.e1', 'e2'),
             error_type=ForeignSupersededError,
         ),
         SupersedeCase(
-            name='unknown-case-file-ref',
+            name='unknown-case-file-finding-id',
             thread=None,
-            refs=('e9',),
+            finding_ids=('e9',),
             error_type=UnknownSupersededError,
         ),
         SupersedeCase(
-            name='unknown-thread-ref',
+            name='unknown-thread-finding-id',
             thread=None,
-            refs=('T3.e1',),
+            finding_ids=('T3.e1',),
             error_type=UnknownSupersededError,
         ),
         SupersedeCase(
-            name='unknown-own-ref-in-a-thread',
+            name='unknown-own-finding-id-in-a-thread',
             thread='T1',
-            refs=('T1.e9',),
+            finding_ids=('T1.e9',),
             error_type=UnknownSupersededError,
         ),
         SupersedeCase(
-            name='ref-that-is-no-ref',
+            name='finding-id-that-is-no-finding-id',
             thread=None,
-            refs=('nonsense',),
+            finding_ids=('nonsense',),
             error_type=UnknownSupersededError,
         ),
         SupersedeCase(
-            name='known-ref-beside-an-unknown-one',
+            name='known-finding-id-beside-an-unknown-one',
             thread=None,
-            refs=('e1', 'e9'),
+            finding_ids=('e1', 'e9'),
             error_type=UnknownSupersededError,
         ),
     ]

@@ -4,7 +4,7 @@ from typing import get_args
 
 import pytest
 from red_thread_casefile.documents import NoteKind, Wording
-from red_thread_casefile.domain import ENTRY_KINDS
+from red_thread_casefile.domain import FINDING_KINDS
 from red_thread_casefile.lenses import LENS_NAMES, LensBook
 from red_thread_casefile.packaged import (
     CASEFILE_PACKAGE,
@@ -41,8 +41,8 @@ class TestWording:
     def wording(self) -> Wording:
         return load_wording()
 
-    def test_every_entry_kind_has_one_heading(self, wording: Wording) -> None:
-        assert sorted(heading.kind for heading in wording.headings) == sorted(ENTRY_KINDS)
+    def test_every_finding_kind_has_one_heading(self, wording: Wording) -> None:
+        assert sorted(heading.kind for heading in wording.headings) == sorted(FINDING_KINDS)
 
     def test_every_note_kind_has_a_prefix(self, wording: Wording) -> None:
         assert set(wording.prefixes) == set(get_args(NoteKind.__value__))

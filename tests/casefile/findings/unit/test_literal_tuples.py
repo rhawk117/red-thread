@@ -6,14 +6,14 @@ from typing import TYPE_CHECKING, get_args
 import pytest
 from red_thread_casefile.domain import (
     CASE_KINDS,
-    ENTRY_KINDS,
+    FINDING_KINDS,
     VERDICTS,
     CaseKind,
-    EntryKind,
+    FindingKind,
     Verdict,
 )
 from red_thread_casefile.lenses import LENS_NAMES, LensName
-from red_thread_casefile.policy import CITE_STATES, CiteState
+from red_thread_casefile.policy import CITE_STATES, CitationState
 
 from tests.params import as_params
 
@@ -31,11 +31,11 @@ class LiteralTuple:
 
 def literal_tuple_cases() -> pytest.MarkDecorator:
     pairs = [
-        LiteralTuple(name='entry-kinds', names=ENTRY_KINDS, alias=EntryKind),
+        LiteralTuple(name='finding-kinds', names=FINDING_KINDS, alias=FindingKind),
         LiteralTuple(name='verdicts', names=VERDICTS, alias=Verdict),
         LiteralTuple(name='case-kinds', names=CASE_KINDS, alias=CaseKind),
         LiteralTuple(name='lens-names', names=LENS_NAMES, alias=LensName),
-        LiteralTuple(name='cite-states', names=CITE_STATES, alias=CiteState),
+        LiteralTuple(name='cite-states', names=CITE_STATES, alias=CitationState),
     ]
     return pytest.mark.parametrize('pair', as_params(pairs))
 

@@ -65,4 +65,4 @@ class TestUnreadableInput:
         self.run_command(cli, case, path)
 
         assert not case.joinpath('out').exists()
-        assert 'Entries: 0 live, 0 retired' in cli.render(case).out
+        assert 'Findings: 0 live, 0 retired' in cli.render(case).out

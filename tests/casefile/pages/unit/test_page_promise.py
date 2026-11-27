@@ -4,9 +4,9 @@ import re
 from typing import TYPE_CHECKING
 
 import pytest
-from red_thread_casefile.documents import Citation, EntryList, EntryNode
+from red_thread_casefile.documents import CitationNode, FindingList, FindingNode
 from red_thread_casefile.packaged import load_wording, read_asset
-from red_thread_casefile.policy import Finding
+from red_thread_casefile.policy import CitationCheck
 from red_thread_core.documents import Document, Flowchart, Paragraph, Section, parse_line
 
 from tests.casefile.pages.html_reading import (
@@ -17,7 +17,7 @@ from tests.casefile.pages.html_reading import (
     list_tag_names,
 )
 from tests.casefile.pages.promises import TAILWIND_STYLE, assert_page_holds_only_its_own_markup
-from tests.casefile.writers.builders import create_entry_node
+from tests.casefile.writers.builders import create_finding_node
 from tests.casefile.writers.reading import render_page
 
 if TYPE_CHECKING:
@@ -32,23 +32,25 @@ PLACEHOLDER = re.compile(r'\$\w+')
 
 
 def create_rich_document() -> Document:
-    entry = EntryNode(
-        ref='e1',
+    finding = FindingNode(
+        finding_id='e1',
         kind='known',
         claim=parse_line('a claim with `code`'),
         round=1,
         at='2026-11-21T10:00:00Z',
         thread='T1',
-        citation=Citation(
+        citation_node=CitationNode(
             target='src/queue.py:3',
-            finding=Finding(ref='e1', cite='src/queue.py:3', state='changed'),
+            citation_check=CitationCheck(
+                finding_id='e1', citation='src/queue.py:3', state='changed'
+            ),
         ),
         notes=(load_wording().write_note('rests_on', 'a page'),),
         lead='1111111',
         diagram='flowchart TD\n  A --> B',
     )
-    other = create_entry_node('a question', 'e2').replace_with(kind='open')
-    blocks = (Paragraph(line=parse_line('a line of prose')), EntryList(entries=(entry, other)))
+    other = create_finding_node('a question', 'e2').replace_with(kind='open')
+    blocks = (Paragraph(line=parse_line('a line of prose')), FindingList(findings=(finding, other)))
     map_lines = ('  subgraph main["main ledger"]', '    n0["e1 known: a claim"]:::k_known', '  end')
     chart = Flowchart(lines=(read_asset('map.mmd').rstrip(), *map_lines))
     return Document(
@@ -68,7 +70,7 @@ def render_empty_page() -> str:
 
 
 def page_cases() -> pytest.MarkDecorator:
-    pages = {'with-entries-and-a-map': render_rich_page(), 'with-nothing': render_empty_page()}
+    pages = {'with-findings-and-a-map': render_rich_page(), 'with-nothing': render_empty_page()}
     return pytest.mark.parametrize(
         'page', [pytest.param(page, id=name) for name, page in pages.items()]
     )

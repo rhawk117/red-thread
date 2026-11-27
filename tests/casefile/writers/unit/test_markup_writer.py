@@ -1,11 +1,11 @@
-"""HtmlWriter over the tree: what an entry, a block and a section look like on the page."""
+"""HtmlWriter over the tree: what a finding, a block and a section look like on the page."""
 
 from html import escape
 
 import pytest
-from red_thread_casefile.documents import Citation, EntryList
+from red_thread_casefile.documents import CitationNode, FindingList
 from red_thread_casefile.packaged import load_wording
-from red_thread_casefile.policy import Finding
+from red_thread_casefile.policy import CitationCheck
 from red_thread_core.documents import (
     Document,
     Fact,
@@ -19,18 +19,18 @@ from red_thread_core.documents import (
 
 from tests.casefile.pages.builders import PAYLOADS, payload_params
 from tests.casefile.pages.html_reading import (
-    find_entries,
+    find_finding_items,
     join_layout,
     list_cited_quotes,
     list_claim_markup,
     list_facts,
-    list_item_refs,
+    list_finding_id_buttons,
     list_mermaid,
     list_note_rows,
     list_sections,
     list_spans,
 )
-from tests.casefile.writers.builders import create_document, create_entry_node
+from tests.casefile.writers.builders import create_document, create_finding_node
 from tests.casefile.writers.reading import render_page
 
 PATH = 'src/queue.py:3'
@@ -41,45 +41,47 @@ def payload_cases() -> pytest.MarkDecorator:
     return pytest.mark.parametrize('payload', payload_params())
 
 
-class TestEntry:
-    def test_an_entry_carries_its_ref_kind_and_thread(self) -> None:
-        entry = create_entry_node('claim', 'T1.e2').replace_with(kind='open', thread='T1')
+class TestFinding:
+    def test_an_finding_carries_its_finding_id_kind_and_thread(self) -> None:
+        finding = create_finding_node('claim', 'T1.e2').replace_with(kind='open', thread='T1')
 
-        page = render_page(create_document(entry))
+        page = render_page(create_document(finding))
 
-        assert list_item_refs(page) == ['T1.e2']
-        assert find_entries(page) == [
-            {'class': 'entry', 'id': 'T1.e2', 'data-kind': 'open', 'data-thread': 'T1'}
+        assert list_finding_id_buttons(page) == ['T1.e2']
+        assert find_finding_items(page) == [
+            {'class': 'finding', 'id': 'T1.e2', 'data-kind': 'open', 'data-thread': 'T1'}
         ]
 
     def test_code_spans_in_the_claim_are_code_elements(self) -> None:
-        page = render_page(create_document(create_entry_node('run `make` first')))
+        page = render_page(create_document(create_finding_node('run `make` first')))
 
         assert list_claim_markup(page) == ['run <code>make</code> first']
 
     def test_a_verdict_is_a_badge_before_the_claim(self) -> None:
-        entry = create_entry_node('maybe so').replace_with(verdict='INFERRED')
+        finding = create_finding_node('maybe so').replace_with(verdict='INFERRED')
 
-        page = render_page(create_document(entry))
+        page = render_page(create_document(finding))
 
         assert list_claim_markup(page) == [
             '<span class="verdict" data-verdict="INFERRED">INFERRED</span> maybe so'
         ]
 
     def test_a_path_citation_shows_its_quote_and_its_state(self) -> None:
-        finding = Finding(ref='e1', cite=PATH, state='moved', moved_to=9)
-        citation = Citation(target=PATH, quote='sleep(5)', finding=finding)
+        citation_check = CitationCheck(finding_id='e1', citation=PATH, state='moved', moved_to=9)
+        citation_node = CitationNode(target=PATH, quote='sleep(5)', citation_check=citation_check)
 
-        page = render_page(create_document(create_entry_node().replace_with(citation=citation)))
+        page = render_page(
+            create_document(create_finding_node().replace_with(citation_node=citation_node))
+        )
 
         (state,) = list_spans(page, 'state')
         assert state.body == 'moved to line 9'
         assert list_cited_quotes(page) == ['sleep(5)']
 
     def test_a_url_citation_is_a_link(self) -> None:
-        entry = create_entry_node().replace_with(citation=Citation(target=URL))
+        finding = create_finding_node().replace_with(citation_node=CitationNode(target=URL))
 
-        page = render_page(create_document(entry))
+        page = render_page(create_document(finding))
 
         assert f'<a href="{URL}" rel="noreferrer">{URL}</a>' in page
 
@@ -88,9 +90,9 @@ class TestEntry:
             load_wording().write_note('retired_by', 'e4'),
             load_wording().write_note('source', 'scout'),
         )
-        entry = create_entry_node().replace_with(lead='1111111', notes=notes)
+        finding = create_finding_node().replace_with(lead='1111111', notes=notes)
 
-        page = render_page(create_document(entry))
+        page = render_page(create_document(finding))
 
         assert list_note_rows(page) == [
             [
@@ -103,23 +105,23 @@ class TestEntry:
         ]
 
     def test_a_diagram_is_drawn_under_the_claim(self) -> None:
-        entry = create_entry_node().replace_with(diagram='flowchart TD\n  A --> B')
+        finding = create_finding_node().replace_with(diagram='flowchart TD\n  A --> B')
 
-        assert list_mermaid(render_page(create_document(entry))) == ['flowchart TD\n  A --> B']
+        assert list_mermaid(render_page(create_document(finding))) == ['flowchart TD\n  A --> B']
 
 
 class TestBlocks:
-    def test_points_are_a_plain_list_without_refs(self) -> None:
+    def test_points_are_a_plain_list_without_finding_ids(self) -> None:
         points = PointList(points=(parse_line('see `x`'),))
         document = Document(title='t', sections=(Section(title='Pointers', blocks=(points,)),))
 
         page = render_page(document)
 
         assert (
-            '<ol class="plain"><li class="entry"><div><p class="claim">see <code>x</code>'
+            '<ol class="plain"><li class="finding"><div><p class="claim">see <code>x</code>'
             in join_layout(page)
         )
-        assert list_item_refs(page) == []
+        assert list_finding_id_buttons(page) == []
 
     def test_a_paragraph_is_a_p_element_with_code_spans(self) -> None:
         page = render_page(create_document(prose=('run `make`',)))
@@ -134,9 +136,9 @@ class TestBlocks:
 
 
 class TestSections:
-    def test_a_section_of_entries_counts_them_and_names_its_kind(self) -> None:
-        entries = EntryList(entries=(create_entry_node(), create_entry_node('b', 'e2')))
-        section = Section(title='Known', blocks=(entries,), kind='known', note='Checked claims.')
+    def test_a_section_of_findings_counts_them_and_names_its_kind(self) -> None:
+        findings = FindingList(findings=(create_finding_node(), create_finding_node('b', 'e2')))
+        section = Section(title='Known', blocks=(findings,), kind='known', note='Checked claims.')
 
         (reading,) = list_sections(render_page(Document(title='t', sections=(section,))))
 
@@ -148,7 +150,7 @@ class TestSections:
             'open': '',
         }
 
-    def test_a_folded_section_without_entries_has_no_count_and_is_closed(self) -> None:
+    def test_a_folded_section_without_findings_has_no_count_and_is_closed(self) -> None:
         section = Section(title='Goal', blocks=(Paragraph(line=parse_line('a')),), folded=True)
 
         (reading,) = list_sections(render_page(Document(title='t', sections=(section,))))
@@ -176,14 +178,14 @@ class TestFacts:
 
 class TestEscaping:
     def create_document_carrying(self, text: str) -> Document:
-        citation = Citation(target=text, quote=text)
-        entry = create_entry_node(text).replace_with(
-            citation=citation,
+        citation_node = CitationNode(target=text, quote=text)
+        finding = create_finding_node(text).replace_with(
+            citation_node=citation_node,
             notes=(load_wording().write_note('source', text),),
             diagram=text,
             thread=text,
         )
-        section = Section(title=text, note=text, blocks=(EntryList(entries=(entry,)),))
+        section = Section(title=text, note=text, blocks=(FindingList(findings=(finding,)),))
         chart = Section(title='Map', blocks=(Flowchart(lines=(text,)),))
         facts = (Fact(label=text, value=parse_value(text)),)
         summary = (parse_line(text),)

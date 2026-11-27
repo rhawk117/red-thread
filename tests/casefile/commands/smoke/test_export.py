@@ -6,7 +6,7 @@ import pytest
 from red_thread_casefile.domain import PROGRAM
 
 from tests.casefile.ledger.builders import KNOWN
-from tests.casefile.lenses.reading import list_headings, list_refs
+from tests.casefile.lenses.reading import list_finding_ids, list_headings
 from tests.codec import JSON
 
 if TYPE_CHECKING:
@@ -90,7 +90,7 @@ class TestExport:
 
         text = read_brief(case)
         assert text.splitlines()[0] == '# Why jobs wait'
-        assert list_refs(text, 'Open') == ['e1', 'e3']
+        assert list_finding_ids(text, 'Open') == ['e1', 'e3']
 
     def test_a_selection_on_standard_input_is_read_when_no_selection_file_is_given(
         self, cli: CliHarness, case: Path
@@ -100,14 +100,14 @@ class TestExport:
         result = cli.export_from_stdin(case, 'brief', JSON.encode_text({'include': ['e4']}))
 
         assert result.code == 0
-        assert list_refs(read_brief(case), 'Open') == ['e4']
+        assert list_finding_ids(read_brief(case), 'Open') == ['e4']
 
-    def test_no_selection_exports_every_live_entry(self, cli: CliHarness, case: Path) -> None:
+    def test_no_selection_exports_every_live_finding(self, cli: CliHarness, case: Path) -> None:
         cli.write(case, *create_open_records(3))
 
         cli.export(case, 'brief')
 
-        assert list_refs(read_brief(case), 'Open') == ['e1', 'e2', 'e3']
+        assert list_finding_ids(read_brief(case), 'Open') == ['e1', 'e2', 'e3']
 
     def test_a_secret_in_the_selection_is_redacted_before_it_is_written(
         self, cli: CliHarness, case: Path
@@ -121,7 +121,7 @@ class TestExport:
             assert 'AKIAIOSFODNN7EXAMPLE' not in written
             assert '[REDACTED:aws-access-key]' in written
 
-    def test_a_retired_entry_is_not_exported(self, cli: CliHarness, case: Path) -> None:
+    def test_a_retired_finding_is_not_exported(self, cli: CliHarness, case: Path) -> None:
         cli.write(case, *create_open_records(1))
         cli.write(
             case, {'kind': 'open', 'text': 'replacement', 'source': 'scout', 'supersedes': ['e1']}
@@ -129,7 +129,7 @@ class TestExport:
 
         cli.export(case, 'brief')
 
-        assert list_refs(read_brief(case), 'Open') == ['e2']
+        assert list_finding_ids(read_brief(case), 'Open') == ['e2']
 
 
 class TestExportRefusals:
@@ -165,14 +165,14 @@ class TestExportRefusals:
         assert 'the selection cannot be read' in error
         assert named in error
 
-    def test_a_ref_that_is_not_live_is_reported_and_nothing_is_written(
+    def test_a_finding_id_that_is_not_live_is_reported_and_nothing_is_written(
         self, cli: CliHarness, stocked: Path
     ) -> None:
         error = self.assert_refused_without_writing(cli, stocked, '{"include": ["e9"]}')
 
         assert 'e9' in error
 
-    def test_a_retired_ref_is_reported_and_nothing_is_written(
+    def test_a_retired_finding_id_is_reported_and_nothing_is_written(
         self, cli: CliHarness, stocked: Path
     ) -> None:
         cli.write(stocked, {'kind': 'open', 'text': 'new', 'source': 'scout', 'supersedes': ['e2']})

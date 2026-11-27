@@ -17,7 +17,7 @@ from tests.codec import YAML
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from red_thread_casefile.domain import Case, Entry
+    from red_thread_casefile.domain import Case, CaseFinding
     from red_thread_casefile.services import Checked
 
     from tests.casefile.ledger.git_repository import GitRepository
@@ -51,8 +51,8 @@ class DirectoryHarness:
     def read_bytes(self, path: Path) -> bytes:
         return path.read_bytes() if path.is_file() else b''
 
-    def seed(self, thread: str | None, *entries: Entry) -> None:
-        self.scribe.seed(thread, *entries)
+    def seed(self, thread: str | None, *findings: CaseFinding) -> None:
+        self.scribe.seed(thread, *findings)
 
     def frame(self, case: Case) -> None:
         self.scribe.frame(case)

@@ -46,7 +46,7 @@ class Press:
             case=record.case,
             ledger=record.ledger,
             head=self.record.tree.get_head(),
-            findings=self.record.find_citations(record.ledger),
+            citation_checks=self.record.find_citations(record.ledger),
         )
 
     def scrub(self, text: str | None) -> str | None:
@@ -62,7 +62,7 @@ class Press:
             ledger=edition.ledger,
             headings=wording.headings,
             head=edition.head,
-            findings=edition.findings,
+            citation_checks=edition.citation_checks,
         )
         document = BoardPage(board=board, wording=wording).compose()
         return self.write_page(BOARD_PAGE, document)

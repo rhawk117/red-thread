@@ -2,7 +2,7 @@
 
 from typing import TYPE_CHECKING
 
-from red_thread_casefile.documents import EntryList
+from red_thread_casefile.documents import FindingList
 from red_thread_core.documents import Document, Section, parse_line
 
 from tests.casefile.pages.html_reading import (
@@ -10,25 +10,25 @@ from tests.casefile.pages.html_reading import (
     list_chip_groups,
     list_section_titles,
 )
-from tests.casefile.writers.builders import create_entry_node
+from tests.casefile.writers.builders import create_finding_node
 from tests.casefile.writers.reading import render_page
 
 if TYPE_CHECKING:
-    from red_thread_casefile.documents import EntryNode
+    from red_thread_casefile.documents import FindingNode
 
 
-def create_threaded_entry(ref: str) -> EntryNode:
-    thread = 'T1' if '.' in ref else None
-    return create_entry_node(f'claim {ref}', ref).replace_with(thread=thread)
+def create_threaded_finding(finding_id: str) -> FindingNode:
+    thread = 'T1' if '.' in finding_id else None
+    return create_finding_node(f'claim {finding_id}', finding_id).replace_with(thread=thread)
 
 
-def create_section(title: str, *refs: str) -> Section:
-    entries = tuple(map(create_threaded_entry, refs))
-    return Section(title=title, blocks=(EntryList(entries=entries),), kind='known')
+def create_section(title: str, *finding_ids: str) -> Section:
+    findings = tuple(map(create_threaded_finding, finding_ids))
+    return Section(title=title, blocks=(FindingList(findings=findings),), kind='known')
 
 
 class TestToolbar:
-    def test_chips_count_the_entries_of_the_sections_and_not_of_the_appendix(self) -> None:
+    def test_chips_count_the_findings_of_the_sections_and_not_of_the_appendix(self) -> None:
         document = Document(
             title='t',
             sections=(create_section('Known', 'e1', 'T1.e1'),),

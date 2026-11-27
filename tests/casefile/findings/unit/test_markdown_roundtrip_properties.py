@@ -7,19 +7,19 @@ from hypothesis import example, given
 from hypothesis import strategies as st
 from red_thread_casefile.domain import CASE_FILE, LedgerSource
 
-from tests.casefile.entries.strategies import cases, entries, thread_names, words
+from tests.casefile.findings.strategies import cases, findings, thread_names, words
 from tests.casefile.ledger.builders import create_case
 from tests.casefile.ledger.markdown import (
     SCHEMA,
     name_file,
-    number_entries,
+    number_findings,
     write_case_text,
     write_thread_text,
 )
 from tests.casefile.ledger.memory import name_thread
 
 if TYPE_CHECKING:
-    from red_thread_casefile.domain import Case, Entry
+    from red_thread_casefile.domain import Case, CaseFinding
     from red_thread_casefile.schemas import CaseReading
 
 CASE_FIELDS = (
@@ -42,16 +42,16 @@ def read_files(files: dict[str, str]) -> CaseReading:
     return SCHEMA.read(sources)
 
 
-class TestEntriesReadBack:
-    entry_lists = st.lists(entries, max_size=5)
+class TestFindingsReadBack:
+    finding_lists = st.lists(findings, max_size=5)
     diagrams = st.lists(words, min_size=2, max_size=5).map('\n'.join)
 
-    @given(own=entry_lists, theirs=entry_lists, thread=thread_names)
-    def test_entries_written_by_hand_read_back_as_written(
-        self, own: list[Entry], theirs: list[Entry], thread: str
+    @given(own=finding_lists, theirs=finding_lists, thread=thread_names)
+    def test_findings_written_by_hand_read_back_as_written(
+        self, own: list[CaseFinding], theirs: list[CaseFinding], thread: str
     ) -> None:
-        in_case = number_entries(own, None)
-        in_thread = number_entries(theirs, thread)
+        in_case = number_findings(own, None)
+        in_thread = number_findings(theirs, thread)
         files = {
             CASE_FILE: write_case_text(create_case(), in_case),
             name_file(thread): write_thread_text(in_thread),
@@ -60,30 +60,30 @@ class TestEntriesReadBack:
         reading = read_files(files)
 
         assert reading.problems == ()
-        assert reading.ledger.entries == (*in_case, *in_thread)
+        assert reading.ledger.findings == (*in_case, *in_thread)
 
-    @given(entry=entries, thread=thread_names)
-    def test_the_thread_comes_from_the_file_the_entry_is_in(
-        self, entry: Entry, thread: str
+    @given(finding=findings, thread=thread_names)
+    def test_the_thread_comes_from_the_file_the_finding_is_in(
+        self, finding: CaseFinding, thread: str
     ) -> None:
         files = {
             CASE_FILE: write_case_text(create_case()),
-            name_file(thread): write_thread_text([entry]),
+            name_file(thread): write_thread_text([finding]),
         }
 
-        [read] = read_files(files).ledger.entries
+        [read] = read_files(files).ledger.findings
 
-        assert read == entry.replace_with(thread=thread)
+        assert read == finding.replace_with(thread=thread)
 
-    @given(entry=entries, diagram=diagrams)
+    @given(finding=findings, diagram=diagrams)
     def test_a_multi_line_diagram_reads_back_with_its_line_breaks(
-        self, entry: Entry, diagram: str
+        self, finding: CaseFinding, diagram: str
     ) -> None:
-        with_diagram = entry.replace_with(diagram=diagram)
+        with_diagram = finding.replace_with(diagram=diagram)
 
         [read] = read_files({
             CASE_FILE: write_case_text(create_case(), [with_diagram])
-        }).ledger.entries
+        }).ledger.findings
 
         assert read.diagram == diagram
 

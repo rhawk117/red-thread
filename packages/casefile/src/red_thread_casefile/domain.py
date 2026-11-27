@@ -1,4 +1,4 @@
-"""The values a case file holds: the case, its rounds and entries, and where each one sits."""
+"""The values a case file holds: the case, its rounds and findings, and where each one sits."""
 
 import re
 from datetime import date
@@ -11,13 +11,15 @@ from red_thread_core.dto import DTO
 
 from red_thread_casefile.errors import InvalidTimestampError
 
-type EntryKind = Literal['known', 'open', 'decision', 'hypothesis', 'ruled_out', 'resource', 'next']
+type FindingKind = Literal[
+    'known', 'open', 'decision', 'hypothesis', 'ruled_out', 'resource', 'next'
+]
 type Verdict = Literal['VERIFIED', 'INFERRED', 'NEEDS-ANALYSIS', 'BLOCKED']
 type CaseKind = Literal['root-cause', 'claim', 'research', 'survey']
-type CiteForm = Literal['path', 'url', 'other']
+type CitationForm = Literal['path', 'url', 'other']
 type Filled = Annotated[str, msgspec.Meta(pattern=r'\S')]
 
-ENTRY_KINDS: tuple[EntryKind, ...] = (
+FINDING_KINDS: tuple[FindingKind, ...] = (
     'known',
     'open',
     'decision',
@@ -45,7 +47,7 @@ THREAD_HOME = 'threads'
 THREAD_SUFFIX = '.md'
 TITLE_MARK = '# '
 ROUND_MARK = '## '
-ENTRY_MARK = '### '
+FINDING_MARK = '### '
 BLOCK_OPEN = '```yaml'
 BLOCK_CLOSE = '```'
 STAMP_SEPARATOR = ' · '
@@ -54,7 +56,7 @@ ROUND_HEADING = re.compile(
     r'##\s+Round\s+(?P<round>\d+)\s+·\s+(?P<day>\d{4}-\d{2}-\d{2})\s+·\s+'
     r'(?P<head>[0-9a-f]{7,40}|none)'
 )
-ENTRY_HEADING = re.compile(r'###\s+e(?P<seq>[1-9]\d*)')
+FINDING_HEADING = re.compile(r'###\s+e(?P<finding_number>[1-9]\d*)')
 OPTIONAL_TEXT_FIELDS = ('cite', 'quote', 'addr', 'rests_on', 'refute', 'diagram')
 TEXT_FIELDS = ('text', *OPTIONAL_TEXT_FIELDS)
 
@@ -100,7 +102,7 @@ def build_case_id(created: str, label: str) -> str:
     return '-'.join((day, *words))
 
 
-class Cite(DTO, frozen=True, kw_only=True, gc=False):
+class Citation(DTO, frozen=True, kw_only=True, gc=False):
     raw: str
 
     @property
@@ -130,7 +132,7 @@ class Cite(DTO, frozen=True, kw_only=True, gc=False):
         return int(located['line'])
 
     @property
-    def form(self) -> CiteForm:
+    def form(self) -> CitationForm:
         if self.is_url:
             return 'url'
         if self.path is not None:
@@ -138,15 +140,15 @@ class Cite(DTO, frozen=True, kw_only=True, gc=False):
         return 'other'
 
 
-class Spot(DTO, frozen=True, kw_only=True, gc=False):
+class FindingLocation(DTO, frozen=True, kw_only=True, gc=False):
     file: str
     line: int
-    ref: str | None = None
+    finding_id: str | None = None
 
     @property
     def label(self) -> str:
         place = f'{self.file}:{self.line}'
-        return place if self.ref is None else f'{place} {self.ref}'
+        return place if self.finding_id is None else f'{place} {self.finding_id}'
 
 
 class RoundStamp(DTO, frozen=True, kw_only=True, gc=False):
@@ -166,7 +168,7 @@ class LedgerSource(DTO, frozen=True, kw_only=True, gc=False):
     text: str
 
 
-class EntryRecord(
+class FindingBlock(
     DTO,
     frozen=True,
     kw_only=True,
@@ -174,20 +176,20 @@ class EntryRecord(
     omit_defaults=True,
     forbid_unknown_fields=True,
 ):
-    kind: EntryKind
+    kind: FindingKind
     text: Filled
     source: Filled
     verdict: Verdict | None = None
-    cite: Filled | None = None
+    citation: Filled | None = msgspec.field(default=None, name='cite')
     quote: Filled | None = None
-    addr: Filled | None = None
+    code_address: Filled | None = msgspec.field(default=None, name='addr')
     rests_on: Filled | None = None
-    refute: Filled | None = None
+    refuted_if: Filled | None = msgspec.field(default=None, name='refute')
     diagram: Filled | None = None
     supersedes: tuple[str, ...] = ()
 
 
-class Entry(
+class CaseFinding(
     DTO,
     frozen=True,
     kw_only=True,
@@ -195,28 +197,28 @@ class Entry(
     omit_defaults=True,
     forbid_unknown_fields=True,
 ):
-    seq: int
+    finding_number: int
     round: int
-    kind: EntryKind
+    kind: FindingKind
     text: str
     source: str
     at: str
     head: str | None = None
     verdict: Verdict | None = None
-    cite: str | None = None
+    citation: str | None = msgspec.field(default=None, name='cite')
     quote: str | None = None
-    addr: str | None = None
+    code_address: str | None = msgspec.field(default=None, name='addr')
     rests_on: str | None = None
-    refute: str | None = None
+    refuted_if: str | None = msgspec.field(default=None, name='refute')
     diagram: str | None = None
     supersedes: tuple[str, ...] = ()
     thread: str | None = None
 
     @property
-    def ref(self) -> str:
+    def finding_id(self) -> str:
         if self.thread is None:
-            return f'e{self.seq}'
-        return f'{self.thread}.e{self.seq}'
+            return f'e{self.finding_number}'
+        return f'{self.thread}.e{self.finding_number}'
 
 
 class Capabilities(DTO, frozen=True, kw_only=True, gc=False, forbid_unknown_fields=True):
@@ -235,46 +237,46 @@ class Case(DTO, frozen=True, kw_only=True, gc=False, forbid_unknown_fields=True)
     capabilities: Capabilities = msgspec.field(default_factory=Capabilities)
 
 
-class Ledger(DTO, frozen=True, kw_only=True, gc=False):
-    entries: tuple[Entry, ...] = ()
+class CaseLedger(DTO, frozen=True, kw_only=True, gc=False):
+    findings: tuple[CaseFinding, ...] = ()
 
     @property
-    def refs(self) -> frozenset[str]:
-        return frozenset(entry.ref for entry in self.entries)
+    def finding_ids(self) -> frozenset[str]:
+        return frozenset(finding.finding_id for finding in self.findings)
 
     @property
     def retired(self) -> frozenset[str]:
-        return frozenset(chain.from_iterable(entry.supersedes for entry in self.entries))
+        return frozenset(chain.from_iterable(finding.supersedes for finding in self.findings))
 
     @property
-    def live(self) -> tuple[Entry, ...]:
+    def live(self) -> tuple[CaseFinding, ...]:
         retired = self.retired
-        return tuple(entry for entry in self.entries if entry.ref not in retired)
+        return tuple(finding for finding in self.findings if finding.finding_id not in retired)
 
     @property
     def last_round(self) -> int:
-        return max((entry.round for entry in self.entries), default=0)
+        return max((finding.round for finding in self.findings), default=0)
 
     @property
     def threads(self) -> tuple[str, ...]:
-        names = {entry.thread for entry in self.entries if entry.thread is not None}
+        names = {finding.thread for finding in self.findings if finding.thread is not None}
         return tuple(sorted(names, key=order_thread))
 
-    def select(self, kind: EntryKind) -> tuple[Entry, ...]:
-        return tuple(entry for entry in self.live if entry.kind == kind)
+    def select(self, kind: FindingKind) -> tuple[CaseFinding, ...]:
+        return tuple(finding for finding in self.live if finding.kind == kind)
 
     def count_in(self, thread: str | None) -> int:
-        return sum(1 for entry in self.entries if entry.thread == thread)
+        return sum(1 for finding in self.findings if finding.thread == thread)
 
     def describe_threads(self) -> str:
         return ', '.join(f'{name} ({self.count_in(name)})' for name in self.threads)
 
 
-class Placed(DTO, frozen=True, kw_only=True, gc=False):
-    entry: Entry
-    spot: Spot
+class LocatedFinding(DTO, frozen=True, kw_only=True, gc=False):
+    finding: CaseFinding
+    location: FindingLocation
 
 
 class CaseRecord(DTO, frozen=True, kw_only=True, gc=False):
     case: Case
-    ledger: Ledger
+    ledger: CaseLedger

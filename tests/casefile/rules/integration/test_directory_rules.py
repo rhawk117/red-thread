@@ -1,17 +1,17 @@
-"""Checking the entries of a real case directory in a real git repository."""
+"""Checking the findings of a real case directory in a real git repository."""
 
 from typing import TYPE_CHECKING
 
 import pytest
 from red_thread_casefile.errors import (
     OwnerInThreadError,
-    SecretInEntryError,
+    SecretInFindingError,
     UncitedKnownError,
 )
 
-from tests.casefile.ledger.builders import create_entry, create_valid_entry
+from tests.casefile.ledger.builders import create_finding, create_valid_finding
 from tests.casefile.redaction.cases import LEAKED
-from tests.casefile.rules.places import place_entry
+from tests.casefile.rules.places import place_finding
 
 if TYPE_CHECKING:
     from tests.casefile.ledger.directory import DirectoryHarness
@@ -26,10 +26,10 @@ class TestCheckOnADirectory:
     def faulty_harness(self, harness: DirectoryHarness) -> DirectoryHarness:
         harness.seed(
             None,
-            create_valid_entry('open', 1),
-            create_valid_entry('known', 2).replace_with(cite=None),
+            create_valid_finding('open', 1),
+            create_valid_finding('known', 2).replace_with(citation=None),
         )
-        harness.seed('T1', create_valid_entry('open', 1).replace_with(source='user'))
+        harness.seed('T1', create_valid_finding('open', 1).replace_with(source='user'))
         return harness
 
     def test_each_fault_is_named_by_the_file_that_holds_it(
@@ -38,8 +38,8 @@ class TestCheckOnADirectory:
         case_text = faulty_harness.case_file.read_text(encoding='utf-8')
         thread_text = faulty_harness.thread_file('T1').read_text(encoding='utf-8')
         expected = (
-            (UncitedKnownError, place_entry(case_text, None, 2)),
-            (OwnerInThreadError, place_entry(thread_text, 'T1', 1)),
+            (UncitedKnownError, place_finding(case_text, None, 2)),
+            (OwnerInThreadError, place_finding(thread_text, 'T1', 1)),
         )
 
         problems = faulty_harness.check().problems
@@ -56,39 +56,48 @@ class TestCheckOnADirectory:
 
         assert [path.read_bytes() for path in files] == before
 
-    def test_retiring_an_entry_keeps_both_entries(self, harness: DirectoryHarness) -> None:
-        harness.seed(None, create_valid_entry('open', 1), create_entry(seq=2, supersedes=('e1',)))
+    def test_retiring_an_finding_keeps_both_findings(self, harness: DirectoryHarness) -> None:
+        harness.seed(
+            None,
+            create_valid_finding('open', 1),
+            create_finding(finding_number=2, supersedes=('e1',)),
+        )
 
         ledger = harness.casefile.load().ledger
 
         assert harness.check().problems == ()
-        assert [entry.ref for entry in ledger.live] == ['e2']
-        assert len(ledger.entries) == 2
+        assert [finding.finding_id for finding in ledger.live] == ['e2']
+        assert len(ledger.findings) == 2
 
-    def test_each_thread_file_counts_its_own_entries(self, harness: DirectoryHarness) -> None:
-        harness.seed(None, create_entry())
-        harness.seed('T1', create_entry(seq=1), create_entry(seq=2))
-        harness.seed('T2', create_entry())
+    def test_each_thread_file_counts_its_own_findings(self, harness: DirectoryHarness) -> None:
+        harness.seed(None, create_finding())
+        harness.seed('T1', create_finding(finding_number=1), create_finding(finding_number=2))
+        harness.seed('T2', create_finding())
 
         ledger = harness.casefile.load().ledger
 
         assert harness.check().problems == ()
-        assert sorted(entry.ref for entry in ledger.entries) == ['T1.e1', 'T1.e2', 'T2.e1', 'e1']
+        assert sorted(finding.finding_id for finding in ledger.findings) == [
+            'T1.e1',
+            'T1.e2',
+            'T2.e1',
+            'e1',
+        ]
 
     def test_secret_is_a_fault_and_stays_where_it_was_written(
         self, harness: DirectoryHarness
     ) -> None:
         harness.git.write('src/config.py', f'import os\nAWS_KEY = "{LEAKED}"\n')
-        entry = create_valid_entry('known').replace_with(
+        finding = create_valid_finding('known').replace_with(
             text=f'the key {LEAKED} is committed',
-            cite='src/config.py:2',
+            citation='src/config.py:2',
             quote='AWS_KEY = "[REDACTED:aws-access-key]"',
         )
-        harness.seed(None, entry)
+        harness.seed(None, finding)
 
         problems = harness.check().problems
 
-        secrets = [problem for problem in problems if isinstance(problem, SecretInEntryError)]
+        secrets = [problem for problem in problems if isinstance(problem, SecretInFindingError)]
         assert len(problems) == 1
         assert [problem.field for problem in secrets] == ['text']
         assert LEAKED not in str(problems[0])

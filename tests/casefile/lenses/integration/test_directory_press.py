@@ -6,22 +6,22 @@ from typing import TYPE_CHECKING
 import pytest
 from red_thread_casefile.errors import (
     LensOverBudgetError,
-    UnknownSelectionRefError,
+    UnknownSelectedFindingError,
 )
 from red_thread_casefile.lenses import Selection
 
-from tests.casefile.ledger.builders import QUEUE_LINES, QUEUE_PATH, create_valid_entry
+from tests.casefile.ledger.builders import QUEUE_LINES, QUEUE_PATH, create_valid_finding
 from tests.casefile.lenses.builders import export
 from tests.casefile.lenses.cases import QUEUE_CITE, QUEUE_QUOTE
 from tests.casefile.lenses.reading import (
     find_item,
+    list_finding_ids,
     list_headings,
-    list_refs,
     list_remarks,
     list_section_lines,
 )
 from tests.casefile.pages.html_reading import (
-    list_item_refs,
+    list_finding_id_buttons,
     list_mermaid,
     list_section_titles,
 )
@@ -33,21 +33,21 @@ from tests.casefile.pages.promises import (
 from tests.params import as_params
 
 if TYPE_CHECKING:
-    from red_thread_casefile.domain import Entry
+    from red_thread_casefile.domain import CaseFinding
 
     from tests.casefile.ledger.git_repository import GitRepository
     from tests.casefile.lenses.builders import DirectoryPressHarness
 
-FINDING = 'the sleep blocks the queue'
+CITATION_CHECK = 'the sleep blocks the queue'
 DIAGRAM = 'flowchart TD\n  A["queue"] --> B["sleep"]\n  B --> C'
 PAGE_URL = 'https://claude.ai/artifact/retry-queue'
 EDITED_LINES = (*QUEUE_LINES[:2], '    pass', QUEUE_LINES[3])
 SHIFTED_LINES = ('# header', *QUEUE_LINES)
 
 
-def create_cited_entry(position: int) -> Entry:
-    known = create_valid_entry('known', position)
-    return known.replace_with(text=FINDING, cite=QUEUE_CITE, quote=QUEUE_QUOTE)
+def create_cited_finding(position: int) -> CaseFinding:
+    known = create_valid_finding('known', position)
+    return known.replace_with(text=CITATION_CHECK, citation=QUEUE_CITE, quote=QUEUE_QUOTE)
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -98,9 +98,9 @@ class TestExportOnDisk:
     @pytest.fixture
     def harness(self, directory_press_harness: DirectoryPressHarness) -> DirectoryPressHarness:
         directory_press_harness.seed(
-            create_valid_entry('decision', 1),
-            create_cited_entry(2),
-            create_valid_entry('open', 3),
+            create_valid_finding('decision', 1),
+            create_cited_finding(2),
+            create_valid_finding('open', 3),
         )
         return directory_press_harness
 
@@ -120,7 +120,7 @@ class TestExportOnDisk:
             'How to read',
         ]
 
-    def test_the_pointers_name_the_case_file_that_holds_the_entries(
+    def test_the_pointers_name_the_case_file_that_holds_the_findings(
         self, harness: DirectoryPressHarness
     ) -> None:
         export(harness, 'brief')
@@ -130,14 +130,14 @@ class TestExportOnDisk:
         named = line.split('`')[1]
         assert harness.directory.git.root.joinpath(named).resolve() == harness.directory.case_file
 
-    def test_entries_come_through_the_real_ledger_with_text_cite_and_ref(
+    def test_findings_come_through_the_real_ledger_with_text_citation_and_finding_id(
         self, harness: DirectoryPressHarness
     ) -> None:
         export(harness, 'brief')
 
         text = harness.out_file('out/brief.md').read_text(encoding='utf-8')
-        assert find_item(text, 'e2') == f'- {FINDING} `src/queue.py:3` [e2]'
-        assert list_refs(text, 'Decided') == ['e1']
+        assert find_item(text, 'e2') == f'- {CITATION_CHECK} `src/queue.py:3` [e2]'
+        assert list_finding_ids(text, 'Decided') == ['e1']
 
     def test_exporting_again_replaces_the_file(self, harness: DirectoryPressHarness) -> None:
         export(harness, 'brief')
@@ -156,7 +156,7 @@ class TestExportOnDisk:
             harness.out_file('out/brief.html'),
         )
         page = harness.out_file('out/brief.html').read_text(encoding='utf-8')
-        assert list_item_refs(page) == ['e1', 'e2', 'e3']
+        assert list_finding_id_buttons(page) == ['e1', 'e2', 'e3']
 
     @disk_change_cases()
     def test_flags_follow_the_real_tree_in_markdown_and_html(
@@ -171,21 +171,21 @@ class TestExportOnDisk:
         assert list_remarks(find_item(text, 'e2')) == expected
         assert_page_shows_flag_kinds(page, tuple(expected))
 
-    def test_the_board_page_is_written_in_the_case_directory_with_every_live_entry(
+    def test_the_board_page_is_written_in_the_case_directory_with_every_live_finding(
         self, harness: DirectoryPressHarness
     ) -> None:
-        harness.seed(*(create_valid_entry('open', number) for number in range(4, 14)))
+        harness.seed(*(create_valid_finding('open', number) for number in range(4, 14)))
 
         written = harness.press.draw()
 
         assert written == harness.out_file('board.html')
         page = written.read_text(encoding='utf-8')
-        assert list_item_refs(page) == [f'e{number}' for number in range(1, 14)]
+        assert list_finding_id_buttons(page) == [f'e{number}' for number in range(1, 14)]
 
     def test_a_diagram_added_through_the_ledger_file_is_drawn_on_the_board_and_a_lens_page(
         self, harness: DirectoryPressHarness
     ) -> None:
-        harness.seed(create_valid_entry('open', 4).replace_with(diagram=DIAGRAM))
+        harness.seed(create_valid_finding('open', 4).replace_with(diagram=DIAGRAM))
 
         harness.press.draw()
         export(harness, 'brief', html=True)
@@ -212,11 +212,11 @@ class TestExportOnDisk:
 class TestRefusalsOnDisk:
     @pytest.fixture
     def harness(self, directory_press_harness: DirectoryPressHarness) -> DirectoryPressHarness:
-        directory_press_harness.seed(create_cited_entry(1), create_valid_entry('open', 2))
+        directory_press_harness.seed(create_cited_finding(1), create_valid_finding('open', 2))
         return directory_press_harness
 
-    def test_an_unknown_ref_writes_nothing(self, harness: DirectoryPressHarness) -> None:
-        with pytest.raises(UnknownSelectionRefError):
+    def test_an_unknown_finding_id_writes_nothing(self, harness: DirectoryPressHarness) -> None:
+        with pytest.raises(UnknownSelectedFindingError):
             export(harness, 'brief', Selection(include=('e9',)), html=True)
 
         assert not harness.out_file('out').exists()
@@ -226,7 +226,7 @@ class TestRefusalsOnDisk:
     ) -> None:
         export(harness, 'brief')
         earlier = harness.out_file('out/brief.md').read_bytes()
-        harness.seed(*(create_valid_entry('open', number) for number in range(3, 73)))
+        harness.seed(*(create_valid_finding('open', number) for number in range(3, 73)))
 
         with pytest.raises(LensOverBudgetError) as raised:
             export(harness, 'brief', html=True)
@@ -239,7 +239,7 @@ class TestRefusalsOnDisk:
     def test_an_over_budget_first_export_creates_no_output_folder(
         self, harness: DirectoryPressHarness
     ) -> None:
-        harness.seed(*(create_valid_entry('open', number) for number in range(3, 73)))
+        harness.seed(*(create_valid_finding('open', number) for number in range(3, 73)))
 
         with pytest.raises(LensOverBudgetError):
             export(harness, 'brief')
@@ -250,7 +250,7 @@ class TestRefusalsOnDisk:
 class TestPageUrlOnDisk:
     @pytest.fixture
     def harness(self, directory_press_harness: DirectoryPressHarness) -> DirectoryPressHarness:
-        directory_press_harness.seed(create_valid_entry('open', 1))
+        directory_press_harness.seed(create_valid_finding('open', 1))
         directory_press_harness.write_page_url(PAGE_URL)
         return directory_press_harness
 

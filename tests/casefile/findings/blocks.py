@@ -1,4 +1,4 @@
-"""Entry blocks written by hand into a case file, for reading one block's fields back."""
+"""Finding blocks written by hand into a case file, for reading one block's fields back."""
 
 from typing import TYPE_CHECKING
 
@@ -21,22 +21,27 @@ def encode_block(fields: Mapping[str, object]) -> str:
     return YAML.encode_text(fields)
 
 
-def write_block_entry(seq: int, block: str) -> str:
-    return f'### e{seq}\n\n```yaml\n{block}```\n'
+def write_block_finding(finding_number: int, block: str) -> str:
+    return f'### e{finding_number}\n\n```yaml\n{block}```\n'
 
 
-def write_entries(first: int, records: Sequence[Mapping[str, object]]) -> str:
+def write_findings(first: int, records: Sequence[Mapping[str, object]]) -> str:
     blocks = map(encode_block, records)
-    return '\n'.join(write_block_entry(seq, block) for seq, block in enumerate(blocks, first))
+    return '\n'.join(
+        write_block_finding(finding_number, block)
+        for finding_number, block in enumerate(blocks, first)
+    )
 
 
 def write_round(stamp: RoundStamp, first: int, records: Sequence[Mapping[str, object]]) -> str:
-    return f'{stamp.heading}\n\n{write_entries(first, records)}'
+    return f'{stamp.heading}\n\n{write_findings(first, records)}'
 
 
 def write_blocks_case(blocks: Sequence[str]) -> str:
-    entries = (write_block_entry(seq, block) for seq, block in enumerate(blocks, 1))
-    return '\n'.join((write_case_text(create_case()), ROUND, *entries))
+    findings = (
+        write_block_finding(finding_number, block) for finding_number, block in enumerate(blocks, 1)
+    )
+    return '\n'.join((write_case_text(create_case()), ROUND, *findings))
 
 
 def read_case_text(text: str) -> CaseReading:

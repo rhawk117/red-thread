@@ -1,8 +1,8 @@
-"""Reads an exported Markdown output the way a caller would: headings, items, refs and remarks."""
+"""Reads exported Markdown the way a caller would: headings, items, finding ids and remarks."""
 
 import re
 
-ITEM_REF = re.compile(r'\[((?:T[1-9]\d*\.)?e[1-9]\d*)\]$')
+FINDING_ID_BUTTON = re.compile(r'\[((?:T[1-9]\d*\.)?e[1-9]\d*)\]$')
 TRAILING_CITE = re.compile(r' (?:`[^`]*`|<[^>]*>)$')
 HEADING_MARK = '## '
 ITEM_MARK = '- '
@@ -25,27 +25,29 @@ def list_section_lines(text: str, title: str) -> list[str]:
     return section
 
 
-def read_ref(line: str) -> str | None:
-    found = ITEM_REF.search(line)
+def read_finding_id(line: str) -> str | None:
+    found = FINDING_ID_BUTTON.search(line)
     return found[1] if found else None
 
 
-def list_refs(text: str, title: str) -> list[str]:
-    refs = (read_ref(line) for line in list_section_lines(text, title))
-    return [ref for ref in refs if ref is not None]
+def list_finding_ids(text: str, title: str) -> list[str]:
+    finding_ids = (read_finding_id(line) for line in list_section_lines(text, title))
+    return [finding_id for finding_id in finding_ids if finding_id is not None]
 
 
-def list_all_refs(text: str) -> list[str]:
-    refs = (read_ref(line) for line in text.splitlines() if line.startswith(ITEM_MARK))
-    return [ref for ref in refs if ref is not None]
+def list_all_finding_ids(text: str) -> list[str]:
+    finding_ids = (
+        read_finding_id(line) for line in text.splitlines() if line.startswith(ITEM_MARK)
+    )
+    return [finding_id for finding_id in finding_ids if finding_id is not None]
 
 
-def find_item(text: str, ref: str) -> str:
-    return next(line for line in text.splitlines() if read_ref(line) == ref)
+def find_item(text: str, finding_id: str) -> str:
+    return next(line for line in text.splitlines() if read_finding_id(line) == finding_id)
 
 
 def list_remarks(line: str) -> list[str]:
-    unreffed = ITEM_REF.sub('', line).rstrip()
+    unreffed = FINDING_ID_BUTTON.sub('', line).rstrip()
     uncited = TRAILING_CITE.sub('', unreffed)
     if not uncited.endswith(')'):
         return []

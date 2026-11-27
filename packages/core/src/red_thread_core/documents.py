@@ -6,10 +6,10 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 from red_thread_core.dto import DTO
 from red_thread_core.writers.markdown import write_markdown_line
 from red_thread_core.writers.markup import (
+    write_code_listing,
     write_flowchart,
-    write_listing,
     write_paragraph,
-    write_points,
+    write_point_list,
 )
 
 if TYPE_CHECKING:
@@ -57,7 +57,7 @@ class Link(DTO, frozen=True, kw_only=True, gc=False):
     label: str = ''
 
     @property
-    def shown(self) -> str:
+    def link_text(self) -> str:
         return self.label or self.url
 
     def write[T](self, writer: InlineWriter[T]) -> T:
@@ -105,7 +105,7 @@ class PointList(DTO, frozen=True, kw_only=True, gc=False):
     count: int = 0
 
     def write_html(self) -> Element | None:
-        return write_points(self.points)
+        return write_point_list(self.points)
 
     def write_markdown(self) -> tuple[str, ...]:
         return tuple(f'- {write_markdown_line(point)}' for point in self.points)
@@ -128,7 +128,7 @@ class CodeListing(DTO, frozen=True, kw_only=True, gc=False):
     count: int = 0
 
     def write_html(self) -> Element | None:
-        return write_listing(self)
+        return write_code_listing(self)
 
     def write_markdown(self) -> tuple[str, ...]:
         return (f'```{self.language}', *self.source.splitlines(), '```')

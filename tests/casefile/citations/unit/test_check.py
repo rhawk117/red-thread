@@ -3,15 +3,15 @@
 from typing import TYPE_CHECKING
 
 import pytest
-from red_thread_casefile.policy import Finding
+from red_thread_casefile.policy import CitationCheck
 
 from tests.casefile.citations.cases import (
     SLEEP_CITE,
     SLEEP_LINE,
     check_state_params,
-    unchecked_cite_params,
+    unchecked_citation_params,
 )
-from tests.casefile.ledger.builders import QUEUE_PATH, create_entry
+from tests.casefile.ledger.builders import QUEUE_PATH, create_finding
 
 if TYPE_CHECKING:
     from tests.casefile.citations.cases import CheckCase
@@ -27,12 +27,14 @@ def check_state_cases() -> pytest.MarkDecorator:
     return pytest.mark.parametrize('case', check_state_params())
 
 
-def unchecked_cite_cases() -> pytest.MarkDecorator:
-    return pytest.mark.parametrize('cite', unchecked_cite_params())
+def unchecked_citation_cases() -> pytest.MarkDecorator:
+    return pytest.mark.parametrize('citation', unchecked_citation_params())
 
 
 class TestCheck:
-    cited = create_entry(seq=1, kind='known', cite=SLEEP_CITE, quote=SLEEP_LINE, verdict='VERIFIED')
+    cited = create_finding(
+        finding_number=1, kind='known', citation=SLEEP_CITE, quote=SLEEP_LINE, verdict='VERIFIED'
+    )
 
     @pytest.fixture
     def harness(self, framed_harness: CaseHarness) -> CaseHarness:
@@ -46,52 +48,72 @@ class TestCheck:
         if case.after is not None:
             harness.tree.write(QUEUE_PATH, case.after)
 
-        findings = harness.check().findings
+        citation_checks = harness.check().citation_checks
 
-        assert findings == (
-            Finding(ref='e1', cite=SLEEP_CITE, state=case.state, moved_to=case.moved_to),
+        assert citation_checks == (
+            CitationCheck(
+                finding_id='e1', citation=SLEEP_CITE, state=case.state, moved_to=case.moved_to
+            ),
         )
 
-    @unchecked_cite_cases()
+    @unchecked_citation_cases()
     def test_citation_that_is_not_a_path_in_the_tree_is_unchecked_and_never_read(
-        self, framed_harness: CaseHarness, cite: str
+        self, framed_harness: CaseHarness, citation: str
     ) -> None:
-        framed_harness.seed(None, create_entry(seq=1, kind='known', cite=cite, quote='anything'))
+        framed_harness.seed(
+            None,
+            create_finding(finding_number=1, kind='known', citation=citation, quote='anything'),
+        )
 
-        findings = framed_harness.check().findings
+        citation_checks = framed_harness.check().citation_checks
 
-        assert findings == (Finding(ref='e1', cite=cite, state='unchecked'),)
+        assert citation_checks == (
+            CitationCheck(finding_id='e1', citation=citation, state='unchecked'),
+        )
         assert framed_harness.tree.reads == []
 
-    def test_thread_entry_is_reported_under_its_thread_ref(self, harness: CaseHarness) -> None:
+    def test_thread_finding_is_reported_under_its_thread_finding_id(
+        self, harness: CaseHarness
+    ) -> None:
         harness.seed('T3', self.cited.replace_with(thread='T3'))
         harness.tree.write(QUEUE_PATH, ('# top', *harness.tree.files[QUEUE_PATH]))
 
-        states = {finding.ref: finding.state for finding in harness.check().findings}
+        states = {
+            citation_check.finding_id: citation_check.state
+            for citation_check in harness.check().citation_checks
+        }
 
         assert states == {'e1': 'moved', 'T3.e1': 'moved'}
 
-    def test_only_live_entries_with_a_cite_are_checked(self, framed_harness: CaseHarness) -> None:
+    def test_only_live_findings_with_a_citation_are_checked(
+        self, framed_harness: CaseHarness
+    ) -> None:
         framed_harness.seed(
             None,
-            self.cited.replace_with(seq=1),
-            create_entry(seq=2, kind='known', cite='src/gone.py:1', quote='x'),
-            create_entry(seq=3, supersedes=('e2',)),
-            create_entry(seq=4),
+            self.cited.replace_with(finding_number=1),
+            create_finding(finding_number=2, kind='known', citation='src/gone.py:1', quote='x'),
+            create_finding(finding_number=3, supersedes=('e2',)),
+            create_finding(finding_number=4),
         )
 
-        refs = [finding.ref for finding in framed_harness.check().findings]
+        finding_ids = [
+            citation_check.finding_id for citation_check in framed_harness.check().citation_checks
+        ]
 
-        assert refs == ['e1']
+        assert finding_ids == ['e1']
 
-    def test_ledger_with_no_citations_has_no_findings(self, framed_harness: CaseHarness) -> None:
-        framed_harness.seed(None, create_entry(seq=1))
+    def test_ledger_with_no_citations_has_no_citation_checks(
+        self, framed_harness: CaseHarness
+    ) -> None:
+        framed_harness.seed(None, create_finding(finding_number=1))
 
-        assert framed_harness.check().findings == ()
+        assert framed_harness.check().citation_checks == ()
 
 
 class TestCheckAfterRedaction:
-    scrubbed = create_entry(seq=1, kind='known', cite=SCRUBBED_CITE, quote=SCRUBBED_LINE)
+    scrubbed = create_finding(
+        finding_number=1, kind='known', citation=SCRUBBED_CITE, quote=SCRUBBED_LINE
+    )
 
     @pytest.fixture
     def leak_harness(self, framed_harness: CaseHarness) -> CaseHarness:
@@ -105,28 +127,32 @@ class TestCheckAfterRedaction:
         checked = leak_harness.check()
 
         assert checked.problems == ()
-        assert checked.findings == (Finding(ref='e1', cite=SCRUBBED_CITE, state='ok'),)
+        assert checked.citation_checks == (
+            CitationCheck(finding_id='e1', citation=SCRUBBED_CITE, state='ok'),
+        )
 
     def test_a_scrubbed_quote_is_still_moved_when_its_line_moves(
         self, leak_harness: CaseHarness
     ) -> None:
         leak_harness.tree.write(CONFIG_PATH, ('# new', 'import os', LEAK_LINE))
 
-        [finding] = leak_harness.check().findings
+        [citation_check] = leak_harness.check().citation_checks
 
-        assert (finding.state, finding.moved_to) == ('moved', 3)
+        assert (citation_check.state, citation_check.moved_to) == ('moved', 3)
 
     def test_a_scrubbed_quote_is_still_changed_when_its_line_changes(
         self, leak_harness: CaseHarness
     ) -> None:
         leak_harness.tree.write(CONFIG_PATH, ('import os', 'AWS_REGION = "eu"', 'REGION = "eu"'))
 
-        [finding] = leak_harness.check().findings
+        [citation_check] = leak_harness.check().citation_checks
 
-        assert finding.state == 'changed'
+        assert citation_check.state == 'changed'
 
-    def test_entry_without_a_cite_never_reaches_the_tree(self, framed_harness: CaseHarness) -> None:
-        framed_harness.seed(None, create_entry())
+    def test_finding_without_a_citation_never_reaches_the_tree(
+        self, framed_harness: CaseHarness
+    ) -> None:
+        framed_harness.seed(None, create_finding())
 
         framed_harness.check()
 

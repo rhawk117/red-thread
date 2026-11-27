@@ -12,16 +12,17 @@ from red_thread_casefile.domain import (
     TEXT_FIELDS,
     Capabilities,
     Case,
+    CaseFinding,
     CaseKind,
-    Cite,
+    Citation,
     is_current,
 )
-from red_thread_casefile.errors import MalformedCaseError, SecretInEntryError
+from red_thread_casefile.errors import MalformedCaseError, SecretInFindingError
 from red_thread_casefile.policy import (
-    CiteCheck,
-    CitePolicy,
-    EntryPolicy,
-    Finding,
+    CitationCheck,
+    CitationPolicy,
+    CitationReader,
+    FindingPolicy,
     SupersedePolicy,
     get_page_problem,
 )
@@ -35,7 +36,7 @@ if TYPE_CHECKING:
     from red_thread_core.store import Clock, SourceTree
 
     from red_thread_casefile.documents import Wording
-    from red_thread_casefile.domain import CaseRecord, Entry, Ledger, Placed
+    from red_thread_casefile.domain import CaseLedger, CaseRecord, LocatedFinding
     from red_thread_casefile.errors import CaseFileError
     from red_thread_casefile.schemas import CaseReading
     from red_thread_casefile.store import CaseRepository
@@ -55,14 +56,14 @@ class Framing(DTO, frozen=True, kw_only=True, gc=False):
 
 class Checked(DTO, frozen=True, kw_only=True, gc=False):
     problems: Problems
-    findings: tuple[Finding, ...]
+    citation_checks: tuple[CitationCheck, ...]
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class Inspector:
     tree: SourceTree
     patterns: SecretPatterns
-    ledger: Ledger
+    ledger: CaseLedger
     head: str | None
 
     def read_scrubbed(self, path: str) -> tuple[str, ...] | None:
@@ -71,57 +72,67 @@ class Inspector:
             return None
         return tuple(map(self.patterns.scrub_text, lines))
 
-    def probe(self, entry: Entry) -> CiteCheck | None:
-        cite = Cite(raw=entry.cite or '')
-        if cite.path is None or cite.line is None:
+    def probe(self, finding: CaseFinding) -> CitationReader | None:
+        citation = Citation(raw=finding.citation or '')
+        if citation.path is None or citation.line is None:
             return None
-        lines = self.read_scrubbed(cite.path)
-        return CiteCheck(quote=entry.quote or '', line=cite.line, lines=lines)
+        lines = self.read_scrubbed(citation.path)
+        return CitationReader(quote=finding.quote or '', line=citation.line, lines=lines)
 
-    def inspect(self, entry: Entry) -> Finding:
-        probe = self.probe(entry)
-        if probe is None or entry.quote is None:
-            return Finding(ref=entry.ref, cite=entry.cite or '', state='unchecked')
-        return Finding(
-            ref=entry.ref, cite=entry.cite or '', state=probe.get_state(), moved_to=probe.moved_to
+    def inspect(self, finding: CaseFinding) -> CitationCheck:
+        probe = self.probe(finding)
+        if probe is None or finding.quote is None:
+            return CitationCheck(
+                finding_id=finding.finding_id, citation=finding.citation or '', state='unchecked'
+            )
+        return CitationCheck(
+            finding_id=finding.finding_id,
+            citation=finding.citation or '',
+            state=probe.get_state(),
+            moved_to=probe.moved_to,
         )
 
-    def find_citations(self) -> tuple[Finding, ...]:
-        cited = (entry for entry in self.ledger.live if entry.cite is not None)
+    def find_citations(self) -> tuple[CitationCheck, ...]:
+        cited = (finding for finding in self.ledger.live if finding.citation is not None)
         return tuple(map(self.inspect, cited))
 
-    def get_cite_problem(self, placed: Placed) -> CaseFileError | None:
-        probe = self.probe(placed.entry)
+    def get_citation_problem(self, located: LocatedFinding) -> CaseFileError | None:
+        probe = self.probe(located.finding)
         if probe is None:
             return None
-        policy = CitePolicy(
-            entry=placed.entry,
-            spot=placed.spot,
+        policy = CitationPolicy(
+            finding=located.finding,
+            location=located.location,
             probe=probe,
-            is_fresh=is_current(placed.entry.head, self.head),
+            is_fresh=is_current(located.finding.head, self.head),
         )
-        return policy.get_cite_problem()
+        return policy.get_citation_problem()
 
-    def find_secret_problems(self, placed: Placed) -> tuple[SecretInEntryError, ...]:
-        present = ((name, getattr(placed.entry, name)) for name in TEXT_FIELDS)
+    def find_secret_problems(self, located: LocatedFinding) -> tuple[SecretInFindingError, ...]:
+        fields = (field for field in CaseFinding.fields() if field.encode_name in TEXT_FIELDS)
+        present = ((field.encode_name, getattr(located.finding, field.name)) for field in fields)
         scrubbed = ((name, self.patterns.scrub(value)) for name, value in present if value)
         return tuple(
-            SecretInEntryError(spot=placed.spot, field=name, scrubbed=found.text)
+            SecretInFindingError(location=located.location, field=name, scrubbed=found.text)
             for name, found in scrubbed
             if found.hits
         )
 
-    def find_problems(self, placed: Placed) -> Problems:
+    def find_problems(self, located: LocatedFinding) -> Problems:
         supersede = SupersedePolicy(
-            entry=placed.entry, spot=placed.spot, known_refs=self.ledger.refs
+            finding=located.finding,
+            location=located.location,
+            known_finding_ids=self.ledger.finding_ids,
         ).get_supersede_problem()
-        always = (*filter(None, (supersede,)), *self.find_secret_problems(placed))
-        if placed.entry.ref in self.ledger.retired:
+        always = (*filter(None, (supersede,)), *self.find_secret_problems(located))
+        if located.finding.finding_id in self.ledger.retired:
             return always
 
-        rules = EntryPolicy(entry=placed.entry, spot=placed.spot).get_entry_issues()
-        cite = self.get_cite_problem(placed)
-        return (*rules, *filter(None, (cite,)), *always)
+        rules = FindingPolicy(
+            finding=located.finding, location=located.location
+        ).get_finding_issues()
+        citation = self.get_citation_problem(located)
+        return (*rules, *filter(None, (citation,)), *always)
 
 
 def find_case_problems(case: Case | None) -> Problems:
@@ -168,21 +179,21 @@ class CaseFile:
             raise record
         return record
 
-    def create_inspector(self, ledger: Ledger) -> Inspector:
+    def create_inspector(self, ledger: CaseLedger) -> Inspector:
         return Inspector(
             tree=self.tree, patterns=self.patterns, ledger=ledger, head=self.tree.get_head()
         )
 
-    def find_citations(self, ledger: Ledger) -> tuple[Finding, ...]:
+    def find_citations(self, ledger: CaseLedger) -> tuple[CitationCheck, ...]:
         return self.create_inspector(ledger).find_citations()
 
     def check(self) -> Checked:
         reading = self.read()
         inspector = self.create_inspector(reading.ledger)
-        found = chain.from_iterable(map(inspector.find_problems, reading.placed))
+        found = chain.from_iterable(map(inspector.find_problems, reading.located))
         return Checked(
             problems=(*reading.problems, *find_case_problems(reading.case), *found),
-            findings=inspector.find_citations(),
+            citation_checks=inspector.find_citations(),
         )
 
     def show(self, options: BoardOptions | None = None) -> str:
@@ -193,6 +204,6 @@ class CaseFile:
             headings=self.wording.headings,
             head=self.tree.get_head(),
             options=options or BoardOptions(),
-            findings=self.find_citations(record.ledger),
+            citation_checks=self.find_citations(record.ledger),
         )
         return board.render()

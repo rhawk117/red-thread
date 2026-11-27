@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
-from red_thread_casefile.documents import Citation
+from red_thread_casefile.documents import CitationNode
 from red_thread_casefile.packaged import load_wording
 from red_thread_core.documents import Document, Paragraph, Section, parse_line
 
@@ -20,30 +20,30 @@ from tests.casefile.pages.builders import (
 )
 from tests.casefile.pages.html_reading import (
     find_buttons,
-    find_entries,
+    find_finding_items,
     find_tags,
     list_chip_groups,
+    list_finding_id_buttons,
     list_flags,
-    list_item_refs,
     list_mermaid,
     list_tag_names,
     list_tags,
 )
 from tests.casefile.pages.promises import assert_page_holds_only_its_own_markup
-from tests.casefile.writers.builders import create_entry_node
+from tests.casefile.writers.builders import create_finding_node
 from tests.casefile.writers.reading import render_page
 
 if TYPE_CHECKING:
     from tests.casefile.pages.builders import DocumentField
 
 
-def create_url_cite(tail: str) -> str:
+def create_url_citation(tail: str) -> str:
     return f'{PLAIN_URL}/{tail}'
 
 
-def create_cited_document(cite: str) -> Document:
-    entry = create_entry_node('claim').replace_with(citation=Citation(target=cite))
-    return create_document(entry)
+def create_cited_document(citation: str) -> Document:
+    finding = create_finding_node('claim').replace_with(citation_node=CitationNode(target=citation))
+    return create_document(finding)
 
 
 def create_prose_section(title: str, text: str) -> Section:
@@ -80,27 +80,27 @@ class TestEscaping:
         assert 'fish & chips' not in page
 
     @payload_cases()
-    def test_a_ref_lands_in_the_copy_attribute_and_the_button_text_as_text(
+    def test_a_finding_id_lands_in_the_copy_attribute_and_the_button_text_as_text(
         self, payload: str
     ) -> None:
-        page = render_page(create_document_carrying('item-ref', payload))
+        page = render_page(create_document_carrying('item-finding-id', payload))
 
-        (button, _) = find_buttons(page, 'ref')
+        (button, _) = find_buttons(page, 'finding-id')
         assert button['data-copy'] == payload
-        assert list_item_refs(page)[0] == payload
+        assert list_finding_id_buttons(page)[0] == payload
 
     @payload_cases()
-    def test_a_cite_lands_in_its_copy_attribute_as_text(self, payload: str) -> None:
+    def test_a_citation_lands_in_its_copy_attribute_as_text(self, payload: str) -> None:
         page = render_page(create_document_carrying('item-cite', payload))
 
         (button,) = find_buttons(page, 'copy')
         assert button['data-copy'] == payload
 
     @payload_cases()
-    def test_a_thread_lands_in_the_entry_mark_and_the_chip_as_text(self, payload: str) -> None:
+    def test_a_thread_lands_in_the_finding_mark_and_the_chip_as_text(self, payload: str) -> None:
         page = render_page(create_document_carrying('item-thread', payload))
 
-        (marked, _) = find_entries(page)
+        (marked, _) = find_finding_items(page)
         assert marked['data-thread'] == payload
         groups = {group[0].group: group for group in list_chip_groups(page)}
         assert [(chip.value, chip.label) for chip in groups['thread']] == [
@@ -109,10 +109,10 @@ class TestEscaping:
         ]
 
     @payload_cases()
-    def test_a_kind_lands_in_the_entry_mark_as_text(self, payload: str) -> None:
+    def test_a_kind_lands_in_the_finding_mark_as_text(self, payload: str) -> None:
         page = render_page(create_document_carrying('item-kind', payload))
 
-        (marked, _) = find_entries(page)
+        (marked, _) = find_finding_items(page)
         assert marked['data-kind'] == payload
 
     @payload_cases()
@@ -130,22 +130,22 @@ class TestEscaping:
         assert source.splitlines()[-1] == payload
         assert find_tags(page, 'pre') == [{'class': 'mermaid'}]
 
-    def test_a_quote_in_a_url_cite_cannot_break_out_of_the_href(self) -> None:
-        cite = f'{PLAIN_URL}/x" onmouseover="alert(1)" data-x="'
+    def test_a_quote_in_a_url_citation_cannot_break_out_of_the_href(self) -> None:
+        citation = f'{PLAIN_URL}/x" onmouseover="alert(1)" data-x="'
 
-        page = render_page(create_cited_document(cite))
+        page = render_page(create_cited_document(citation))
 
         (link,) = find_tags(page, 'a')
-        assert link['href'] == cite
+        assert link['href'] == citation
         assert set(link) == {'href', 'rel'}
 
-    def test_a_single_quote_and_angle_bracket_in_a_url_cite_stay_inside_the_href(self) -> None:
-        cite = f"{PLAIN_URL}/it's<b>"
+    def test_a_single_quote_and_angle_bracket_in_a_url_citation_stay_inside_the_href(self) -> None:
+        citation = f"{PLAIN_URL}/it's<b>"
 
-        page = render_page(create_cited_document(cite))
+        page = render_page(create_cited_document(citation))
 
         (link,) = find_tags(page, 'a')
-        assert link['href'] == cite
+        assert link['href'] == citation
         assert 'b' not in list_tag_names(page)
 
 
@@ -162,12 +162,14 @@ class TestPropertyPageShape:
         assert_page_holds_only_its_own_markup(page)
         assert page.lower().count('<script') == 3
 
-    @given(cite=st.text().map(create_url_cite))
-    def test_a_url_cite_of_any_text_stays_one_link_whose_href_is_the_cite(self, cite: str) -> None:
-        page = render_page(create_cited_document(cite))
+    @given(citation=st.text().map(create_url_citation))
+    def test_a_url_citation_of_any_text_stays_one_link_whose_href_is_the_citation(
+        self, citation: str
+    ) -> None:
+        page = render_page(create_cited_document(citation))
 
         (link,) = find_tags(page, 'a')
-        assert link['href'] == cite
+        assert link['href'] == citation
         assert set(link) == {'href', 'rel'}
 
 
@@ -177,30 +179,30 @@ class TestContent:
 
         assert page.count('Why jobs wait') == 2
 
-    def test_each_item_shows_its_ref_and_its_text(self) -> None:
+    def test_each_item_shows_its_finding_id_and_its_text(self) -> None:
         document = create_document(
-            create_entry_node('first claim', 'e1'), create_entry_node('second claim', 'T1.e2')
+            create_finding_node('first claim', 'e1'), create_finding_node('second claim', 'T1.e2')
         )
 
         page = render_page(document)
 
-        assert list_item_refs(page) == ['e1', 'T1.e2']
+        assert list_finding_id_buttons(page) == ['e1', 'T1.e2']
         assert 'first claim' in page
         assert 'second claim' in page
 
     def test_flags_and_notes_are_shown_as_text(self) -> None:
-        entry = create_entry_node().replace_with(
+        finding = create_finding_node().replace_with(
             notes=(load_wording().write_note('rests_on', 'a page'),),
             lead='1111111',
         )
 
-        page = render_page(create_document(entry))
+        page = render_page(create_document(finding))
 
         assert list_flags(page) == ['lead, recorded at 1111111']
         assert 'rests on: a page' in page
 
     def test_an_item_with_no_flag_and_no_note_has_no_flag_element(self) -> None:
-        page = render_page(create_document(create_entry_node()))
+        page = render_page(create_document(create_finding_node()))
 
         assert list_flags(page) == []
 

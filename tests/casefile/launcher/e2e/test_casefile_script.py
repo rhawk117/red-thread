@@ -54,7 +54,7 @@ class TestCasefileScript:
         self, launcher: Launcher
     ) -> None:
         case = launcher.init()
-        append_text(case, 'a line outside any entry\n')
+        append_text(case, 'a line outside any finding\n')
 
         rejected = launcher.on_case('render', case)
 

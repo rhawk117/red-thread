@@ -93,7 +93,7 @@ class TestCheck:
         result = planner.check(written)
 
         assert result.code == 0, result.err
-        assert result.out == f'checked {written}: 1 criteria rest on 2 entries\n'
+        assert result.out == f'checked {written}: 1 criteria rest on 2 findings\n'
 
     def test_the_directory_of_a_plan_is_checked_as_its_plan(
         self, planner: PlanHarness, written: Path
@@ -106,13 +106,15 @@ class TestCheck:
         assert result.code == 1
         assert all(f'"## {title}" is empty' in result.err for title in ('Intent', 'Tasks'))
 
-    def test_an_unfit_ref_is_named_with_its_line(self, planner: PlanHarness, written: Path) -> None:
+    def test_an_unfit_finding_id_is_named_with_its_line(
+        self, planner: PlanHarness, written: Path
+    ) -> None:
         edited = CRITERION.replace('C1.e2', 'C1.e9')
         result = self.check_edited(planner, written, (CRITERION, edited))
         line = find_line_number(written.read_text(encoding='utf-8'), edited)
 
         assert result.code == 1
-        assert f'line {line}: C1.e9 is not an entry of its case' in result.err
+        assert f'line {line}: C1.e9 is not a finding of its case' in result.err
 
     def test_a_bare_lights_value_is_refused_with_the_quotes_to_add(
         self, planner: PlanHarness, written: Path
