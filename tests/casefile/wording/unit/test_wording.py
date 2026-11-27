@@ -2,7 +2,6 @@
 
 from typing import get_args
 
-import msgspec
 import pytest
 from red_thread_casefile.documents import NoteKind, Wording
 from red_thread_casefile.domain import ENTRY_KINDS
@@ -13,7 +12,10 @@ from red_thread_casefile.packaged import (
     load_lens_book,
     load_wording,
 )
+from red_thread_core.errors import MalformedDocumentError
 from red_thread_core.packaged import load_asset
+
+from tests.codec import YAML
 
 WORDING_WITH_UNKNOWN_KEY = b"""
 headings: []
@@ -49,11 +51,10 @@ class TestWording:
         assert wording.write_note('rests_on', 'a page').text == 'rests on: a page'
 
     def test_an_unknown_key_is_refused(self) -> None:
-        with pytest.raises(msgspec.ValidationError):
-            msgspec.yaml.decode(WORDING_WITH_UNKNOWN_KEY, type=Wording)
+        assert isinstance(YAML.decode(WORDING_WITH_UNKNOWN_KEY, Wording), MalformedDocumentError)
 
     def test_a_file_of_another_shape_is_refused(self) -> None:
-        with pytest.raises(msgspec.ValidationError):
+        with pytest.raises(MalformedDocumentError):
             load_asset(CASEFILE_PACKAGE, WORDING_FILE, LensBook)
 
 
@@ -70,5 +71,4 @@ class TestLensBook:
         assert all((part.kind is None) != (part.fixed is None) for part in parts)
 
     def test_an_unknown_part_key_is_refused(self) -> None:
-        with pytest.raises(msgspec.ValidationError):
-            msgspec.yaml.decode(PART_WITH_UNKNOWN_KEY, type=LensBook)
+        assert isinstance(YAML.decode(PART_WITH_UNKNOWN_KEY, LensBook), MalformedDocumentError)

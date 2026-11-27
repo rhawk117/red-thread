@@ -7,12 +7,11 @@ from typing import TYPE_CHECKING
 
 from red_thread_casefile.cli import main
 from red_thread_casefile.domain import ENTRY_HEADING, ROUND_HEADING, RoundStamp
-from red_thread_casefile.schemas import read_case_file
 from red_thread_casefile.store import DirectoryCaseRepository
 
 from tests.casefile.entries.blocks import write_entries, write_round
 from tests.casefile.ledger.builders import DAY
-from tests.casefile.ledger.markdown import append_text, name_file
+from tests.casefile.ledger.markdown import SCHEMA, append_text, name_file
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -31,7 +30,7 @@ def read_file_lines(case: Path, thread: str | None) -> list[str]:
 
 def read_case(case: Path) -> Case | None:
     sources = DirectoryCaseRepository(directory=case).read()
-    return read_case_file(sources).case
+    return SCHEMA.read(sources).case
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)

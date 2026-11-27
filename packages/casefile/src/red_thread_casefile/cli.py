@@ -150,7 +150,9 @@ class ExportCommand:
 
     def run(self, arguments: ExportArguments) -> int:
         unselected = arguments.selection is None and sys.stdin.isatty()
-        loaded = load_selection('' if unselected else read_input(arguments.selection))
+        loaded = load_selection(
+            self.cases.json, '' if unselected else read_input(arguments.selection)
+        )
         if isinstance(loaded, MalformedSelectionError):
             raise loaded
 

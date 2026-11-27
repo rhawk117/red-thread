@@ -17,6 +17,7 @@ from tests.casefile.ledger.memory import (
     MemoryCaseRepository,
     MemorySourceTree,
 )
+from tests.codec import YAML
 
 if TYPE_CHECKING:
     from red_thread_casefile.domain import EntryKind, Verdict
@@ -138,7 +139,9 @@ def create_case_harness() -> CaseHarness:
     repository = MemoryCaseRepository()
     tree = MemorySourceTree(files={QUEUE_PATH: QUEUE_LINES})
     clock = FixedClock()
-    casefile = CaseFile(repository=repository, tree=tree, clock=clock, wording=load_wording())
+    casefile = CaseFile(
+        repository=repository, tree=tree, clock=clock, wording=load_wording(), codec=YAML
+    )
     scribe = CaseScribe(sink=repository, cases=[create_case()])
     return CaseHarness(
         repository=repository, tree=tree, clock=clock, casefile=casefile, scribe=scribe

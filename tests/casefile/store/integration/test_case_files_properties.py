@@ -7,12 +7,12 @@ from hypothesis import example, given
 from hypothesis import strategies as st
 from red_thread_casefile.domain import order_thread
 from red_thread_casefile.errors import CaseExistsError, CaseNotFoundError, UndecodableFileError
-from red_thread_casefile.schemas import read_case_file, write_case_file
 from red_thread_casefile.store import DirectoryCaseRepository
 
 from tests.casefile.entries.strategies import entries, thread_names
 from tests.casefile.ledger.builders import create_case, create_entry
 from tests.casefile.ledger.markdown import (
+    SCHEMA,
     name_file,
     number_entries,
     write_case_text,
@@ -66,7 +66,7 @@ class TestCaseFilesProperties:
         for name, written in in_threads.items():
             self.write_file(repository, name_file(name), write_thread_text(written))
 
-        reading = read_case_file(repository.read())
+        reading = SCHEMA.read(repository.read())
 
         ordered = sorted(in_threads, key=order_thread)
         expected = [*in_case, *(entry for name in ordered for entry in in_threads[name])]
@@ -78,7 +78,7 @@ class TestCaseFilesProperties:
         self, tmp_path_factory: pytest.TempPathFactory, numbers: set[int], strays: set[str]
     ) -> None:
         repository = self.create_repository(tmp_path_factory)
-        repository.create(write_case_file(create_case()))
+        repository.create(SCHEMA.write(create_case()))
         for stem in (*(f'T{number}' for number in numbers), *strays):
             self.write_file(repository, name_file(stem), '')
 
@@ -105,7 +105,7 @@ class TestCaseFilesProperties:
         repository = self.create_repository(tmp_path_factory)
         repository.create(text)
 
-        reading = read_case_file(repository.read())
+        reading = SCHEMA.read(repository.read())
 
         assert reading.case is not None or reading.problems
 
@@ -114,7 +114,7 @@ class TestCaseFilesProperties:
         self, tmp_path_factory: pytest.TempPathFactory, content: bytes, thread: bool
     ) -> None:
         repository = self.create_repository(tmp_path_factory)
-        repository.create(write_case_file(create_case()))
+        repository.create(SCHEMA.write(create_case()))
         path = repository.directory.joinpath(name_file('T1' if thread else None))
         path.write_bytes(content)
 

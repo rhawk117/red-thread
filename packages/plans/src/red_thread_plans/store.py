@@ -5,7 +5,7 @@ from pathlib import PurePath
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from red_thread_casefile.errors import MalformedCaseError
-from red_thread_casefile.schemas import load_record, read_case_file
+from red_thread_casefile.schemas import CaseFileSchema, load_record
 from red_thread_casefile.store import DirectoryCaseRepository
 from red_thread_core.store import create_exclusive
 
@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from red_thread_casefile.domain import CaseRecord
+    from red_thread_core.codec import Codec
 
 NOT_CASES = frozenset({'.', '..', TICKET_HOME, 'plans'})
 
@@ -59,6 +60,7 @@ def is_case_name(case_id: str) -> bool:
 @dataclass(slots=True, kw_only=True, frozen=True)
 class DirectoryCaseShelf:
     state: Path
+    codec: Codec
 
     def find(self, case_id: str) -> CaseRecord | None:
         if not is_case_name(case_id):
@@ -68,7 +70,7 @@ class DirectoryCaseShelf:
         if not repository.exists():
             return None
 
-        record = load_record(read_case_file(repository.read()))
+        record = load_record(CaseFileSchema(codec=self.codec).read(repository.read()))
         if isinstance(record, MalformedCaseError):
             raise record
 

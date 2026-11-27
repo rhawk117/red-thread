@@ -5,8 +5,8 @@ from itertools import chain, pairwise
 from operator import attrgetter
 from typing import TYPE_CHECKING
 
-import msgspec
-from red_thread_core.frontmatter import FENCE, FenceReasons, decode_yaml, split_frontmatter
+from red_thread_core.errors import MalformedDocumentError
+from red_thread_core.frontmatter import FENCE, FenceReasons, split_frontmatter
 from red_thread_core.lines import Line, cut_at, number_lines, split_lines, trim
 
 from red_thread_casefile.domain import (
@@ -50,6 +50,7 @@ from red_thread_casefile.schemas.lines import FIRST_LINE, Numbered
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
 
+    from red_thread_core.codec import Codec
     from red_thread_core.lines import Cut
 
     from red_thread_casefile.domain import LedgerSource
@@ -88,42 +89,6 @@ FENCE_REASONS = FenceReasons(
 )
 
 
-def decode_case(name: str, text: str) -> Case | MalformedFrontmatterError:
-    decoded = decode_yaml(text, Case)
-    if isinstance(decoded, msgspec.DecodeError):
-        return MalformedFrontmatterError(file=name, reason=str(decoded))
-
-    return decoded
-
-
-def decode_record(text: str, spot: Spot) -> EntryRecord | MalformedBlockError:
-    decoded = decode_yaml(text, EntryRecord)
-    if isinstance(decoded, msgspec.DecodeError):
-        return MalformedBlockError(spot=spot, reason=str(decoded))
-
-    return decoded
-
-
-def read_front(source: LedgerSource) -> Front:
-    lines = split_lines(source.text)
-    every = number_lines(lines, FIRST_LINE)
-    if source.name != CASE_FILE:
-        return Front(body=every)
-
-    split = split_frontmatter(lines)
-    if isinstance(split, str):
-        problem = MalformedFrontmatterError(file=CASE_FILE, reason=FENCE_REASONS.explain(split))
-        kept = () if split == 'no_closing' else every
-        return Front(body=kept, problems=(problem,))
-
-    decoded = decode_case(CASE_FILE, '\n'.join(split.front))
-    body = every[split.closing + 1 :]
-    if isinstance(decoded, MalformedFrontmatterError):
-        return Front(body=body, problems=(decoded,))
-
-    return Front(body=body, case=decoded)
-
-
 def split_readings(readings: Iterable[Reading]) -> FileReading:
     held = tuple(readings)
     return FileReading(
@@ -150,9 +115,18 @@ def list_rounds(body: tuple[Line, ...]) -> tuple[Numbered, ...]:
     return tuple(Numbered(line=head, seq=int(match['round'])) for head, match in found if match)
 
 
+def decode_record(codec: Codec, text: str, spot: Spot) -> EntryRecord | MalformedBlockError:
+    decoded = codec.decode(text, EntryRecord)
+    if isinstance(decoded, MalformedDocumentError):
+        return MalformedBlockError(spot=spot, reason=decoded.reason)
+
+    return decoded
+
+
 @dataclass(slots=True, kw_only=True, frozen=True)
 class LedgerReader:
     source: LedgerSource
+    codec: Codec
 
     def locate(self, line: Line, seq: int | None = None) -> Spot:
         ref = None if seq is None else name_ref(self.source.thread, seq)
@@ -187,7 +161,7 @@ class LedgerReader:
             return (MissingBlockError(spot=spot),)
 
         stray = filter(None, map(self.judge_loose, lines[closing + 1 :]))
-        record = decode_record('\n'.join(line.text for line in lines[1:closing]), spot)
+        record = decode_record(self.codec, '\n'.join(line.text for line in lines[1:closing]), spot)
         return (record, *stray)
 
     def read_entry(self, cut: Cut, stamp: RoundStamp) -> tuple[Reading, ...]:
@@ -253,26 +227,6 @@ class LedgerReader:
         return FileReading(placed=found.placed, problems=(*found.problems, *sequence))
 
 
-def read_source(source: LedgerSource) -> FileReading:
-    if source.thread is not None and not THREAD_NAME.fullmatch(source.thread):
-        return FileReading(problems=(StrayThreadFileError(file=source.name),))
-
-    front = read_front(source)
-    read = LedgerReader(source=source).read(front.body)
-    return FileReading(placed=read.placed, problems=(*front.problems, *read.problems))
-
-
-def read_case_file(sources: Sequence[LedgerSource]) -> CaseReading:
-    case = next((source for source in sources if source.name == CASE_FILE), None)
-    front = None if case is None else read_front(case)
-    readings = tuple(map(read_source, sources))
-    return CaseReading(
-        case=None if front is None else front.case,
-        placed=tuple(chain.from_iterable(map(attrgetter('placed'), readings))),
-        problems=tuple(chain.from_iterable(map(attrgetter('problems'), readings))),
-    )
-
-
 def load_record(reading: CaseReading) -> CaseRecord | MalformedCaseError:
     if reading.case is None or reading.problems:
         return MalformedCaseError(problems=reading.problems)
@@ -283,7 +237,56 @@ def write_title(target: str) -> str:
     return f'{TITLE_MARK}{" ".join(target.split())}'
 
 
-def write_case_file(case: Case) -> str:
-    fields = msgspec.yaml.encode(case).decode()
-    opening = RoundStamp(number=0, day=date_of(case.created), head=case.head)
-    return f'{FENCE}\n{fields}{FENCE}\n\n{write_title(case.target)}\n\n{opening.heading}\n'
+@dataclass(slots=True, kw_only=True, frozen=True)
+class CaseFileSchema:
+    codec: Codec
+
+    def decode_case(self, text: str) -> Case | MalformedFrontmatterError:
+        decoded = self.codec.decode(text, Case)
+        if isinstance(decoded, MalformedDocumentError):
+            return MalformedFrontmatterError(file=CASE_FILE, reason=decoded.reason)
+
+        return decoded
+
+    def read_front(self, source: LedgerSource) -> Front:
+        lines = split_lines(source.text)
+        every = number_lines(lines, FIRST_LINE)
+        if source.name != CASE_FILE:
+            return Front(body=every)
+
+        split = split_frontmatter(lines)
+        if isinstance(split, str):
+            reason = FENCE_REASONS.explain(split)
+            problem = MalformedFrontmatterError(file=CASE_FILE, reason=reason)
+            kept = () if split == 'no_closing' else every
+            return Front(body=kept, problems=(problem,))
+
+        decoded = self.decode_case('\n'.join(split.front))
+        body = every[split.closing + 1 :]
+        if isinstance(decoded, MalformedFrontmatterError):
+            return Front(body=body, problems=(decoded,))
+
+        return Front(body=body, case=decoded)
+
+    def read_source(self, source: LedgerSource) -> FileReading:
+        if source.thread is not None and not THREAD_NAME.fullmatch(source.thread):
+            return FileReading(problems=(StrayThreadFileError(file=source.name),))
+
+        front = self.read_front(source)
+        read = LedgerReader(source=source, codec=self.codec).read(front.body)
+        return FileReading(placed=read.placed, problems=(*front.problems, *read.problems))
+
+    def read(self, sources: Sequence[LedgerSource]) -> CaseReading:
+        case = next((source for source in sources if source.name == CASE_FILE), None)
+        front = None if case is None else self.read_front(case)
+        readings = tuple(map(self.read_source, sources))
+        return CaseReading(
+            case=None if front is None else front.case,
+            placed=tuple(chain.from_iterable(map(attrgetter('placed'), readings))),
+            problems=tuple(chain.from_iterable(map(attrgetter('problems'), readings))),
+        )
+
+    def write(self, case: Case) -> str:
+        fields = self.codec.encode_text(case)
+        opening = RoundStamp(number=0, day=date_of(case.created), head=case.head)
+        return f'{FENCE}\n{fields}{FENCE}\n\n{write_title(case.target)}\n\n{opening.heading}\n'

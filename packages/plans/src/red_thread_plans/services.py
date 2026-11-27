@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from red_thread_casefile.domain import CaseRecord
+    from red_thread_core.codec import Codec
     from red_thread_core.store import Clock, SourceTree
 
     from red_thread_plans.domain import Opening, Outline, PlanDocument
@@ -49,6 +50,7 @@ class Planner:
     tree: SourceTree
     clock: Clock
     outline: Outline
+    codec: Codec
 
     def gather(self, cases: Mapping[str, str]) -> dict[str, CaseRecord]:
         found = ((alias, self.shelf.find(case_id)) for alias, case_id in cases.items())
@@ -76,10 +78,10 @@ class Planner:
             raise UnknownCaseError(alias=None, case_id=missing)
 
         self.tree.exclude(EXCLUDED)
-        return self.plan.create(write_plan(self.stamp(opening), self.outline))
+        return self.plan.create(write_plan(self.codec, self.stamp(opening), self.outline))
 
     def check(self) -> Checked:
-        document = read_plan(self.plan.read())
+        document = read_plan(self.codec, self.plan.read())
         if isinstance(document, PlanShapeError):
             raise document
 

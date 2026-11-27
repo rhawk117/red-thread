@@ -1,9 +1,7 @@
-"""Frontmatter between --- fences: split a file's lines around the fences and decode the YAML."""
+"""Frontmatter between --- fences: split a file's lines around the fences."""
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
-
-import msgspec
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -42,10 +40,3 @@ def split_frontmatter(lines: Sequence[str]) -> FrontSplit | FenceProblem:
         return 'no_closing'
 
     return FrontSplit(front=tuple(lines[1:closing]), closing=closing)
-
-
-def decode_yaml[T](text: str, shape: type[T]) -> T | msgspec.DecodeError:
-    try:
-        return msgspec.yaml.decode(text, type=shape)
-    except msgspec.DecodeError as error:
-        return error

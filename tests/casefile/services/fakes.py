@@ -16,6 +16,7 @@ from tests.casefile.ledger.memory import (
     MemoryPageStore,
     MemorySourceTree,
 )
+from tests.codec import YAML
 
 if TYPE_CHECKING:
     from red_thread_casefile.domain import Entry
@@ -56,5 +57,7 @@ def create_service_harness(files: dict[str, tuple[str, ...]] | None = None) -> S
     scribe.frame(CASE)
     tree = MemorySourceTree(files=files or {})
     pages = MemoryPageStore()
-    case_file = CaseFile(repository=store, tree=tree, clock=FixedClock(), wording=load_wording())
+    case_file = CaseFile(
+        repository=store, tree=tree, clock=FixedClock(), wording=load_wording(), codec=YAML
+    )
     return ServiceHarness(store=store, tree=tree, pages=pages, case_file=case_file, scribe=scribe)

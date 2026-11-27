@@ -1,15 +1,17 @@
 """The selection an export reads: which entries a lens shows, and its title and goal."""
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeIs
 
-import msgspec
+from red_thread_core.errors import MalformedDocumentError
 
 from red_thread_casefile.errors import MalformedSelectionError
 from red_thread_casefile.lenses import Selection
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
+
+    from red_thread_core.codec import Codec
 
 
 def find_unknown_field(record: Mapping[str, object], allowed: tuple[str, ...]) -> str | None:
@@ -29,6 +31,10 @@ def read_text(record: Mapping[str, object], name: str) -> str | None:
 
 SELECTION_TEXT_FIELDS = ('title', 'goal')
 SELECTION_REF_FIELDS = ('include', 'blocking')
+
+
+def is_json_object(value: object) -> TypeIs[dict[str, object]]:
+    return isinstance(value, dict)
 
 
 def is_ref_list(value: object) -> bool:
@@ -80,13 +86,14 @@ class SelectionRecord:
         )
 
 
-def load_selection(text: str) -> SelectionRecord | MalformedSelectionError:
+def load_selection(codec: Codec, text: str) -> SelectionRecord | MalformedSelectionError:
     if not text.strip():
         return SelectionRecord(record={})
-    try:
-        loaded = msgspec.json.decode(text)
-    except msgspec.DecodeError as error:
-        return MalformedSelectionError(reason=f'it is not JSON ({error})')
-    if not isinstance(loaded, dict):
+
+    loaded = codec.decode(text, object)
+    if isinstance(loaded, MalformedDocumentError):
+        return MalformedSelectionError(reason=f'it is not JSON ({loaded.reason})')
+
+    if not is_json_object(loaded):
         return MalformedSelectionError(reason='it is not a JSON object')
     return SelectionRecord(record=loaded)

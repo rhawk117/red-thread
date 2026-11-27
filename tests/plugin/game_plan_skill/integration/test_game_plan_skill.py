@@ -9,6 +9,7 @@ from red_thread_plans.packaged import load_outline
 from red_thread_plans.policy import Grounds, PlanPolicy
 from red_thread_plans.schemas import read_plan
 
+from tests.codec import YAML
 from tests.plugin.frontmatter import read_frontmatter_lines, read_scalar
 
 if TYPE_CHECKING:
@@ -36,7 +37,7 @@ class TestGamePlanSkill:
         return tuple(self.markdown_block.findall(text))
 
     def read_example(self, example: str) -> PlanDocument:
-        document = read_plan(example)
+        document = read_plan(YAML, example)
         assert isinstance(document, PlanDocument), document
         return document
 

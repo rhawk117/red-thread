@@ -1,6 +1,5 @@
 """casefile export, driven through main(argv) against a temporary git repository."""
 
-import json
 from typing import TYPE_CHECKING
 
 import pytest
@@ -8,6 +7,7 @@ from red_thread_casefile.domain import PROGRAM
 
 from tests.casefile.ledger.builders import KNOWN
 from tests.casefile.lenses.reading import list_headings, list_refs
+from tests.codec import JSON
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -80,7 +80,7 @@ class TestExport:
 
     def test_a_selection_file_selects_orders_and_titles(self, cli: CliHarness, case: Path) -> None:
         cli.write(case, *create_open_records(4))
-        selection = json.dumps({
+        selection = JSON.encode_text({
             'title': 'Why jobs wait',
             'include': ['e3', 'e1'],
             'blocking': ['e1'],
@@ -97,7 +97,7 @@ class TestExport:
     ) -> None:
         cli.write(case, *create_open_records(4))
 
-        result = cli.export_from_stdin(case, 'brief', json.dumps({'include': ['e4']}))
+        result = cli.export_from_stdin(case, 'brief', JSON.encode_text({'include': ['e4']}))
 
         assert result.code == 0
         assert list_refs(read_brief(case), 'Open') == ['e4']
@@ -112,7 +112,7 @@ class TestExport:
     def test_a_secret_in_the_selection_is_redacted_before_it_is_written(
         self, cli: CliHarness, case: Path
     ) -> None:
-        selection = json.dumps({'title': 'Leak of AKIAIOSFODNN7EXAMPLE'})
+        selection = JSON.encode_text({'title': 'Leak of AKIAIOSFODNN7EXAMPLE'})
 
         cli.export(case, 'brief', '--html', selection=selection)
 

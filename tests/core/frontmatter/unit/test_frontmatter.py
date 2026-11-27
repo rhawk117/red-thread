@@ -1,18 +1,12 @@
-"""Frontmatter: the fenced split of a file's lines and the YAML decode of its header."""
+"""Frontmatter: the fenced split of a file's lines."""
 
-import msgspec
 import pytest
 from red_thread_core.frontmatter import (
     FenceReasons,
     FrontSplit,
-    decode_yaml,
     find_closing,
     split_frontmatter,
 )
-
-
-class Header(msgspec.Struct, frozen=True, kw_only=True):
-    title: str
 
 
 def opening_problem_cases() -> pytest.MarkDecorator:
@@ -51,11 +45,3 @@ class TestFenceReasons:
 
         assert reasons.explain('no_opening') == 'no opening fence'
         assert reasons.explain('no_closing') == 'no closing fence'
-
-
-class TestDecodeYaml:
-    def test_valid_yaml_returns_the_decoded_value(self) -> None:
-        assert decode_yaml('title: a', Header) == Header(title='a')
-
-    def test_bad_yaml_returns_a_decode_error(self) -> None:
-        assert isinstance(decode_yaml('title: [', Header), msgspec.DecodeError)

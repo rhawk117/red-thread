@@ -12,6 +12,7 @@ from red_thread_core.store import GitSourceTree
 from tests.casefile.ledger.builders import CASE_ID, create_case
 from tests.casefile.ledger.markdown import CaseScribe, name_file, write_case_text
 from tests.casefile.ledger.memory import FixedClock
+from tests.codec import YAML
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -68,6 +69,7 @@ def create_directory_harness(git: GitRepository) -> DirectoryHarness:
         tree=GitSourceTree(root=git.root),
         clock=FixedClock(),
         wording=load_wording(),
+        codec=YAML,
     )
     scribe = CaseScribe(sink=DirectorySink(directory=directory), cases=[create_case()])
     return DirectoryHarness(

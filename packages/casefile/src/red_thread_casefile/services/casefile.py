@@ -23,11 +23,12 @@ from red_thread_casefile.policy import (
     SupersedePolicy,
     get_page_problem,
 )
-from red_thread_casefile.schemas import load_record, read_case_file, write_case_file
+from red_thread_casefile.schemas import CaseFileSchema, load_record
 from red_thread_casefile.util import rank_languages
 from red_thread_casefile.views import Board, BoardOptions
 
 if TYPE_CHECKING:
+    from red_thread_core.codec import Codec
     from red_thread_core.redaction import SecretPatterns
     from red_thread_core.store import Clock, SourceTree
 
@@ -135,7 +136,12 @@ class CaseFile:
     tree: SourceTree
     clock: Clock
     wording: Wording
+    codec: Codec
     patterns: SecretPatterns = field(default_factory=create_secret_patterns)
+
+    @property
+    def schema(self) -> CaseFileSchema:
+        return CaseFileSchema(codec=self.codec)
 
     def frame(self, framing: Framing) -> Case:
         capabilities = Capabilities(languages=rank_languages(self.tree.list_files()))
@@ -149,12 +155,12 @@ class CaseFile:
             head=self.tree.get_head(),
             capabilities=capabilities,
         )
-        self.repository.create(write_case_file(case))
+        self.repository.create(self.schema.write(case))
         self.tree.exclude(EXCLUDED)
         return case
 
     def read(self) -> CaseReading:
-        return read_case_file(self.repository.read())
+        return self.schema.read(self.repository.read())
 
     def load(self) -> CaseRecord:
         record = load_record(self.read())

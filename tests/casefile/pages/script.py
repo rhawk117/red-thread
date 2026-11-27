@@ -1,11 +1,11 @@
 """Runs the script of a rendered page under Node, against the fake DOM in dom_harness.js."""
 
-import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from tests.casefile.launcher.children import ChildRunner
+from tests.codec import JSON, decode_json
 
 HARNESS = Path(__file__).with_name('dom_harness.js')
 
@@ -59,9 +59,10 @@ class ScriptHarness:
         page_file = self.workdir.joinpath('page.html')
         steps_file = self.workdir.joinpath('steps.json')
         page_file.write_text(self.page, encoding='utf-8')
-        steps_file.write_text(json.dumps({'steps': steps, 'mermaid': mermaid}), encoding='utf-8')
+        steps_file.write_text(
+            JSON.encode_text({'steps': steps, 'mermaid': mermaid}), encoding='utf-8'
+        )
         runner = ChildRunner(cwd=self.workdir)
         finished = runner.run(self.node, str(HARNESS), str(page_file), str(steps_file))
         assert finished.code == 0, finished.err
-        state: PageState = json.loads(finished.out)
-        return state
+        return decode_json(finished.out, dict[str, Any])

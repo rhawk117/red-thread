@@ -6,11 +6,11 @@ import pytest
 from hypothesis import example, given
 from hypothesis import strategies as st
 from red_thread_casefile.domain import CASE_FILE, LedgerSource
-from red_thread_casefile.schemas import read_case_file, write_case_file
 
 from tests.casefile.entries.strategies import cases, entries, thread_names, words
 from tests.casefile.ledger.builders import create_case
 from tests.casefile.ledger.markdown import (
+    SCHEMA,
     name_file,
     number_entries,
     write_case_text,
@@ -39,7 +39,7 @@ def read_files(files: dict[str, str]) -> CaseReading:
     sources = [
         LedgerSource(name=name, thread=name_thread(name), text=text) for name, text in files.items()
     ]
-    return read_case_file(sources)
+    return SCHEMA.read(sources)
 
 
 class TestEntriesReadBack:
@@ -93,13 +93,13 @@ class TestCaseFileOpening:
     @given(case=cases)
     @example(case=create_case().replace_with(target='why the queue\nstalls'))
     def test_the_frontmatter_reads_back_as_the_case_it_came_from(self, case: Case) -> None:
-        reading = read_files({CASE_FILE: write_case_file(case)})
+        reading = read_files({CASE_FILE: SCHEMA.write(case)})
 
         assert reading.problems == ()
         assert reading.case == case
 
     def test_the_opening_holds_the_frontmatter_the_title_and_round_zero(self) -> None:
-        text = write_case_file(create_case())
+        text = SCHEMA.write(create_case())
 
         lines = text.split('\n')
         closing = lines.index('---', 1)

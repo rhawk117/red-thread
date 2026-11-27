@@ -23,6 +23,7 @@ from red_thread_plans.policy import PlanPolicy, create_grounds
 from red_thread_plans.schemas import read_plan
 
 from tests.casefile.ledger.builders import create_entry
+from tests.codec import YAML
 from tests.params import as_params
 from tests.plans.document.builders import (
     CRITERION,
@@ -91,7 +92,7 @@ def create_ledger() -> Ledger:
 
 
 def read_document(text: str) -> PlanDocument:
-    document = read_plan(text)
+    document = read_plan(YAML, text)
     assert isinstance(document, PlanDocument), document
     return document
 

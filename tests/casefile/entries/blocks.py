@@ -2,12 +2,11 @@
 
 from typing import TYPE_CHECKING
 
-import msgspec
 from red_thread_casefile.domain import CASE_FILE, LedgerSource
-from red_thread_casefile.schemas import read_case_file
 
 from tests.casefile.ledger.builders import create_case
-from tests.casefile.ledger.markdown import write_case_text
+from tests.casefile.ledger.markdown import SCHEMA, write_case_text
+from tests.codec import YAML
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -19,7 +18,7 @@ ROUND = '## Round 1 · 2026-11-21 · none\n'
 
 
 def encode_block(fields: Mapping[str, object]) -> str:
-    return msgspec.yaml.encode(fields).decode()
+    return YAML.encode_text(fields)
 
 
 def write_block_entry(seq: int, block: str) -> str:
@@ -41,4 +40,4 @@ def write_blocks_case(blocks: Sequence[str]) -> str:
 
 
 def read_case_text(text: str) -> CaseReading:
-    return read_case_file([LedgerSource(name=CASE_FILE, thread=None, text=text)])
+    return SCHEMA.read([LedgerSource(name=CASE_FILE, thread=None, text=text)])

@@ -5,7 +5,6 @@ from dataclasses import dataclass, field
 from itertools import groupby
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
-import msgspec
 from red_thread_casefile.domain import (
     BLOCK_CLOSE,
     BLOCK_OPEN,
@@ -16,13 +15,17 @@ from red_thread_casefile.domain import (
     EntryRecord,
     RoundStamp,
 )
-from red_thread_casefile.schemas import write_case_file
+from red_thread_casefile.schemas import CaseFileSchema
+
+from tests.codec import YAML
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
     from pathlib import Path
 
     from red_thread_casefile.domain import Case, Entry
+
+SCHEMA = CaseFileSchema(codec=YAML)
 
 
 def name_file(thread: str | None) -> str:
@@ -53,7 +56,7 @@ def number_entries(written: Sequence[Entry], thread: str | None) -> list[Entry]:
 def write_block(entry: Entry) -> str:
     fields = {name: getattr(entry, name) for name in EntryRecord.__struct_fields__}
     record = EntryRecord.convert(fields)
-    return msgspec.yaml.encode(record).decode()
+    return YAML.encode_text(record)
 
 
 def write_entry(entry: Entry) -> str:
@@ -72,7 +75,7 @@ def write_rounds(entries: Iterable[Entry]) -> str:
 
 def write_case_text(case: Case, entries: Iterable[Entry] = ()) -> str:
     rounds = write_rounds(entries)
-    opening = write_case_file(case)
+    opening = SCHEMA.write(case)
     return f'{opening}\n{rounds}' if rounds else opening
 
 

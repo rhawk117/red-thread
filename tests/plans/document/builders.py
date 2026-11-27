@@ -7,6 +7,8 @@ from red_thread_plans.domain import HEADING, Frontmatter
 from red_thread_plans.packaged import load_outline
 from red_thread_plans.schemas import write_plan
 
+from tests.codec import YAML
+
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
@@ -41,7 +43,9 @@ def fill_plan(text: str, sections: Mapping[str, str]) -> str:
 
 
 def write_sound_plan(*case_ids: str) -> str:
-    return fill_plan(write_plan(create_frontmatter(*case_ids), load_outline()), SOUND_SECTIONS)
+    return fill_plan(
+        write_plan(YAML, create_frontmatter(*case_ids), load_outline()), SOUND_SECTIONS
+    )
 
 
 def edit_plan(text: str, edits: tuple[tuple[str, str], ...]) -> str:
